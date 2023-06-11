@@ -28,6 +28,7 @@
 			}, 100);
 		});
 
+
 	// Slideshow Background.
 		(function() {
 
@@ -152,22 +153,32 @@
 					// Disable submit.
 						$submit.disabled = true;
 
-					// Process form.
-					// Note: Doesn't actually do anything yet (other than report back with a "thank you"),
-					// but there's enough here to piece together a working AJAX submission call that does.
-						window.setTimeout(function() {
+						
+					const url = 'https://hooks.zapier.com/hooks/catch/15620963/3h47g0r';
+					const body = {
+						email: $form.email.value
+					};
+					console.log('body', body);
+					fetch(url, {
+						method: 'POST',
+						// headers: {
+						// 	"Content-Type": "application/json",
+						// },
+						mode: 'cors',
+						body: JSON.stringify(body)
+					}).then(response => {
+						$form.reset();
+						$submit.disabled = false;
 
-							// Reset form.
-								$form.reset();
-
-							// Enable submit.
-								$submit.disabled = false;
-
-							// Show message.
-								$message._show('success', 'Thank you! We\'ll let you know when we launch.');
-								//$message._show('failure', 'Something went wrong. Please try again.');
-
-						}, 750);
+						if (response.ok) {
+							$message._show('success', 'Thank you! We\'ll let you know when we launch.');
+						} else {
+							$message._show('failure', 'Something went wrong. Please try again.');
+						}
+					})
+					.catch(e => {
+						$message._show('failure', e.message);
+					});
 
 				});
 
