@@ -7,6 +7,15 @@
 <html>
 	<head>
 		<title>Quickbyte</title>
+		<!-- Google tag (gtag.js) -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=G-9VZZFXFZZS"></script>
+		<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag(){dataLayer.push(arguments);}
+		gtag('js', new Date());
+
+		gtag('config', 'G-9VZZFXFZZS');
+		</script>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 		<link rel="stylesheet"
@@ -33,7 +42,7 @@
 
 		<!-- Signup Form -->
 			<form id="signup-form" method="post" action="#">
-				<input type="email" name="email" id="email" placeholder="Email Address" />
+				<input type="email" name="email" id="email" placeholder="Email Address" required />
 				<input type="submit" value="Let me know when you launch!" />
 			</form>
 
