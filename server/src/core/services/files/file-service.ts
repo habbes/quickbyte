@@ -15,14 +15,23 @@ export class FileService {
         // - client uses secure upload URL to upload blocks of the blob
         // - client will send update to server when upload is done
         // - client could send periodic updates to server on upload progress
-        const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING || '';
+        const connectionString = process.env.AZ_SA_NORTH_STORAGE_CONNECTION_STRING;
+        if (!connectionString) {
+            throw new Error("Invalid connection string");
+        }
+        const containerName = process.env.AZ_STORAGE_CONTAINER;
+        if (!containerName) {
+            throw new Error("Container name not specified");
+        }
         const client = BlobServiceClient.fromConnectionString(connectionString);
-        const container = client.getContainerClient('container');
+        const container = client.getContainerClient(containerName);
         const blobName = `${this.accountId}generateId`;
         const blob = container.getBlobClient(blobName);
+        const currentDate = new Date();
         const url = await blob.generateSasUrl({
             permissions: BlobSASPermissions.from({ write: true, create: true }),
-            expiresOn: new Date() // TODO: date in future, maybe 1h-24h
+            expiresOn: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1,
+                currentDate.getHours(), currentDate.getMinutes()) // TODO: date in future, maybe 1h-24h
         });
 
         return {
