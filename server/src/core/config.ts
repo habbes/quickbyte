@@ -1,7 +1,8 @@
 import { createAppError } from "./error.js";
 
 export interface AppConfig {
-    mongodbUrl: string;
+    dbUrl: string;
+    dbName: string;
     azureStorageContainer: string;
     azureStorageConnectionString: string;
     port: number;
@@ -9,7 +10,8 @@ export interface AppConfig {
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
     return {
-        mongodbUrl: env.MONGODB_URL || 'mongodb://localhost:27017',
+        dbUrl: env.DB_URL || "mongodb://localhost:27017/quickbyte",
+        dbName: env.DB_NAME || "quickbyte",
         azureStorageContainer: getRequiredEnv(env, 'AZ_STORAGE_CONTAINER'),
         azureStorageConnectionString: getRequiredEnv(env, 'AZ_SA_NORTH_STORAGE_CONNECTION_STRING'),
         port: (env.port && Number(env.port)) || 3000
