@@ -1,8 +1,8 @@
-import { BlobSASPermissions, BlobServiceClient } from '@azure/storage-blob';
 import { randomBytes } from 'crypto';
+import { IStorageHandlerProvider } from '../storage/index.js'
 
 export class FileService {
-    constructor(private accountId: string) {}
+    constructor(private accountId: string, private providerRegistry: IStorageHandlerProvider) {}
 
     async initFileUpload(args: InitFileUploadArgs): Promise<InitFileUploadResult> {
         // overall plan:
@@ -24,27 +24,23 @@ export class FileService {
         if (!containerName) {
             throw new Error("Container name not specified");
         }
-        const client = BlobServiceClient.fromConnectionString(connectionString);
-        const container = client.getContainerClient(containerName);
-        const blobName = `${this.accountId}/${randomBytes(16).toString('hex')}`;
-        const blob = container.getBlobClient(blobName);
+
         const currentDate = new Date();
-        const url = await blob.generateSasUrl({
-            permissions: BlobSASPermissions.from({ write: true, create: true }),
-            expiresOn: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1,
-                currentDate.getHours(), currentDate.getMinutes()) // TODO: date in future, maybe 1h-24h
-        });
+        const blobName = randomBytes(16).toString('hex');
+        const expiryDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1,
+            currentDate.getHours(), currentDate.getMinutes());
+        const provider = this.providerRegistry.getHandler(args.provider);
+        const uploadUrl = await provider.getBlobUploadUrl(args.region, this.accountId, blobName, expiryDate);
 
         return {
-            container: container.containerName,
             path: blobName,
-            secureUploadUrl: url,
+            secureUploadUrl: uploadUrl,
             originalName: args.originalName,
-            provider: args.provider,
-            region: args.region
         };
     }
 }
+
+export type IFileService = Pick<FileService, 'initFileUpload'>;
 
 export interface InitFileUploadArgs {
     originalName: string;
@@ -54,10 +50,7 @@ export interface InitFileUploadArgs {
 }
 
 export interface InitFileUploadResult {
-    container: string;
     path: string;
     secureUploadUrl: string;
     originalName: string;
-    provider: string;
-    region: string;
 }
