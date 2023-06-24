@@ -1,4 +1,5 @@
 import { BlobSASPermissions, BlobServiceClient } from '@azure/storage-blob';
+import { randomBytes } from 'crypto';
 
 export class FileService {
     constructor(private accountId: string) {}
@@ -25,7 +26,7 @@ export class FileService {
         }
         const client = BlobServiceClient.fromConnectionString(connectionString);
         const container = client.getContainerClient(containerName);
-        const blobName = `${this.accountId}generateId`;
+        const blobName = `${this.accountId}/${randomBytes(16).toString('hex')}`;
         const blob = container.getBlobClient(blobName);
         const currentDate = new Date();
         const url = await blob.generateSasUrl({
