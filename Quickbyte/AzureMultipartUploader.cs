@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Text;
+using System.Web;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
 
@@ -8,25 +9,38 @@ namespace Quickbyte;
 
 public class AzureMultipartUploader
 {
-	BlobServiceClient client;
+	//BlobServiceClient client;
 	const int BlockSizeMbs = 16;
+	Uri uploadUrl;
+	BlockBlobClient blob;
 
-	public AzureMultipartUploader(string connectionString)
+	public AzureMultipartUploader(string secureUploadUrl)
 	{
-		this.client = new BlobServiceClient(connectionString);
+		var uri = new Uri(secureUploadUrl);
+		this.uploadUrl = uri;
+		//var uriBuilder = new UriBuilder();
+		//uriBuilder.Path = uri.AbsolutePath;
+		//uriBuilder.Host = uri.Host;
+		//uriBuilder.Scheme = uri.Scheme;
+		//uriBuilder.Port = uri.Port;
+		//var blobUri = uriBuilder.Uri;
+		//var query = HttpUtility.ParseQueryString(uri.Query);
+		//this.client = new BlobServiceClient(blobUri, new Azure.AzureSasCredential(query.Get("sig")));
+		//this.uploadUrl = secureUploadUrl;
+		this.blob = new BlockBlobClient(uri);
 	}
 
-	public async Task<Uri> UploadFile(string filePath, string containerName, string blobName, Dictionary<int, Block> recoveredBlocks, Action<Block> onBlockComplete)
+	public async Task<Uri> UploadFile(string filePath, Dictionary<int, Block> recoveredBlocks, Action<Block> onBlockComplete)
 	{
 		FileInfo file = new FileInfo(filePath);
 		int concurrency = 8;
-        var container = client.GetBlobContainerClient(containerName);
-        var blob = container.GetBlockBlobClient(blobName);
+        //var container = client.GetBlobContainerClient(containerName);
+		//var blob = container.GetBlockBlobClient(blobName);
 		long fileSize = file.Length;
 		int blockSize = BlockSizeMbs * 1024 * 1024;
 		int numBlocks = (int)Math.Ceiling((double)fileSize/blockSize);
 		string[] blockIds = new string[numBlocks];
-
+		
 		SemaphoreSlim semaphore = new SemaphoreSlim(concurrency);
 		using FileStream fileStream = File.OpenRead(file.FullName);
 		Task[] tasks = new Task[numBlocks];
@@ -68,8 +82,9 @@ public class AzureMultipartUploader
 		
 		await Task.WhenAll(tasks);
 		var result = await blob.CommitBlockListAsync(blockIds);
-		var uri = blob.GenerateSasUri(Azure.Storage.Sas.BlobSasPermissions.Read, new DateTimeOffset(2023, 6, 24, 0, 0, 0, default));
-		return uri;
+		//var uri = blob.GenerateSasUri(Azure.Storage.Sas.BlobSasPermissions.Read, new DateTimeOffset(2023, 6, 24, 0, 0, 0, default));
+		//return uri;
+		return this.uploadUrl;
 	}
 
 	

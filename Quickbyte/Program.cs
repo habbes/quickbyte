@@ -7,13 +7,12 @@ using System.Text.Json;
 // See https://aka.ms/new-console-template for more information
 
 var filePath = args[0];
-var targetFile = args[1];
 string? recoveredBlocksPath = args.Length > 2 ? args[2] : null;
 
 
 
 //await S3Upload(filePath, targetFile);
- await AzureUpload(filePath, targetFile, recoveredBlocksPath);
+ await AzureUpload(filePath, recoveredBlocksPath);
 
 async Task S3Upload(string filePath, string targetFile)
 {
@@ -39,6 +38,7 @@ async Task AzureUpload(string filePath, string? recoveredBlocksPath = null)
 {
     ApiClient apiClient = new ApiClient();
 
+    Console.WriteLine("Initializing file");
     var initResult = await apiClient.InitFile("accountId", new FileInitRequest
     (
         OriginalName: new FileInfo(filePath).Name,
@@ -67,7 +67,7 @@ async Task AzureUpload(string filePath, string? recoveredBlocksPath = null)
     }
     
     var saveTask = Task.Run(() => SaveProgress(completedBlocks, numBlocks, progessFilePath, signal, shouldTerminate));
-    var uri = await uploader.UploadFile(filePath, initResult.Container, destination, recoveredBlocks!, block =>
+    var uri = await uploader.UploadFile(filePath, recoveredBlocks!, block =>
     {
         completedBlocks.Add(block);
         signal.Set();

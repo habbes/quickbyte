@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 namespace Quickbyte;
@@ -23,9 +24,9 @@ public class ApiClient
 		var body = JsonSerializer.Serialize(request,
 			new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
 		);
-		var content = new HttpStringContent(body, Encoding.UTF8, mediaType: "application/json");
+		var content = new StringContent(body, Encoding.UTF8, new MediaTypeHeaderValue("application/json"));
 		var response = await this.client.PostAsync(requestUri, content);
-		var responseStream = await response.ReadAsStreamAsync();
+		var responseStream = await response.Content.ReadAsStreamAsync();
 		var result = JsonSerializer.Deserialize<FileInitResponse>(responseStream, new JsonSerializerOptions
 		{
 			PropertyNamingPolicy = JsonNamingPolicy.CamelCase
