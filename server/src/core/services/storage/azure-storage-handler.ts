@@ -31,15 +31,17 @@ export class AzureStorageHandler implements IStorageHandler {
         return url;
     }
 
-    async getBlobDownloadUrl(region: string, account: string, blobName: string, expiryDate: Date): Promise<string> {
+    async getBlobDownloadUrl(region: string, account: string, blobName: string, expiryDate: Date, originalName: string): Promise<string> {
         // TODO: get storage account client based on region
         const blobPath = `${account}/${blobName}`;
         const blob = this.container.getBlobClient(blobPath);
         // TODO: should we verify that blob exists?
         const url = await blob.generateSasUrl({
             permissions: BlobSASPermissions.from({ read: true }),
-            expiresOn: expiryDate
+            expiresOn: expiryDate,
+            contentDisposition: `attachment; filename="${originalName}"`
         });
+
         return url;
     }
 }

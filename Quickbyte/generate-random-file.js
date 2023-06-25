@@ -1,8 +1,8 @@
 const fs = require('fs');
 const crypto = require('crypto');
 
-const fileSizeInBytes = 400 * 1024 * 1024; // 50MB
-const filePath = 'random_file.bin';
+const fileSizeInBytes = 10 * 1024 * 1024; // 50MB
+const filePath = 'random_file_10.bin';
 
 // Generate random bytes
 const randomBytes = crypto.randomBytes(fileSizeInBytes);

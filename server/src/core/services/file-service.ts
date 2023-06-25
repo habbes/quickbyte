@@ -1,56 +1,148 @@
-import { randomBytes } from 'crypto';
+import { Db, Collection } from "mongodb";
+import { createAppError, createResourceNotFoundError, rethrowIfAppError } from '../error.js';
+import { AuthContext, createPersistedModel, Download, File } from '../models.js';
 import { IStorageHandlerProvider } from './storage/index.js'
 
+const COLLECTION = "files";
+const DOWNLOAD_COLLECTION = "downloads";
+const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * 24 * 60 * 60 * 1000; // 5 days
+const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 export class FileService {
-    constructor(private accountId: string, private providerRegistry: IStorageHandlerProvider) {}
+    private collection: Collection<File>;
+    private downloadsCollection: Collection<Download>;
+
+    constructor(private db: Db, private authContext: AuthContext, private providerRegistry: IStorageHandlerProvider) {
+        this.collection = this.db.collection(COLLECTION);
+        this.downloadsCollection = this.db.collection(DOWNLOAD_COLLECTION);
+    }
 
     async initFileUpload(args: InitFileUploadArgs): Promise<InitFileUploadResult> {
-        // overall plan:
-        // when client wants to transfer a file:
-        // - client pings regions in available provider to find provider/region with optimal latency
-        // - client sends request to server to initiate file upload, payload includes filename and other metadata
-        // also includes preferred provider and region
-        // - server creates blob in provider/region under the user's account, blob has unique path
-        // - server stores file and blob metadata in db
-        // - server generates secure upload url and sends response to client
-        // - client uses secure upload URL to upload blocks of the blob
-        // - client will send update to server when upload is done
-        // - client could send periodic updates to server on upload progress
-        const connectionString = process.env.AZ_SA_NORTH_STORAGE_CONNECTION_STRING;
-        if (!connectionString) {
-            throw new Error("Invalid connection string");
-        }
-        const containerName = process.env.AZ_STORAGE_CONTAINER;
-        if (!containerName) {
-            throw new Error("Container name not specified");
-        }
+        try {
+            const provider = this.providerRegistry.getHandler(args.provider);
+            
 
-        const currentDate = new Date();
-        const blobName = randomBytes(16).toString('hex');
-        const expiryDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1,
-            currentDate.getHours(), currentDate.getMinutes());
-        const provider = this.providerRegistry.getHandler(args.provider);
-        const uploadUrl = await provider.getBlobUploadUrl(args.region, this.accountId, blobName, expiryDate);
+            const baseModel = createPersistedModel({ type: "user", _id: this.authContext.user._id });
+            const file: File = {
+                ...baseModel,
+                provider: provider.name(),
+                region: args.region,
+                accountId: this.authContext.user.account._id,
+                originalName: args.originalName,
+                fileSize: args.fileSize,
+                md5Hex: args.md5Hex,
+                status: 'pending',
+                path: baseModel._id
+            };
 
-        return {
-            path: blobName,
-            secureUploadUrl: uploadUrl,
-            originalName: args.originalName,
-        };
+            const blobName = file.path;
+            const now = file._createdAt.getTime();
+            const expiryDate = new Date(now + UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS);
+            const uploadUrl = await provider.getBlobUploadUrl(args.region, this.authContext.user.account._id, blobName, expiryDate);
+
+            await this.collection.insertOne(file);
+
+            return {
+                ...file,
+                secureUploadUrl: uploadUrl,
+            };
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getAll() {
+        try {
+            const result = await this.collection.find({}).toArray();
+            return result;
+        } catch (e: any) {
+            throw createAppError(e);
+        }
+    }
+
+    async getById(id: string) {
+        try {
+            const result = await this.collection.findOne({ _id: id });
+            if (!result) {
+                throw createResourceNotFoundError();
+            }
+
+            return result;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async requestDownload(id: string): Promise<Download> {
+        try {
+            const file = await this.getById(id);
+            const provider = this.providerRegistry.getHandler(file.provider);
+            const now = file._createdAt.getTime();
+            const expiryDate = new Date(now + DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS);
+            const downloadUrl = await provider.getBlobDownloadUrl(file.region, this.authContext.user.account._id, file.path, expiryDate, file.originalName);
+
+            const download: Download = {
+                ...createPersistedModel({ type: "user", _id: this.authContext.user._id }),
+                fileId: file._id,
+                accountId: file.accountId,
+                fileSize: file.fileSize,
+                originalName: file.originalName,
+                downloadUrl,
+                numRequests: 0,
+                provider: provider.name(),
+                region: file.region,
+                expiryDate
+            };
+
+            // should probably user DownloadService to insert
+            // instead of accessing collection directly
+            this.downloadsCollection.insertOne(download);
+            
+            return download;
+
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 }
 
-export type IFileService = Pick<FileService, 'initFileUpload'>;
+export type IFileService = Pick<FileService, 'initFileUpload' | 'getAll' | 'requestDownload'>;
+
+export class DownloadService {
+    private collection: Collection<Download>;
+
+    constructor (private db: Db) {
+        this.collection = this.db.collection(DOWNLOAD_COLLECTION);
+    }
+
+    getById(id: string) {
+        try {
+            const download = this.collection.findOne({ _id: id });
+            if (!download) {
+                throw createResourceNotFoundError();
+            }
+
+            return download;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+}
+
+export type IDownloadService = Pick<DownloadService, "getById">;
 
 export interface InitFileUploadArgs {
     originalName: string;
     fileSize: number;
     provider: string;
     region: string;
+    md5Hex: string;
 }
 
-export interface InitFileUploadResult {
-    path: string;
+export interface InitFileUploadResult extends File {
     secureUploadUrl: string;
-    originalName: string;
 }

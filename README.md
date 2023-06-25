@@ -10,11 +10,32 @@ Fast, resumable, reliable sharing of large files
 - [ ] Social auth providers
 - [x] Basic permissions
 - [x] Init file uploads with secure file URL
-- [ ] Generate download URL
+- [x] Generate download URL
 - [ ] Support multiple regions?
 - [ ] Region-ping latency detection
 - [ ] Multi-file transfers?
+- [ ] DB indexes
+- [ ] Validation
+- [ ] Perf benchmarks and tuning
+- [ ] Resumable uploads
+- [ ] Deploy to staging
+- [ ] Deploy to prod? (maybe not)
+- [ ] Deployment pipeline?
+- [ ] Automation cloud resource provision (storage accounts, auth, etc.)
 
 ### Client
 
 Desktop app or Web app ?
+
+## How it works (high-level overview)
+
+When client wants to transfer a file:
+- client pings regions in available provider to find provider/region with optimal latency
+- client sends request to server to initiate file upload, payload includes filename and other metadata
+also includes preferred provider and region
+- server creates blob in provider/region under the user's account, blob has unique path
+- server stores file and blob metadata in db
+- server generates secure upload url and sends response to client
+- client uses secure upload URL to upload blocks of the blob
+- client will send update to server when upload is done
+- client could send periodic updates to server on upload progress
