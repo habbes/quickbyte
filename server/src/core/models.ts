@@ -66,3 +66,15 @@ export interface Upload extends PersistedModel {
     blockSize: number;
     blocksCompleted: number;
 }
+
+export interface Download extends PersistedModel {
+    fileId: string;
+    accountId: string;
+    numRequests: number;
+    fileSize: number;
+    provider: string;
+    region: string;
+    originalName: string;
+    downloadUrl: string;
+    expiryDate: Date;
+}

@@ -10,10 +10,18 @@ Fast, resumable, reliable sharing of large files
 - [ ] Social auth providers
 - [x] Basic permissions
 - [x] Init file uploads with secure file URL
-- [ ] Generate download URL
+- [x] Generate download URL
 - [ ] Support multiple regions?
 - [ ] Region-ping latency detection
 - [ ] Multi-file transfers?
+- [ ] DB indexes
+- [ ] Validation
+- [ ] Perf benchmarks and tuning
+- [ ] Resumable uploads
+- [ ] Deploy to staging
+- [ ] Deploy to prod? (maybe not)
+- [ ] Deployment pipeline?
+- [ ] Automation cloud resource provision (storage accounts, auth, etc.)
 
 ### Client
 

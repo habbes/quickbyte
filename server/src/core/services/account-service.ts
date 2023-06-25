@@ -1,6 +1,5 @@
 import { Db, Collection } from "mongodb";
-import { Account, createAppError, createDbError, createPersistedModel, FileService, IFileService, isMongoDuplicateKeyError, IStorageHandlerProvider, Principal, rethrowIfAppError } from "../index.js";
-import { generateId } from '../utils.js';
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, FileService, IFileService, isMongoDuplicateKeyError, IStorageHandlerProvider, Principal, rethrowIfAppError } from "../index.js";
 
 const COLLECTION = 'accounts';
 
@@ -44,8 +43,8 @@ export class AccountService {
     }
 
 
-    files(accountId: string): IFileService {
-        return new FileService(accountId, this.storageProvider);
+    files(authContext: AuthContext): IFileService {
+        return new FileService(this.db, authContext, this.storageProvider);
     }
 }
 
