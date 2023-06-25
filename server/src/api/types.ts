@@ -1,6 +1,7 @@
 import { Request } from "express";
-import { AppServices } from "../core/bootstrap.js";
+import { AuthContext, AppServices } from "../core/index.js";
 
 export interface AppRequest extends Request {
-    services: AppServices
+    services: AppServices;
+    authContext: AuthContext;
 }

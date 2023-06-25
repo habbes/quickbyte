@@ -44,6 +44,10 @@ export interface UserWithAccount extends User {
     account: Account
 };
 
+export interface AuthContext {
+    user: UserWithAccount;
+}
+
 export type FileStatus = 'pending' | 'uploaded' | 'uploading';
 
 export interface File extends PersistedModel {
