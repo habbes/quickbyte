@@ -1,6 +1,5 @@
 import { LogLevel, PublicClientApplication } from "@azure/msal-browser";
 import { ref } from "vue";
-import { useStorage } from "@vueuse/core";
 
 const user = ref<User|undefined>();
 
@@ -55,11 +54,10 @@ export const loginRequest = {
     scopes: ["api://c84523c3-c74d-4174-a87d-cce9d81bd0a3/.default", "openid", "offline_access"],
 };
 
-const msalObj = new PublicClientApplication(msalConfig);
+export const msalObj = new PublicClientApplication(msalConfig);
 
 msalObj.handleRedirectPromise()
     .then(authResponse => {
-        console.log('auth', authResponse);
         const accessToken = authResponse?.accessToken;
         if (accessToken) {
             localStorage.setItem("accessToken", accessToken);
@@ -78,12 +76,11 @@ export async function signIn() {
      */
 
     try {
-        console.log("Logging in");
         // const authResponse = await msalObj.loginPopup(loginRequest);
         // console.log('done');
         // console.log('loginResp', authResponse);
         // selectAccount();
-        msalObj.loginRedirect(loginRequest);
+        await msalObj.loginRedirect(loginRequest);
     } catch (e) {
         console.error(e);
     }
@@ -98,7 +95,6 @@ function selectAccount () {
      */
 
     const currentAccounts = msalObj.getAllAccounts();
-    console.log('accounts', currentAccounts);
 
     if (!currentAccounts  || currentAccounts.length < 1) {
         return;
@@ -106,12 +102,12 @@ function selectAccount () {
         // Add your account choosing logic here
         console.warn("Multiple accounts detected.");
     } else if (currentAccounts.length === 1) {
-        console.log('account', currentAccounts[0]);
         user.value = {
             aadId: currentAccounts[0].localAccountId,
             name: currentAccounts[0].name || "unknown",
             email: currentAccounts[0].username
         };
+        
     }
 }
 
@@ -124,9 +120,8 @@ export function signOut() {
 
     // Choose which account to logout from by passing a username.
     const logoutRequest = {
-        account: msalObj.getAccountByUsername(user.value?.email),
+        account: msalObj.getAccountByUsername(user.value?.email || ""),
         // postLogoutRedirectUri: '/signout', // remove this line if you would like navigate to index page after logout.
-
     };
 
     localStorage.removeItem("accessToken");
@@ -135,6 +130,15 @@ export function signOut() {
 }
 
 selectAccount();
+
+export async function getToken(): Promise<string> {
+    const currentAccounts = msalObj.getAllAccounts();
+    if (currentAccounts.length) {
+        msalObj.setActiveAccount(currentAccounts[0]);
+    }
+    const result = await msalObj.acquireTokenSilent(loginRequest);
+    return result.accessToken;
+}
 
 interface User {
     aadId: string;

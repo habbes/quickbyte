@@ -59,6 +59,7 @@ export interface File extends PersistedModel {
     fileSize: number;
     status: FileStatus;
     md5Hex: string;
+    fileType: string;
 }
 
 export interface Upload extends PersistedModel {
@@ -77,4 +78,5 @@ export interface Download extends PersistedModel {
     originalName: string;
     downloadUrl: string;
     expiryDate: Date;
+    fileType: string;
 }
