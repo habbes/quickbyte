@@ -1,9 +1,30 @@
 <script setup lang="ts">
 import { signIn, useUser, signOut } from './auth.js'
+import { apiClient } from './api.js';
 import { useFileDialog } from '@vueuse/core';
 
 const user = useUser();
 const { open, files } = useFileDialog({ multiple: false });
+
+async function startUpload() {
+  if (!files.value?.length) return;
+
+  const providers = await apiClient.getProviders();
+  console.log('providers', providers);
+  const user = await apiClient.getAccount();
+  console.log('account', user);
+  const file = files.value[0];
+  console.log('filetype', file.type);
+  const transfer = await apiClient.initTransfer(user.account._id, {
+    fileSize: file.size,
+    originalName: file.name,
+    provider: providers[0].name,
+    region: providers[0].availableRegions[0],
+    md5Hex: "hash"
+  });
+
+  console.log('transfer', transfer);
+}
 </script>
 
 <template>
@@ -15,6 +36,7 @@ const { open, files } = useFileDialog({ multiple: false });
       <div v-for="file in files" :key="file.name">
         <div>Filename: {{ file.name  }}</div>
         <div>Size: {{ file.size/ (1024 * 1024 * 1024) }} GB</div>
+        <div><button @click="startUpload()">Upload</button></div>
       </div>
     </div>
   </div>
