@@ -1,5 +1,5 @@
-import { ErrorRequestHandler, RequestHandler } from "express";
-import { AppError, createValidationError, createResourceNotFoundError } from "../core/index.js";
+import { ErrorRequestHandler, RequestHandler, Response, NextFunction } from "express";
+import { AppError, createValidationError, createResourceNotFoundError, createAuthError, createAppError } from "../core/index.js";
 import { AppRequest } from "./types.js";
 import { sendErrorResponse, sendServerError } from "./util.js";
 
@@ -43,6 +43,48 @@ export const errorHandler = (): ErrorRequestHandler =>
  */
 export const error404handler = (message: string): RequestHandler =>
     (req, res) => sendErrorResponse(res, 404, createResourceNotFoundError(message));
+
+/**
+ * This ensures that a user is authenticated before
+ * proceeding with the request, otherwise returns a 401
+ * error response.
+ * 
+ * This should be used on routes where authentication is required.
+ */
+export const requireAuth = (): RequestHandler =>
+    // @ts-ignore
+    async (req: AppRequest, res, next) => {
+        const token = req.get('Authorization')?.split(/\s+/g)[1] || '';
+        if (!token) {
+            return next(createAuthError("Missing access token."));
+        }
+        try {
+            await req.services.auth.verifyToken(token);
+            const user = await req.services.auth.getUserByToken(token);
+            req.authContext = { user };
+            next();
+        }
+        catch (e) {
+            next(e);
+        }
+    }
+
+// TODO: permissions should probably be handled on top
+// of services or commands, and not by http middleware
+export const requireAccountOwner = (): RequestHandler =>
+    // @ts-ignore
+    async (req: AppRequest, res: Response, next: NextFunction) => {
+        if (!req.params.accountId) {
+            return next(createAppError("This route does not have an accountId param."
+                + " The account owner middleware only supports routes with an `accountId` path segment."));
+        }
+
+        if (req.authContext.user.account._id !== req.params.accountId) {
+            return next(createResourceNotFoundError());
+        }
+
+        return next();
+    }
 
 /**
  * This middleware calls the specified handler function and sends its return value

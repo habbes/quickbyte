@@ -58,7 +58,7 @@ export const createDbError =
     (message: ErrorMessage) => createAppError(message, 'dbError');
 
 export const createResourceNotFoundError =
-    (message: ErrorMessage) => createAppError(message, 'resourceNotFound');
+    (message: ErrorMessage = "Resource does not exist or you do not have sufficient permissions.") => createAppError(message, 'resourceNotFound');
 
 export const createResourceConflictError =
     (message: ErrorMessage) => createAppError(message, 'resourceConflict');
