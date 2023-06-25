@@ -1,3 +1,4 @@
-export * from './files/index.js';
+export * from './file-service.js';
 export * from './storage/index.js';
-export * from './accounts/index.js';
+export * from './account-service.js';
+export * from './auth-service.js';

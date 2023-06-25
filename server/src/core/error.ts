@@ -9,11 +9,6 @@ export class AppError extends Error {
 export type ErrorCode = 
     // Generic app error. Use this when no other error code fits
     'appError'
-    // Generic error caused by client or user. Use this when no
-    // other error code is suitable, and the error is caused
-    // by the client and the error message is safe to be seen
-    // by the client
-    | 'clientError'
     | 'resourceNotFound'
     | 'validationError'
     | 'resourceConflict'
@@ -58,14 +53,16 @@ export function rethrowIfAppError(e: unknown) {
     if (isAppError(e)) throw e;
 }
 
-export function createClientError(message: ErrorMessage, code: ErrorCode = 'clientError') {
-    return new AppError(getErrorMessage(message), code);
-}
 
 export const createDbError =
     (message: ErrorMessage) => createAppError(message, 'dbError');
 
 export const createResourceNotFoundError =
-    (message: ErrorMessage) => createClientError(message, 'resourceNotFound');
+    (message: ErrorMessage) => createAppError(message, 'resourceNotFound');
 
-export const createValidationError = (message: ErrorMessage) => createClientError(message, 'validationError');
+export const createResourceConflictError =
+    (message: ErrorMessage) => createAppError(message, 'resourceConflict');
+
+export const createValidationError = (message: ErrorMessage) => createAppError(message, 'validationError');
+
+export const createAuthError = (message: ErrorMessage) => createAppError(message, 'authenticationError');

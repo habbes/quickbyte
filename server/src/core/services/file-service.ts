@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import { IStorageHandlerProvider } from '../storage/index.js'
+import { IStorageHandlerProvider } from './storage/index.js'
 
 export class FileService {
     constructor(private accountId: string, private providerRegistry: IStorageHandlerProvider) {}

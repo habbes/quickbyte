@@ -37,7 +37,12 @@ export interface Account extends PersistedModel {
 export interface User extends PersistedModel {
     email: string;
     name: string;
+    aadId: string;
 }
+
+export interface UserWithAccount extends User {
+    account: Account
+};
 
 export type FileStatus = 'pending' | 'uploaded' | 'uploading';
 
