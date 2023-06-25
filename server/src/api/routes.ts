@@ -31,3 +31,7 @@ routes.get('/me', requireAuth(), wrapResponse(req =>
 routes.get('/downloads/:downladId', wrapResponse(req =>
     req.services.downloads.getById(req.params.downloadId)));
 
+routes.get('/providers', wrapResponse(req =>
+    Promise.resolve(req.services.storageProvider.getHandlerInfos())));
+
+

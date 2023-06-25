@@ -30,6 +30,7 @@ export class FileService {
                 accountId: this.authContext.user.account._id,
                 originalName: args.originalName,
                 fileSize: args.fileSize,
+                fileType: args.fileType,
                 md5Hex: args.md5Hex,
                 status: 'pending',
                 path: baseModel._id
@@ -93,7 +94,8 @@ export class FileService {
                 numRequests: 0,
                 provider: provider.name(),
                 region: file.region,
-                expiryDate
+                expiryDate,
+                fileType: file.fileType
             };
 
             // should probably user DownloadService to insert
@@ -141,6 +143,7 @@ export interface InitFileUploadArgs {
     provider: string;
     region: string;
     md5Hex: string;
+    fileType: string;
 }
 
 export interface InitFileUploadResult extends File {
