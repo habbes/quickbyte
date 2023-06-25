@@ -28,7 +28,7 @@ routes.get('/accounts/:accountId/files/:fileId/download',
 routes.get('/me', requireAuth(), wrapResponse(req =>
     req.services.auth.getUserByToken(req.headers.authorization?.split(" ")[1] || "")));
 
-routes.get('/downloads/:downladId', wrapResponse(req =>
+routes.get('/downloads/:downloadId', wrapResponse(req =>
     req.services.downloads.getById(req.params.downloadId)));
 
 routes.get('/providers', wrapResponse(req =>

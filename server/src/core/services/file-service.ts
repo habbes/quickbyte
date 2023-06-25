@@ -100,7 +100,7 @@ export class FileService {
 
             // should probably user DownloadService to insert
             // instead of accessing collection directly
-            this.downloadsCollection.insertOne(download);
+            await this.downloadsCollection.insertOne(download);
             
             return download;
 
@@ -120,9 +120,9 @@ export class DownloadService {
         this.collection = this.db.collection(DOWNLOAD_COLLECTION);
     }
 
-    getById(id: string) {
+    async getById(id: string) {
         try {
-            const download = this.collection.findOne({ _id: id });
+            const download = await this.collection.findOne({ _id: id });
             if (!download) {
                 throw createResourceNotFoundError();
             }
