@@ -1,3 +1,28 @@
+<template>
+  <div v-if="user">
+    Hello {{ user.name  }}
+    <button @click="signOut()">Sign Out</button>
+    <div>
+      <button @click="open()">Select file to upload</button>
+      <div v-for="file in files" :key="file.name">
+        <div>Filename: {{ file.name  }}</div>
+        <div>Size: {{ file.size/ (1024 * 1024 * 1024) }} GB</div>
+        <div><button @click="startUpload()">Upload</button></div>
+        <div v-if="uploadState === 'progress'">
+          Uploading...
+          <progress :value="uploadProgress" :max="file.size"></progress>
+        </div>
+        <div v-if="downloadUrl">
+          Download link: <a :href="downloadUrl">{{ downloadUrl }}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-else>
+    <button @click="signIn">Sign in or create account to get started</button>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { signIn, useUser, signOut } from '../auth.js'
 import { apiClient } from '../api.js';
@@ -94,31 +119,6 @@ interface Block {
   id: string
 }
 </script>
-
-<template>
-  <div v-if="user">
-    Hello {{ user.name  }}
-    <button @click="signOut()">Sign Out</button>
-    <div>
-      <button @click="open()">Select file</button>
-      <div v-for="file in files" :key="file.name">
-        <div>Filename: {{ file.name  }}</div>
-        <div>Size: {{ file.size/ (1024 * 1024 * 1024) }} GB</div>
-        <div><button @click="startUpload()">Upload</button></div>
-        <div v-if="uploadState === 'progress'">
-          Uploading...
-          <progress :value="uploadProgress" :max="file.size"></progress>
-        </div>
-        <div v-if="downloadUrl">
-          Download url: <a :href="downloadUrl">{{ downloadUrl }}</a>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div v-else>
-    <button @click="signIn">Sign In</button>
-  </div>
-</template>
 
 <style scoped>
 header {
