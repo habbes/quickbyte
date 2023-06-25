@@ -1,0 +1,77 @@
+import { ErrorRequestHandler, RequestHandler } from "express";
+import { AppError, createValidationError, createResourceNotFoundError } from "../core/index.js";
+import { AppRequest } from "./types.js";
+import { sendErrorResponse, sendServerError } from "./util.js";
+
+/**
+ * This middleware handles errors from requests
+ * and an error response with a corresponding
+ * status code.
+ * 
+ * Request handlers should not handle errors.
+ * This global error handler should be used instead.
+ */
+export const errorHandler = (): ErrorRequestHandler =>
+    (error: AppError, req, res, next) => {
+        // TODO: proper logging
+        console.log(error);
+        switch (error.code) {
+            case 'resourceNotFound':
+                return sendErrorResponse(res, 404, error);
+            case 'resourceConflict':
+                return sendErrorResponse(res, 409, error);
+            case 'validationError':
+                return sendErrorResponse(res, 400, error);
+            case 'authenticationError':
+                return sendErrorResponse(res, 401, error);
+            case 'permissionDenied':
+                return sendErrorResponse(res, 403, error);
+            default:
+                if (error instanceof SyntaxError) {
+                    return sendErrorResponse(res, 400,
+                    createValidationError(`Invalid syntax in request body: ${error.message}`));
+                }
+
+                return sendServerError(res);
+        }
+    };
+
+/**
+ * This returns a 404 error if a route that does
+ * not exist is requested
+ * @param message error message used in the error response
+ */
+export const error404handler = (message: string): RequestHandler =>
+    (req, res) => sendErrorResponse(res, 404, createResourceNotFoundError(message));
+
+/**
+ * This middleware calls the specified handler function and sends its return value
+ * as the API response. It also sends errors from the function to the API error handler.
+ *
+ * this middleware was created to make it easier to write most handler functions, since
+ * they happened to follow a common pattern
+ *
+ * @example
+ * // the following code
+ * router.get('endpoint/:id', (req, res, next) => {
+ *   getById(req.params.id)
+ *      .then(data => res.status(200).send(data))
+ *      .catch(next);
+ * });
+ *
+ * // can be rewritten as follows using this wrapResponse
+ * router.get('endpoint/:id', wrapResponse((req) => getById(req.params.id)));
+ *
+ * @param handler
+ * @param statusCode status code to send on success
+ */
+export function wrapResponse(handler: WrappedHandler, statusCode = 200): RequestHandler {
+    // @ts-ignore
+    return (req: AppRequest, res, next) =>
+        handler(req).then(result => res.status(statusCode).send(result))
+            .catch(next);
+}
+
+interface WrappedHandler {
+    (req: AppRequest): Promise<any>;
+}

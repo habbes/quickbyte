@@ -7,13 +7,12 @@ using System.Text.Json;
 // See https://aka.ms/new-console-template for more information
 
 var filePath = args[0];
-var targetFile = args[1];
 string? recoveredBlocksPath = args.Length > 2 ? args[2] : null;
 
 
 
 //await S3Upload(filePath, targetFile);
- await AzureUpload(filePath, targetFile, recoveredBlocksPath);
+ await AzureUpload(filePath, recoveredBlocksPath);
 
 async Task S3Upload(string filePath, string targetFile)
 {
@@ -35,15 +34,20 @@ async Task S3Upload(string filePath, string targetFile)
     Console.WriteLine($"AWS S3:Took {stopwatch.ElapsedMilliseconds}ms");
 }
 
-async Task AzureUpload(string filePath, string targetFile, string? recoveredBlocksPath = null)
+async Task AzureUpload(string filePath, string? recoveredBlocksPath = null)
 {
-    //string connectionString = "DefaultEndpointsProtocol=https;AccountName=habbesuploadertestseu;AccountKey=DMSCHQ7TIb8R+JnszJmi5kOy4wbu7YTuGoHw1JbpOgHqd6HZBC8/aKaeq+LB5YbqFZSj0T/11U9b+AStkc83Aw==;EndpointSuffix=core.windows.net";
-    // TODO store credentials in secure on-client location
-    string connectionString = "";
-    string container = "";
+    ApiClient apiClient = new ApiClient();
+
+    Console.WriteLine("Initializing file");
+    var initResult = await apiClient.InitFile("accountId", new FileInitRequest
+    (
+        OriginalName: new FileInfo(filePath).Name,
+        Provider: "az",
+        Region: "sa-north"
+    ));
     
-    var uploader = new AzureMultipartUploader(connectionString);
-    var destination = $"test/{targetFile}";
+    var uploader = new AzureMultipartUploader(initResult.SecureUploadUrl);
+    var destination = initResult.Path;
 
     Console.WriteLine($"Azure Storage: Uploading file {filePath} to {destination}");
     
@@ -63,7 +67,7 @@ async Task AzureUpload(string filePath, string targetFile, string? recoveredBloc
     }
     
     var saveTask = Task.Run(() => SaveProgress(completedBlocks, numBlocks, progessFilePath, signal, shouldTerminate));
-    var uri = await uploader.UploadFile(filePath, container, destination, recoveredBlocks!, block =>
+    var uri = await uploader.UploadFile(filePath, recoveredBlocks!, block =>
     {
         completedBlocks.Add(block);
         signal.Set();
