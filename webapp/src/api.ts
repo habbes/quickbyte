@@ -52,6 +52,15 @@ class ApiClient {
         const data = await res.json();
         return data;
     }
+
+    async getDownload(downloadId: string): Promise<DownloadRequestResult> {
+        const res = await fetch(`${baseUrl}/downloads/${downloadId}`, {
+            mode: 'cors'
+        });
+
+        const data = await res.json();
+        return data;
+    }
 }
 
 export const apiClient = new ApiClient();
@@ -85,7 +94,7 @@ export interface InitFileUploadResult {
     secureUploadUrl: string;
 }
 
-interface DownloadRequestResult {
+export interface DownloadRequestResult {
     _id: string;
     fileId: string;
     downloadUrl: string;
