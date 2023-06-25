@@ -17,7 +17,7 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         dbName: env.DB_NAME || "quickbyte",
         azureStorageContainer: getRequiredEnv(env, 'AZ_STORAGE_CONTAINER'),
         azureStorageConnectionString: getRequiredEnv(env, 'AZ_SA_NORTH_STORAGE_CONNECTION_STRING'),
-        port: (env.port && Number(env.port)) || 3000,
+        port: (env.PORT && Number(env.PORT)) || 3000,
         aadClientId: getRequiredEnv(env, 'AAD_CLIENT_ID'),
         aadClientSecret: getRequiredEnv(env, 'AAD_CLIENT_SECRET'),
         aadTenantId: getRequiredEnv(env, 'AAD_TENANT_ID')
