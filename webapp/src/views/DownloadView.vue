@@ -6,6 +6,11 @@
     <div v-if="download">
       <a :href="download.downloadUrl">Download {{ download.originalName }}</a>
     </div>
+    <div>
+      <br/>
+      <br/>
+      <router-link :to="{ name: 'home' }">Transfer a file</router-link>
+    </div>
   </div>
   <div v-else>
     Valiading link...
