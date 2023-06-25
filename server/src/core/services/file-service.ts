@@ -5,17 +5,6 @@ export class FileService {
     constructor(private accountId: string, private providerRegistry: IStorageHandlerProvider) {}
 
     async initFileUpload(args: InitFileUploadArgs): Promise<InitFileUploadResult> {
-        // overall plan:
-        // when client wants to transfer a file:
-        // - client pings regions in available provider to find provider/region with optimal latency
-        // - client sends request to server to initiate file upload, payload includes filename and other metadata
-        // also includes preferred provider and region
-        // - server creates blob in provider/region under the user's account, blob has unique path
-        // - server stores file and blob metadata in db
-        // - server generates secure upload url and sends response to client
-        // - client uses secure upload URL to upload blocks of the blob
-        // - client will send update to server when upload is done
-        // - client could send periodic updates to server on upload progress
         const connectionString = process.env.AZ_SA_NORTH_STORAGE_CONNECTION_STRING;
         if (!connectionString) {
             throw new Error("Invalid connection string");
