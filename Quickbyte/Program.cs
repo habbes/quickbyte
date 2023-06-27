@@ -10,6 +10,8 @@ using Microsoft.Identity.Client;
 var filePath = args[0];
 string? recoveredBlocksPath = args.Length > 2 ? args[2] : null;
 
+var webappUrl = "https://staging.quickbyte.io";
+
 
 
 //await S3Upload(filePath, targetFile);
@@ -56,9 +58,12 @@ async Task AzureUpload(string filePath, string? recoveredBlocksPath = null)
     //var authority = $"https://login.microsoftonline.com/tfp/{tenantId}/{policy}";
     var scopes = new[] { "api://c84523c3-c74d-4174-a87d-cce9d81bd0a3/.default", "openid", "offline_access" };
     IPublicClientApplication app = PublicClientApplicationBuilder.Create(clientId)
-        .WithDefaultRedirectUri()
+        // .WithDefaultRedirectUri()
         // .WithRedirectUri(redirectUri)
-        .WithB2CAuthority(authority)
+        // .WithB2CAuthority(authority)
+        // .WithDefaultRedirectUri()
+        .WithDefaultRedirectUri()
+        .WithAuthority($"https://{tenantName}.ciamlogin.com/")
         .WithLogging(Log, LogLevel.Verbose)
         // .WithTenantId(tenantId)
         .Build();
@@ -95,8 +100,9 @@ async Task AzureUpload(string filePath, string? recoveredBlocksPath = null)
 
     
     ApiClient apiClient = new ApiClient(tokenResult.AccessToken);
+    Console.WriteLine("Fetching auth user");
     var user = await apiClient.GetMe();
-
+    Console.WriteLine("get user {0}", user.Id);
     Console.WriteLine("Initializing file");
     var initResult = await apiClient.InitFile(user.Account.Id, new FileInitRequest
     (
@@ -142,7 +148,7 @@ async Task AzureUpload(string filePath, string? recoveredBlocksPath = null)
     Console.WriteLine();
     Console.WriteLine($"Azure Storage: Took {stopwatch.ElapsedMilliseconds}ms");
     Console.WriteLine("Upload complete! Open the following URL in your browser to download the file.");
-    Console.WriteLine(download.DownloadUrl);
+    Console.WriteLine($"{webappUrl}/d/{download.Id}");
 }
 
 async Task SaveProgress(ConcurrentBag<Block> completedBlocks, int totalBlockCount, string dataPath, AutoResetEvent signal, TerminateSignal shouldTerminate)
