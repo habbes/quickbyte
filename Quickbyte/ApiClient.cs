@@ -8,6 +8,7 @@ namespace Quickbyte;
 public class ApiClient
 {
 	HttpClient client;
+	private const string BaseUri = "https://quickbyte-production.up.railway.app/api";
 
 	public ApiClient(string accessToken) : this(accessToken, new HttpClient())
 	{
@@ -16,20 +17,21 @@ public class ApiClient
 	public ApiClient(string accessToken, HttpClient httpClient)
 	{
 		this.client = httpClient;
-		this.client.BaseAddress = new Uri("http://localhost:3000/api");
+		// this.client.BaseAddress = new Uri("https://quickbyte-production.up.railway.app/api");
 		this.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 	}
 
 	public async Task<UserWithAccount> GetMe()
 	{
-		var response = await this.client.GetAsync("/me");
+		var response = await this.client.GetAsync($"https://quickbyte-production.up.railway.app/api/me");
 		var result = await Serialize<UserWithAccount>(response);
 		return result;
 	}
 
 	public async Task<FileInitResponse> InitFile(string account, FileInitRequest request)
 	{
-		var requestUri = $"/accounts/{account}/files";
+		Console.WriteLine("init file for account {0}", account);
+		var requestUri = $"{BaseUri}/accounts/{account}/files";
 		var body = JsonSerializer.Serialize(request,
 			new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
 		);
@@ -46,7 +48,7 @@ public class ApiClient
 
 	public async Task<DownloadRequestResponse> RequestDownload(string accountId, string fileId)
 	{
-		var response = await this.client.GetAsync($"/accounts/{accountId}/files/{fileId}/download");
+		var response = await this.client.GetAsync($"{BaseUri}/accounts/{accountId}/files/{fileId}/download");
 		var result = await Serialize<DownloadRequestResponse>(response);
 		return result;
 	}
