@@ -1,9 +1,9 @@
 <template>
   <div v-if="user">
     Hello {{ user.name  }}
-    <button @click="signOut()">Sign Out</button>
+    <Button @click="signOut()" class="p-5">Sign Out</Button>
     <div>
-      <button @click="open()">Select file to upload</button>
+      <Button @click="open()" class="">Select file to upload</Button>
       <div v-for="file in files" :key="file.name">
         <div>Filename: {{ file.name  }}</div>
         <div>Size: {{ file.size/ (1024 * 1024 * 1024) }} GB</div>
@@ -18,12 +18,13 @@
       </div>
     </div>
   </div>
-  <div v-else>
-    <button @click="signIn">Sign in or create account to get started</button>
+  <div v-else class="flex flex-1 justify-center items-center min-h-full" style="height:100vh">
+    <Button @click="signIn">Sign in or create account to get started</Button>
   </div>
 </template>
 
 <script setup lang="ts">
+import Button from "@/components/Button.vue";
 import { signIn, useUser, signOut } from '../auth.js'
 import { apiClient } from '../api.js';
 import { useFileDialog } from '@vueuse/core';
