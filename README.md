@@ -18,7 +18,7 @@ Fast, resumable, reliable sharing of large files
 - [ ] Validation
 - [ ] Perf benchmarks and tuning
 - [ ] Resumable uploads
-- [ ] Deploy to staging
+- [x] Deploy to staging
 - [ ] Deploy to prod? (maybe not)
 - [ ] Deployment pipeline?
 - [ ] Automation cloud resource provision (storage accounts, auth, etc.)
