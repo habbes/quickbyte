@@ -110,11 +110,13 @@ async function startUpload() {
   await concurrentFileUpload(file, transfer.secureUploadUrl);
   
   const stopped = new Date();
-  console.log('full operation took', stopped.getTime() - started.getTime());
-  uploadState.value = 'complete';
+  console.log('full upload operation took', stopped.getTime() - started.getTime());
+  
 
   const download = await apiClient.requestDownload(user.account._id, transfer._id);
   downloadUrl.value = `${location.origin}/d/${download._id}`;
+  uploadState.value = 'complete';
+  console.log('full operation + download link took', stopped.getTime() - started.getTime());
 }
 
 async function concurrentFileUpload(file: File, uploadUrl: string) {
@@ -161,8 +163,13 @@ async function uploadBlock(blob: BlockBlobClient, file: File, block: Block, bloc
   const begin = block.index * blockSize;
   const end = begin + blockSize;
   const data = file.slice(block.index * blockSize, end);
-  const res =  blob.stageBlock(block.id, data, data.size);
-  uploadProgress.value += data.size;
+  let lastUpdatedProgress = 0;
+  await blob.stageBlock(block.id, data, data.size, { onProgress: (progress) => {
+    uploadProgress.value += progress.loadedBytes - lastUpdatedProgress;
+    lastUpdatedProgress = progress.loadedBytes;
+  }});
+
+  // uploadProgress.value += data.size;
 }
 
 interface Block {
