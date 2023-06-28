@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col p-5">
-    <div class="card max-w-96 bg-base-100 shadow-xl">
+  <div class="flex flex-col p-5 sm:items-center sm:mt-20">
+    <div class="card max-w-96 sm:w-96 bg-base-100 shadow-xl">
       <!-- loading -->
       <div class="card-body" v-if="loading">
         <p>Validating link...</p>
@@ -30,7 +30,7 @@
       </div>
     </div>
 
-    <div class="mt-5">
+    <div class="mt-5 sm:w-96">
       <router-link class="btn w-full" :to="{ name: 'home' }">Have a file to send?</router-link>
     </div>
   </div>

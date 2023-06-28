@@ -1,5 +1,5 @@
 <template>
-  <div class="flex p-5">
+  <div class="flex p-5 sm:justify-center sm:items-center sm:mt-20">
     <div class="card w-96 bg-base-100 shadow-xl">
       <!-- initial state -->
       <div class="card-body" v-if="uploadState === 'initial' && !file">
