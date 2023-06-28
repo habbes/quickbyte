@@ -161,7 +161,7 @@ async function uploadBlock(blob: BlockBlobClient, file: File, block: Block, bloc
   const begin = block.index * blockSize;
   const end = begin + blockSize;
   const data = file.slice(block.index * blockSize, end);
-  const res = await blob.stageBlock(block.id, data, data.size);
+  const res =  blob.stageBlock(block.id, data, data.size);
   uploadProgress.value += data.size;
 }
 

@@ -1,5 +1,40 @@
 <template>
-  <div v-if="!loading">
+  <div class="flex flex-col p-5">
+    <div class="card max-w-96 bg-base-100 shadow-xl">
+      <!-- loading -->
+      <div class="card-body" v-if="loading">
+        <p>Validating link...</p>
+      </div>
+
+      <!-- file found -->
+      <div class="card-body" v-else-if="download">
+        <h2 class="card-title">{{ download.originalName  }}</h2>
+        <p class="text-gray-400">
+          {{  humanizeSize(download.fileSize) }} <br>
+          {{  download.fileType }}
+        </p>
+        <div class="card-actions justify-center mt-4">
+          <a class="btn btn-primary w-full" :href="download.downloadUrl">Download</a>
+        </div>
+      </div>
+
+      <!-- error -->
+      <div class="card-body" v-else-if="error">
+        <p v-if="(error instanceof ApiError) && error.statusCode === 404" class="text-error">
+          The file does not exist or the link has expired. Make sure you're using
+          the correct link.
+        </p>
+        <p v-else class="text-error">
+          {{ error.message }}
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-5">
+      <router-link class="btn w-full" :to="{ name: 'home' }">Have a file to send?</router-link>
+    </div>
+  </div>
+  <!-- <div v-if="!loading">
     <div v-if="error">
       Error: {{ error }}
     </div>
@@ -14,23 +49,24 @@
   </div>
   <div v-else>
     Valiading link...
-  </div>
+  </div> -->
 </template>
 <script setup lang="ts">
 import { onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
-import { apiClient } from "../api";
+import { apiClient, ApiError } from "../api";
+import { humanizeSize } from "@/util";
 import type { DownloadRequestResult } from "../api";
 
 const route = useRoute();
 route.params.downloadId;
-const error = ref<string|undefined>();
+const error = ref<Error|undefined>();
 const download = ref<DownloadRequestResult|undefined>();
 const loading = ref(true);
 
 onMounted(async () => {
   if (!route.params.downloadId || typeof route.params.downloadId !== 'string') {
-    error.value = "Invalid download link";
+    error.value = new Error("Invalid download link");
     return;
   }
 
@@ -38,7 +74,7 @@ onMounted(async () => {
     download.value = await apiClient.getDownload(route.params.downloadId);
   }
   catch (e: any) {
-    error.value = e.message;
+    error.value = e;
   }
   finally {
     loading.value = false;

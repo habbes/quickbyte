@@ -59,7 +59,19 @@ class ApiClient {
         });
 
         const data = await res.json();
+
+        if (res.status >= 400) {
+            const error = new ApiError(data.message, res.status, data.code);
+            throw error;
+        }
+
         return data;
+    }
+}
+
+export class ApiError extends Error {
+    constructor(message: string, public readonly statusCode: number, public readonly code: string) {
+        super(message);
     }
 }
 
@@ -98,6 +110,7 @@ export interface DownloadRequestResult {
     _id: string;
     fileId: string;
     downloadUrl: string;
-    fileSize: string;
+    fileSize: number;
     originalName: string;
+    fileType: string;
 }
