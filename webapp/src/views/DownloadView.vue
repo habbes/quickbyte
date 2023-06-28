@@ -29,27 +29,10 @@
         </p>
       </div>
     </div>
-
     <div class="mt-5 sm:w-96">
       <router-link class="btn w-full" :to="{ name: 'home' }">Have a file to send?</router-link>
     </div>
   </div>
-  <!-- <div v-if="!loading">
-    <div v-if="error">
-      Error: {{ error }}
-    </div>
-    <div v-if="download">
-      <a :href="download.downloadUrl">Download {{ download.originalName }}</a>
-    </div>
-    <div>
-      <br/>
-      <br/>
-      <router-link :to="{ name: 'home' }">Transfer a file</router-link>
-    </div>
-  </div>
-  <div v-else>
-    Valiading link...
-  </div> -->
 </template>
 <script setup lang="ts">
 import { onMounted, ref } from "vue"

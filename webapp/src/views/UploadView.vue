@@ -165,11 +165,12 @@ async function uploadBlock(blob: BlockBlobClient, file: File, block: Block, bloc
   const data = file.slice(block.index * blockSize, end);
   let lastUpdatedProgress = 0;
   await blob.stageBlock(block.id, data, data.size, { onProgress: (progress) => {
+    // the event returns the bytes upload so far for this block
+    // so we have to deduct the updates we made to the progress in
+    // the last event to avoid duplicate updates
     uploadProgress.value += progress.loadedBytes - lastUpdatedProgress;
     lastUpdatedProgress = progress.loadedBytes;
   }});
-
-  // uploadProgress.value += data.size;
 }
 
 interface Block {
