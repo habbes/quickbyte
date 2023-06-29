@@ -50,6 +50,12 @@ class ApiClient {
         });
 
         const data = await res.json();
+
+        if (res.status >= 400) {
+            const error = new ApiError(data.message, res.status, data.code);
+            throw error;
+        }
+
         return data;
     }
 

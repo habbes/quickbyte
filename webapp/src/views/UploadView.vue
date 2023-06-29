@@ -58,6 +58,7 @@ import { ref, computed } from "vue";
 import { apiClient } from '@/api.js';
 import { humanizeSize } from "@/util.js";
 import Button from "@/components/Button.vue";
+import { ApiError } from '@/api.js';
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
@@ -112,11 +113,25 @@ async function startUpload() {
   const stopped = new Date();
   console.log('full upload operation took', stopped.getTime() - started.getTime());
   
-
-  const download = await apiClient.requestDownload(user.account._id, transfer._id);
-  downloadUrl.value = `${location.origin}/d/${download._id}`;
-  uploadState.value = 'complete';
-  console.log('full operation + download link took', stopped.getTime() - started.getTime());
+  let retry = true;
+  while (retry) {
+    try {
+      const download = await apiClient.requestDownload(user.account._id, transfer._id);
+      retry = false;
+      downloadUrl.value = `${location.origin}/d/${download._id}`;
+      uploadState.value = 'complete';
+      console.log('full operation + download link took', (new Date()).getTime() - started.getTime());
+    } catch (e) {
+      if (e instanceof ApiError) {
+        // Do not retry on ApiError since it's not a network failure.
+        // TODO: handle this error some other way, e.g. alert message
+        retry = false;
+      } else {
+        console.error('Error fetching download', e);
+        retry = true;
+      }
+    }
+  }
 }
 
 async function concurrentFileUpload(file: File, uploadUrl: string) {
@@ -133,7 +148,20 @@ async function concurrentFileUpload(file: File, uploadUrl: string) {
 
   const started = new Date();
   await uploadBlockList(blob, file, blockList, blockSize);
-  await blob.commitBlockList(blockList.map(b => b.id));
+
+  // naive approach to network resiliency
+  // TODO: we probably should not retry for all errors (e.g. it doesn't make sense to retry for an auth error)
+  let retry = true;
+  while (retry) {
+    try {
+      await blob.commitBlockList(blockList.map(b => b.id));
+      retry = false;
+    } catch (e) {
+      console.error('error committing blocks', e);
+      retry = true;
+    }
+  }
+
   const stopped = new Date();
   console.log("Completed block list upload", stopped.getTime() - started.getTime());
 }
@@ -150,6 +178,19 @@ function generateId(length: number) {
 }
 
 async function uploadBlockList(blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number) {
+  // TODO: benchmark to decide between different upload strategies
+  // await uploadBlockListUsingSequentialBatches(blob, file, blockList, blockSize);
+  await uploadBlockListByIndependentWorkers(blob, file, blockList, blockSize);
+}
+
+async function uploadBlockListUsingSequentialBatches(blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number) {
+  // In this strategy, uploads run in sequential batches
+  // Each batch performs n concurrent uploads and we wait to conclude
+  // a batch before starting the next one.
+  // The downside is that each batch takes as long as the slowest task.
+  // Other "workers" in the batch have to wait for the slowest one to complete
+  // before the next batch can begin.
+  // The upside is the relative simplicity of implementation
   const concurrency = 5;
   let current = 0;
   while (current < blockList.length) {
@@ -159,18 +200,55 @@ async function uploadBlockList(blob: BlockBlobClient, file: File, blockList: Blo
   }
 }
 
+async function uploadBlockListByIndependentWorkers(blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number) {
+  // In this strategy, we have n workers
+  // Each worker is responsible for uploading every kn + workerIndex block
+  // e.g. if n = 5, worker 3 will upload blocks 3, 8, 13, etc.
+  // The benefit is that we don't need to maintain a queue or synchronization between workers,
+  // there's not contention between workers because there's no overlap
+  // The downside is that workers that finish all their work first will
+  // remain idle even if there's still work to be done
+  const concurrency = 5;
+  const workers = new Array(concurrency);
+  for (let i = 0; i < concurrency; i++) {
+    workers[i] = runUploadWorker(i, concurrency, blob, file, blockList, blockSize);
+  }
+
+  await Promise.all(workers);
+}
+
+async function runUploadWorker(workerIndex: number, totalWorkers: number, blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number) {
+  let nextBlockIndex = workerIndex;
+  while (nextBlockIndex < blockList.length) {
+    await uploadBlock(blob, file, blockList[nextBlockIndex], blockSize);
+    nextBlockIndex += totalWorkers;
+  }
+}
+
 async function uploadBlock(blob: BlockBlobClient, file: File, block: Block, blockSize: number) {
   const begin = block.index * blockSize;
   const end = begin + blockSize;
   const data = file.slice(block.index * blockSize, end);
   let lastUpdatedProgress = 0;
-  await blob.stageBlock(block.id, data, data.size, { onProgress: (progress) => {
-    // the event returns the bytes upload so far for this block
-    // so we have to deduct the updates we made to the progress in
-    // the last event to avoid duplicate updates
-    uploadProgress.value += progress.loadedBytes - lastUpdatedProgress;
-    lastUpdatedProgress = progress.loadedBytes;
-  }});
+  // naive approach to ensure uploads are resilient to temporary network failures
+  // we just keep retrying indefinitely
+  let retry = true;
+  while (retry) {
+    try {
+      await blob.stageBlock(block.id, data, data.size, { onProgress: (progress) => {
+        // the event returns the bytes upload so far for this block
+        // so we have to deduct the updates we made to the progress in
+        // the last event to avoid duplicate updates
+        uploadProgress.value += progress.loadedBytes - lastUpdatedProgress;
+        lastUpdatedProgress = progress.loadedBytes;
+      }});
+
+      retry = false;
+    } catch (e) {
+      console.log('error staging block', e);
+      retry = true;
+    }
+  }
 }
 
 interface Block {

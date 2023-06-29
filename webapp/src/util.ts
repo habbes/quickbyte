@@ -20,10 +20,11 @@ export function humanizeSize(bytes: number): string {
     }
 
     if (bytes < BYTES_PER_TB) {
-        const gbs = Math.ceil(bytes / BYTES_PER_GB);
+        const gbs = (bytes / BYTES_PER_GB).toLocaleString(undefined, { maximumFractionDigits: 2 });
         return `${gbs} GB`;
     }
 
-    const tbs = Math.ceil(bytes / BYTES_PER_TB);
+    const tbs = (bytes / BYTES_PER_TB).toLocaleString(undefined, { maximumFractionDigits: 2 });;
     return `${tbs} TB`;
 }
+
