@@ -58,6 +58,7 @@ import { ref, computed } from "vue";
 import { apiClient } from '@/api.js';
 import { humanizeSize } from "@/util.js";
 import Button from "@/components/Button.vue";
+import { ApiError } from '@/api.js';
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
@@ -112,11 +113,25 @@ async function startUpload() {
   const stopped = new Date();
   console.log('full upload operation took', stopped.getTime() - started.getTime());
   
-
-  const download = await apiClient.requestDownload(user.account._id, transfer._id);
-  downloadUrl.value = `${location.origin}/d/${download._id}`;
-  uploadState.value = 'complete';
-  console.log('full operation + download link took', stopped.getTime() - started.getTime());
+  let retry = true;
+  while (retry) {
+    try {
+      const download = await apiClient.requestDownload(user.account._id, transfer._id);
+      retry = false;
+      downloadUrl.value = `${location.origin}/d/${download._id}`;
+      uploadState.value = 'complete';
+      console.log('full operation + download link took', (new Date()).getTime() - started.getTime());
+    } catch (e) {
+      if (e instanceof ApiError) {
+        // Do not retry on ApiError since it's not a network failure.
+        // TODO: handle this error some other way, e.g. alert message
+        retry = false;
+      } else {
+        console.error('Error fetching download', e);
+        retry = true;
+      }
+    }
+  }
 }
 
 async function concurrentFileUpload(file: File, uploadUrl: string) {
@@ -133,7 +148,20 @@ async function concurrentFileUpload(file: File, uploadUrl: string) {
 
   const started = new Date();
   await uploadBlockList(blob, file, blockList, blockSize);
-  await blob.commitBlockList(blockList.map(b => b.id));
+
+  // naive approach to network resiliency
+  // TODO: we probably should not retry for all errors (e.g. it doesn't make sense to retry for an auth error)
+  let retry = true;
+  while (retry) {
+    try {
+      await blob.commitBlockList(blockList.map(b => b.id));
+      retry = false;
+    } catch (e) {
+      console.error('error committing blocks', e);
+      retry = true;
+    }
+  }
+
   const stopped = new Date();
   console.log("Completed block list upload", stopped.getTime() - started.getTime());
 }
@@ -164,13 +192,25 @@ async function uploadBlock(blob: BlockBlobClient, file: File, block: Block, bloc
   const end = begin + blockSize;
   const data = file.slice(block.index * blockSize, end);
   let lastUpdatedProgress = 0;
-  await blob.stageBlock(block.id, data, data.size, { onProgress: (progress) => {
-    // the event returns the bytes upload so far for this block
-    // so we have to deduct the updates we made to the progress in
-    // the last event to avoid duplicate updates
-    uploadProgress.value += progress.loadedBytes - lastUpdatedProgress;
-    lastUpdatedProgress = progress.loadedBytes;
-  }});
+  // naive approach to ensure uploads are resilient to temporary network failures
+  // we just keep retrying indefinitely
+  let retry = true;
+  while (retry) {
+    try {
+      await blob.stageBlock(block.id, data, data.size, { onProgress: (progress) => {
+        // the event returns the bytes upload so far for this block
+        // so we have to deduct the updates we made to the progress in
+        // the last event to avoid duplicate updates
+        uploadProgress.value += progress.loadedBytes - lastUpdatedProgress;
+        lastUpdatedProgress = progress.loadedBytes;
+      }});
+
+      retry = false;
+    } catch (e) {
+      console.log('error staging block', e);
+      retry = true;
+    }
+  }
 }
 
 interface Block {
