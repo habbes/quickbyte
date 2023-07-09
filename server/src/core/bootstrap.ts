@@ -16,10 +16,23 @@ import {
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = await getDbConnection(config);
 
-    const azureStorageHandler = new AzureStorageHandler(
-        config.azureStorageConnectionString,
-        config.azureStorageContainer
-    );
+    const azureStorageHandler = new AzureStorageHandler({
+        tenantId: config.azTenantId,
+        clientId: config.azClientId,
+        clientSecret: config.azClientSecret,
+        resourcePrefix: config.azResourcePrefix,
+        availableRegionCodes: config.azStorageRegionCodes,
+        legacyAccountConnectionString: config.legacyAzStorageConnectionString,
+        legacyAccountContainer: config.legacyAzStorageContainer,
+        legacyPingContainer: config.legacyAzStoragePingContainer,
+        legacyPingBlob: config.legacyAzStoragePingBlob,
+        keyVaultUri: config.azKeyVaultUri,
+        dataContainer: config.azDataContainer,
+        pingContainer: config.azPingContainer,
+        pingBlob: config.azPingBlob
+    });
+
+    await azureStorageHandler.initialize();
 
     const storageProvider = new StorageHandlerProvider();
     storageProvider.registerHandler(azureStorageHandler);

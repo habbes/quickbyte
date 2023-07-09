@@ -25,7 +25,7 @@ output "storage_accounts_names" {
 }
 
 output "server_sp_client_id" {
-  value = azuread_service_principal.server_app
+  value = azuread_service_principal.server_app.object_id
 }
 
 output "server_sp_client_secret" {
