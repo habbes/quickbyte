@@ -1,5 +1,5 @@
 import { getToken } from './auth.js';
-import { RegionInfo } from './types.ts'
+import type { RegionInfo } from './types.js'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 

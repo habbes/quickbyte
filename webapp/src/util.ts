@@ -40,7 +40,7 @@ export async function compareLatency(regions: RegionInfo[]): Promise<RegionPingR
         }
     }
 
-    const results = [];
+    const results: RegionPingResult[] = [];
 
     const workers = [];
     for (let workerIndex = 0; workerIndex < concurrency; workerIndex++) {
@@ -51,7 +51,7 @@ export async function compareLatency(regions: RegionInfo[]): Promise<RegionPingR
     await Promise.all(workers);
     const cleanResults = results.filter(r => r);
 
-    const groupedResults = cleanResults.reduce((groups, result) => {
+    const groupedResults = cleanResults.reduce<Record<string, RegionPingResult[]>>((groups, result) => {
         groups[result.region] = groups[result.region] || [];
         groups[result.region].push(result);
         return groups;
@@ -59,7 +59,7 @@ export async function compareLatency(regions: RegionInfo[]): Promise<RegionPingR
 
     const averageResults = Object.keys(groupedResults).map(region => ({
         region,
-        duration: groupedResults[region].map(r => r.duration).reduce((a, b) => a + b) / groupedResults[region].length
+        duration: groupedResults[region].map(r => r.duration).reduce((a: number, b: number) => a + b) / groupedResults[region].length
     }));
 
     averageResults.sort((a, b) => a.duration - b.duration);
