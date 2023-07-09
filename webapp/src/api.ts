@@ -1,4 +1,5 @@
 import { getToken } from './auth.js';
+import type { RegionInfo } from './types.js'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
@@ -85,7 +86,7 @@ export const apiClient = new ApiClient();
 
 interface StorageProvider {
     name: string;
-    availableRegions: string[]
+    availableRegions: RegionInfo[]
 }
 
 interface UserAccount {
