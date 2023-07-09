@@ -100,8 +100,11 @@ async function startUpload() {
   const provider = providers[0];
   const regions = provider.availableRegions;
   console.log('provider', provider, regions);
+  // TODO: we should not run the latency test here
+  // we should compare latency when app is idle (e.g. after sign up)
+  // and cache results
   const pingResults = await compareLatency(regions);
-  console.log('pingResults');
+  console.log('ping results', pingResults);
   const preferredRegion = pingResults[0].region;
   const user = await apiClient.getAccount();
   const file = files.value[0];

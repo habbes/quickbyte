@@ -63,7 +63,6 @@ export async function compareLatency(regions: RegionInfo[]): Promise<RegionPingR
     }));
 
     averageResults.sort((a, b) => a.duration - b.duration);
-    console.log('sorted avg results', averageResults);
     console.log(`measured latency in ${Date.now() - started}ms`);
     return averageResults;
 }
@@ -95,7 +94,6 @@ async function pingRegion(region: RegionInfo) {
     });
     const data = await res.text();
     const ended = Date.now();
-    console.log('data', data, region.name);
     const duration = ended - started;
     return duration;
 }
