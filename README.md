@@ -22,6 +22,8 @@ Fast, resumable, reliable sharing of large files
 - [ ] Deploy to prod? (maybe not)
 - [x] Deployment pipeline? (Vercel and Railway auto-deploy on merge to main)
 - [ ] Automation cloud resource provision (storage accounts, auth, etc.)
+    - [x] Automatic storage account provisioning and config with Terraform
+    - [ ] Automatic auth provisioning and config
 - [ ] Tests?
 
 ### Client
