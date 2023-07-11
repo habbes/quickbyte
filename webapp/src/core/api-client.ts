@@ -1,21 +1,23 @@
-import { getToken } from './auth.js';
-import type { RegionInfo } from './types.js'
+import type { UserAccount, StorageProvider } from './types.js'
 
-const baseUrl = import.meta.env.VITE_API_BASE_URL;
+export interface ApiClientConfig {
+    baseUrl: string;
+    getToken: () => Promise<string>;
+}
 
-
-class ApiClient {
+export class ApiClient {
+    constructor(private config: ApiClientConfig) {
+    }
     
     async getProviders(): Promise<StorageProvider[]> {
-        const res = await fetch(`${baseUrl}/providers`, { mode: 'cors' });
+        const res = await fetch(`${this.config.baseUrl}/providers`, { mode: 'cors' });
         const data = await res.json();
-        console.log('data', data);
         return data;
     }
 
     async getAccount(): Promise<UserAccount> {
-        const token = await getToken();
-        const res = await fetch(`${baseUrl}/me`, {
+        const token = await this.config.getToken();
+        const res = await fetch(`${this.config.baseUrl}/me`, {
             mode: 'cors',
             headers: {
                 Authorization: `Bearer ${token}`
@@ -26,8 +28,8 @@ class ApiClient {
     }
 
     async initTransfer(accountId: string, args: InitFileUploadArgs): Promise<InitFileUploadResult> {
-        const token = await getToken();
-        const res = await fetch(`${baseUrl}/accounts/${accountId}/files`, {
+        const token = await this.config.getToken();
+        const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/files`, {
             method: 'POST',
             mode: 'cors',
             headers: {
@@ -42,8 +44,8 @@ class ApiClient {
     }
 
     async requestDownload(accountId: string, fileId: string): Promise<DownloadRequestResult> {
-        const token = await getToken();
-        const res = await fetch(`${baseUrl}/accounts/${accountId}/files/${fileId}/download`, {
+        const token = await this.config.getToken();
+        const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/files/${fileId}/download`, {
             mode: 'cors',
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -61,7 +63,7 @@ class ApiClient {
     }
 
     async getDownload(downloadId: string): Promise<DownloadRequestResult> {
-        const res = await fetch(`${baseUrl}/downloads/${downloadId}`, {
+        const res = await fetch(`${this.config.baseUrl}/downloads/${downloadId}`, {
             mode: 'cors'
         });
 
@@ -79,23 +81,6 @@ class ApiClient {
 export class ApiError extends Error {
     constructor(message: string, public readonly statusCode: number, public readonly code: string) {
         super(message);
-    }
-}
-
-export const apiClient = new ApiClient();
-
-interface StorageProvider {
-    name: string;
-    availableRegions: RegionInfo[]
-}
-
-interface UserAccount {
-    _id: string;
-    name: string;
-    email: string;
-    aadId: string;
-    account: {
-        _id: string;
     }
 }
 

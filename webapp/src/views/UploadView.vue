@@ -55,10 +55,9 @@
 import { useFileDialog, useClipboard } from '@vueuse/core';
 import { BlockBlobClient } from "@azure/storage-blob";
 import { ref, computed } from "vue";
-import { apiClient } from '@/api.js';
-import { humanizeSize, compareLatency } from "@/util.js";
+import { apiClient, store } from '@/app-utils';
+import { humanizeSize, ensure, ApiError } from "@/core";
 import Button from "@/components/Button.vue";
-import { ApiError } from '@/api.js';
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
@@ -96,23 +95,14 @@ async function startUpload() {
   uploadState.value = 'progress';
   const started = new Date();
 
-  const providers = await apiClient.getProviders();
-  const provider = providers[0];
-  const regions = provider.availableRegions;
-  console.log('provider', provider, regions);
-  // TODO: we should not run the latency test here
-  // we should compare latency when app is idle (e.g. after sign up)
-  // and cache results
-  const pingResults = await compareLatency(regions);
-  console.log('ping results', pingResults);
-  const preferredRegion = pingResults[0].region;
-  const user = await apiClient.getAccount();
+  const user = ensure(store.userAccount.value);
+  const provider = ensure(store.preferredProvider.value);
   const file = files.value[0];
   const transfer = await apiClient.initTransfer(user.account._id, {
     fileSize: file.size,
     originalName: file.name,
-    provider: provider.name,
-    region: preferredRegion,
+    provider: provider.provider,
+    region: provider.bestRegions[0],
     fileType: file.type,
     md5Hex: "hash"
   });

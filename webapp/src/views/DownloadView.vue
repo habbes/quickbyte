@@ -40,9 +40,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
-import { apiClient, ApiError } from "../api";
-import { humanizeSize } from "@/util";
-import type { DownloadRequestResult } from "../api";
+import { apiClient } from "@/app-utils";
+import { humanizeSize, ApiError, type DownloadRequestResult } from "@/core";
 
 const route = useRoute();
 route.params.downloadId;
