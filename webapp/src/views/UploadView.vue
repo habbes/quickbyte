@@ -55,10 +55,9 @@
 import { useFileDialog, useClipboard } from '@vueuse/core';
 import { BlockBlobClient } from "@azure/storage-blob";
 import { ref, computed } from "vue";
-import { apiClient } from '@/api.js';
-import { humanizeSize, compareLatency } from "@/util.js";
+import { apiClient } from '@/app-utils';
+import { humanizeSize, compareLatency, ApiError } from "@/core";
 import Button from "@/components/Button.vue";
-import { ApiError } from '@/api.js';
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 

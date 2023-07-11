@@ -16,7 +16,7 @@
             </div>
           </summary>
           <ul class="p-2 shadow menu dropdown-content z-[1] bg-base-100 rounded-box w-52">
-            <li><a @click="signOut">Sign out</a></li>
+            <li><a @click="auth.signOut()">Sign out</a></li>
           </ul>
         </details>
       </div>
@@ -25,8 +25,9 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { useUser, signOut } from "@/auth";
+import { useUser, auth, initAuth } from "@/app-utils";
 
 const user = useUser();
+initAuth();
 
 </script>

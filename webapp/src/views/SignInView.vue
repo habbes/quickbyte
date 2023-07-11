@@ -8,7 +8,7 @@
     <div>
       <button type="button"
         class="btn"
-        @click="signIn">
+        @click="auth.signIn()">
         Sign in or create account
       </button>
     </div>
@@ -16,5 +16,5 @@
 </template>
 <script setup lang="ts">
 import Button from "@/components/Button.vue";
-import { signIn } from "@/auth";
+import { auth } from "@/app-utils";
 </script>
