@@ -1,12 +1,12 @@
 <template>
-  <UploadView v-if="user" />
+  <UploadView v-if="userAccount" />
   <SignInView v-else />
 </template>
 
 <script setup lang="ts">
-import { useUser } from '@/app-utils'
+import { store } from '@/app-utils'
 import SignInView from "./SignInView.vue";
 import UploadView from "./UploadView.vue";
 
-const user = useUser();
+const userAccount = store.userAccount;
 </script>

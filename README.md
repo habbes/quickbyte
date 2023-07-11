@@ -11,8 +11,8 @@ Fast, resumable, reliable sharing of large files
 - [x] Basic permissions
 - [x] Init file uploads with secure file URL
 - [x] Generate download URL
-- [ ] Support multiple regions?
-- [ ] Region-ping latency detection
+- [x] Support multiple regions?
+- [x] Region-ping latency detection
 - [ ] Multi-file transfers?
 - [ ] DB indexes
 - [ ] Validation
@@ -20,8 +20,9 @@ Fast, resumable, reliable sharing of large files
 - [ ] Resumable uploads
 - [x] Deploy to staging
 - [ ] Deploy to prod? (maybe not)
-- [ ] Deployment pipeline?
+- [x] Deployment pipeline? (Vercel and Railway auto-deploy on merge to main)
 - [ ] Automation cloud resource provision (storage accounts, auth, etc.)
+- [ ] Tests?
 
 ### Client
 

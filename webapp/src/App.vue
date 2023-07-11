@@ -25,9 +25,16 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { useUser, auth, initAuth } from "@/app-utils";
+import { watch } from 'vue';
+import { useUser, auth, initAuth, initUserData } from "@/app-utils";
 
 const user = useUser();
 initAuth();
 
+watch(user, async () => {
+  if (!user.value) return;
+
+  console.log('User update, refreshing data');
+  await initUserData();
+});
 </script>

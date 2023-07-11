@@ -1,4 +1,4 @@
-import type { RegionInfo } from './types.js'
+import type { UserAccount, StorageProvider } from './types.js'
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -12,7 +12,6 @@ export class ApiClient {
     async getProviders(): Promise<StorageProvider[]> {
         const res = await fetch(`${this.config.baseUrl}/providers`, { mode: 'cors' });
         const data = await res.json();
-        console.log('data', data);
         return data;
     }
 
@@ -82,21 +81,6 @@ export class ApiClient {
 export class ApiError extends Error {
     constructor(message: string, public readonly statusCode: number, public readonly code: string) {
         super(message);
-    }
-}
-
-interface StorageProvider {
-    name: string;
-    availableRegions: RegionInfo[]
-}
-
-interface UserAccount {
-    _id: string;
-    name: string;
-    email: string;
-    aadId: string;
-    account: {
-        _id: string;
     }
 }
 

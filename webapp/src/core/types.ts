@@ -9,3 +9,18 @@ export interface User {
     name: string;
     email: string;
 }
+
+export interface UserAccount {
+    _id: string;
+    name: string;
+    email: string;
+    aadId: string;
+    account: {
+        _id: string;
+    }
+}
+
+export interface StorageProvider {
+    name: string;
+    availableRegions: RegionInfo[]
+}

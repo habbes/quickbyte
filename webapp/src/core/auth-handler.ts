@@ -39,6 +39,7 @@ export class AuthHandler {
             // postLogoutRedirectUri: '/signout', // remove this line if you would like navigate to index page after logout.
         };
 
+        this.config.onSignOut && this.config.onSignOut();
         return this.authClient.logoutRedirect(logoutRequest);
     }
 
@@ -92,6 +93,7 @@ export interface AuthClientConfig {
     msalConfig: Configuration;
     userHandler: UserHandler;
     scopes: string[];
+    onSignOut?: () => void;
 }
 
 interface UserHandler {

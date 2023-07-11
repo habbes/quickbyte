@@ -29,6 +29,11 @@ export function humanizeSize(bytes: number): string {
     return `${tbs} TB`;
 }
 
+export function ensure<T>(obj: T|undefined|null): T {
+    if (!obj) throw new Error('Expected object to be defined.');
+    return obj;
+}
+
 export async function compareLatency(regions: RegionInfo[]): Promise<RegionPingResult[]> {
     const started = Date.now();
     const concurrency = 4;

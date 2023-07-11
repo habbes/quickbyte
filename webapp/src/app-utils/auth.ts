@@ -1,6 +1,7 @@
 import { LogLevel } from "@azure/msal-browser";
 import { ref } from "vue";
 import { AuthHandler, type User } from '@/core';
+import { clearData } from './store';
 
 const user = ref<User|undefined>();
 
@@ -26,20 +27,20 @@ export const msalConfig = {
                 if (containsPii) {
                     return;
                 }
-                switch (level) {
-                    case LogLevel.Error:
-                        console.error(message);
-                        return;
-                    case LogLevel.Info:
-                        console.info(message);
-                        return;
-                    case LogLevel.Verbose:
-                        console.debug(message);
-                        return;
-                    case LogLevel.Warning:
-                        console.warn(message);
-                        return;
-                }
+                // switch (level) {
+                //     case LogLevel.Error:
+                //         console.error(message);
+                //         return;
+                //     case LogLevel.Info:
+                //         console.info(message);
+                //         return;
+                //     case LogLevel.Verbose:
+                //         console.debug(message);
+                //         return;
+                //     case LogLevel.Warning:
+                //         console.warn(message);
+                //         return;
+                // }
             },
         },
     },
@@ -58,6 +59,9 @@ export const auth = new AuthHandler({
     userHandler: {
         getUser: () => user.value,
         setUser: authenticatedUser => user.value = authenticatedUser,
+    },
+    onSignOut: () => {
+        clearData();
     },
     scopes
 });
