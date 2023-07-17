@@ -24,6 +24,12 @@ Fast, resumable, reliable sharing of large files
 - [ ] Automation cloud resource provision (storage accounts, auth, etc.)
     - [x] Automatic storage account provisioning and config with Terraform
     - [ ] Automatic auth provisioning and config
+- [ ] Payment integration
+- [ ] Location-awareness
+- [ ] Legal pages
+    - [ ] Terms of service
+    - [ ] Privacy Policy
+    - [ ] Cookie Policy
 - [ ] Tests?
 
 ### Client
