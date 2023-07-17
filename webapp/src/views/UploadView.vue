@@ -55,8 +55,9 @@
 import { useFileDialog, useClipboard } from '@vueuse/core';
 import { BlockBlobClient } from "@azure/storage-blob";
 import { ref, computed } from "vue";
-import { apiClient, store } from '@/app-utils';
+import { apiClient, store, uploadRecoveryManager } from '@/app-utils';
 import { humanizeSize, ensure, ApiError } from "@/core";
+import type { UploadTracker } from "@/core";
 import Button from "@/components/Button.vue";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
@@ -94,6 +95,7 @@ async function startUpload() {
   downloadUrl.value = undefined;
   uploadState.value = 'progress';
   const started = new Date();
+  const blockSize = 16 * 1024 * 1024; // 16MB
 
   const user = ensure(store.userAccount.value);
   const provider = ensure(store.preferredProvider.value);
@@ -107,7 +109,15 @@ async function startUpload() {
     md5Hex: "hash"
   });
 
-  await concurrentFileUpload(file, transfer.secureUploadUrl);
+  const uploadTracker = uploadRecoveryManager.createUploadTracker({
+    filename: file.name,
+    size: file.size,
+    hash: "hash",
+    id: transfer._id,
+    blockSize: blockSize
+  });
+
+  await concurrentFileUpload(file, transfer.secureUploadUrl, blockSize, uploadTracker);
   
   const stopped = new Date();
   console.log('full upload operation took', stopped.getTime() - started.getTime());
@@ -131,11 +141,12 @@ async function startUpload() {
       }
     }
   }
+
+  await uploadTracker.completeUpload(); // we shouldn't block for this, maybe use promise.then?
 }
 
-async function concurrentFileUpload(file: File, uploadUrl: string) {
+async function concurrentFileUpload(file: File, uploadUrl: string, blockSize: number, tracker: UploadTracker) {
   const blob = new BlockBlobClient(uploadUrl);
-  const blockSize = 16 * 1024 * 1024; // 16MB
   const numBlocks = Math.ceil(file.size / blockSize);
   const blockList = [];
   for (let i = 0; i < numBlocks; i++){
@@ -146,7 +157,7 @@ async function concurrentFileUpload(file: File, uploadUrl: string) {
   }
 
   const started = new Date();
-  await uploadBlockList(blob, file, blockList, blockSize);
+  await uploadBlockList(blob, file, blockList, blockSize, tracker);
 
   // naive approach to network resiliency
   // TODO: we probably should not retry for all errors (e.g. it doesn't make sense to retry for an auth error)
@@ -176,13 +187,13 @@ function generateId(length: number) {
   return result;
 }
 
-async function uploadBlockList(blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number) {
+async function uploadBlockList(blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number, tracker: UploadTracker) {
   // TODO: benchmark to decide between different upload strategies
   // await uploadBlockListUsingSequentialBatches(blob, file, blockList, blockSize);
-  await uploadBlockListByIndependentWorkers(blob, file, blockList, blockSize);
+  await uploadBlockListByIndependentWorkers(blob, file, blockList, blockSize, tracker);
 }
 
-async function uploadBlockListUsingSequentialBatches(blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number) {
+async function uploadBlockListUsingSequentialBatches(blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number, tracker: UploadTracker) {
   // In this strategy, uploads run in sequential batches
   // Each batch performs n concurrent uploads and we wait to conclude
   // a batch before starting the next one.
@@ -194,12 +205,16 @@ async function uploadBlockListUsingSequentialBatches(blob: BlockBlobClient, file
   let current = 0;
   while (current < blockList.length) {
     const chunk = blockList.slice(current, current + concurrency);
-    await Promise.all(chunk.map(block => uploadBlock(blob, file, block, blockSize)));
+    await Promise.all(chunk.map(block => {
+      const task = uploadBlock(blob, file, block, blockSize);
+      tracker.completeBlock(block);
+      return task;
+    }));
     current += concurrency;
   }
 }
 
-async function uploadBlockListByIndependentWorkers(blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number) {
+async function uploadBlockListByIndependentWorkers(blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number, tracker: UploadTracker) {
   // In this strategy, we have n workers
   // Each worker is responsible for uploading every kn + workerIndex block
   // e.g. if n = 5, worker 3 will upload blocks 3, 8, 13, etc.
@@ -210,16 +225,21 @@ async function uploadBlockListByIndependentWorkers(blob: BlockBlobClient, file: 
   const concurrency = 5;
   const workers = new Array(concurrency);
   for (let i = 0; i < concurrency; i++) {
-    workers[i] = runUploadWorker(i, concurrency, blob, file, blockList, blockSize);
+    workers[i] = runUploadWorker(i, concurrency, blob, file, blockList, blockSize, tracker);
   }
 
   await Promise.all(workers);
 }
 
-async function runUploadWorker(workerIndex: number, totalWorkers: number, blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number) {
+async function runUploadWorker(workerIndex: number, totalWorkers: number, blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number, tracker: UploadTracker) {
   let nextBlockIndex = workerIndex;
   while (nextBlockIndex < blockList.length) {
-    await uploadBlock(blob, file, blockList[nextBlockIndex], blockSize);
+    const block = blockList[nextBlockIndex];
+    await uploadBlock(blob, file, block, blockSize);
+    tracker.completeBlock({
+      id: block.id,
+      index: block.index
+    });
     nextBlockIndex += totalWorkers;
   }
 }
