@@ -18,6 +18,12 @@ routes.post('/accounts/:accountId/files',
     wrapResponse(req =>
         req.services.accounts.files(req.authContext).getAll()));
 
+routes.get('/accounts/:accountId/files/:fileId',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.files(req.authContext).getById(req.params.fileId)));
+
 routes.get('/accounts/:accountId/files/:fileId/download',
     requireAuth(),
     requireAccountOwner(),

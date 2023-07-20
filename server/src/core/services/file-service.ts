@@ -64,12 +64,21 @@ export class FileService {
 
     async getById(id: string) {
         try {
-            const result = await this.collection.findOne({ _id: id });
-            if (!result) {
+            const file = await this.collection.findOne({ _id: id });
+            if (!file) {
                 throw createResourceNotFoundError();
             }
 
-            return result;
+            const blobName = file.path;
+            const now = file._createdAt.getTime();
+            const expiryDate = new Date(now + UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS);
+            const provider = this.providerRegistry.getHandler(file.provider);
+            const uploadUrl = await provider.getBlobUploadUrl(file.region, file.accountId, blobName, expiryDate);
+
+            return {
+                ...file,
+                secureUploadUrl: uploadUrl
+            };
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -111,7 +120,7 @@ export class FileService {
     }
 }
 
-export type IFileService = Pick<FileService, 'initFileUpload' | 'getAll' | 'requestDownload'>;
+export type IFileService = Pick<FileService, 'initFileUpload' | 'getAll' | 'requestDownload' | 'getById'>;
 
 export class DownloadService {
     private collection: Collection<Download>;
