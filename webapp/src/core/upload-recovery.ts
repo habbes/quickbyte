@@ -4,6 +4,8 @@ import { store } from '@/app-utils';
 
 const VERSION = 1;
 const DB_NAME = 'quickbyte';
+const FILES_STORE = 'files';
+const BLOCKS_STORE = 'blocks';
 
 export class UploadRecoveryManager {
     isReady: boolean;
@@ -57,8 +59,35 @@ export class UploadRecoveryManager {
         return tracker;
     }
 
-    getRecoveredUploads(): Promise<TrackedUpload[]> {
-        return Promise.reject('Not implemented');
+    async getRecoveredUploads(): Promise<TrackedUpload[]> {
+        await this.whenReady;
+        const db = ensure(this.db);
+        const files: TrackedUpload[] = await db.getAll(FILES_STORE);
+        return files;
+    }
+
+    deleteRecoveredUpload(id: string): Promise<void> {
+        // since we just want to delete the file,
+        // we only need the id
+        const tracker = new UploadTracker(this, {
+            id: id,
+            blockSize: 0,
+            filename: '',
+            size: 0,
+            hash: 'hash'
+        });
+
+       return tracker.deleteUpload();
+    }
+
+    async clearRecoveredUploads(): Promise<void> {
+        await this.whenReady;
+        const db = ensure(this.db);
+        const tx = db.transaction([FILES_STORE, BLOCKS_STORE], 'readwrite');
+        const files = tx.objectStore(FILES_STORE);
+        const blocks = tx.objectStore(BLOCKS_STORE);
+        await Promise.all([files.clear(), blocks.clear()]);
+        await tx.done;
     }
 }
 
@@ -86,6 +115,17 @@ export class UploadTracker {
     }
 
     async completeUpload(): Promise<void> {
+        if (this.busy) {
+            // what do we do here?
+            // we should cancel any existing operation and
+            // wait till we're no longer busy
+        }
+        this.busy = true;
+        await this.deleteFile();
+        await this.deleteBlocks();
+    }
+
+    async deleteUpload(): Promise<void> {
         if (this.busy) {
             // what do we do here?
             // we should cancel any existing operation and
@@ -166,7 +206,7 @@ export class UploadTracker {
     }
 }
 
-interface TrackedUpload {
+export interface TrackedUpload {
     id: string;
     filename: string;
     size: number;
@@ -174,7 +214,7 @@ interface TrackedUpload {
     hash: string;
 }
 
-interface TrackedBlock {
+export interface TrackedBlock {
     id: string;
     index: number;
 }

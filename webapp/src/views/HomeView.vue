@@ -1,5 +1,5 @@
 <template>
-  <UploadView v-if="userAccount" />
+  <router-view v-if="userAccount" />
   <SignInView v-else />
 </template>
 

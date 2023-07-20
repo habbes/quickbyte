@@ -1,12 +1,13 @@
 import { ref } from 'vue';
-import type { StorageProvider, UserAccount, PreferredProviderRegionResult } from '@/core';
+import type { StorageProvider, UserAccount, PreferredProviderRegionResult, TrackedUpload } from '@/core';
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs } from '@/core';
 import { apiClient } from './api';
+import { uploadRecoveryManager } from './recovery-manager';
 
 const userAccount = ref<UserAccount|undefined>();
 const providers = ref<StorageProvider[]>([]);
 const preferredProvider = ref<PreferredProviderRegionResult>();
-
+const recoveredUploads = ref<TrackedUpload[]>([]);
 
 export async function initUserData() {
     userAccount.value = await apiClient.getAccount();
@@ -25,6 +26,9 @@ export async function initUserData() {
         findBestProviderAndRegion(providers.value)
             .then(result => preferredProvider.value = result);
     }
+
+    const uploads = await uploadRecoveryManager.getRecoveredUploads();
+    recoveredUploads.value = uploads;
 }
 
 export function clearData() {
@@ -32,10 +36,12 @@ export function clearData() {
     providers.value = [];
     preferredProvider.value = undefined;
     clearPrefs();
+    // TODO: clear recovered files
 }
 
 export const store = {
     userAccount,
     providers,
-    preferredProvider
+    preferredProvider,
+    recoveredUploads
 };
