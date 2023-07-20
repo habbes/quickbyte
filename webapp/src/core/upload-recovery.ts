@@ -54,8 +54,13 @@ export class UploadRecoveryManager {
     }
 
     createUploadTracker(upload: TrackedUpload): UploadTracker {
-        const tracker = new UploadTracker(this, upload);
-        tracker.init();
+        const tracker = new DefaultUploadTracker(this, upload);
+        tracker.initNew();
+        return tracker;
+    }
+
+    recoverUploadTracker(upload: TrackedUpload): RecoveredUploadTracker {
+        const tracker = new DefaultUploadTracker(this, upload, true);
         return tracker;
     }
 
@@ -69,7 +74,7 @@ export class UploadRecoveryManager {
     deleteRecoveredUpload(id: string): Promise<void> {
         // since we just want to delete the file,
         // we only need the id
-        const tracker = new UploadTracker(this, {
+        const tracker = new DefaultUploadTracker(this, {
             id: id,
             blockSize: 0,
             filename: '',
@@ -91,22 +96,103 @@ export class UploadRecoveryManager {
     }
 }
 
-export class UploadTracker {
+export interface UploadTracker {
+    /**
+     * **Eventually** marks the specified block as completed.
+     * @param block 
+     */
+    completeBlock(block: TrackedBlock): void;
+    /**
+     * Signals the tracker that the upload is complete. This
+     * allows the tracker to clean up and saved progress.
+     */
+    completeUpload(): Promise<void>;
+     /**
+     * Initializes the tracker and recovers completed blocks.
+     * This method must be called and wait for the returned
+     * promise to resolve before tracking new blocks.
+     * **This must not be called for a new upload**
+     */
+     initRecovery(): Promise<InitRecoveryResult>
+     // TODO: Ideally, I wanted to return the list of completed indices to the uploader,
+     // let it compute the size and decide which indices to skip.
+     // But since the uploader is currently a bunch of functions, it would be
+     // messy to pass that list all the way down. Since it already passes
+     // the tracker all the way down, it makes it easier to add the relevant
+     // methods to the tracker for now.
+     /**
+      * Checks whether the block at the specified index was already completed.
+      * @param index 
+      */
+     hasCompletedBlock(index: number): boolean;
+     getCompletedBlock(index: number): TrackedBlock;
+}
+
+export interface RecoveredUploadTracker extends UploadTracker {
+}
+
+interface InitRecoveryResult {
+    completedSize: number;
+}
+
+class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
     private queue: TrackedBlock[] = [];
     private busy: boolean = false;
     private initialized: boolean = false;
     private batchSize: number = 5;
+    private completedBlocks: Record<number, TrackedBlock> = {};
 
-    constructor(private manager: UploadRecoveryManager, private upload: TrackedUpload) {
+    constructor(private manager: UploadRecoveryManager, private upload: TrackedUpload, private resumingUpload = false) {
     }
 
-    async init(): Promise<void> {
+    /**
+     * This should be called when tracking a new upload.
+     * You can start tracking blocks before the returned
+     * promise resolves.
+     */
+    async initNew(): Promise<void> {
         this.busy = true;
         const db = await this.manager.getDb();
         await db.put('files', this.upload);
         this.initialized = true;
         this.busy = false;
         this.saveNextBatchIfQueueEnough();
+    }
+
+    /**
+     * This should be called when tracking a recovered
+     * upload. You should wait for the promise to resolve
+     * before tracking any blocks.
+     */
+    async initRecovery(): Promise<InitRecoveryResult> {
+        
+        this.busy = true;
+        const db = await this.manager.getDb();
+        // TODO: should we index blocks by file id?
+        // Ideally there should be no more than recovered upload
+        const allBlocks = await db.getAll(BLOCKS_STORE);
+        const fileBlocks = allBlocks.filter(b => b.file === this.upload.id);
+        // estimate size of completed blocks
+        const numBlocks = Math.ceil(this.upload.size / this.upload.blockSize);
+        const lastBlockIndex = numBlocks - 1;
+        const lastBlockSizeIfUneven = this.upload.size % this.upload.blockSize;
+        console.log('completedBlocks', fileBlocks);
+        const completedBlocks = fileBlocks.reduce<Record<number, TrackedBlock>>((acc, block) => {
+            acc[block.index] = block;
+            return acc;
+        }, {})
+        const hasLastBlock = lastBlockIndex in completedBlocks;
+        const completedSize = hasLastBlock
+            ? (fileBlocks.length - 1) * this.upload.blockSize + lastBlockSizeIfUneven
+            : fileBlocks.length * this.upload.blockSize;
+
+        this.completedBlocks = completedBlocks;
+        this.initialized = true;
+        this.busy = false;
+        
+        return {
+            completedSize
+        };
     }
 
     completeBlock(block: TrackedBlock) {
@@ -123,6 +209,14 @@ export class UploadTracker {
         this.busy = true;
         await this.deleteFile();
         await this.deleteBlocks();
+    }
+
+    hasCompletedBlock(index: number): boolean {
+        return index in this.completedBlocks;
+    }
+
+    getCompletedBlock(index: number): TrackedBlock {
+        return this.completedBlocks[index];
     }
 
     async deleteUpload(): Promise<void> {

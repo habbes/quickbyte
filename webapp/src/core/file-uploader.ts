@@ -5,16 +5,20 @@ export type UploadProgressCallback = (progress: number) => any;
 
 type ProgressUpdater = (currentProgress: number) => number;
 
-export async function concurrentFileUpload(file: File, uploadUrl: string, blockSize: number, tracker: UploadTracker, onProgress: UploadProgressCallback) {
-    let progress = 0;
+export async function concurrentFileUpload(file: File, uploadUrl: string, blockSize: number, tracker: UploadTracker, onProgress: UploadProgressCallback, startingProgress: number = 0) {
+    let progress = startingProgress;
     const blob = new BlockBlobClient(uploadUrl);
     const numBlocks = Math.ceil(file.size / blockSize);
     const blockList = [];
     for (let i = 0; i < numBlocks; i++) {
-        blockList.push({
-            index: i,
-            id: btoa(generateId(8))
-        });
+        if (tracker.hasCompletedBlock(i)) {
+            blockList.push(tracker.getCompletedBlock(i));
+        } else {
+            blockList.push({
+                index: i,
+                id: btoa(generateId(8))
+            });
+        }
     }
 
     const updateProgress = (newProgress: number) => {
@@ -100,12 +104,14 @@ async function uploadBlockListByIndependentWorkers(blob: BlockBlobClient, file: 
 async function runUploadWorker(workerIndex: number, totalWorkers: number, blob: BlockBlobClient, file: File, blockList: Block[], blockSize: number, tracker: UploadTracker, updateProgress: UploadProgressCallback) {
     let nextBlockIndex = workerIndex;
     while (nextBlockIndex < blockList.length) {
-        const block = blockList[nextBlockIndex];
-        await uploadBlock(blob, file, block, blockSize, updateProgress);
-        tracker.completeBlock({
-            id: block.id,
-            index: block.index
-        });
+        if (!tracker.hasCompletedBlock(nextBlockIndex)) {
+            const block = blockList[nextBlockIndex];
+            await uploadBlock(blob, file, block, blockSize, updateProgress);
+            tracker.completeBlock({
+                id: block.id,
+                index: block.index
+            });
+        }
         nextBlockIndex += totalWorkers;
     }
 }

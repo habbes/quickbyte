@@ -43,6 +43,19 @@ export class ApiClient {
         return data;
     }
 
+    async getFile(accountId: string, fileId: string): Promise<InitFileUploadResult> {
+        const token = await this.config.getToken();
+        const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/files/${fileId}`, {
+            mode: 'cors',
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        const data = await res.json();
+        return data;
+    }
+
     async requestDownload(accountId: string, fileId: string): Promise<DownloadRequestResult> {
         const token = await this.config.getToken();
         const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/files/${fileId}/download`, {
