@@ -1,6 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import { ensure } from '.';
-import { store } from '@/app-utils';
 
 const VERSION = 1;
 const DB_NAME = 'quickbyte';
@@ -114,25 +113,13 @@ export interface UploadTracker {
      * **This must not be called for a new upload**
      */
      initRecovery(): Promise<InitRecoveryResult>
-     // TODO: Ideally, I wanted to return the list of completed indices to the uploader,
-     // let it compute the size and decide which indices to skip.
-     // But since the uploader is currently a bunch of functions, it would be
-     // messy to pass that list all the way down. Since it already passes
-     // the tracker all the way down, it makes it easier to add the relevant
-     // methods to the tracker for now.
-     /**
-      * Checks whether the block at the specified index was already completed.
-      * @param index 
-      */
-     hasCompletedBlock(index: number): boolean;
-     getCompletedBlock(index: number): TrackedBlock;
 }
 
 export interface RecoveredUploadTracker extends UploadTracker {
 }
 
 interface InitRecoveryResult {
-    completedSize: number;
+    completedBlocks: Map<number, { id: string, index: number }>
 }
 
 class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
@@ -172,26 +159,18 @@ class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
         // Ideally there should be no more than recovered upload
         const allBlocks = await db.getAll(BLOCKS_STORE);
         const fileBlocks = allBlocks.filter(b => b.file === this.upload.id);
-        // estimate size of completed blocks
-        const numBlocks = Math.ceil(this.upload.size / this.upload.blockSize);
-        const lastBlockIndex = numBlocks - 1;
-        const lastBlockSizeIfUneven = this.upload.size % this.upload.blockSize;
-        console.log('completedBlocks', fileBlocks);
-        const completedBlocks = fileBlocks.reduce<Record<number, TrackedBlock>>((acc, block) => {
-            acc[block.index] = block;
-            return acc;
-        }, {})
-        const hasLastBlock = lastBlockIndex in completedBlocks;
-        const completedSize = hasLastBlock
-            ? (fileBlocks.length - 1) * this.upload.blockSize + lastBlockSizeIfUneven
-            : fileBlocks.length * this.upload.blockSize;
 
-        this.completedBlocks = completedBlocks;
+        const completedBlocks = fileBlocks.reduce<Map<number, TrackedBlock>>((acc, block) => {
+            acc.set(block.index, block);
+            return acc;
+            
+        }, new Map<number, TrackedBlock>())
+
         this.initialized = true;
         this.busy = false;
         
         return {
-            completedSize
+            completedBlocks
         };
     }
 

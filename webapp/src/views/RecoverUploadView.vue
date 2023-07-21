@@ -55,7 +55,7 @@
 import { useFileDialog, useClipboard } from '@vueuse/core';
 import { ref, computed } from "vue";
 import { apiClient, store, uploadRecoveryManager } from '@/app-utils';
-import { humanizeSize, ensure, ApiError, concurrentFileUpload } from "@/core";
+import { humanizeSize, ensure, ApiError, AzUploader } from "@/core";
 import { useRoute } from 'vue-router';
 import Button from "@/components/Button.vue";
 
@@ -111,16 +111,8 @@ async function startUpload() {
   const blockSize = recoveredUpload?.blockSize;
 
   const user = ensure(store.userAccount.value);
-  const provider = ensure(store.preferredProvider.value);
+  ensure(store.preferredProvider.value);
   const file = files.value[0];
-  // const transfer = await apiClient.initTransfer(user.account._id, {
-  //   fileSize: file.size,
-  //   originalName: file.name,
-  //   provider: provider.provider,
-  //   region: provider.bestRegions[0],
-  //   fileType: file.type,
-  //   md5Hex: "hash"
-  // });
 
   const transfer = await apiClient.getFile(user.account._id, recoveredUpload.id);
 
@@ -136,11 +128,19 @@ async function startUpload() {
 
   const recoveryResult = await uploadTracker.initRecovery();
   console.log('recovered result', recoveryResult);
-  uploadProgress.value = recoveryResult.completedSize;
 
-  await concurrentFileUpload(file, transfer.secureUploadUrl, blockSize, uploadTracker, (progress) => {
-    uploadProgress.value = progress;
-  }, uploadProgress.value);
+  const uploader = new AzUploader({
+    file,
+    uploadUrl: transfer.secureUploadUrl,
+    blockSize,
+    tracker: uploadTracker,
+    completedBlocks: recoveryResult.completedBlocks,
+    onProgress: (progress) => {
+      uploadProgress.value = progress;
+    }
+  });
+
+  await uploader.uploadFile();
 
   const stopped = new Date();
   console.log('full upload operation took', stopped.getTime() - started.getTime());

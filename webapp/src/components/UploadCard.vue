@@ -53,7 +53,7 @@
 import { useFileDialog, useClipboard } from '@vueuse/core';
 import { ref, computed } from "vue";
 import { apiClient, store, uploadRecoveryManager } from '@/app-utils';
-import { humanizeSize, ensure, ApiError, concurrentFileUpload } from "@/core";
+import { humanizeSize, ensure, ApiError, AzUploader } from "@/core";
 import Button from "@/components/Button.vue";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
@@ -113,9 +113,17 @@ async function startUpload() {
     blockSize: blockSize
   });
 
-  await concurrentFileUpload(file, transfer.secureUploadUrl, blockSize, uploadTracker, (progress) => {
-    uploadProgress.value = progress;
+  const uploader = new AzUploader({
+    file,
+    blockSize,
+    uploadUrl: transfer.secureUploadUrl,
+    tracker: uploadTracker,
+    onProgress: (progress) => {
+      uploadProgress.value = progress;
+    }
   });
+
+  await uploader.uploadFile();
   
   const stopped = new Date();
   console.log('full upload operation took', stopped.getTime() - started.getTime());
