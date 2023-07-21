@@ -1,52 +1,50 @@
 <template>
-  <div class="flex flex-col gap-2 p-5 sm:justify-center sm:items-center sm:mt-20">
-    <div class="card w-96 bg-base-100 shadow-xl">
-      <!-- initial state -->
-      <div class="card-body" v-if="uploadState === 'initial' && !file">
-        <h2 class="card-title">Select {{ recoveredUpload.filename }} to resume</h2>
-        <Button @click="open()" class="">Select file to upload</Button>
-      </div>
+  <div class="card w-96 bg-base-100 shadow-xl">
+    <!-- initial state -->
+    <div class="card-body" v-if="uploadState === 'initial' && !file">
+      <h2 class="card-title">Select {{ recoveredUpload.filename }} to resume</h2>
+      <Button @click="open()" class="">Select file to upload</Button>
+    </div>
 
-      <!-- file selected -->
-      <div class="card-body" v-if="uploadState === 'initial' && file">
-        <h2 class="card-title">{{ file.name }}</h2>
-        <p class="text-gray-400">
-          {{ humanizeSize(file.size) }} <br>
-          {{ file.type }}
-        </p>
-        <div class="card-actions justify-center mt-4">
-          <button class="btn btn-primary w-full" @click="startUpload()">Upload</button>
+    <!-- file selected -->
+    <div class="card-body" v-if="uploadState === 'initial' && file">
+      <h2 class="card-title">{{ file.name }}</h2>
+      <p class="text-gray-400">
+        {{ humanizeSize(file.size) }} <br>
+        {{ file.type }}
+      </p>
+      <div class="card-actions justify-center mt-4">
+        <button class="btn btn-primary w-full" @click="startUpload()">Upload</button>
+      </div>
+    </div>
+
+    <!-- upload in progress -->
+    <div class="card-body" v-if="uploadState === 'progress' && file">
+      <h2 class="card-title">{{ file.name }}</h2>
+      <div class="flex justify-center">
+        <div class="radial-progress bg-primary text-primary-content border-4 border-primary" style="--value:70;"
+          :style="{ '--value': Math.floor(100 * uploadProgress / file.size) }">
+          {{ Math.floor(100 * uploadProgress / file.size) }}%
         </div>
       </div>
+      <p class="text-gray-400 text-center">
+        {{ humanizeSize(uploadProgress) }} / {{ humanizeSize(file.size) }} <br>
+      </p>
+    </div>
 
-      <!-- upload in progress -->
-      <div class="card-body" v-if="uploadState === 'progress' && file">
-        <h2 class="card-title">{{ file.name }}</h2>
-        <div class="flex justify-center">
-          <div class="radial-progress bg-primary text-primary-content border-4 border-primary" style="--value:70;"
-            :style="{ '--value': Math.floor(100 * uploadProgress / file.size) }">
-            {{ Math.floor(100 * uploadProgress / file.size) }}%
-          </div>
+    <!-- upload complete -->
+    <div class="card-body" v-if="uploadState === 'complete' && file">
+      <h2 class="card-title">Upload complete!</h2>
+      <p>Copy and share the <a class="link" :href="downloadUrl" target="_blank">download link</a> with the recipients:
+      </p>
+      <div class="relative mb-6" @click="copyDownloadUrl()">
+        <div class="absolute left-0 right-0 overflow-auto border p-2 rounded-md">
+          {{ downloadUrl }}
         </div>
-        <p class="text-gray-400 text-center">
-          {{ humanizeSize(uploadProgress) }} / {{ humanizeSize(file.size) }} <br>
-        </p>
       </div>
-
-      <!-- upload complete -->
-      <div class="card-body" v-if="uploadState === 'complete' && file">
-        <h2 class="card-title">Upload complete!</h2>
-        <p>Copy and share the <a class="link" :href="downloadUrl" target="_blank">download link</a> with the recipients:
-        </p>
-        <div class="relative mb-6" @click="copyDownloadUrl()">
-          <div class="absolute left-0 right-0 overflow-auto border p-2 rounded-md">
-            {{ downloadUrl }}
-          </div>
-        </div>
-        <div class="card-actions justify-center mt-4">
-          <button v-if="!copiedDownloadUrl" class="btn btn-primary w-full" @click="copyDownloadUrl()">Copy link</button>
-          <button v-if="copiedDownloadUrl" class="btn btn-primary w-full" @click="resetState()">Send another file</button>
-        </div>
+      <div class="card-actions justify-center mt-4">
+        <button v-if="!copiedDownloadUrl" class="btn btn-primary w-full" @click="copyDownloadUrl()">Copy link</button>
+        <button v-if="copiedDownloadUrl" class="btn btn-primary w-full" @click="resetState()">Send another file</button>
       </div>
     </div>
   </div>
@@ -56,10 +54,17 @@ import { useFileDialog, useClipboard } from '@vueuse/core';
 import { ref, computed } from "vue";
 import { apiClient, store, uploadRecoveryManager } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader } from "@/core";
-import { useRoute } from 'vue-router';
 import Button from "@/components/Button.vue";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
+
+const props = defineProps<{
+  uploadId: string;
+}>();
+
+const emit = defineEmits<{
+  (event: 'complete'): void;
+}>();
 
 const { open, files, reset } = useFileDialog({ multiple: false });
 const { copy } = useClipboard();
@@ -68,18 +73,7 @@ const file = computed<File | undefined>(() =>
   files.value && files.value.length ?
     files.value[0] : undefined);
 
-const route = useRoute();
-const uploadId = computed(() => {
-  const id = ensure(route.params.uploadId);
-
-  if (typeof id !== 'string') {
-    throw new Error('Found multiple upload ids in the path params');
-  }
-
-  return id;
-});
-
-const recoveredUpload = ensure(store.recoveredUploads.value.find(u => uploadId.value === u.id));
+const recoveredUpload = ensure(store.recoveredUploads.value.find(u => props.uploadId === u.id));
 
 const uploadProgress = ref<number>(0);
 const uploadState = ref<UploadState>('initial');
@@ -92,6 +86,7 @@ function resetState() {
   uploadState.value = 'initial';
   uploadProgress.value = 0;
   copiedDownloadUrl.value = false;
+  emit('complete');
 }
 
 function copyDownloadUrl() {

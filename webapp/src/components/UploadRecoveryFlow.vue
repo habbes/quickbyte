@@ -10,7 +10,7 @@
         <div>{{ upload.filename }}</div>
         <div class="text-gray-400 text-sm">{{ humanizeSize(upload.size) }}</div>
         <div class="flex flex-row justify-end gap-2">
-          <router-link class="btn btn-primary btn-sm" :to="{ name: 'recoverUpload', params: { uploadId: upload.id }}">Resume</router-link>
+          <button class="btn btn-primary btn-sm" @click="$emit('selectUpload', upload.id)">Resume</button>
           <button class="btn btn-error btn-sm">Delete</button>
         </div>
       </div>
@@ -20,6 +20,12 @@
 <script lang="ts" setup>
 import { humanizeSize } from '@/core';
 import { store, uploadRecoveryManager } from '@/app-utils';
+
+defineEmits<{
+  (event: 'cancel'): void;
+  (event: 'deletedUpload', uploadId: string): void;
+  (event: 'selectUpload', uploadId: string): void;
+}>();
 
 const recoveredUploads = store.recoveredUploads;
 </script>
