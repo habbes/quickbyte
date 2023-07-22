@@ -6,6 +6,11 @@ const DB_NAME = 'quickbyte';
 const FILES_STORE = 'files';
 const BLOCKS_STORE = 'blocks';
 
+interface RecoveryManagerArgs {
+    onClear: () => unknown;
+    onDelete: (uploadId: string) => unknown;
+}
+
 export class UploadRecoveryManager {
     isReady: boolean;
     private whenReady: Promise<void>;
@@ -13,7 +18,7 @@ export class UploadRecoveryManager {
     private resolveReadyPromise: (() => void) | undefined;
     private rejectReadyPromise: ((e: Error) => void) | undefined;
 
-    constructor() {
+    constructor(private args: RecoveryManagerArgs) {
         this.isReady = false;
         this.whenReady = new Promise((resolve, reject) => {
             this.resolveReadyPromise = resolve;
@@ -70,7 +75,7 @@ export class UploadRecoveryManager {
         return files;
     }
 
-    deleteRecoveredUpload(id: string): Promise<void> {
+    async deleteRecoveredUpload(id: string): Promise<void> {
         // since we just want to delete the file,
         // we only need the id
         const tracker = new DefaultUploadTracker(this, {
@@ -81,7 +86,8 @@ export class UploadRecoveryManager {
             hash: 'hash'
         });
 
-       return tracker.deleteUpload();
+       await tracker.deleteUpload();
+       this.args.onDelete(id);
     }
 
     async clearRecoveredUploads(): Promise<void> {
@@ -92,6 +98,7 @@ export class UploadRecoveryManager {
         const blocks = tx.objectStore(BLOCKS_STORE);
         await Promise.all([files.clear(), blocks.clear()]);
         await tx.done;
+        this.args.onClear();
     }
 }
 

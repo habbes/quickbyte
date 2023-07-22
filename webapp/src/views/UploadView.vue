@@ -5,7 +5,10 @@
       Click here to see the files.
     </div>
     <UploadCard v-if="state === 'newUpload'" />
-    <UploadRecoveryFlow v-if="state === 'recoveryFlow'" @select-upload="recoverUpload"/>
+    <UploadRecoveryFlow v-if="state === 'recoveryFlow'"
+      @select-upload="recoverUpload"
+      @done="completeRecoveryFlow()"
+    />
     <RecoveryUploadCard
       v-if="state === 'recoveryUpload' && selectedRecoveredUploadId"
       :uploadId="selectedRecoveredUploadId"
@@ -41,6 +44,10 @@ function recoverUpload(id: string) {
 }
 
 function completeRecoveredUpload() {
+  state.value = 'newUpload';
+}
+
+function completeRecoveryFlow() {
   state.value = 'newUpload';
 }
 </script>
