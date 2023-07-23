@@ -258,7 +258,7 @@ class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
     }
 
     private async saveNextBatchIfQueueEnough() {
-        if (this.busy) return;
+        if (this.busy || this.queue.length === 0) return;
 
         if (this.queue.length >= this.batchSize || (Date.now() - this.lastBatchSavedAt) > this.maxBatchIntervalMillis) {
             this.saveNextBatch();
