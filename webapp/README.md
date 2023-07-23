@@ -50,3 +50,22 @@ npm run test:unit
 ```sh
 npm run lint
 ```
+
+## Deployment configuration
+
+The web app is deployed to [https://vercel.com](Vercel) project: https://vercel.com/habbes/quickbyte to domains
+- pre.quickbyte.io
+- staging.quickbyte.io
+
+A review deployment happens automatically for each PR we create. The production deployment happens automatically
+when we merge to the main branch.
+
+The app is configured to report errors to Sentry. To configure Sentry in production, make sure to configure
+the sentry env variables required for the Sentry configuration. See [./.env.d.ts](`env.d.ts`) to see which env variables
+are available, and check [./main.ts](`main.ts`) to see how the configuration is used.
+
+We also have configured Sentry to capture source maps at build time and send them to Sentry for better stack traces.
+For Sentry to be able to send the source maps, We need to add the `SENTRY_AUTH_TOKEN` environment variable to the
+build server (e.g. Vercel or CI). To update Sentry source maps configuration, run the following command on the local
+development machine: `npx @sentry/wizard@latest -i sourcemaps`.
+
