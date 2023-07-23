@@ -1,5 +1,6 @@
 import { PublicClientApplication, type Configuration } from "@azure/msal-browser";
 import { type User } from './types';
+import { Logger } from './logger';
 
 export class AuthHandler {
     private authClient: PublicClientApplication;
@@ -79,7 +80,7 @@ export class AuthHandler {
         } else if (currentAccounts.length >= 1) {
             if (currentAccounts.length > 1) {
                 // Add your account choosing logic here
-                console.warn("Multiple accounts detected.");
+                this.config.logger?.log('Multiple accounts detected', 'warning');
             }
 
             const account = currentAccounts[0];
@@ -98,6 +99,7 @@ export interface AuthClientConfig {
     userHandler: UserHandler;
     scopes: string[];
     onSignOut?: () => unknown;
+    logger?: Logger;
 }
 
 interface UserHandler {

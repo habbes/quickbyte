@@ -53,7 +53,7 @@
 <script lang="ts" setup>
 import { useFileDialog, useClipboard } from '@vueuse/core';
 import { ref, computed } from "vue";
-import { apiClient, store, uploadRecoveryManager } from '@/app-utils';
+import { apiClient, store, uploadRecoveryManager, logger } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader } from "@/core";
 import Button from "@/components/Button.vue";
 
@@ -127,7 +127,7 @@ async function startUpload() {
   await uploader.uploadFile();
   
   const stopped = new Date();
-  console.log('full upload operation took', stopped.getTime() - started.getTime());
+  logger.log(`full upload operation took ${stopped.getTime() - started.getTime()}`);
   
   let retry = true;
   while (retry) {
@@ -136,14 +136,14 @@ async function startUpload() {
       retry = false;
       downloadUrl.value = `${location.origin}/d/${download._id}`;
       uploadState.value = 'complete';
-      console.log('full operation + download link took', (new Date()).getTime() - started.getTime());
+      logger.log(`full operation + download link took ${(new Date()).getTime() - started.getTime()}`);
     } catch (e) {
       if (e instanceof ApiError) {
         // Do not retry on ApiError since it's not a network failure.
         // TODO: handle this error some other way, e.g. alert message
         retry = false;
       } else {
-        console.error('Error fetching download', e);
+        logger.error('Error fetching download', e);
         retry = true;
       }
     }

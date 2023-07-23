@@ -5,3 +5,5 @@ export * from './auth-handler.js';
 export * from './user-prefs.js';
 export * from './upload-recovery';
 export * from './az-uploader';
+export * from './logger';
+

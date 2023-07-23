@@ -15,7 +15,6 @@ export async function findBestProviderAndRegion(providers: StorageProvider[]): P
 
     localStorage.setItem(PREFERRED_PROVIDER_KEY, JSON.stringify(result));
 
-    console.log('found best provider', result);
     return result;
 }
 
@@ -24,7 +23,6 @@ export function getCachedPreferredProviderRegion(): PreferredProviderRegionResul
     if (!pref) return undefined;
 
     const result = JSON.parse(pref);
-    console.log('found cached provider', result);
     return result;
 }
 
