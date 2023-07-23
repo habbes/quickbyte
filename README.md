@@ -34,7 +34,7 @@ Fast, resumable, reliable sharing of large files
 
 ### Client
 
-Desktop app or Web app ?
+Web app
 
 ## How it works (high-level overview)
 

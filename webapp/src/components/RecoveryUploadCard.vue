@@ -4,8 +4,8 @@
     <div class="card-body" v-if="uploadState === 'initial' && !file">
       <!-- <h2 class="card-title">Select {{ recoveredUpload.filename }} to resume</h2> -->
       <div>Select the file <b>{{ recoveredUpload.filename }}</b> to resume the transfer.</div>
-      <div class="flex justify-end gap-2">
-        <button @click="open()" class="btn">Select file to upload</button>
+      <div class="card-actions">
+        <button @click="open()" class="btn flex-1">Select file to upload</button>
         <button @click="resetStateAndComplete()" class="btn">Cancel</button>
       </div>
     </div>
@@ -21,8 +21,8 @@
       <div class="text-sm text-gray-400">
         Selected file: <b>{{ file.name }}</b> {{ humanizeSize(file.size) }}
       </div>
-      <div class="flex justify-end gap-2">
-        <button @click="open()" class="btn">Select file to upload</button>
+      <div class="card-actions">
+        <button @click="open()" class="btn flex-1">Select file to upload</button>
         <button @click="resetStateAndComplete()" class="btn">Cancel</button>
       </div>
     </div>
@@ -34,8 +34,8 @@
         {{ humanizeSize(file.size) }} <br>
         {{ file.type }}
       </p>
-      <div class="card-actions justify-end mt-4">
-        <button class="btn btn-primary" @click="startUpload()">Upload</button>
+      <div class="card-actions mt-4">
+        <button class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
         <button class="btn" @click="resetStateAndComplete()">Cancel</button>
       </div>
     </div>
@@ -74,7 +74,7 @@
 <script lang="ts" setup>
 import { useFileDialog, useClipboard } from '@vueuse/core';
 import { ref, computed } from "vue";
-import { apiClient, store, uploadRecoveryManager } from '@/app-utils';
+import { apiClient, store, uploadRecoveryManager, logger } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader } from "@/core";
 import Button from "@/components/Button.vue";
 
@@ -155,7 +155,7 @@ async function startUpload() {
   });
 
   const recoveryResult = await uploadTracker.initRecovery();
-  console.log('recovered result', recoveryResult);
+  logger.log(`recovered blocks ${recoveryResult.completedBlocks.size}`);
 
   const uploader = new AzUploader({
     file,
@@ -165,13 +165,14 @@ async function startUpload() {
     completedBlocks: recoveryResult.completedBlocks,
     onProgress: (progress) => {
       uploadProgress.value = progress;
-    }
+    },
+    logger
   });
 
   await uploader.uploadFile();
 
   const stopped = new Date();
-  console.log('full upload operation took', stopped.getTime() - started.getTime());
+  logger.log(`full upload operation took ${stopped.getTime() - started.getTime()}`);
 
   let retry = true;
   while (retry) {
@@ -180,14 +181,14 @@ async function startUpload() {
       retry = false;
       downloadUrl.value = `${location.origin}/d/${download._id}`;
       uploadState.value = 'complete';
-      console.log('full operation + download link took', (new Date()).getTime() - started.getTime());
+      logger.log(`full operation + download link took ${(new Date()).getTime() - started.getTime()}`);
     } catch (e) {
       if (e instanceof ApiError) {
         // Do not retry on ApiError since it's not a network failure.
         // TODO: handle this error some other way, e.g. alert message
         retry = false;
       } else {
-        console.error('Error fetching download', e);
+        logger.error('Error fetching download', e);
         retry = true;
       }
     }

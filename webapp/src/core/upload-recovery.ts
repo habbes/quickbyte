@@ -1,5 +1,6 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import { ensure } from '.';
+import { Logger } from './logger';
 
 const VERSION = 1;
 const DB_NAME = 'quickbyte';
@@ -9,6 +10,7 @@ const BLOCKS_STORE = 'blocks';
 interface RecoveryManagerArgs {
     onClear: () => unknown;
     onDelete: (uploadId: string) => unknown;
+    logger?: Logger;
 }
 
 export class UploadRecoveryManager {
@@ -29,6 +31,7 @@ export class UploadRecoveryManager {
     async init(): Promise<void> {
         // TODO: define DB schema
         // TODO: handle errors
+        const logger = this.args.logger;
         this.db = await openDB(DB_NAME, VERSION, {
             upgrade(db, oldVersion, newVesrsion) {
                 const files = db.createObjectStore('files', {
@@ -44,7 +47,7 @@ export class UploadRecoveryManager {
                     blocks.transaction.done
                 ]);
 
-                tasks.then(() => console.log('complete creating object stores'));
+                tasks.then(() => logger?.log('complete creating object stores'));
             }
         });
 
@@ -64,7 +67,7 @@ export class UploadRecoveryManager {
     }
 
     recoverUploadTracker(upload: TrackedUpload): RecoveredUploadTracker {
-        const tracker = new DefaultUploadTracker(this, upload, true);
+        const tracker = new DefaultUploadTracker(this, upload);
         return tracker;
     }
 
@@ -135,8 +138,15 @@ class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
     private initialized: boolean = false;
     private batchSize: number = 5;
     private completedBlocks: Record<number, TrackedBlock> = {};
+    // if this period has passed since the last batch, then we
+    // can save available blocks even if batch is not full.
+    // This ensures that we have enough blocks recovered even
+    // on slower networks
+    private maxBatchIntervalMillis = 5000;
+    private lastBatchSavedAt: number;
 
-    constructor(private manager: UploadRecoveryManager, private upload: TrackedUpload, private resumingUpload = false) {
+    constructor(private manager: UploadRecoveryManager, private upload: TrackedUpload, private logger?: Logger) {
+        this.lastBatchSavedAt = Date.now();
     }
 
     /**
@@ -218,17 +228,17 @@ class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
 
     private async deleteFile() {
         const started = Date.now();
-        console.log('deleting file...');
+        this.logger?.log('deleting file...');
         const db = await this.manager.getDb();
         const tx = db.transaction('files', 'readwrite');
         const files = tx.store;
         await files.delete(this.upload.id);
         await tx.done;
-        console.log(`deleted file in ${Date.now() - started}ms`);
+        this.logger?.log(`deleted file in ${Date.now() - started}ms`);
     }
 
     private async deleteBlocks() {
-        console.log('deleting blocks');
+        this.logger?.log('deleting blocks');
         const started = Date.now();
         const db = await this.manager.getDb();
         const tx = db.transaction('blocks', 'readwrite');
@@ -244,14 +254,13 @@ class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
             cursor = await cursor.continue();
         }
         await tx.done;
-        console.log(`deleted blocks in ${Date.now() - started}ms`);
+        this.logger?.log(`deleted blocks in ${Date.now() - started}ms`);
     }
 
     private async saveNextBatchIfQueueEnough() {
-        // TODO we should probably also have max interval between
-        // batches so that save small batches when queue
-        // fills up too slowly (e.g. slow networks)
-        if (this.queue.length >= this.batchSize && !this.busy) {
+        if (this.busy || this.queue.length === 0) return;
+
+        if (this.queue.length >= this.batchSize || (Date.now() - this.lastBatchSavedAt) > this.maxBatchIntervalMillis) {
             this.saveNextBatch();
         }
     }
@@ -275,8 +284,10 @@ class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
         for (let block of batch) {
             await store.put({ ...block, file: this.upload.id });
         }
-        console.log('persisted batch', batch);
+    
+        this.logger?.log(`persisted batch of ${batch.length} blocks`);
         await tx.done;
+        this.lastBatchSavedAt = Date.now();
         this.busy = false;
     }
 

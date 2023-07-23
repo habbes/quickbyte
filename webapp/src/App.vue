@@ -27,7 +27,7 @@
 </template>
 <script lang="ts" setup>
 import { watch } from 'vue';
-import { useUser, auth, initAuth, initUserData } from "@/app-utils";
+import { useUser, auth, initAuth, initUserData, logger } from "@/app-utils";
 import Toast from '@/components/Toast.vue';
 
 const user = useUser();
@@ -36,7 +36,7 @@ initAuth();
 watch(user, async () => {
   if (!user.value) return;
 
-  console.log('User update, refreshing data');
+  logger.log('User update, refreshing data');
   await initUserData();
 });
 </script>

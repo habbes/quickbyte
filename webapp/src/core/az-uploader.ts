@@ -1,5 +1,6 @@
 import { BlockBlobClient } from "@azure/storage-blob";
 import type { UploadTracker } from "./upload-recovery";
+import type { Logger } from "./logger";
 
 export type UploadProgressCallback = (progress: number) => any;
 
@@ -10,6 +11,7 @@ export interface FileUploaderArgs {
     tracker: UploadTracker,
     onProgress: UploadProgressCallback,
     completedBlocks?: Map<number, Block>;
+    logger?: Logger
 }
 
 export class AzUploader {
@@ -58,13 +60,13 @@ export class AzUploader {
                 await blob.commitBlockList(blockList.map(b => b.id));
                 retry = false;
             } catch (e) {
-                console.error('error committing blocks', e);
+                this.config.logger?.error('error committing blocks', e);
                 retry = true;
             }
         }
 
         const stopped = new Date();
-        console.log("Completed block list upload", stopped.getTime() - started.getTime());
+        this.config.logger?.log(`Completed block list upload ${stopped.getTime() - started.getTime()}`);
     }
 
     private addProgress(blockProgress: number) {
@@ -98,6 +100,8 @@ export class AzUploader {
         const totalWorkers = this.concurrency;
         let nextBlockIndex = workerIndex;
         while (nextBlockIndex < blockList.length) {
+            // TODO: why workers start to disappear towards the end, despite available blocks
+            // console.log(`worker ${workerIndex} starts block ${nextBlockIndex}`)
             if (!this.hasCompletedBlock(nextBlockIndex)) {
                 const block = blockList[nextBlockIndex];
                 await this.uploadBlock(block);
@@ -108,6 +112,7 @@ export class AzUploader {
             }
 
             nextBlockIndex += totalWorkers;
+            // console.log(`worker ${workerIndex} next block will be ${nextBlockIndex}, total workers ${totalWorkers}, total blocks ${blockList.length}`)
         }
     }
 
@@ -133,7 +138,7 @@ export class AzUploader {
 
                 retry = false;
             } catch (e) {
-                console.log('error staging block', e);
+                this.config.logger?.error('error staging block', e);
                 retry = true;
             }
         }
