@@ -64,7 +64,8 @@ export const auth = new AuthHandler({
     onSignOut: () => {
         clearData();
     },
-    scopes
+    scopes,
+    logger
 });
 
 export function initAuth(): Promise<void> {

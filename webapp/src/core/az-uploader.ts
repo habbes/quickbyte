@@ -100,6 +100,8 @@ export class AzUploader {
         const totalWorkers = this.concurrency;
         let nextBlockIndex = workerIndex;
         while (nextBlockIndex < blockList.length) {
+            // TODO: why workers start to disappear towards the end, despite available blocks
+            // console.log(`worker ${workerIndex} starts block ${nextBlockIndex}`)
             if (!this.hasCompletedBlock(nextBlockIndex)) {
                 const block = blockList[nextBlockIndex];
                 await this.uploadBlock(block);
@@ -110,6 +112,7 @@ export class AzUploader {
             }
 
             nextBlockIndex += totalWorkers;
+            // console.log(`worker ${workerIndex} next block will be ${nextBlockIndex}, total workers ${totalWorkers}, total blocks ${blockList.length}`)
         }
     }
 

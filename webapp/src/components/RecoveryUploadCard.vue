@@ -165,7 +165,8 @@ async function startUpload() {
     completedBlocks: recoveryResult.completedBlocks,
     onProgress: (progress) => {
       uploadProgress.value = progress;
-    }
+    },
+    logger
   });
 
   await uploader.uploadFile();

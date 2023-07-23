@@ -138,8 +138,15 @@ class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
     private initialized: boolean = false;
     private batchSize: number = 5;
     private completedBlocks: Record<number, TrackedBlock> = {};
+    // if this period has passed since the last batch, then we
+    // can save available blocks even if batch is not full.
+    // This ensures that we have enough blocks recovered even
+    // on slower networks
+    private maxBatchIntervalMillis = 5000;
+    private lastBatchSavedAt: number;
 
     constructor(private manager: UploadRecoveryManager, private upload: TrackedUpload, private logger?: Logger) {
+        this.lastBatchSavedAt = Date.now();
     }
 
     /**
@@ -251,10 +258,9 @@ class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
     }
 
     private async saveNextBatchIfQueueEnough() {
-        // TODO we should probably also have max interval between
-        // batches so that save small batches when queue
-        // fills up too slowly (e.g. slow networks)
-        if (this.queue.length >= this.batchSize && !this.busy) {
+        if (this.busy) return;
+
+        if (this.queue.length >= this.batchSize || (Date.now() - this.lastBatchSavedAt) > this.maxBatchIntervalMillis) {
             this.saveNextBatch();
         }
     }
@@ -281,6 +287,7 @@ class DefaultUploadTracker implements UploadTracker, RecoveredUploadTracker {
     
         this.logger?.log(`persisted batch of ${batch.length} blocks`);
         await tx.done;
+        this.lastBatchSavedAt = Date.now();
         this.busy = false;
     }
 

@@ -121,7 +121,8 @@ async function startUpload() {
     tracker: uploadTracker,
     onProgress: (progress) => {
       uploadProgress.value = progress;
-    }
+    },
+    logger
   });
 
   await uploader.uploadFile();
