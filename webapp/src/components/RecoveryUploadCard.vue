@@ -2,24 +2,46 @@
   <div class="card w-96 bg-base-100 shadow-xl">
     <!-- initial state -->
     <div class="card-body" v-if="uploadState === 'initial' && !file">
-      <h2 class="card-title">Select {{ recoveredUpload.filename }} to resume</h2>
-      <Button @click="open()" class="">Select file to upload</Button>
+      <!-- <h2 class="card-title">Select {{ recoveredUpload.filename }} to resume</h2> -->
+      <div>Select the file <b>{{ recoveredUpload.filename }}</b> to resume the transfer.</div>
+      <div class="flex justify-end gap-2">
+        <button @click="open()" class="btn">Select file to upload</button>
+        <button @click="resetStateAndComplete()" class="btn">Cancel</button>
+      </div>
+    </div>
+
+    <div class="card-body" v-if="uploadState === 'initial' && file && !filesMatch">
+      <div class="alert alert-error">
+        The selected file does match the recovered file.
+        Please select the correct file to resume transfer.
+      </div>
+      <div class="text-sm text-gray-400">
+        Recovered file: <b>{{ recoveredUpload.filename }}</b> {{ humanizeSize(recoveredUpload.size) }}
+      </div>
+      <div class="text-sm text-gray-400">
+        Selected file: <b>{{ file.name }}</b> {{ humanizeSize(file.size) }}
+      </div>
+      <div class="flex justify-end gap-2">
+        <button @click="open()" class="btn">Select file to upload</button>
+        <button @click="resetStateAndComplete()" class="btn">Cancel</button>
+      </div>
     </div>
 
     <!-- file selected -->
-    <div class="card-body" v-if="uploadState === 'initial' && file">
+    <div class="card-body" v-if="uploadState === 'initial' && file && filesMatch">
       <h2 class="card-title">{{ file.name }}</h2>
       <p class="text-gray-400">
         {{ humanizeSize(file.size) }} <br>
         {{ file.type }}
       </p>
-      <div class="card-actions justify-center mt-4">
-        <button class="btn btn-primary w-full" @click="startUpload()">Upload</button>
+      <div class="card-actions justify-end mt-4">
+        <button class="btn btn-primary" @click="startUpload()">Upload</button>
+        <button class="btn" @click="resetStateAndComplete()">Cancel</button>
       </div>
     </div>
 
     <!-- upload in progress -->
-    <div class="card-body" v-if="uploadState === 'progress' && file">
+    <div class="card-body" v-if="uploadState === 'progress' && file && filesMatch">
       <h2 class="card-title">{{ file.name }}</h2>
       <div class="flex justify-center">
         <div class="radial-progress bg-primary text-primary-content border-4 border-primary" style="--value:70;"
@@ -44,7 +66,7 @@
       </div>
       <div class="card-actions justify-center mt-4">
         <button v-if="!copiedDownloadUrl" class="btn btn-primary w-full" @click="copyDownloadUrl()">Copy link</button>
-        <button v-if="copiedDownloadUrl" class="btn btn-primary w-full" @click="resetState()">Send another file</button>
+        <button v-if="copiedDownloadUrl" class="btn btn-primary w-full" @click="resetStateAndComplete()">Send another file</button>
       </div>
     </div>
   </div>
@@ -73,7 +95,11 @@ const file = computed<File | undefined>(() =>
   files.value && files.value.length ?
     files.value[0] : undefined);
 
-const recoveredUpload = ensure(store.recoveredUploads.value.find(u => props.uploadId === u.id));
+const recoveredUpload = computed(() => ensure(store.recoveredUploads.value.find(u => props.uploadId === u.id)));
+
+const filesMatch = computed(() =>
+  file.value && checkRecoveredAndUploadedFilesMatch(recoveredUpload.value, file.value)
+);
 
 const uploadProgress = ref<number>(0);
 const uploadState = ref<UploadState>('initial');
@@ -86,7 +112,15 @@ function resetState() {
   uploadState.value = 'initial';
   uploadProgress.value = 0;
   copiedDownloadUrl.value = false;
+}
+
+function resetStateAndComplete() {
+  resetState();
   emit('complete');
+}
+
+function cancelSelectedFile() {
+  resetState();
 }
 
 function copyDownloadUrl() {
@@ -96,6 +130,11 @@ function copyDownloadUrl() {
   copiedDownloadUrl.value = true;
 }
 
+function checkRecoveredAndUploadedFilesMatch(recovered: { filename: string, size: number }, newFile: File): boolean {
+  // TODO: check other factors like "lastModified" and "hash"
+  return recovered.filename === newFile.name && recovered.size === newFile.size;
+}
+
 async function startUpload() {
   if (!files.value?.length) return;
 
@@ -103,18 +142,16 @@ async function startUpload() {
   downloadUrl.value = undefined;
   uploadState.value = 'progress';
   const started = new Date();
-  const blockSize = recoveredUpload?.blockSize;
+  const blockSize = recoveredUpload.value.blockSize;
 
   const user = ensure(store.userAccount.value);
   ensure(store.preferredProvider.value);
   const file = files.value[0];
 
-  const transfer = await apiClient.getFile(user.account._id, recoveredUpload.id);
-
-  // TODO: validate file size match
+  const transfer = await apiClient.getFile(user.account._id, recoveredUpload.value.id);
 
   const uploadTracker = uploadRecoveryManager.recoverUploadTracker({
-    filename: recoveredUpload.filename,
+    filename: recoveredUpload.value.filename,
     size: file.size,
     hash: "hash",
     id: transfer._id,

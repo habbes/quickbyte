@@ -14,7 +14,8 @@
         {{  file.type }}
       </p>
       <div class="card-actions justify-center mt-4">
-        <button class="btn btn-primary w-full" @click="startUpload()">Upload</button>
+        <button class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
+        <button class="btn" @click="resetState()">Cancel</button>
       </div>
     </div>
 

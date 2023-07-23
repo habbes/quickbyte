@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col gap-2 p-5 sm:justify-center sm:items-center sm:mt-20">
-    <div class="alert alert-info w-96" v-if="recoveredUploads.length && state === 'newUpload' " @click="showRecoveryFlow">
+    <div class="alert alert-info w-96 cursor-pointer" v-if="recoveredUploads.length && state === 'newUpload' " @click="showRecoveryFlow">
       We've detected incomplete transfers from a previous session.
       Click here to see the files.
     </div>
@@ -29,10 +29,6 @@ const state = ref<State>('newUpload');
 const selectedRecoveredUploadId = ref<string>();
 
 const recoveredUploads = store.recoveredUploads;
-
-// TODO:
-// - remove recovery notice when upload is in progress
-// - allow cancelling recovery flow
 
 function showRecoveryFlow() {
   state.value = 'recoveryFlow';
