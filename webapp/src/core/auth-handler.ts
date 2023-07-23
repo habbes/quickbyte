@@ -26,7 +26,7 @@ export class AuthHandler {
         return this.authClient.loginRedirect(loginRequest);
     }
 
-    signOut(): Promise<void> {
+    async signOut(): Promise<void> {
         /**
          * You can pass a custom request object below. This will override the initial configuration. For more information, visit:
          * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/request-response-object.md#request
@@ -39,8 +39,12 @@ export class AuthHandler {
             // postLogoutRedirectUri: '/signout', // remove this line if you would like navigate to index page after logout.
         };
 
-        this.config.onSignOut && this.config.onSignOut();
-        return this.authClient.logoutRedirect(logoutRequest);
+        const result = this.config.onSignOut && this.config.onSignOut();
+        if (result instanceof Promise) {
+            await result;
+        }
+
+        await this.authClient.logoutRedirect(logoutRequest);
     }
 
     async getToken(): Promise<string> {
@@ -93,7 +97,7 @@ export interface AuthClientConfig {
     msalConfig: Configuration;
     userHandler: UserHandler;
     scopes: string[];
-    onSignOut?: () => void;
+    onSignOut?: () => unknown;
 }
 
 interface UserHandler {

@@ -17,13 +17,19 @@ Fast, resumable, reliable sharing of large files
 - [ ] DB indexes
 - [ ] Validation
 - [ ] Perf benchmarks and tuning
-- [ ] Resumable uploads
+- [x] Resumable uploads
 - [x] Deploy to staging
 - [ ] Deploy to prod? (maybe not)
 - [x] Deployment pipeline? (Vercel and Railway auto-deploy on merge to main)
 - [ ] Automation cloud resource provision (storage accounts, auth, etc.)
     - [x] Automatic storage account provisioning and config with Terraform
     - [ ] Automatic auth provisioning and config
+- [ ] Payment integration
+- [ ] Location-awareness
+- [ ] Legal pages
+    - [ ] Terms of service
+    - [ ] Privacy Policy
+    - [ ] Cookie Policy
 - [ ] Tests?
 
 ### Client

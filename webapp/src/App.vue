@@ -21,12 +21,14 @@
         </details>
       </div>
     </header>
+    <Toast />
     <router-view></router-view>
   </div>
 </template>
 <script lang="ts" setup>
 import { watch } from 'vue';
 import { useUser, auth, initAuth, initUserData } from "@/app-utils";
+import Toast from '@/components/Toast.vue';
 
 const user = useUser();
 initAuth();

@@ -29,8 +29,8 @@ export function humanizeSize(bytes: number): string {
     return `${tbs} TB`;
 }
 
-export function ensure<T>(obj: T|undefined|null): T {
-    if (!obj) throw new Error('Expected object to be defined.');
+export function ensure<T>(obj?: T, message?: string): T {
+    if (!obj) throw new Error(message || 'Expected object to be defined.');
     return obj;
 }
 
