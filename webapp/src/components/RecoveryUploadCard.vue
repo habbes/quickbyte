@@ -119,10 +119,6 @@ function resetStateAndComplete() {
   emit('complete');
 }
 
-function cancelSelectedFile() {
-  resetState();
-}
-
 function copyDownloadUrl() {
   if (!downloadUrl.value) return;
 

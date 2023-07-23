@@ -31,12 +31,12 @@ export async function initUserData() {
     recoveredUploads.value = uploads;
 }
 
-export function clearData() {
+export async function clearData() {
     userAccount.value = undefined;
     providers.value = [];
     preferredProvider.value = undefined;
     clearPrefs();
-    // TODO: clear recovered files
+    await uploadRecoveryManager.clearRecoveredUploads();
 }
 
 export const store = {

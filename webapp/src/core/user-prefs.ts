@@ -15,7 +15,7 @@ export async function findBestProviderAndRegion(providers: StorageProvider[]): P
 
     localStorage.setItem(PREFERRED_PROVIDER_KEY, JSON.stringify(result));
 
-    console.log('found best provider', provider);
+    console.log('found best provider', result);
     return result;
 }
 
