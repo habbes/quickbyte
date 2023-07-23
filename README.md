@@ -17,7 +17,7 @@ Fast, resumable, reliable sharing of large files
 - [ ] DB indexes
 - [ ] Validation
 - [ ] Perf benchmarks and tuning
-- [ ] Resumable uploads
+- [x] Resumable uploads
 - [x] Deploy to staging
 - [ ] Deploy to prod? (maybe not)
 - [x] Deployment pipeline? (Vercel and Railway auto-deploy on merge to main)
