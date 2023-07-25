@@ -1,4 +1,4 @@
-import type { UserAccount, StorageProvider } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile } from './types.js'
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -27,9 +27,31 @@ export class ApiClient {
         return data;
     }
 
+    /**
+     * 
+     * @param accountId 
+     * @param args
+     * @deprecated
+     */
     async initTransfer(accountId: string, args: InitFileUploadArgs): Promise<InitFileUploadResult> {
         const token = await this.config.getToken();
         const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/files`, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(args)
+        });
+
+        const data = res.json();
+        return data;
+    }
+
+    async createTransfer(accountId: string, args: CreateTransferArgs): Promise<CreateTransferResult> {
+        const token = await this.config.getToken();
+        const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/transfers`, {
             method: 'POST',
             mode: 'cors',
             headers: {
@@ -56,9 +78,35 @@ export class ApiClient {
         return data;
     }
 
+    /**
+     * 
+     * @param accountId 
+     * @param fileId
+     * @deprecated
+     */
     async requestDownload(accountId: string, fileId: string): Promise<DownloadRequestResult> {
         const token = await this.config.getToken();
         const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/files/${fileId}/download`, {
+            mode: 'cors',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        });
+
+        const data = await res.json();
+
+        if (res.status >= 400) {
+            const error = new ApiError(data.message, res.status, data.code);
+            throw error;
+        }
+
+        return data;
+    }
+
+    async finalizeTransfer(accountId: string, transferId: string): Promise<Transfer> {
+        const token = await this.config.getToken();
+        const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/transfers/${transferId}/finalize`, {
+            method: 'POST',
             mode: 'cors',
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -118,4 +166,24 @@ export interface DownloadRequestResult {
     fileSize: number;
     originalName: string;
     fileType: string;
+}
+
+export interface CreateTransferArgs {
+    name: string;
+    provider: string;
+    region: string;
+    files: CreateTransferFileArgs[];
+}
+
+export interface CreateTransferFileArgs {
+    name: string;
+    size: number;
+}
+
+export interface CreateTransferResult extends Transfer {
+    files: CreateTransferFileResult[]
+}
+
+export interface CreateTransferFileResult extends TransferFile {
+    uploadUrl: string;
 }

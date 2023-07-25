@@ -24,3 +24,41 @@ export interface StorageProvider {
     name: string;
     availableRegions: RegionInfo[]
 }
+
+export type Principal = {
+    type: 'user',
+    _id: string;
+} | {
+    type: 'system',
+    _id: 'system'
+}
+
+export interface Account extends PersistedModel {
+    owner: Principal;
+}
+
+export interface PersistedModel {
+    _id: string;
+    _createdAt: Date;
+    _updatedAt: Date;
+    _createdBy: Principal;
+    _updatedBy: Principal;
+}
+
+
+export interface Transfer extends PersistedModel {
+    provider: string;
+    region: string;
+    accountId: string;
+    name: string;
+    status: TransferStatus;
+    expiresAt: Date;
+}
+
+export type TransferStatus = 'pending' | 'progress' | 'completed';
+
+export interface TransferFile extends PersistedModel {
+    transferId: string;
+    name: string;
+    size: number;
+}
