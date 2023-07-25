@@ -1,5 +1,5 @@
 import { Db, Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, FileService, IFileService, isMongoDuplicateKeyError, IStorageHandlerProvider, Principal, rethrowIfAppError } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, FileService, IFileService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransferService, Principal, rethrowIfAppError, TransferService } from "../index.js";
 
 const COLLECTION = 'accounts';
 
@@ -46,6 +46,10 @@ export class AccountService {
     files(authContext: AuthContext): IFileService {
         return new FileService(this.db, authContext, this.storageProvider);
     }
+
+    transfers(authContext: AuthContext): ITransferService {
+        return new TransferService(this.db, authContext, this.storageProvider);
+    }
 }
 
-export type IAccountService = Pick<AccountService, 'getOrCreateByOwner' | 'files'>;
+export type IAccountService = Pick<AccountService, 'getOrCreateByOwner' | 'files' | 'transfers'>;

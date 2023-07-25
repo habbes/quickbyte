@@ -59,7 +59,7 @@ export interface AppServices {
     storageProvider: IStorageHandlerProvider,
     accounts: IAccountService,
     auth: IAuthService,
-    downloads: IDownloadService,
+    downloads: IDownloadService
 }
 
 async function getDbConnection(config: AppConfig) {

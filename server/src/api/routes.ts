@@ -30,6 +30,18 @@ routes.get('/accounts/:accountId/files/:fileId/download',
     wrapResponse(req =>
         req.services.accounts.files(req.authContext).requestDownload(req.params.fileId)));
 
+routes.post('/accounts/:accountId/transfers',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.transfers(req.authContext).create(req.body), 201));
+
+routes.post('/accounts/:accountId/transfers/:transferId/finalize',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.transfers(req.authContext).finalize(req.params.transferId)));
+
 
 routes.get('/me', requireAuth(), wrapResponse(req =>
     req.services.auth.getUserByToken(req.headers.authorization?.split(" ")[1] || "")));
