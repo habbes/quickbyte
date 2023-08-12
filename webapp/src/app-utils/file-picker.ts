@@ -1,38 +1,76 @@
-import { ref, readonly } from 'vue';
+import { ref, readonly, computed } from 'vue';
 import { useFileDialog } from '@vueuse/core';
 
 export function useFilePicker() {
-    const files = ref<FilePickerEntry[]|null>(null);
+    const files = ref<Map<string, FilePickerEntry>>(new Map());
     const directories = ref<Map<string, DirectoryInfo>>(new Map());
     const fileDialog = useFileDialog({ multiple: true });
+    let errorHandler: ((e: Error) => unknown) | undefined = undefined;
+
+    const raiseDuplicateError = () => {
+        if (errorHandler) {
+            errorHandler(new Error("We cannot upload multiple files with the same name. Please rename and try again."));
+        }
+    };
 
     const openFilePicker = fileDialog.open;
     fileDialog.onChange(fileList => {
         if (!fileList) return;
-        const selectedFiles = Array.from(fileList).map(f => ({ path: f.name, file: f }));
-        files.value = (files.value||[]).concat(selectedFiles);
+    
+        let duplicatesFound = false;
+        for (let file of fileList) {
+            if (files.value.has(file.name)) {
+                duplicatesFound = true;
+                continue;
+            }
+
+            files.value.set(file.name, { path: file.name, file });
+        }
+
+        if (duplicatesFound) {
+            raiseDuplicateError();
+        }
     });
     const directoryPickerSupported = isDirectoryPickerSupported();
     const openDirectoryPicker = () => {
         openDirectoryPickerAndGetFiles().then(dirFiles => {
             if (!dirFiles) return;
+            if (directories.value.has(dirFiles.dirInfo.name)) {
+                raiseDuplicateError();
+                return;
+            }
+
             directories.value.set(dirFiles.dirInfo.name, dirFiles.dirInfo);
-            files.value = [...(files.value || []), ...dirFiles.files]
+            for (let file of dirFiles.files) {
+                files.value.set(file.path, file);
+            }
+        })
+        .catch(e => {
+            if (e.name === 'AbortError') {
+                return;
+            }
+
+            errorHandler && errorHandler(e);
         });
     }
 
     const reset = () => {
-        files.value = null;
+        files.value = new Map();
         directories.value = new Map();
         fileDialog.reset();
     };
 
+    const onError = (fn: (e: Error) => unknown) => {
+        errorHandler = fn;
+    }
+
     return {
-        files: readonly(files),
+        files: computed(() => Array.from(files.value.values())),
         directories: readonly(directories),
         openFilePicker,
         openDirectoryPicker,
         reset,
+        onError,
         directoryPickerSupported
     }
 }

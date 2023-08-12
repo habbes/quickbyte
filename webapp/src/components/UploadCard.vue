@@ -4,22 +4,28 @@
     <div class="card-body" v-if="uploadState === 'initial' && !transferDetails">
       <h2 class="card-title">Transfer a file</h2>
       <Button @click="openFilePicker()" class="">Select files to upload</Button>
-      <Button @click="openDirectoryPicker()" class="">Select directory to upload</Button>
+      <Button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="">Select directory to upload</Button>
     </div>
 
     <!-- file selected -->
     <div class="card-body" v-if="uploadState === 'initial' && transferDetails">
       <h2 class="card-title">{{ transferDetails.name  }}</h2>
       <div>
-        <div v-for="[dirName, dirInfo] in directories" :key="dirName">
-          {{ dirName }}
-        </div>
-        <div v-for="file in rootFiles" :key="file.path">
-          {{ file.path }}
+        <div>
+          <div v-for="[dirName, dirInfo] in directories" :key="dirName">
+            {{ dirName }}
+          </div>
+          <div v-for="file in rootFiles" :key="file.path">
+            {{ file.path }}
+          </div>
         </div>
       </div>
+      <div class="flex gap-2">
+        <button @click="openFilePicker()" class="btn btn-sm">Add files</button>
+        <button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="btn btn-sm">Add folders</button>
+      </div>
       <p class="text-gray-400">
-        {{  humanizeSize(transferDetails.totalSize) }} <br>
+        {{ files?.length }} files - {{  humanizeSize(transferDetails.totalSize) }} <br>
       </p>
       <div class="card-actions justify-center mt-4">
         <button class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
@@ -61,7 +67,7 @@
 <script lang="ts" setup>
 import { useClipboard } from '@vueuse/core';
 import { ref, computed } from "vue";
-import { apiClient, store, uploadRecoveryManager, logger, useFilePicker } from '@/app-utils';
+import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
 
@@ -70,6 +76,7 @@ type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 const {
   openDirectoryPicker,
   openFilePicker,
+  onError: onFilePickerError,
   directoryPickerSupported,
   files,
   directories,
@@ -77,15 +84,19 @@ const {
 } = useFilePicker();
 const { copy } = useClipboard();
 
+onFilePickerError((e) => {
+  showToast(e.message, 'error');
+});
+
 const transferDetails = computed(() =>
-  files.value && files.value.length && {
+  (files.value.length > 0 || null) && {
     name: directories.value.size && directories.value.keys().next().value || files.value[0].file.name,
-    totalSize: Array.from(files.value).map(f => f.file.size).reduce((a, b) => a + b)
+    totalSize: files.value.map(f => f.file.size).reduce((a, b) => a + b)
   });
 
 // files that are not in a folder
 const rootFiles = computed(() =>
-  files.value && files.value.filter(f => !f.path.includes('/')));
+  Array.from(files.value.values()).filter(f => !f.path.includes('/')));
 
 const uploadProgress = ref<number>(0);
 const uploadState = ref<UploadState>('initial');
@@ -108,8 +119,7 @@ function copyDownloadUrl() {
 }
 
 async function startUpload() {
-  if (!files.value) return;
-  if (!files.value?.length) return;
+  if (!files.value.length) return;
   if (!transferDetails.value) return;
 
   uploadProgress.value = 0;
@@ -125,7 +135,7 @@ async function startUpload() {
     name: transferDetails.value.name,
     provider: provider.provider,
     region: provider.bestRegions[0],
-    files: Array.from(files.value).map(f => ({ name: f.path, size: f.file.size }))
+    files: Array.from(files.value.values()).map(f => ({ name: f.path, size: f.file.size }))
   });
 
   // need to rethink the tracker for multi-file
