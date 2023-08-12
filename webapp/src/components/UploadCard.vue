@@ -3,15 +3,19 @@
     <!-- initial state -->
     <div class="card-body" v-if="uploadState === 'initial' && !transferDetails">
       <h2 class="card-title">Transfer a file</h2>
-      <Button @click="open()" class="">Select file to upload</Button>
+      <Button @click="openFilePicker()" class="">Select files to upload</Button>
+      <Button @click="openDirectoryPicker()" class="">Select directory to upload</Button>
     </div>
 
     <!-- file selected -->
     <div class="card-body" v-if="uploadState === 'initial' && transferDetails">
       <h2 class="card-title">{{ transferDetails.name  }}</h2>
       <div>
-        <div v-for="file in files" :key="file.name">
-          {{ file.name }}
+        <div v-for="[dirName, dirInfo] in directories" :key="dirName">
+          {{ dirName }}
+        </div>
+        <div v-for="file in rootFiles" :key="file.path">
+          {{ file.path }}
         </div>
       </div>
       <p class="text-gray-400">
@@ -55,24 +59,33 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { useFileDialog, useClipboard } from '@vueuse/core';
+import { useClipboard } from '@vueuse/core';
 import { ref, computed } from "vue";
-import { apiClient, store, uploadRecoveryManager, logger } from '@/app-utils';
+import { apiClient, store, uploadRecoveryManager, logger, useFilePicker } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
-const { open, files, reset } = useFileDialog({ multiple: true });
+const {
+  openDirectoryPicker,
+  openFilePicker,
+  directoryPickerSupported,
+  files,
+  directories,
+  reset
+} = useFilePicker();
 const { copy } = useClipboard();
-// const file = computed<File|undefined>(() =>
-//   files.value && files.value.length ?
-//     files.value[0] : undefined);
+
 const transferDetails = computed(() =>
   files.value && files.value.length && {
-    name: files.value[0].name,
-    totalSize: Array.from(files.value).map(f => f.size).reduce((a, b) => a + b)
+    name: directories.value.size && directories.value.keys().next().value || files.value[0].file.name,
+    totalSize: Array.from(files.value).map(f => f.file.size).reduce((a, b) => a + b)
   });
+
+// files that are not in a folder
+const rootFiles = computed(() =>
+  files.value && files.value.filter(f => !f.path.includes('/')));
 
 const uploadProgress = ref<number>(0);
 const uploadState = ref<UploadState>('initial');
@@ -97,6 +110,7 @@ function copyDownloadUrl() {
 async function startUpload() {
   if (!files.value) return;
   if (!files.value?.length) return;
+  if (!transferDetails.value) return;
 
   uploadProgress.value = 0;
   downloadUrl.value = undefined;
@@ -108,31 +122,20 @@ async function startUpload() {
   const provider = ensure(store.preferredProvider.value);
   const file = files.value[0];
   const transfer = await apiClient.createTransfer(user.account._id, {
-    name: file.name,
+    name: transferDetails.value.name,
     provider: provider.provider,
     region: provider.bestRegions[0],
-    files: Array.from(files.value).map(f => ({ name: f.name, size: f.size }))
+    files: Array.from(files.value).map(f => ({ name: f.path, size: f.file.size }))
   });
 
   // need to rethink the tracker for multi-file
   const uploadTracker = uploadRecoveryManager.createUploadTracker({
-    filename: file.name,
-    size: file.size,
+    filename: file.path,
+    size: file.file.size,
     hash: "hash",
     id: transfer._id,
     blockSize: blockSize
   });
-
-  // const uploader = new AzUploader({
-  //   file,
-  //   blockSize,
-  //   uploadUrl: transfer.files[0].uploadUrl,
-  //   tracker: uploadTracker,
-  //   onProgress: (progress) => {
-  //     uploadProgress.value = progress;
-  //   },
-  //   logger
-  // });
 
   const uploader = new MultiFileUploader({
     files: transfer.files,
@@ -142,7 +145,7 @@ async function startUpload() {
     uploaderFactory: (file, onFileProgress, fileIndex) => {
       if (!files.value) throw new Error("Excepted files.value to be set");
       return new AzUploader({
-        file: files.value[fileIndex],
+        file: files.value[fileIndex].file,
         blockSize,
         uploadUrl: file.uploadUrl,
         tracker: uploadTracker,
@@ -152,7 +155,6 @@ async function startUpload() {
     }
   });
 
-  // await uploader.uploadFile();
   await uploader.uploadFiles();
   
   const stopped = new Date();
