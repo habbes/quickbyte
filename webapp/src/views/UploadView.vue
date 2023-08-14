@@ -10,8 +10,8 @@
       @done="completeRecoveryFlow()"
     />
     <RecoveryUploadCard
-      v-if="state === 'recoveryUpload' && selectedRecoveredUploadId"
-      :uploadId="selectedRecoveredUploadId"
+      v-if="state === 'recoveryUpload' && selectedRecoveredTransferId"
+      :uploadId="selectedRecoveredTransferId"
       @complete="completeRecoveredUpload"
     />
   </div>
@@ -26,16 +26,16 @@ import RecoveryUploadCard from '@/components/RecoveryUploadCard.vue';
 type State = 'newUpload' | 'recoveryFlow' | 'recoveryUpload';
 
 const state = ref<State>('newUpload');
-const selectedRecoveredUploadId = ref<string>();
+const selectedRecoveredTransferId = ref<string>();
 
-const recoveredUploads = store.recoveredUploads;
+const recoveredUploads = store.recoveredTransfers;
 
 function showRecoveryFlow() {
   state.value = 'recoveryFlow';
 }
 
 function recoverUpload(id: string) {
-  selectedRecoveredUploadId.value = id;
+  selectedRecoveredTransferId.value = id;
   state.value = 'recoveryUpload';
 }
 

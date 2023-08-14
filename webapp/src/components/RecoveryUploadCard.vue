@@ -95,7 +95,7 @@ const file = computed<File | undefined>(() =>
   files.value && files.value.length ?
     files.value[0] : undefined);
 
-const recoveredUpload = computed(() => ensure(store.recoveredUploads.value.find(u => props.uploadId === u.id)));
+const recoveredUpload = computed(() => ensure(store.recoveredTransfers.value.find(u => props.uploadId === u.id)));
 
 const filesMatch = computed(() =>
   file.value && checkRecoveredAndUploadedFilesMatch(recoveredUpload.value, file.value)

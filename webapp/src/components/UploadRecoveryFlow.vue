@@ -7,15 +7,15 @@
         <span @click="deleteAll()" class="text-error underline cursor-pointer">Delete all</span>
       </div>
       <div
-        v-for="upload in recoveredUploads"
-        :key="upload.id"
+        v-for="transfer in recoveredUploads"
+        :key="transfer.id"
         class="bg-base-200 p-5 rounded-md flex flex-col gap-2"
       >
-        <div>{{ upload.filename }}</div>
-        <div class="text-gray-400 text-sm">{{ humanizeSize(upload.size) }}</div>
+        <div>{{ transfer.name }}</div>
+        <div class="text-gray-400 text-sm">{{ humanizeSize(transfer.totalSize) }}</div>
         <div class="flex flex-row justify-end gap-2">
-          <button class="btn btn-primary btn-sm" @click="recoverUpload(upload.id)">Resume</button>
-          <button @click="deleteUpload(upload.id)" class="btn btn-error btn-sm">Delete</button>
+          <button class="btn btn-primary btn-sm" @click="recoverUpload(transfer.id)">Resume</button>
+          <button @click="deleteUpload(transfer.id)" class="btn btn-error btn-sm">Delete</button>
         </div>
       </div>
     </div>
@@ -30,19 +30,19 @@ const emit = defineEmits<{
   (event: 'done'): void;
 }>();
 
-const recoveredUploads = store.recoveredUploads;
+const recoveredUploads = store.recoveredTransfers;
 
 function cancel() {
   emit('done');
 }
 
 async function deleteAll() {
-  await uploadRecoveryManager.clearRecoveredUploads();
+  await uploadRecoveryManager.clearRecoveredTransfers();
   emit('done');
 }
 
 async function deleteUpload(id: string) {
-  await uploadRecoveryManager.deleteRecoveredUpload(id);
+  await uploadRecoveryManager.deleteRecoveredTransfer(id);
   if (!recoveredUploads.value.length) {
     emit('done');
   }

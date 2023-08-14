@@ -1,5 +1,5 @@
 import { BlockBlobClient } from "@azure/storage-blob";
-import type { UploadTracker } from "./upload-recovery";
+import type { FileTracker } from "./upload-recovery";
 import type { Logger } from "./logger";
 
 export type UploadProgressCallback = (progress: number) => any;
@@ -8,7 +8,7 @@ export interface FileUploaderArgs {
     file: File,
     uploadUrl: string,
     blockSize: number,
-    tracker: UploadTracker,
+    tracker: FileTracker,
     onProgress: UploadProgressCallback,
     completedBlocks?: Map<number, Block>;
     logger?: Logger
