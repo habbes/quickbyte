@@ -66,7 +66,7 @@ export function useFilePicker() {
 
     return {
         files: computed(() => Array.from(files.value.values())),
-        directories: readonly(directories),
+        directories: computed(() => Array.from(directories.value.values())),
         openFilePicker,
         openDirectoryPicker,
         reset,

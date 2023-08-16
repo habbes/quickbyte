@@ -57,6 +57,13 @@ export class UploadRecoveryManager {
             upgrade(db, oldVersion, newVesrsion) {
                 
                 // TODO: delete db from older versions
+                if (oldVersion === 1) {
+                    try {
+                        db.deleteObjectStore('files');
+                        db.deleteObjectStore('blocks');
+                    } catch {}
+                }
+
 
                 const transfers = db.createObjectStore("transfers", {
                     keyPath: 'id'
@@ -186,7 +193,7 @@ class DefaultTransferTracker implements TransferTracker {
     createFileTracker(upload: TrackedFile): FileTracker {
         const tracker = new DefaultFileTracker(
             this.manager,
-            { ...upload, id: this.transfer.id },
+            { ...upload, transfer: this.transfer.id },
             this.logger
         );
         // We don't wait for the following promise to resolve because

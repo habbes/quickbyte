@@ -12,8 +12,8 @@
       <h2 class="card-title">{{ transferDetails.name  }}</h2>
       <div>
         <div>
-          <div v-for="[dirName, dirInfo] in directories" :key="dirName">
-            {{ dirName }}
+          <div v-for="dir in directories" :key="dir.name">
+            {{ dir.name }}
           </div>
           <div v-for="file in rootFiles" :key="file.path">
             {{ file.path }}
@@ -90,7 +90,7 @@ onFilePickerError((e) => {
 
 const transferDetails = computed(() =>
   (files.value.length > 0 || null) && {
-    name: directories.value.size && directories.value.keys().next().value || files.value[0].file.name,
+    name: directories.value.length && directories.value[0].name || files.value[0].file.name,
     totalSize: files.value.map(f => f.file.size).reduce((a, b) => a + b)
   });
 
@@ -139,12 +139,13 @@ async function startUpload() {
   });
 
   // need to rethink the tracker for multi-file
-  const uploadTracker = uploadRecoveryManager.createUploadTracker({
-    filename: file.path,
-    size: file.file.size,
-    hash: "hash",
+  const transferTracker = uploadRecoveryManager.createTransferTracker({
+    name: transfer.name,
     id: transfer._id,
-    blockSize: blockSize
+    totalSize: transferDetails.value.totalSize,
+    blockSize,
+    files: transfer.files.map(f => ({ size: f.size, path: f.name })),
+    directories: directories.value.map(d => ({ totalFiles: d.totalFiles, totalSize: d.totalSize, name: d.name }))
   });
 
   const uploader = new MultiFileUploader({
@@ -154,11 +155,21 @@ async function startUpload() {
     },
     uploaderFactory: (file, onFileProgress, fileIndex) => {
       if (!files.value) throw new Error("Excepted files.value to be set");
+      
+      const fileToTrack = ensure(
+        transfer.files.find(f => f.name === files.value[fileIndex].path),
+        `Cannot find file '${files.value[fileIndex].path}' in transfer package.`);
+
       return new AzUploader({
         file: files.value[fileIndex].file,
         blockSize,
         uploadUrl: file.uploadUrl,
-        tracker: uploadTracker,
+        tracker: transferTracker.createFileTracker({
+          blockSize,
+          id: fileToTrack._id,
+          filename: fileToTrack.name,
+          size: fileToTrack.size
+        }),
         onProgress: onFileProgress,
         logger
       })
@@ -190,6 +201,6 @@ async function startUpload() {
     }
   }
 
-  await uploadTracker.completeUpload(); // we shouldn't block for this, maybe use promise.then?
+  await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
 }
 </script>
