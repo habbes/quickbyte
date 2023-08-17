@@ -9,8 +9,8 @@ import {
     IAuthService,
     AuthService,
     IAccountService,
-    IDownloadService,
-    DownloadService
+    ITransferDownloadService,
+    TransferDownloadService
 } from "./services/index.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
@@ -45,7 +45,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         accounts
     });
 
-    const downloads = new DownloadService(db);
+    const downloads = new TransferDownloadService(db, storageProvider);
 
     return {
         storageProvider,
@@ -59,7 +59,7 @@ export interface AppServices {
     storageProvider: IStorageHandlerProvider,
     accounts: IAccountService,
     auth: IAuthService,
-    downloads: IDownloadService
+    downloads: ITransferDownloadService
 }
 
 async function getDbConnection(config: AppConfig) {

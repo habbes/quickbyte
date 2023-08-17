@@ -8,6 +8,9 @@ const DOWNLOAD_COLLECTION = "downloads";
 const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * 24 * 60 * 60 * 1000; // 5 days
 const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+/**
+ * @deprecated
+ */
 export class FileService {
     private collection: Collection<File>;
     private downloadsCollection: Collection<Download>;
@@ -120,8 +123,14 @@ export class FileService {
     }
 }
 
+/**
+ * @deprecated
+ */
 export type IFileService = Pick<FileService, 'initFileUpload' | 'getAll' | 'requestDownload' | 'getById'>;
 
+/**
+ * @deprecated
+ */
 export class DownloadService {
     private collection: Collection<Download>;
 
