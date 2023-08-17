@@ -2,6 +2,7 @@ import { Db, Collection } from "mongodb";
 import { createAppError, createResourceNotFoundError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
+import e from "express";
 
 const COLLECTION = "transfers";
 const FILES_COLLECTION = "transferFiles";
@@ -52,6 +53,31 @@ export class TransferService {
         }
     }
 
+    async getById(id: string): Promise<GetTransferResult> {
+        try {
+            const [transfer, files] = await Promise.all([
+                this.collection.findOne({ _id: id }),
+                this.filesCollection.find({ transferId: id }).toArray()
+            ]);
+
+            if (!transfer || !files.length) {
+                throw createResourceNotFoundError('The transfer does not exist.');
+            }
+
+            const provider = this.providerRegistry.getHandler(transfer.provider);
+
+            const resultFiles = await Promise.all(files.map(file => createResultFile(provider, transfer, file)));
+            
+            return {
+                ...transfer,
+                files: resultFiles
+            }
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     async finalize(id: string): Promise<Transfer> {
         console.log('here', id);
         try {
@@ -83,7 +109,7 @@ export class TransferService {
     
 }
 
-export type ITransferService = Pick<TransferService, 'create'|'finalize'>;
+export type ITransferService = Pick<TransferService, 'create'|'finalize'|'getById'>;
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
     const baseModel = createPersistedModel(transfer._createdBy);
@@ -124,5 +150,13 @@ export interface CreateTransferResult extends Transfer {
 }
 
 export interface CreateTransferFileResult extends TransferFile {
+    uploadUrl: string;
+}
+
+export interface GetTransferResult extends Transfer {
+    files: GetTransferFileResult[];
+}
+
+export interface GetTransferFileResult extends TransferFile {
     uploadUrl: string;
 }

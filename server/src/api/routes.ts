@@ -42,6 +42,12 @@ routes.post('/accounts/:accountId/transfers/:transferId/finalize',
     wrapResponse(req =>
         req.services.accounts.transfers(req.authContext).finalize(req.params.transferId)));
 
+routes.get('/accounts/:accountId/transfers/:transferId',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.transfers(req.authContext).getById(req.params.transferId)));
+
 
 routes.get('/me', requireAuth(), wrapResponse(req =>
     req.services.auth.getUserByToken(req.headers.authorization?.split(" ")[1] || "")));

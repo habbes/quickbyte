@@ -14,21 +14,15 @@ export class MultiFileUploader {
         // This is also error-prone because it requires all related
         // collections to have the same ordering of files.
         this.uploaders = this.config.files.map((file, index) => {
-
             if (this.config.completedFiles?.get(file.name)) {
-                this.config.onProgress(file.size);
+                this.updateFileProgress(index, file.size);
                 return null;
             }
             
             const fileIndex = index;
             return this.config.uploaderFactory(
                 file,
-                (fileProgress) => {
-                    this.totalProgress -= this.progresses[fileIndex];
-                    this.totalProgress += fileProgress;
-                    this.progresses[fileIndex] = fileProgress;
-                    this.config.onProgress(this.totalProgress);
-                },
+                (fileProgress) => this.updateFileProgress(fileIndex, fileProgress),
                 fileIndex
             );
         });
@@ -43,11 +37,18 @@ export class MultiFileUploader {
             await uploader.uploadFile();
         }
     }
+
+    private updateFileProgress(fileIndex: number, fileProgress: number) {
+        this.totalProgress -= this.progresses[fileIndex];
+        this.totalProgress += fileProgress;
+        this.progresses[fileIndex] = fileProgress;
+        this.config.onProgress(this.totalProgress);
+    }
 }
 
 export interface MultiFileUploaderArgs {
     files: FileItem[],
-    completedFiles?: Map<string, { path: string }>,
+    completedFiles?: Map<string, { filename: string }>,
     uploaderFactory: (file: FileItem, onFileProgress: (p: number) => unknown, fileIndex: number) => IUploader,
     onProgress: (progress: number) => unknown
 }

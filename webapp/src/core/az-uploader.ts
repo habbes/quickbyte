@@ -65,6 +65,9 @@ export class AzUploader {
             }
         }
 
+        // We don't want to wait for the tracker to complete. This way,
+        // other uploads in the queue can start without delay.
+        this.config.tracker.completeUpload();
         const stopped = new Date();
         this.config.logger?.log(`Completed block list upload ${stopped.getTime() - started.getTime()}`);
     }

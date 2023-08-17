@@ -240,6 +240,8 @@ class DefaultTransferTracker implements TransferTracker {
             }
         }
 
+        console.log('recovered transfer results', result);
+
         return result;
     }
 
@@ -260,6 +262,8 @@ class DefaultTransferTracker implements TransferTracker {
             this.manager,
             { ...upload, transfer: this.transfer.id },
             this.logger);
+        
+        tracker.initRecovered();
 
         return tracker;
     }
@@ -347,6 +351,10 @@ class DefaultFileTracker implements FileTracker, RecoveredFileTracker {
         this.initialized = true;
         this.busy = false;
         this.saveNextBatchIfQueueEnough();
+    }
+
+    initRecovered() {
+        this.initialized = true;
     }
 
     completeBlock(block: TrackedBlock) {

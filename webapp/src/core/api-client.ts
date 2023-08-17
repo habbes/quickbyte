@@ -68,7 +68,6 @@ export class ApiClient {
     async getTransfer(accountId: string, transferId: string): Promise<GetTransferResult> {
         const token = await this.config.getToken();
         const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/transfers/${transferId}`, {
-            method: 'POST',
             mode: 'cors',
             headers: {
                 Authorization: `Bearer ${token}`,

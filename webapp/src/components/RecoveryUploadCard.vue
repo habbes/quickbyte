@@ -186,6 +186,7 @@ async function startUpload() {
   
   const uploader = new MultiFileUploader({
     files: transfer.files,
+    completedFiles: recoveryResult.completedFiles,
     onProgress: (progress) => {
       uploadProgress.value = progress
     },
@@ -213,31 +214,6 @@ async function startUpload() {
     }
   });
 
-  // const uploadTracker = uploadRecoveryManager.recoverUploadTracker({
-  //   filename: recoveredUpload.value.filename,
-  //   size: file.size,
-  //   hash: "hash",
-  //   id: transfer._id,
-  //   blockSize: blockSize
-  // });
-
-  // const recoveryResult = await uploadTracker.initRecovery();
-  // logger.log(`recovered blocks ${recoveryResult.completedBlocks.size}`);
-
-  // const uploader = new AzUploader({
-  //   file,
-  //   uploadUrl: transfer.secureUploadUrl,
-  //   blockSize,
-  //   tracker: uploadTracker,
-  //   completedBlocks: recoveryResult.completedBlocks,
-  //   onProgress: (progress) => {
-  //     uploadProgress.value = progress;
-  //   },
-  //   logger
-  // });
-
-  // await uploader.uploadFile();
-
   await uploader.uploadFiles();
 
   const stopped = new Date();
@@ -264,5 +240,10 @@ async function startUpload() {
   }
 
   await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
+  // TODO: We should monitor wether deleting the transfer from here will cause some error
+  // (since this component requires that transfer in the store)
+  // should we await the promise?
+  // Also, should the delete handler be triggered automatically by completeTransfer?
+  uploadRecoveryManager.deleteRecoveredTransfer(recoveredUpload.value.id);
 }
 </script>
