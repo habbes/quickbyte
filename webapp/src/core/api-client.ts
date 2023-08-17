@@ -65,6 +65,26 @@ export class ApiClient {
         return data;
     }
 
+    async getTransfer(accountId: string, transferId: string): Promise<GetTransferResult> {
+        const token = await this.config.getToken();
+        const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/transfers/${transferId}`, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        });
+
+        const data = await res.json();
+
+        if (res.status >= 400) {
+            const error = new ApiError(data.message, res.status, data.code);
+            throw error;
+        }
+
+        return data;
+    }
+
     async getFile(accountId: string, fileId: string): Promise<InitFileUploadResult> {
         const token = await this.config.getToken();
         const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/files/${fileId}`, {
@@ -184,6 +204,10 @@ export interface CreateTransferResult extends Transfer {
     files: CreateTransferFileResult[]
 }
 
+type GetTransferResult = CreateTransferResult;
+
 export interface CreateTransferFileResult extends TransferFile {
+    _id: string,
+    name: string,
     uploadUrl: string;
 }

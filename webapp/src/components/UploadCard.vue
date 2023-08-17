@@ -130,7 +130,7 @@ async function startUpload() {
 
   const user = ensure(store.userAccount.value);
   const provider = ensure(store.preferredProvider.value);
-  const file = files.value[0];
+
   const transfer = await apiClient.createTransfer(user.account._id, {
     name: transferDetails.value.name,
     provider: provider.provider,
@@ -138,7 +138,6 @@ async function startUpload() {
     files: Array.from(files.value.values()).map(f => ({ name: f.path, size: f.file.size }))
   });
 
-  // need to rethink the tracker for multi-file
   const transferTracker = uploadRecoveryManager.createTransferTracker({
     name: transfer.name,
     id: transfer._id,

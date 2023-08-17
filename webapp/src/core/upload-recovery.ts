@@ -56,12 +56,15 @@ export class UploadRecoveryManager {
         this.db = await openDB<RecoveryDbSchema>(DB_NAME, VERSION, {
             upgrade(db, oldVersion, newVesrsion) {
                 
-                // TODO: delete db from older versions
+                // TODO: during the preview, we just delete older db version
+                // instead of implementing a migration
                 if (oldVersion === 1) {
                     try {
                         db.deleteObjectStore('files');
                         db.deleteObjectStore('blocks');
-                    } catch {}
+                    } catch {
+                        // pass
+                    }
                 }
 
 
@@ -146,9 +149,29 @@ export class UploadRecoveryManager {
 }
 
 export interface TransferTracker {
+    /**
+     * Signals the tracker that the upload is complete. This
+     * allows the tracker to clean up and saved progress.
+     */
     completeTransfer(): Promise<void>;
+    /**
+     * Creates a progress tracker for the specified file.
+     * @param upload 
+     */
     createFileTracker(upload: Omit<TrackedFile, 'transfer'>): FileTracker;
+    /**
+     * Recovers tracker for the specified file if it was in progress, or
+     * creates one if it does not exist
+     * @param upload 
+     */
     recoverFileTracker(upload: Omit<TrackedFile, 'transfer'>): RecoveredFileTracker;
+     /**
+     * Initializes the tracker and recovers completed blocks.
+     * This method must be called and wait for the returned
+     * promise to resolve before tracking new blocks.
+     * **This must not be called for a new upload**
+     */
+    initRecovery(): Promise<TransferInitRecoveryResult>;
 }
 
 export interface FileTracker {
@@ -162,20 +185,9 @@ export interface FileTracker {
      * allows the tracker to clean up and saved progress.
      */
     completeUpload(): Promise<void>;
-     /**
-     * Initializes the tracker and recovers completed blocks.
-     * This method must be called and wait for the returned
-     * promise to resolve before tracking new blocks.
-     * **This must not be called for a new upload**
-     */
-     initRecovery(): Promise<InitRecoveryResult>
 }
 
 export interface RecoveredFileTracker extends FileTracker {
-}
-
-interface InitRecoveryResult {
-    completedBlocks: Map<number, { id: string, index: number }>
 }
 
 class DefaultTransferTracker implements TransferTracker {
@@ -188,6 +200,47 @@ class DefaultTransferTracker implements TransferTracker {
     async initNew(): Promise<void> {
         const db = await this.manager.getDb();
         await db.put('transfers', this.transfer);
+    }
+
+    async initRecovery(): Promise<TransferInitRecoveryResult> {
+        const db = await this.manager.getDb();
+        // TODO: should we index blocks by file id?
+        // Ideally there should be no more than recovered upload
+        const allFiles = await db.getAll('files');
+        const allBlocks = await db.getAll(BLOCKS_STORE);
+
+        const result: TransferInitRecoveryResult = {
+            completedFiles: new Map(),
+            inProgressFiles: new Map()
+        };
+
+        for (const file of allFiles) {
+            if (file.transfer !== this.transfer.id) {
+                continue;
+            }
+
+            if (file.completed) {
+                result.completedFiles.set(file.filename, file);
+            }
+            else {
+                const fileEntry = {
+                    file,
+                    completedBlocks: new Map()
+                };
+
+                result.inProgressFiles.set(file.filename, fileEntry);
+
+                for (const block of allBlocks) {
+                    if (block.file !== file.id) {
+                        continue;
+                    }
+
+                    fileEntry.completedBlocks.set(block.index, block);
+                }
+            }
+        }
+
+        return result;
     }
 
     createFileTracker(upload: TrackedFile): FileTracker {
@@ -270,6 +323,7 @@ class DefaultFileTracker implements FileTracker, RecoveredFileTracker {
     private initialized: boolean = false;
     private batchSize: number = 5;
     private completedBlocks: Record<number, TrackedBlock> = {};
+    private completed: boolean = false;
     // if this period has passed since the last batch, then we
     // can save available blocks even if batch is not full.
     // This ensures that we have enough blocks recovered even
@@ -295,34 +349,6 @@ class DefaultFileTracker implements FileTracker, RecoveredFileTracker {
         this.saveNextBatchIfQueueEnough();
     }
 
-    /**
-     * This should be called when tracking a recovered
-     * upload. You should wait for the promise to resolve
-     * before tracking any blocks.
-     */
-    async initRecovery(): Promise<InitRecoveryResult> {
-        
-        this.busy = true;
-        const db = await this.manager.getDb();
-        // TODO: should we index blocks by file id?
-        // Ideally there should be no more than recovered upload
-        const allBlocks = await db.getAll(BLOCKS_STORE);
-        const fileBlocks = allBlocks.filter(b => b.file === this.upload.id);
-
-        const completedBlocks = fileBlocks.reduce<Map<number, TrackedBlock>>((acc, block) => {
-            acc.set(block.index, block);
-            return acc;
-            
-        }, new Map<number, TrackedBlock>())
-
-        this.initialized = true;
-        this.busy = false;
-        
-        return {
-            completedBlocks
-        };
-    }
-
     completeBlock(block: TrackedBlock) {
         this.queue.push(block);
         this.saveNextBatchIfQueueEnough();
@@ -335,8 +361,11 @@ class DefaultFileTracker implements FileTracker, RecoveredFileTracker {
             // wait till we're no longer busy
         }
         this.busy = true;
-        await this.deleteFile();
+        const db = await this.manager.getDb();
+        await db.put('files', { ...this.upload, completed: true });
         await this.deleteBlocks();
+        this.completed = true;
+        this.busy = false;
     }
 
     hasCompletedBlock(index: number): boolean {
@@ -356,6 +385,7 @@ class DefaultFileTracker implements FileTracker, RecoveredFileTracker {
         this.busy = true;
         await this.deleteFile();
         await this.deleteBlocks();
+        this.busy = false;
     }
 
     private async deleteFile() {
@@ -413,7 +443,7 @@ class DefaultFileTracker implements FileTracker, RecoveredFileTracker {
         const count = Math.min(this.batchSize, this.queue.length);
         const batch = this.queue.splice(0, count);
         // TODO: can these be added concurrently?
-        for (let block of batch) {
+        for (const block of batch) {
             await store.put({ ...block, file: this.upload.id });
         }
     
@@ -429,12 +459,22 @@ class DefaultFileTracker implements FileTracker, RecoveredFileTracker {
     }
 }
 
+export interface TransferInitRecoveryResult {
+    completedFiles: Map<string, TrackedFile>;
+    inProgressFiles: Map<string, {
+        file: TrackedFile,
+        completedBlocks: Map<number, TrackedBlock>
+    }>;
+}
+
 export interface TrackedFile {
     id: string;
     transfer: string;
     filename: string;
     size: number;
     blockSize: number;
+    // TODO: make this required in future version
+    completed?: boolean;
 }
 
 export interface TrackedTransfer {

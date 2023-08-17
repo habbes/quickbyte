@@ -1,4 +1,4 @@
-import { ref, readonly, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useFileDialog } from '@vueuse/core';
 
 export function useFilePicker() {
@@ -18,7 +18,7 @@ export function useFilePicker() {
         if (!fileList) return;
     
         let duplicatesFound = false;
-        for (let file of fileList) {
+        for (const file of fileList) {
             if (files.value.has(file.name)) {
                 duplicatesFound = true;
                 continue;
@@ -41,7 +41,7 @@ export function useFilePicker() {
             }
 
             directories.value.set(dirFiles.dirInfo.name, dirFiles.dirInfo);
-            for (let file of dirFiles.files) {
+            for (const file of dirFiles.files) {
                 files.value.set(file.path, file);
             }
         })
@@ -64,6 +64,8 @@ export function useFilePicker() {
         errorHandler = fn;
     }
 
+    const getFileByPath = (path: string) => files.value.get(path);
+
     return {
         files: computed(() => Array.from(files.value.values())),
         directories: computed(() => Array.from(directories.value.values())),
@@ -71,6 +73,7 @@ export function useFilePicker() {
         openDirectoryPicker,
         reset,
         onError,
+        getFileByPath,
         directoryPickerSupported
     }
 }
@@ -130,7 +133,7 @@ interface DirectoryInfo {
     totalSize: number;
 }
 
-interface FilePickerEntry {
+export interface FilePickerEntry {
     path: string;
     file: File;
 }

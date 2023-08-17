@@ -1,13 +1,25 @@
 export class MultiFileUploader {
     private totalProgress: number = 0;
     private progresses: number[];
-    private uploaders: IUploader[];
+    private uploaders: (IUploader|null)[];
 
     constructor(private config: MultiFileUploaderArgs) {
         this.progresses = new Array(this.config.files.length);
         this.progresses.fill(0);
-
+        
+        // TODO: it's bad design to rely on the index to identify files
+        // We should use the name and id. That'll save us the need
+        // to create an array with an entry for each file, we should
+        // be able to create a collection that excludes completed files.
+        // This is also error-prone because it requires all related
+        // collections to have the same ordering of files.
         this.uploaders = this.config.files.map((file, index) => {
+
+            if (this.config.completedFiles?.get(file.name)) {
+                this.config.onProgress(file.size);
+                return null;
+            }
+            
             const fileIndex = index;
             return this.config.uploaderFactory(
                 file,
@@ -23,20 +35,26 @@ export class MultiFileUploader {
     }
 
     async uploadFiles(): Promise<void> {
-        for (let uploader of this.uploaders) {
+        for (const uploader of this.uploaders) {
+            if (!uploader) {
+                continue;
+            }
+
             await uploader.uploadFile();
         }
     }
 }
 
 export interface MultiFileUploaderArgs {
-    files: FileItem[]
+    files: FileItem[],
+    completedFiles?: Map<string, { path: string }>,
     uploaderFactory: (file: FileItem, onFileProgress: (p: number) => unknown, fileIndex: number) => IUploader,
     onProgress: (progress: number) => unknown
 }
 
 interface FileItem {
     size: number;
+    name: string;
     uploadUrl: string;
 }
 

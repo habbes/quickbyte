@@ -1,61 +1,78 @@
 <template>
   <div class="card w-96 bg-base-100 shadow-xl">
     <!-- initial state -->
-    <div class="card-body" v-if="uploadState === 'initial' && !file">
-      <!-- <h2 class="card-title">Select {{ recoveredUpload.filename }} to resume</h2> -->
-      <div>Select the file <b>{{ recoveredUpload.filename }}</b> to resume the transfer.</div>
+    <div class="card-body" v-if="uploadState === 'initial' && !files.length">
+      <div>Select the following files and folders to resume transfer:</div>
+      <div v-for="dir in recoveredUpload.directories" :key="dir.name">
+        {{ dir.name }} ({{ dir.totalFiles }} files)
+      </div>
+      <div v-for="file in rootFiles" :key="file.path">
+        {{ file.path }} ({{ humanizeSize(file.file.size) }})
+      </div>
       <div class="card-actions">
-        <button @click="open()" class="btn flex-1">Select file to upload</button>
+        <Button @click="openFilePicker()" class="">Select files to upload</Button>
+        <Button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="">Select directory to upload</Button>
         <button @click="resetStateAndComplete()" class="btn">Cancel</button>
       </div>
     </div>
 
-    <div class="card-body" v-if="uploadState === 'initial' && file && !filesMatch">
+    <div class="card-body" v-if="uploadState === 'initial' && files.length && !filesMatch">
       <div class="alert alert-error">
-        The selected file does match the recovered file.
-        Please select the correct file to resume transfer.
+        The selected files do not match the recovered files.
+        Please select the correct files to resume transfer.
       </div>
-      <div class="text-sm text-gray-400">
+      <!-- <div class="text-sm text-gray-400">
         Recovered file: <b>{{ recoveredUpload.filename }}</b> {{ humanizeSize(recoveredUpload.size) }}
       </div>
       <div class="text-sm text-gray-400">
         Selected file: <b>{{ file.name }}</b> {{ humanizeSize(file.size) }}
-      </div>
+      </div> -->
       <div class="card-actions">
-        <button @click="open()" class="btn flex-1">Select file to upload</button>
+        <Button @click="openFilePicker()" class="">Select files to upload</Button>
+        <Button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="">Select directory to upload</Button>
         <button @click="resetStateAndComplete()" class="btn">Cancel</button>
       </div>
     </div>
 
     <!-- file selected -->
-    <div class="card-body" v-if="uploadState === 'initial' && file && filesMatch">
-      <h2 class="card-title">{{ file.name }}</h2>
+    <div class="card-body" v-if="uploadState === 'initial' && files.length && filesMatch">
+      <h2 class="card-title">{{ recoveredUpload.name  }}</h2>
+      <div>
+        <div>
+          <div v-for="dir in directories" :key="dir.name">
+            {{ dir.name }}
+          </div>
+          <div v-for="file in rootFiles" :key="file.path">
+            {{ file.path }}
+          </div>
+        </div>
+      </div>
       <p class="text-gray-400">
-        {{ humanizeSize(file.size) }} <br>
-        {{ file.type }}
+        {{ files?.length }} files - {{  humanizeSize(recoveredUpload.totalSize) }} <br>
       </p>
-      <div class="card-actions mt-4">
+      <div class="card-actions justify-center mt-4">
         <button class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
         <button class="btn" @click="resetStateAndComplete()">Cancel</button>
       </div>
     </div>
 
     <!-- upload in progress -->
-    <div class="card-body" v-if="uploadState === 'progress' && file && filesMatch">
-      <h2 class="card-title">{{ file.name }}</h2>
+    <div class="card-body" v-if="uploadState === 'progress' && files.length && filesMatch">
+      <h2 class="card-title">{{ recoveredUpload.name }}</h2>
       <div class="flex justify-center">
-        <div class="radial-progress bg-primary text-primary-content border-4 border-primary" style="--value:70;"
-          :style="{ '--value': Math.floor(100 * uploadProgress / file.size) }">
-          {{ Math.floor(100 * uploadProgress / file.size) }}%
-        </div>
+        <div
+          class="radial-progress bg-primary text-primary-content border-4 border-primary" style="--value:70;"
+          :style="{ '--value': Math.floor(100 * uploadProgress / recoveredUpload.totalSize )}">
+            {{ Math.floor(100 * uploadProgress / recoveredUpload.totalSize )}}%
+          </div>
       </div>
       <p class="text-gray-400 text-center">
-        {{ humanizeSize(uploadProgress) }} / {{ humanizeSize(file.size) }} <br>
+        {{ humanizeSize(uploadProgress) }} / {{  humanizeSize(recoveredUpload.totalSize) }} <br>
       </p>
     </div>
 
     <!-- upload complete -->
-    <div class="card-body" v-if="uploadState === 'complete' && file">
+    <div class="card-body" v-if="uploadState === 'complete' && files.length">
       <h2 class="card-title">Upload complete!</h2>
       <p>Copy and share the <a class="link" :href="downloadUrl" target="_blank">download link</a> with the recipients:
       </p>
@@ -72,10 +89,10 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { useFileDialog, useClipboard } from '@vueuse/core';
+import { useClipboard } from '@vueuse/core';
 import { ref, computed } from "vue";
-import { apiClient, store, uploadRecoveryManager, logger } from '@/app-utils';
-import { humanizeSize, ensure, ApiError, AzUploader } from "@/core";
+import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast, type FilePickerEntry } from '@/app-utils';
+import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader, type TrackedTransfer } from "@/core";
 import Button from "@/components/Button.vue";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
@@ -88,17 +105,28 @@ const emit = defineEmits<{
   (event: 'complete'): void;
 }>();
 
-const { open, files, reset } = useFileDialog({ multiple: false });
+const {
+  openDirectoryPicker,
+  openFilePicker,
+  onError: onFilePickerError,
+  directoryPickerSupported,
+  files,
+  directories,
+  reset
+} = useFilePicker();
+
+onFilePickerError((e) => {
+  showToast(e.message, 'error');
+});
+
 const { copy } = useClipboard();
 
-const file = computed<File | undefined>(() =>
-  files.value && files.value.length ?
-    files.value[0] : undefined);
+const rootFiles = computed(() => files.value.filter(f => !f.path.includes('/')));
 
 const recoveredUpload = computed(() => ensure(store.recoveredTransfers.value.find(u => props.uploadId === u.id)));
 
 const filesMatch = computed(() =>
-  file.value && checkRecoveredAndUploadedFilesMatch(recoveredUpload.value, file.value)
+  files.value && checkRecoveredAndUploadedFilesMatch(recoveredUpload.value, files.value)
 );
 
 const uploadProgress = ref<number>(0);
@@ -126,9 +154,14 @@ function copyDownloadUrl() {
   copiedDownloadUrl.value = true;
 }
 
-function checkRecoveredAndUploadedFilesMatch(recovered: { filename: string, size: number }, newFile: File): boolean {
+function checkRecoveredAndUploadedFilesMatch(recovered: TrackedTransfer, files: FilePickerEntry[]): boolean {
   // TODO: check other factors like "lastModified" and "hash"
-  return recovered.filename === newFile.name && recovered.size === newFile.size;
+  // check that every file in TrackedTransfer exists among the upload files
+  // we should probably emit a warning when there are new files
+  return recovered.files
+    .every(file =>
+      files.some(otherFile =>
+        otherFile.path === file.path && otherFile.file.size === file.size));
 }
 
 async function startUpload() {
@@ -142,34 +175,70 @@ async function startUpload() {
 
   const user = ensure(store.userAccount.value);
   ensure(store.preferredProvider.value);
-  const file = files.value[0];
 
-  const transfer = await apiClient.getFile(user.account._id, recoveredUpload.value.id);
+  const transfer = await apiClient.getTransfer(user.account._id, recoveredUpload.value.id);
 
-  const uploadTracker = uploadRecoveryManager.recoverUploadTracker({
-    filename: recoveredUpload.value.filename,
-    size: file.size,
-    hash: "hash",
-    id: transfer._id,
-    blockSize: blockSize
-  });
+  const transferTracker = uploadRecoveryManager.recoverTransferTracker(recoveredUpload.value);
 
-  const recoveryResult = await uploadTracker.initRecovery();
-  logger.log(`recovered blocks ${recoveryResult.completedBlocks.size}`);
-
-  const uploader = new AzUploader({
-    file,
-    uploadUrl: transfer.secureUploadUrl,
-    blockSize,
-    tracker: uploadTracker,
-    completedBlocks: recoveryResult.completedBlocks,
+  // todo: keep track of completed files either on the API or transfer tracker
+  // init transferRecovery to fetch completed files
+  const recoveryResult = await transferTracker.initRecovery();
+  
+  const uploader = new MultiFileUploader({
+    files: transfer.files,
     onProgress: (progress) => {
-      uploadProgress.value = progress;
+      uploadProgress.value = progress
     },
-    logger
+    uploaderFactory: (file, onFileProgress, fileIndex) => {
+      if (!files.value) throw new Error("Excepted files.value to be set");
+      
+      const fileToTrack = ensure(
+        transfer.files.find(f => f.name === files.value[fileIndex].path),
+        `Cannot find file '${files.value[fileIndex].path}' in transfer package.`);
+
+      return new AzUploader({
+        file: files.value[fileIndex].file,
+        blockSize,
+        uploadUrl: file.uploadUrl,
+        completedBlocks: recoveryResult.inProgressFiles.get(fileToTrack.name)?.completedBlocks,
+        tracker: transferTracker.recoverFileTracker({
+          blockSize,
+          id: fileToTrack._id,
+          filename: fileToTrack.name,
+          size: fileToTrack.size
+        }),
+        onProgress: onFileProgress,
+        logger
+      })
+    }
   });
 
-  await uploader.uploadFile();
+  // const uploadTracker = uploadRecoveryManager.recoverUploadTracker({
+  //   filename: recoveredUpload.value.filename,
+  //   size: file.size,
+  //   hash: "hash",
+  //   id: transfer._id,
+  //   blockSize: blockSize
+  // });
+
+  // const recoveryResult = await uploadTracker.initRecovery();
+  // logger.log(`recovered blocks ${recoveryResult.completedBlocks.size}`);
+
+  // const uploader = new AzUploader({
+  //   file,
+  //   uploadUrl: transfer.secureUploadUrl,
+  //   blockSize,
+  //   tracker: uploadTracker,
+  //   completedBlocks: recoveryResult.completedBlocks,
+  //   onProgress: (progress) => {
+  //     uploadProgress.value = progress;
+  //   },
+  //   logger
+  // });
+
+  // await uploader.uploadFile();
+
+  await uploader.uploadFiles();
 
   const stopped = new Date();
   logger.log(`full upload operation took ${stopped.getTime() - started.getTime()}`);
@@ -177,7 +246,7 @@ async function startUpload() {
   let retry = true;
   while (retry) {
     try {
-      const download = await apiClient.requestDownload(user.account._id, transfer._id);
+      const download = await apiClient.finalizeTransfer(user.account._id, transfer._id);
       retry = false;
       downloadUrl.value = `${location.origin}/d/${download._id}`;
       uploadState.value = 'complete';
@@ -194,6 +263,6 @@ async function startUpload() {
     }
   }
 
-  await uploadTracker.completeUpload(); // we shouldn't block for this, maybe use promise.then?
+  await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
 }
 </script>
