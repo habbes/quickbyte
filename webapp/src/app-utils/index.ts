@@ -5,3 +5,5 @@ export * from './recovery-manager.js';
 export * from './toast.js';
 export * from './logger.js';
 export * from './file-picker.js';
+export * from './downloader-provider.js';
+

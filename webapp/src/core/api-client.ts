@@ -180,11 +180,13 @@ export interface InitFileUploadResult {
 
 export interface DownloadRequestResult {
     _id: string;
-    fileId: string;
-    downloadUrl: string;
-    fileSize: number;
-    originalName: string;
-    fileType: string;
+    name: string;
+    files: {
+        _id: string;
+        name: string;
+        size: number;
+        downloadUrl: string;
+    }[]
 }
 
 export interface CreateTransferArgs {

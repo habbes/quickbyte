@@ -8,14 +8,24 @@
 
       <!-- file found -->
       <div class="card-body" v-else-if="download">
-        <h2 class="card-title">{{ download.originalName  }}</h2>
+        <h2 class="card-title">{{ download.name  }}</h2>
         <p class="text-gray-400">
-          {{  humanizeSize(download.fileSize) }} <br>
-          {{  download.fileType }}
+          {{  humanizeSize(totalSize || 0) }} <br>
         </p>
-        <div class="card-actions justify-center mt-4">
-          <a class="btn btn-primary w-full" :href="download.downloadUrl">Download</a>
+        <p>
+          <button class="btn btn-primary w-full" @click="downloadZip()">Download zip</button>
+        </p>
+        <div v-for="file in download.files" :key="file._id">
+          <div>{{ file.name }}</div>
+          <p class="text-gray-400 text-sm">
+            {{  humanizeSize(file.size) }}
+            {{  file.name.split('.').at(-1) }}
+          </p>
+          <div class="card-actions justify-center mt-4">
+            <a class="btn btn-primary w-full" :href="file.downloadUrl" download :filename="file.name.split('/').at(-1)">Download</a>
+          </div>
         </div>
+        
       </div>
 
       <!-- error -->
@@ -38,15 +48,16 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onMounted, ref } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
-import { apiClient } from "@/app-utils";
-import { humanizeSize, ApiError, type DownloadRequestResult } from "@/core";
+import { apiClient, downloaderProvider } from "@/app-utils";
+import { humanizeSize, ApiError, type DownloadRequestResult, ensure } from "@/core";
 
 const route = useRoute();
 route.params.downloadId;
 const error = ref<Error|undefined>();
 const download = ref<DownloadRequestResult|undefined>();
+const totalSize = computed(() => download.value && download.value.files.reduce((a, b) => a + b.size, 0));
 const loading = ref(true);
 
 onMounted(async () => {
@@ -64,6 +75,11 @@ onMounted(async () => {
   finally {
     loading.value = false;
   }
-  
-})
+});
+
+async function downloadZip() {
+  const transfer = ensure(download.value);
+  const downloader = downloaderProvider.getDownloader();
+  await downloader.download(transfer);
+};
 </script>
