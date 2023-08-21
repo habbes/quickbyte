@@ -2,7 +2,7 @@
   <div class="card w-96 bg-base-100 shadow-xl">
     <!-- initial state -->
     <div class="card-body" v-if="uploadState === 'initial' && !transferDetails">
-      <h2 class="card-title">Transfer a file</h2>
+      <h2 class="card-title">Transfer files</h2>
       <Button @click="openFilePicker()" class="">Select files to upload</Button>
       <Button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="">Select directory to upload</Button>
     </div>
@@ -11,12 +11,22 @@
     <div class="card-body" v-if="uploadState === 'initial' && transferDetails">
       <h2 class="card-title">{{ transferDetails.name  }}</h2>
       <div>
-        <div>
-          <div v-for="dir in directories" :key="dir.name">
-            {{ dir.name }}
+        <div ref="fileListContainer" class="h-60 overflow-auto">
+          <div v-for="dir in directories" :key="dir.name" class="border-b border-b-gray-100 py-1">
+            <div class="text-sm">
+              {{ dir.name }}
+            </div>
+            <div class="text-sm text-gray-400">
+              {{ dir.totalFiles }} files - {{ humanizeSize(dir.totalSize) }}
+            </div>
           </div>
-          <div v-for="file in rootFiles" :key="file.path">
-            {{ file.path }}
+          <div v-for="file in rootFiles" :key="file.path" class="border-b border-b-gray-100 py-1">
+            <div class="text-sm">
+              {{ file.path }}
+            </div>
+            <div class="text-sm text-gray-400">
+              {{ file.path.split('.').at(-1) || file.file.type }} - {{ humanizeSize(file.file.size) }}
+            </div>
           </div>
         </div>
       </div>
@@ -66,7 +76,7 @@
 </template>
 <script lang="ts" setup>
 import { useClipboard } from '@vueuse/core';
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
@@ -102,6 +112,14 @@ const uploadProgress = ref<number>(0);
 const uploadState = ref<UploadState>('initial');
 const downloadUrl = ref<string|undefined>();
 const copiedDownloadUrl = ref<boolean>(false);
+const fileListContainer = ref<HTMLDivElement>();
+
+watch([files], () => {
+  if (!fileListContainer.value) return;
+  // TODO: this doesn't seem to work properly
+  console.log('auto scrolling file list to', fileListContainer.value.scrollHeight);
+  fileListContainer.value.scroll(0, fileListContainer.value.scrollHeight);
+});
 
 function resetState() {
   reset();
