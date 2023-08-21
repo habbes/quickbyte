@@ -2,7 +2,7 @@ import { BlockBlobClient } from "@azure/storage-blob";
 import Zip from "jszip";
 import type { DownloadRequestResult } from "../api-client";
 import { ensure } from "../util";
-import { type ZipDownloader } from "./types";
+import { type ZipDownloader } from "./types.js";
 
 
 export class InMemoryZipDownloader implements ZipDownloader {

@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/vue';
-import type { info } from 'console';
 
 export type LogLevel = "fatal" | "error" | "warning" | "log" | "info" | "debug";
 
