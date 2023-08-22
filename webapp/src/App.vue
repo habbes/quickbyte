@@ -1,26 +1,28 @@
 <template>
-  <div class="flex flex-col min-h-screen">
-    <header class="flex flex-row justify-between items-center h-20 px-4 py-7">
-      <div id="logo" class="text-white text-lg relative" style="font-family: 'Orbit'">
-        Quickbyte <span class="badge badge-primary font-sans text-xs relative top-[-10px] left-[-10px]">Preview</span>
-      </div>
-      <div v-if="user">
-        <!-- Hey, {{ user.name }} -->
-        <details class="dropdown dropdown-end">
-          <summary class="m-1 btn btn-sm btn-ghost text-white inline-flex items-center">
-            {{ user.name }}
-            <div class="avatar placeholder">
-              <div class="bg-primary-focus text-neutral-content rounded-full w-8">
-                <span class="text-xs">{{ user.name[0] }}</span>
+  <div class="flex flex-col flex-1 min-h-screen relative">
+    <div class="absolute top-0 left-0 right-0">
+      <header class="flex flex-row justify-between items-center h-20 px-4 py-7">
+        <div id="logo" class="text-white text-lg relative" style="font-family: 'Orbit'">
+          Quickbyte <span class="badge badge-primary font-sans text-xs relative top-[-10px] left-[-10px]">Preview</span>
+        </div>
+        <div v-if="user">
+          <!-- Hey, {{ user.name }} -->
+          <details class="dropdown dropdown-end">
+            <summary class="m-1 btn btn-sm btn-ghost text-white inline-flex items-center">
+              {{ user.name }}
+              <div class="avatar placeholder">
+                <div class="bg-primary-focus text-neutral-content rounded-full w-8">
+                  <span class="text-xs">{{ user.name[0] }}</span>
+                </div>
               </div>
-            </div>
-          </summary>
-          <ul class="p-2 shadow menu dropdown-content z-[1] bg-base-100 rounded-box w-52">
-            <li><a @click="auth.signOut()">Sign out</a></li>
-          </ul>
-        </details>
-      </div>
-    </header>
+            </summary>
+            <ul class="p-2 shadow menu dropdown-content z-[1] bg-base-100 rounded-box w-52">
+              <li><a @click="auth.signOut()">Sign out</a></li>
+            </ul>
+          </details>
+        </div>
+      </header>
+    </div>
     <Toast />
     <router-view></router-view>
   </div>

@@ -118,7 +118,8 @@ watch([files], () => {
   if (!fileListContainer.value) return;
   // TODO: this doesn't seem to work properly
   console.log('auto scrolling file list to', fileListContainer.value.scrollHeight);
-  fileListContainer.value.scroll(0, fileListContainer.value.scrollHeight);
+  fileListContainer.value.scrollTo(0, fileListContainer.value.scrollHeight);
+  console.log('cnt', fileListContainer);
 });
 
 function resetState() {
