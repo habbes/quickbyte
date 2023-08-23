@@ -113,6 +113,24 @@ async function writeEndOfCentralDirectory(writer: FileSystemWritableFileStream, 
     await writer.write({ position: entry.eocdOffset, data: header, type: 'write' });
 }
 
+async function writeFileCrc32(writer: FileSystemWritableFileStream, crc32: number, entry: ZipFileEntry) {
+    const crcBytes = new Uint8Array(4);
+    const dataView = new DataView(crcBytes.buffer);
+    dataView.setUint32(0, crc32, true);
+
+    // TODO: perhaps we should write the local and central headers after the file download is complete
+    // so that we can write te crc at the same time as the other headers. This would
+    // avoid the overhead of writing a small payload in isolation
+
+    // in the local header we write the crc at offset 14
+    const localOffset = entry.localHeaderOffset + 14;
+    // TODO: should these writes be done concurrently?
+    await writer.write({ position: localOffset, data: crcBytes, type: 'write' });
+    // in the central header, the crc is at offset 16
+    const centralOffset = entry.centralHeaderOffset + 16;
+    await writer.write({ position: centralOffset, data: crcBytes, type: 'write'});
+}
+
 function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryInfo {
     const zipEntries = new Map<string, ZipFileEntry>();
     const encoder = new TextEncoder();
