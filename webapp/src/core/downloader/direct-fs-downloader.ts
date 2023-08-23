@@ -2,6 +2,7 @@ import { type DownloadRequestResult } from "../api-client.js";
 import { type ZipDownloader } from "./types.js";
 import { ensure } from '../util.js';
 import { BlockBlobClient } from "@azure/storage-blob";
+import type { Logger } from "..";
 
 // See ZIP file format: https://en.wikipedia.org/wiki/ZIP_(file_format)
 
@@ -11,37 +12,96 @@ const CENTRAL_HEADER_BASE_SIZE = 46;
 const END_OF_CENTRAL_DIR_BASE_SIZE = 22;
 const BLOCK_SIZE = 16 * 1024 * 1024;
 
+const crc32Table = function() {
+    const tbl = [];
+    var c;
+    for(var n = 0; n < 256; n++){
+        c = n;
+        for(var k =0; k < 8; k++){
+            c = ((c&1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1));
+        }
+
+        tbl[n] = c;
+    }
+
+    return tbl;
+}();
+
+function crc32(data: ArrayLike<number>) {
+    var crc = -1;
+    for(let i = 0; i < data.length; i++) {
+        crc = (crc >>> 8) ^ crc32Table[(crc ^ data[i]) & 0xFF];
+    }
+    return (crc ^ (-1)) >>> 0;
+}
+
 
 export class DirectFileSystemZipDownloader implements ZipDownloader {
-    async download(transfer: DownloadRequestResult): Promise<void> {
-        console.log('using direct-fs');
+    constructor(private logger?: Logger) {
 
-        // calculate local header length and offsets for each file
-        const zipEntries = generateZipEntryData(transfer.files);
+    }
+
+    async download(transfer: DownloadRequestResult): Promise<void> {
+        this.logger?.debug('using direct-fs downloader');
 
         // @ts-ignore
         const handle: FileSystemFileHandle = await window.showSaveFilePicker({ suggestedName: `${transfer.name}.zip`});
 
+        const started = Date.now();
+        // calculate local header length and offsets for each file
+        const zipEntries = generateZipEntryData(transfer.files);
+        this.logger?.debug(`Generated zip entries after ${Date.now()-started}`);
+
         const writable = await handle.createWritable();
-        await writable.write({ position: 10, data: "test", type: 'write' });
-        
-        for (let file of transfer.files) {
-            const downloader = new FileDownloader(writable, file, ensure(zipEntries.entries.get(file._id)), BLOCK_SIZE);
-        }
+
+        const downloadTasks = transfer.files.map(file => {
+            const downloader = new FileDownloader(writable, file, ensure(zipEntries.entries.get(file._id)), BLOCK_SIZE, this.logger);
+            return downloader.download()
+        });
+
+        await Promise.all(downloadTasks);
+        await writeEndOfCentralDirectory(writable, zipEntries.eocd);
 
         await writable.close();
+        this.logger?.debug(`Complete download after ${Date.now() - started}`);
     }
 }
 
 class FileDownloader {
     private client: BlockBlobClient;
-    constructor(private writer: FileSystemWritableFileStream, private file: DownloadRequestResult["files"][0], private zipEntry: ZipFileEntry, blockSize: number) {
+    constructor(private writer: FileSystemWritableFileStream, private file: DownloadRequestResult["files"][0], private zipEntry: ZipFileEntry, blockSize: number, private logger?: Logger) {
         this.client = new BlockBlobClient(file.downloadUrl);
     }
 
     async download(): Promise<void> {
+        this.logger?.debug(`Downloading file ${this.zipEntry.name}`);
+        const started = Date.now();
+        const result = await this.client.download();
+        const blob = ensure(await result.blobBody);
+        const blobBuffer = await blob.arrayBuffer();
+        const blobData = new Uint8Array(blobBuffer);
 
+        this.logger?.debug(`Completed download of file ${this.zipEntry.name} in ${Date.now() - started}. Preparing zip...`);
+        
+        const checksum = crc32(blobData);
+        this.logger?.debug(`Calculated checksum of file ${this.zipEntry.name} after ${Date.now() - started}`);
+        this.zipEntry.checksum = checksum;
+        this.zipEntry.hasChecksum = true;
+
+        const tasks = [
+            writeLocalHeader(this.writer, this.zipEntry),
+            writeCompleteFileData(this.writer, this.zipEntry, blobData),
+            writeCentralDirectoryHeader(this.writer, this.zipEntry)
+        ];
+
+        await Promise.all(tasks);
+        this.logger?.debug(`Completed zip of file ${this.zipEntry.name} in ${Date.now() - started}`);
     }
+}
+
+async function writeCompleteFileData(writer: FileSystemWritableFileStream, entry: ZipFileEntry, data: Uint8Array) {
+    const offset = entry.localHeaderOffset + entry.localHeaderTotalSize;
+    await writer.write({ position: offset, data, type: 'write' });
 }
 
 async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: ZipFileEntry) {
@@ -50,7 +110,7 @@ async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: Zip
     
     // off: 0, 4 bytes: Local file header signature = 0x04034b50 (PK♥♦ or "PK\3\4")
     const offset = entry.localHeaderOffset;
-    dataView.setUint32(offset + 0, 0x04034b50, true);
+    dataView.setUint32(0, 0x04034b50, true);
     // skip offset 4 to 13 (version, general purpose bit flag, compression method, last mod time, last mod date)
     
     // CRC-32 of uncompressed data
@@ -58,6 +118,9 @@ async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: Zip
     // and update when file is complete
     // const chksum = crc32(fileData); // 
     // dataView.setUint32(14, chksum, true);
+    if (entry.hasChecksum) {
+        dataView.setUint32(14, entry.checksum, true);
+    }
     // Compressed size
     dataView.setUint32(18, entry.size, true);
     // Uncompressied size
@@ -67,7 +130,7 @@ async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: Zip
     // Extra field length
     dataView.setUint16(28, 0, true);
     // File name
-    headerData.set(entry.encodedName, offset + 30);
+    headerData.set(entry.encodedName, 30);
   
     // write header
     await writer.write({ data: headerData, position: offset, type: 'write' });
@@ -83,6 +146,10 @@ async function writeCentralDirectoryHeader(writer: FileSystemWritableFileStream,
     // TODO: calculate checksum separately and update the record after file download is complete
     // CRC-32 of uncompressed data
     // dataView.setUint32(16, chksum, true);
+    if (entry.hasChecksum) {
+        cdfDataView.setUint32(16, entry.checksum, true);
+    }
+
     cdfDataView.setUint32(20, entry.size, true);
     cdfDataView.setUint32(24, entry.size, true);
     cdfDataView.setUint16(28, entry.encodedName.length, true);
@@ -97,7 +164,7 @@ async function writeCentralDirectoryHeader(writer: FileSystemWritableFileStream,
 }
 
 async function writeEndOfCentralDirectory(writer: FileSystemWritableFileStream, entry: EndOfCentralDirEntry) {
-    const header = new Uint8Array(entry.centralDirSize);
+    const header = new Uint8Array(entry.eocdSize);
     const eocdDataView = new DataView(header.buffer);
     // End of central directory signature = 0x06054b50
     eocdDataView.setUint32(0, 0x06054b50, true);
@@ -147,6 +214,8 @@ function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryIn
             centralHeaderTotalSize: CENTRAL_HEADER_BASE_SIZE + encodedName.length,
             // this will be calculated in the second pass
             centralHeaderOffset: 0,
+            hasChecksum: false,
+            checksum: 0
         };
 
         zipEntries.set(entry.id, entry);
@@ -165,12 +234,13 @@ function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryIn
         currentOffset += entry.centralHeaderTotalSize;
     }
 
+    const centralDirSize = currentOffset - centralDirOffset;
     const eocdOffset = currentOffset;
 
     const eocdEntry: EndOfCentralDirEntry = {
         numEntries: files.length,
         centralDirOffset,
-        centralDirSize: currentOffset,
+        centralDirSize,
         eocdOffset,
         eocdSize: END_OF_CENTRAL_DIR_BASE_SIZE
     };
@@ -194,6 +264,8 @@ interface ZipFileEntry {
     localHeaderOffset: number;
     centralHeaderTotalSize: number;
     centralHeaderOffset: number;
+    checksum: number;
+    hasChecksum?: boolean;
 }
 
 interface EndOfCentralDirEntry {
