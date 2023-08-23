@@ -114,10 +114,6 @@ async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: Zip
     // skip offset 4 to 13 (version, general purpose bit flag, compression method, last mod time, last mod date)
     
     // CRC-32 of uncompressed data
-    // TODO: calculate chksum separately as file is being downloaded
-    // and update when file is complete
-    // const chksum = crc32(fileData); // 
-    // dataView.setUint32(14, chksum, true);
     if (entry.hasChecksum) {
         dataView.setUint32(14, entry.checksum, true);
     }
@@ -138,25 +134,22 @@ async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: Zip
 
 async function writeCentralDirectoryHeader(writer: FileSystemWritableFileStream, entry: ZipFileEntry) {
     const header = new Uint8Array(entry.centralHeaderTotalSize);
-    const cdfDataView = new DataView(header.buffer);
+    const dataView = new DataView(header.buffer);
 
     // 0, 4, Central directory file header signature = 0x02014b50
-    cdfDataView.setUint32(0, 0x02014b50, true);
-    // skip offset to 15 (version made by, min version, general purpose bit flag, compression method, last mod time, last mode date)
-    // TODO: calculate checksum separately and update the record after file download is complete
+    dataView.setUint32(0, 0x02014b50, true);
     // CRC-32 of uncompressed data
-    // dataView.setUint32(16, chksum, true);
     if (entry.hasChecksum) {
-        cdfDataView.setUint32(16, entry.checksum, true);
+        dataView.setUint32(16, entry.checksum, true);
     }
 
-    cdfDataView.setUint32(20, entry.size, true);
-    cdfDataView.setUint32(24, entry.size, true);
-    cdfDataView.setUint16(28, entry.encodedName.length, true);
+    dataView.setUint32(20, entry.size, true);
+    dataView.setUint32(24, entry.size, true);
+    dataView.setUint16(28, entry.encodedName.length, true);
     // Disk number
-    cdfDataView.setUint32(34, 0, true);
+    dataView.setUint32(34, 0, true);
     // 42, relative offset of local file header
-    cdfDataView.setUint32(42, entry.localHeaderOffset, true);
+    dataView.setUint32(42, entry.localHeaderOffset, true);
     // file name
     header.set(entry.encodedName, 46);
 
@@ -195,7 +188,7 @@ async function writeFileCrc32(writer: FileSystemWritableFileStream, crc32: numbe
     await writer.write({ position: localOffset, data: crcBytes, type: 'write' });
     // in the central header, the crc is at offset 16
     const centralOffset = entry.centralHeaderOffset + 16;
-    await writer.write({ position: centralOffset, data: crcBytes, type: 'write'});
+    await writer.write({ position: centralOffset, data: crcBytes, type: 'write' });
 }
 
 function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryInfo {
