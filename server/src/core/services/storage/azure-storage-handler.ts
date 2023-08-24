@@ -167,6 +167,16 @@ export class AzureStorageHandler implements IStorageHandler {
             throw createResourceNotFoundError(`Unknown region '${region}' for the specified provider '${this.name()}'`);
         }
 
+        // TODO: it would be great to default to the original name, but
+        // azure will reject requests with "invalid characters" in the name.
+        // For now we use the blobName (which is likely randomly generated) for the default download name.
+        // But we should ideally normalize/sanitize the original name and use that instead.
+        let defaultDownloadName = blobName;
+        const ext = originalName.split('.').at(-1);
+        if (ext) {
+            defaultDownloadName += `.${ext}`;
+        }
+
         try {
             const container = this.regionAccounts[region].container;
             const blobPath = `${account}/${blobName}`;
@@ -175,7 +185,7 @@ export class AzureStorageHandler implements IStorageHandler {
             const url = await blob.generateSasUrl({
                 permissions: BlobSASPermissions.from({ read: true }),
                 expiresOn: expiryDate,
-                contentDisposition: `attachment; filename="${originalName}"`
+                contentDisposition: `attachment; filename="${defaultDownloadName}"`
             });
 
             return url;
