@@ -7,4 +7,4 @@ export * from './upload-recovery';
 export * from './az-uploader';
 export * from './multi-file-uploder';
 export * from './logger';
-export * from './downloader/index';
+export * from './downloader';
