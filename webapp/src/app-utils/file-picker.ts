@@ -66,6 +66,22 @@ export function useFilePicker() {
 
     const getFileByPath = (path: string) => files.value.get(path);
 
+    const removeFile = (path: string) => {
+        files.value.delete(path);
+    }
+
+    const removeDirectory = (name: string) => {
+        const directoryPrefix = `${name}/`;
+        const allFilePaths = files.value.keys();
+        for (const path of allFilePaths) {
+            if (path.startsWith(directoryPrefix)) {
+                files.value.delete(path);
+            }
+        }
+
+        directories.value.delete(name);
+    }
+
     return {
         files: computed(() => Array.from(files.value.values())),
         directories: computed(() => Array.from(directories.value.values())),
@@ -74,6 +90,8 @@ export function useFilePicker() {
         reset,
         onError,
         getFileByPath,
+        removeFile,
+        removeDirectory,
         directoryPickerSupported
     }
 }

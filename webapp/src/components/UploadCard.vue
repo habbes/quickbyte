@@ -9,22 +9,37 @@
 
     <!-- file selected -->
     <div class="card-body" v-if="uploadState === 'initial' && transferDetails">
-      <h2 class="card-title">{{ transferDetails.name  }}</h2>
+      <h2 class="card-title overflow-hidden text-ellipsis whitespace-nowrap" :title="transferDetails.name">
+        <span class="text-ellipsis">{{ transferDetails.name  }}</span>
+      </h2>
       <div>
         <div ref="fileListContainer" class="h-60 overflow-auto">
           <div v-for="dir in directories" :key="dir.name" class="border-b border-b-gray-100 py-1">
-            <div class="text-sm">
+            <div class="text-sm flex justify-between">
               {{ dir.name }}
+              <span title="Remove folder">
+                <XMarkIcon
+                  @click="removeDirectory(dir.name)"
+                  class="h-6 w-6 cursor-pointer"
+                />
+              </span>
             </div>
-            <div class="text-sm text-gray-400">
-              {{ dir.totalFiles }} files - {{ humanizeSize(dir.totalSize) }}
+            <div class="text-sm text-gray-400 flex content-center align-middle gap-2">
+              <FolderIcon class="h-5 w-5"/> {{ dir.totalFiles }} files - {{ humanizeSize(dir.totalSize) }}
             </div>
           </div>
           <div v-for="file in rootFiles" :key="file.path" class="border-b border-b-gray-100 py-1">
-            <div class="text-sm">
+            <div class="text-sm flex justify-between">
               {{ file.path }}
+              <span title="Remove file">
+                <XMarkIcon
+                  @click="removeFile(file.path)"
+                  class="h-6 w-6 cursor-pointer"
+                />
+              </span>
             </div>
-            <div class="text-sm text-gray-400">
+            <div class="text-sm text-gray-400 flex gap-2">
+              <DocumentIcon class="h-5 w-5"/>
               {{ file.path.split('.').at(-1) || file.file.type }} - {{ humanizeSize(file.file.size) }}
             </div>
           </div>
@@ -54,7 +69,7 @@
           </div>
       </div>
       <p class="text-gray-400 text-center">
-        {{ humanizeSize(uploadProgress) }} / {{  humanizeSize(transferDetails.totalSize) }} <br>
+        {{ humanizeSize(uploadProgress) }} / {{ humanizeSize(transferDetails.totalSize) }} <br>
       </p>
     </div>
 
@@ -77,6 +92,8 @@
 <script lang="ts" setup>
 import { useClipboard } from '@vueuse/core';
 import { ref, computed, watch } from "vue";
+import { XMarkIcon } from "@heroicons/vue/24/solid";
+import { FolderIcon, DocumentIcon } from "@heroicons/vue/24/outline";
 import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
@@ -90,6 +107,8 @@ const {
   directoryPickerSupported,
   files,
   directories,
+  removeFile,
+  removeDirectory,
   reset
 } = useFilePicker();
 const { copy } = useClipboard();
