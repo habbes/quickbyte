@@ -45,12 +45,26 @@
           </div>
         </div>
       </div>
-      <div class="flex gap-2">
-        <button @click="openFilePicker()" class="btn btn-sm">Add files</button>
-        <button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="btn btn-sm">Add folders</button>
-      </div>
-      <p class="text-gray-400">
-        {{ files?.length }} files - {{  humanizeSize(transferDetails.totalSize) }} <br>
+      <p class="flex justify-between content-center mt-2">
+        <span class="text-gray-400">{{ files?.length }} files - {{  humanizeSize(transferDetails.totalSize) }}</span>
+        <details ref="addDropdown" class="dropdown">
+          <summary role="button" class="text-primary hover:text-primary-focus cursor-pointer flex gap-1">
+            <span>add more</span>
+            <PlusCircleIcon class="h-6 w-6"/>
+          </summary>
+          <ul class="p-1 shadow-md border menu dropdown-content z-[1] bg-base-100 rounded-box w-auto">
+            <li class="text-xs p-1">
+              <a class="p-1 whitespace-nowrap" @click="onClickAddFiles()">
+                <DocumentIcon class="h-4 w-4"/> Add files
+              </a>
+            </li>
+            <li class="text-xs p-1">
+              <a class="p-1 whitespace-nowrap" @click="onClickAddFolder()">
+                <FolderIcon class="h-4 w-4"/> Add folder
+              </a>
+            </li>
+          </ul>
+        </details>
       </p>
       <div class="card-actions justify-center mt-4">
         <button class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
@@ -93,7 +107,7 @@
 import { useClipboard } from '@vueuse/core';
 import { ref, computed, watch } from "vue";
 import { XMarkIcon } from "@heroicons/vue/24/solid";
-import { FolderIcon, DocumentIcon } from "@heroicons/vue/24/outline";
+import { FolderIcon, DocumentIcon, PlusCircleIcon } from "@heroicons/vue/24/outline";
 import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
@@ -132,6 +146,7 @@ const uploadState = ref<UploadState>('initial');
 const downloadUrl = ref<string|undefined>();
 const copiedDownloadUrl = ref<boolean>(false);
 const fileListContainer = ref<HTMLDivElement>();
+const addDropdown = ref<HTMLElement>();
 
 watch([files], () => {
   if (!fileListContainer.value) return;
@@ -147,6 +162,20 @@ function resetState() {
   uploadState.value = 'initial';
   uploadProgress.value = 0;
   copiedDownloadUrl.value = false;
+}
+
+function onClickAddFiles() {
+  openFilePicker();
+  closeAddDropdown();
+}
+
+function onClickAddFolder() {
+  openDirectoryPicker();
+  closeAddDropdown();
+}
+
+function closeAddDropdown() {
+  addDropdown.value?.attributes.removeNamedItem('open');
 }
 
 function copyDownloadUrl() {
