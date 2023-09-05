@@ -9,23 +9,43 @@
       <!-- file found -->
       <div class="card-body" v-else-if="download">
         <h2 class="card-title">{{ download.name  }}</h2>
-        <p class="text-gray-400">
-          {{  humanizeSize(totalSize || 0) }} <br>
-        </p>
-        <p>
-          <button class="btn btn-primary w-full" @click="downloadZip()">Download zip</button>
-        </p>
-        <div v-for="file in download.files" :key="file._id">
-          <div>{{ file.name }}</div>
-          <p class="text-gray-400 text-sm">
-            {{  humanizeSize(file.size) }}
-            {{  file.name.split('.').at(-1) }}
-          </p>
-          <div class="card-actions justify-center mt-4">
-            <a class="btn btn-primary w-full" :href="file.downloadUrl" download :filename="file.name.split('/').at(-1)">Download</a>
+        <div class="flex justify-between items-center mb-2">
+          <div class="text-gray-400">
+            {{ download.files.length }} files - {{  humanizeSize(totalSize || 0) }} <br>
+          </div>
+          <div>
+            <button class="btn btn-primary btn-sm w-full" @click="downloadZip()">
+              Download all
+            </button>
+            <!-- <div role="button" class="text-primary hover:text-primary-focus flex gap-1" @click="downloadZip()">
+              <span>download all</span>
+              <ArrowDownTrayIcon class="h-6 w-6"/>
+            </div> -->
           </div>
         </div>
         
+        <div class="h-60 overflow-auto">
+          <div v-for="file in download.files" :key="file._id" class="border-b border-b-gray-100 py-1">
+            <div class="flex justify-between items-center">
+              <div>
+                <div class="text-sm flex justify-between">
+                  {{ file.name }}
+                </div>
+                <div class="text-sm text-gray-400 flex gap-2">
+                  <DocumentIcon class="h-5 w-5"/>
+                  {{ file.name.split('.').at(-1) }} - {{ humanizeSize(file.size) }}
+                </div>
+              </div>
+              <div>
+                <a title="Download file" :href="file.downloadUrl" :download="file.name.split('/').at(-1)">
+                  <ArrowDownTrayIcon
+                    class="h-6 w-6 cursor-pointer"
+                  />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- error -->
@@ -52,6 +72,8 @@ import { computed, onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
 import { apiClient, downloaderProvider } from "@/app-utils";
 import { humanizeSize, ApiError, type DownloadRequestResult, ensure } from "@/core";
+import { ArrowDownTrayIcon } from "@heroicons/vue/24/solid";
+import { FolderIcon, DocumentIcon, PlusCircleIcon } from "@heroicons/vue/24/outline";
 
 const route = useRoute();
 route.params.downloadId;
