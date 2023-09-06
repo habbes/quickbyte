@@ -23,6 +23,13 @@
             </div> -->
           </div>
         </div>
+        <div class="flex justify-center">
+          <div
+            class="radial-progress bg-primary text-primary-content border-4 border-primary"
+            :style="{ '--value': Math.floor(downloadProgress) }">
+              {{ Math.floor(downloadProgress)}}%
+            </div>
+        </div>
         
         <div class="h-60 overflow-auto">
           <div v-for="file in download.files" :key="file._id" class="border-b border-b-gray-100 py-1">
@@ -80,6 +87,7 @@ route.params.downloadId;
 const error = ref<Error|undefined>();
 const download = ref<DownloadRequestResult|undefined>();
 const totalSize = computed(() => download.value && download.value.files.reduce((a, b) => a + b.size, 0));
+const downloadProgress = ref(0);
 const loading = ref(true);
 
 onMounted(async () => {
@@ -102,6 +110,9 @@ onMounted(async () => {
 async function downloadZip() {
   const transfer = ensure(download.value);
   const downloader = downloaderProvider.getDownloader();
-  await downloader.download(transfer);
+  await downloader.download(transfer, (progress) => {
+    console.log('updating progress', progress);
+    downloadProgress.value = progress;
+  });
 };
 </script>

@@ -41,7 +41,7 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
 
     }
 
-    async download(transfer: DownloadRequestResult): Promise<void> {
+    async download(transfer: DownloadRequestResult, onProgress: (currentPercentage: number) => unknown): Promise<void> {
         this.logger?.debug('using direct-fs downloader');
 
         // @ts-ignore
@@ -50,17 +50,43 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
         const started = Date.now();
         // calculate local header length and offsets for each file
         const zipEntries = generateZipEntryData(transfer.files);
+        const { totalZipSize } = zipEntries;
+
+        let totalProgress = 0;
+        const fileProgresses = new Map<string, number>();
+
+        const incrementProgress = (value: number) => {
+            totalProgress += value;
+            console.log('incrementP', totalProgress, totalZipSize, 100 * totalProgress/totalZipSize);
+            onProgress(Math.min(100 * totalProgress / totalZipSize, 100));
+        }
+
+        const setFileProgress = (path: string, currentFileProgress: number) => {
+            const lastFileProgress = fileProgresses.get(path) || 0;
+            totalProgress += (currentFileProgress - lastFileProgress);
+            fileProgresses.set(path, currentFileProgress);
+            console.log('fileP', totalProgress, totalZipSize, 100 * totalProgress/totalZipSize);
+            onProgress(Math.min(100 * totalProgress / totalZipSize, 100));
+        }
+
         this.logger?.debug(`Generated zip entries after ${Date.now()-started}`);
 
         const writable = await handle.createWritable();
 
         const downloadTasks = transfer.files.map(file => {
-            const downloader = new FileDownloader(writable, file, ensure(zipEntries.entries.get(file._id)), BLOCK_SIZE, this.logger);
+            const downloader = new FileDownloader(
+                writable,
+                file,
+                ensure(zipEntries.entries.get(file._id)),
+                BLOCK_SIZE,
+                this.logger,
+                fileProgress => setFileProgress(file.name, fileProgress)
+            );
             return downloader.download()
         });
 
         await Promise.all(downloadTasks);
-        await writeEndOfCentralDirectory(writable, zipEntries.eocd);
+        await writeEndOfCentralDirectory(writable, zipEntries.eocd, incrementProgress);
 
         await writable.close();
         this.logger?.debug(`Complete download after ${Date.now() - started}`);
@@ -69,7 +95,14 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
 
 class FileDownloader {
     private client: BlockBlobClient;
-    constructor(private writer: FileSystemWritableFileStream, private file: DownloadRequestResult["files"][0], private zipEntry: ZipFileEntry, blockSize: number, private logger?: Logger) {
+    constructor(
+        private writer: FileSystemWritableFileStream,
+        private file: DownloadRequestResult["files"][0],
+        private zipEntry: ZipFileEntry,
+        blockSize: number,
+        private logger?: Logger,
+        private onProgress?: (progress: number) => unknown
+    ) {
         this.client = new BlockBlobClient(file.downloadUrl);
     }
 
@@ -88,10 +121,16 @@ class FileDownloader {
         this.zipEntry.checksum = checksum;
         this.zipEntry.hasChecksum = true;
 
+        let currentProgress = 0;
+        const incrementProgress = (value: number) => {
+            currentProgress += value;
+            this.onProgress && this.onProgress(currentProgress);
+        }
+
         const tasks = [
-            writeLocalHeader(this.writer, this.zipEntry),
-            writeCompleteFileData(this.writer, this.zipEntry, blobData),
-            writeCentralDirectoryHeader(this.writer, this.zipEntry)
+            writeLocalHeader(this.writer, this.zipEntry, incrementProgress),
+            writeCompleteFileData(this.writer, this.zipEntry, blobData, incrementProgress),
+            writeCentralDirectoryHeader(this.writer, this.zipEntry, incrementProgress)
         ];
 
         await Promise.all(tasks);
@@ -99,12 +138,13 @@ class FileDownloader {
     }
 }
 
-async function writeCompleteFileData(writer: FileSystemWritableFileStream, entry: ZipFileEntry, data: Uint8Array) {
+async function writeCompleteFileData(writer: FileSystemWritableFileStream, entry: ZipFileEntry, data: Uint8Array, incrementProgress: (value: number) => unknown) {
     const offset = entry.localHeaderOffset + entry.localHeaderTotalSize;
     await writer.write({ position: offset, data, type: 'write' });
+    incrementProgress(data.length);
 }
 
-async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: ZipFileEntry) {
+async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: ZipFileEntry, incrementProgress: (value: number) => unknown) {
     const headerData = new Uint8Array(entry.localHeaderTotalSize);
     const dataView = new DataView(headerData.buffer);
     
@@ -130,9 +170,10 @@ async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: Zip
   
     // write header
     await writer.write({ data: headerData, position: offset, type: 'write' });
+    incrementProgress(headerData.length);
 }
 
-async function writeCentralDirectoryHeader(writer: FileSystemWritableFileStream, entry: ZipFileEntry) {
+async function writeCentralDirectoryHeader(writer: FileSystemWritableFileStream, entry: ZipFileEntry, incrementProgress: (value: number) => unknown) {
     const header = new Uint8Array(entry.centralHeaderTotalSize);
     const dataView = new DataView(header.buffer);
 
@@ -154,9 +195,10 @@ async function writeCentralDirectoryHeader(writer: FileSystemWritableFileStream,
     header.set(entry.encodedName, 46);
 
     await writer.write({ position: entry.centralHeaderOffset, data: header, type: 'write' });
+    incrementProgress(header.length);
 }
 
-async function writeEndOfCentralDirectory(writer: FileSystemWritableFileStream, entry: EndOfCentralDirEntry) {
+async function writeEndOfCentralDirectory(writer: FileSystemWritableFileStream, entry: EndOfCentralDirEntry, incrementProgress: (value: number) => unknown) {
     const header = new Uint8Array(entry.eocdSize);
     const eocdDataView = new DataView(header.buffer);
     // End of central directory signature = 0x06054b50
@@ -171,6 +213,7 @@ async function writeEndOfCentralDirectory(writer: FileSystemWritableFileStream, 
     eocdDataView.setUint32(16, entry.centralDirOffset, true);
 
     await writer.write({ position: entry.eocdOffset, data: header, type: 'write' });
+    incrementProgress(header.length);
 }
 
 async function writeFileCrc32(writer: FileSystemWritableFileStream, crc32: number, entry: ZipFileEntry) {
@@ -238,13 +281,16 @@ function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryIn
         eocdSize: END_OF_CENTRAL_DIR_BASE_SIZE
     };
 
-    return { entries: zipEntries, eocd: eocdEntry };
+    const totalZipSize = centralDirOffset + eocdEntry.centralDirSize + eocdEntry.eocdSize;
+
+    return { entries: zipEntries, eocd: eocdEntry, totalZipSize };
 }
 
 
 interface ZipEntryInfo {
     entries: Map<string, ZipFileEntry>;
     eocd: EndOfCentralDirEntry;
+    totalZipSize: number;
 }
 
 
