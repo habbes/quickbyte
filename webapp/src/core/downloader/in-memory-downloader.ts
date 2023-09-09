@@ -6,19 +6,35 @@ import { type ZipDownloader } from "./types.js";
 
 
 export class InMemoryZipDownloader implements ZipDownloader {
-    async download(transfer: DownloadRequestResult, onProgress: (percentage: number) => unknown): Promise<void> {
-        const downloadTask = new DownloadTask(transfer, onProgress);
+    async download(
+        transfer: DownloadRequestResult,
+        suggestedFileName: string,
+        onProgress: (percentage: number) => unknown,
+        onFilePicked: (fileName: string) => unknown,
+    ): Promise<void> {
+        const downloadTask = new DownloadTask(transfer, suggestedFileName, onProgress, onFilePicked);
         await downloadTask.download();
     }
 }
 
 class DownloadTask {
     private zip: Zip;
-    constructor(private transfer: DownloadRequestResult, private onProgress: (progressPercent: number) => unknown) {
+    constructor(
+        private transfer: DownloadRequestResult,
+        private suggestedFileName: string,
+        private onProgress: (progressPercent: number) => unknown,
+        private onFilePicked: (fileName: string) => unknown,
+    ) {
         this.zip = new Zip();
     }
 
     async download(): Promise<void> {
+        // Since we start the download of the individual files immediately
+        // And since we won't be able to control the final download
+        // of the generated zip file, we just trigger the onFilePick event
+        // immediately with the suggested file name, even if it may
+        // differ from the final name of the downloaded zip
+        this.onFilePicked(this.suggestedFileName);
         const started = Date.now();
         let totalDownloadProgress = 0;
         let lastReportedDownloadProgress = 0;
@@ -70,7 +86,7 @@ class DownloadTask {
         console.log('generating link element', Date.now() - started);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${this.transfer.name}.zip`;
+        a.download = this.suggestedFileName;
 
         const clickHandler = () => {
             setTimeout(() => {

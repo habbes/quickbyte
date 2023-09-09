@@ -2,7 +2,7 @@ import { type DownloadRequestResult } from "../api-client.js";
 import { type ZipDownloader } from "./types.js";
 import { ensure } from '../util.js';
 import { BlockBlobClient } from "@azure/storage-blob";
-import type { Logger } from "..";
+import { createOperationCancelledError, type Logger } from "..";
 
 // See ZIP file format: https://en.wikipedia.org/wiki/ZIP_(file_format)
 
@@ -41,12 +41,17 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
 
     }
 
-    async download(transfer: DownloadRequestResult, onProgress: (currentPercentage: number) => unknown): Promise<void> {
+    async download(
+        transfer: DownloadRequestResult,
+        suggestedFileName: string,
+        onProgress: (currentPercentage: number) => unknown,
+        onFilePicked: (fileName: string) => unknown,
+    ): Promise<void> {
         this.logger?.debug('using direct-fs downloader');
 
-        // @ts-ignore
-        const handle: FileSystemFileHandle = await window.showSaveFilePicker({ suggestedName: `${transfer.name}.zip`});
-
+        const handle = await getFileHandle(suggestedFileName);
+        onFilePicked(handle.name);
+        
         const started = Date.now();
         // calculate local header length and offsets for each file
         const zipEntries = generateZipEntryData(transfer.files);
@@ -135,6 +140,20 @@ class FileDownloader {
 
         await Promise.all(tasks);
         this.logger?.debug(`Completed zip of file ${this.zipEntry.name} in ${Date.now() - started}`);
+    }
+}
+
+async function getFileHandle(filename: string): Promise<FileSystemFileHandle> {
+    try {
+        // @ts-ignore
+        const handle: FileSystemFileHandle = await window.showSaveFilePicker({ suggestedName: filename });
+        return handle;
+    } catch (e: any) {
+        if ((e as Error).message.includes('abort')) {
+            throw createOperationCancelledError(e.message);
+        }
+
+        throw e;
     }
 }
 
