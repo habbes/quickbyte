@@ -16,4 +16,13 @@ export class DownloaderProvider {
 
         return new InMemoryZipDownloader();
     }
+
+    /**
+     * Checks whether the browser supports the
+     * optimal-download method (using showSaveFilePicker)
+     */
+    isOptimalDownloaderSupported(): boolean {
+        // @ts-ignore
+        return !!window.showSaveFilePicker;
+    }
 }

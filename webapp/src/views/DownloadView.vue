@@ -1,5 +1,13 @@
 <template>
   <div class="flex flex-col p-5 gap-2 sm:items-center sm:mt-20">
+    <div v-if="!optimalDownloaderSupported"
+      class="alert alert-warning w-96">
+      <span class="text-xs">
+        This browser does not support an optimal download experience.
+        Consider using Microsoft Edge or Google Chrome
+        if you're downloading large files.
+      </span>
+    </div>
     <div v-if="download && zipDownloadState === 'complete'"
       class="alert alert-success w-96 cursor-pointer"
       @click="zipDownloadState = 'pending'">
@@ -109,6 +117,7 @@ const downloadProgress = ref(0);
 const loading = ref(true);
 const zipDownloadState = ref<DownloadState>('pending');
 const zipFileName = ref<string>();
+const optimalDownloaderSupported = downloaderProvider.isOptimalDownloaderSupported();
 
 onMounted(async () => {
   if (!route.params.downloadId || typeof route.params.downloadId !== 'string') {
