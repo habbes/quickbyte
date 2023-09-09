@@ -1,7 +1,7 @@
 import { BlockBlobClient } from "@azure/storage-blob";
 import Zip from "jszip";
 import type { DownloadRequestResult } from "../api-client";
-import { ensure } from "../util";
+import { ensure, executeTasksInBatches, isNetworkError } from "../util";
 import { type ZipDownloader } from "./types.js";
 
 
@@ -51,19 +51,20 @@ class DownloadTask {
             const lastProgress = downloadProgresses.get(fileName) || 0;
             totalDownloadProgress += (progress - lastProgress);
             downloadProgresses.set(fileName, progress);
-            const percentage = Math.min(totalDownloadProgress/totalFilesSize, cappedFileDownloadPercentage);
+            const percentage = Math.min(100 * totalDownloadProgress/totalFilesSize, cappedFileDownloadPercentage);
             lastReportedDownloadProgress = percentage;
             this.onProgress(percentage);
         }
 
-        const tasks = this.transfer.files.map(
+        const batchSize = 5;
+        await executeTasksInBatches(
+            this.transfer.files,
             file => this.downloadFile(
                 file,
                 (downloadProgress) => updateDownloadProgress(file.name, downloadProgress)
-            )
+            ),
+            batchSize
         );
-
-        await Promise.all(tasks);
 
         const updateZipProgress = (metadata: Zip.JSZipMetadata) => {
             // we only update the progress when it exceeds the percentage reached
@@ -72,6 +73,7 @@ class DownloadTask {
             // We don't need to update the last reported progress at this
             // point. If we've exceeded it, then subsequent progress updates will also
             // exceed it and report new progress update
+            console.log('update zip progress', percentage);
             this.onProgress(percentage);
         }
         
@@ -106,15 +108,31 @@ class DownloadTask {
     private async downloadFile(file: DownloadRequestResult["files"][0], onProgress: (currentProgress: number) => unknown) {
         console.log('downloading file', file.name);
         const client = new BlockBlobClient(file.downloadUrl);
-        const result = await client.download(undefined, undefined, {
-            onProgress: (progress) => {
-                onProgress(progress.loadedBytes)
+        let retry = true;
+        while (retry) {
+            try {
+                const result = await client.download(undefined, undefined, {
+                    onProgress: (progress) => {
+                        onProgress(progress.loadedBytes)
+                    }
+                });
+
+                const blobResult = await result.blobBody;
+                const blob = ensure(blobResult);
+                console.log('complete download file', file.name, blob.size);
+                this.zip.file(file.name, blob);
+                console.log('adding file to zip', file.name);
+                retry = false;
+            } catch (e) {
+                console.log('e', isNetworkError(e), e);
+                if (isNetworkError(e)) {
+                    retry = true;
+                }
+                else {
+                    retry = false;
+                    throw e;
+                }
             }
-        });
-        const blobResult = await result.blobBody;
-        const blob = ensure(blobResult);
-        console.log('complete download file', file.name, blob.size);
-        this.zip.file(file.name, blob);
-        console.log('adding file to zip', file.name);
+        }
     }
 }

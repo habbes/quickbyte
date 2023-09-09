@@ -1,5 +1,7 @@
 // import { RegionInfo } from './types.js';
 
+import { RestError } from "@azure/storage-blob";
+
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = 1024 * 1024;
 const BYTES_PER_GB = 1024 * 1024 * 1024;
@@ -29,9 +31,40 @@ export function humanizeSize(bytes: number): string {
     return `${tbs} TB`;
 }
 
+export function getFileExtension(fileName: string) {
+    return fileName.split('.').at(-1);
+}
+
 export function ensure<T>(obj?: T, message?: string): T {
     if (!obj) throw new Error(message || 'Expected object to be defined.');
     return obj;
+}
+
+export async function executeTasksInBatches<TSource, TResult>(
+    source: TSource[],
+    createTask: (s: TSource) => Promise<TResult>,
+    batchSize: number
+): Promise<TResult[]> {
+    let nextBatchIndex = 0;
+    const result = new Array<TResult>(source.length);
+    while (nextBatchIndex < source.length) {
+        const batch = source.slice(nextBatchIndex, nextBatchIndex + batchSize);
+        const batchTasks = batch.map(s => createTask(s));
+        const batchResult = await Promise.all(batchTasks);
+        
+        for (let i = 0; i < batchResult.length; i++) {
+            result[nextBatchIndex + i] = batchResult[i];
+        }
+
+        nextBatchIndex += batchSize;
+    }
+
+    return result;
+}
+
+export function isNetworkError(e: any) {
+    return !!(e.message &&
+        (/network/.test(e.message) || /connection/.test(e.message) || /fetch/.test(e.message) || e instanceof RestError));
 }
 
 export async function compareLatency(regions: RegionInfo[]): Promise<RegionPingResult[]> {

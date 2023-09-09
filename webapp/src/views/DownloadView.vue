@@ -8,6 +8,12 @@
         if you're downloading large files.
       </span>
     </div>
+    <div v-if="download && error"
+      class="alert alert-error w-96 cursor-pointer"
+      @click="error = undefined"
+    >
+      <span class="text-xs">{{ error.message }}</span>
+    </div>
     <div v-if="download && zipDownloadState === 'complete'"
       class="alert alert-success w-96 cursor-pointer"
       @click="zipDownloadState = 'pending'">
@@ -102,7 +108,7 @@
 import { computed, onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
 import { apiClient, downloaderProvider, showToast, windowUnloadManager } from "@/app-utils";
-import { humanizeSize, ApiError, type DownloadRequestResult, ensure, isOperationCancelledError } from "@/core";
+import { humanizeSize, ApiError, type DownloadRequestResult, ensure, isOperationCancelledError, isNetworkError } from "@/core";
 import { ArrowDownTrayIcon } from "@heroicons/vue/24/solid";
 import { FolderIcon, DocumentIcon, PlusCircleIcon } from "@heroicons/vue/24/outline";
 
@@ -161,7 +167,11 @@ async function downloadZip() {
       return;
     }
 
-    showToast(e.message, 'error');
+    if (isNetworkError(e)) {
+      error.value = new Error('Network error occurred');
+    } else {
+      error.value = e as Error;
+    }
   }
   finally {
     removeOnExitWarning();
