@@ -41,9 +41,9 @@ class DownloadTask {
         const totalFilesSize = this.transfer.files.reduce((sizeSoFar, file) => sizeSoFar + file.size, 0);
         // for simplicity we use the combine download and zipping progress in the same callback
         // However, downloading and zipping are done separately, when we're updating the download progress
-        // we don't know how long zipping will take. To make things simple, we'll cap the download
-        // progress updates at 70% and update the remaining 30% from zipping progress
-        const cappedFileDownloadPercentage = 70;
+        // we don't know how long zipping will take. To make things simple, we'll arbitrarily cap the download
+        // progress updates at 96% and update the remaining 4% from zipping progress
+        const cappedFileDownloadPercentage = 96;
         const downloadProgresses = new Map<string, number>();
         
 
