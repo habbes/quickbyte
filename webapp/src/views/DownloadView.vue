@@ -62,26 +62,20 @@
         </div>
         
         <div class="h-60 overflow-auto">
-          <div v-for="file in download.files" :key="file._id" class="border-b border-b-gray-100 py-1">
-            <div class="flex justify-between items-center">
-              <div>
-                <div class="text-sm flex justify-between">
-                  {{ file.name }}
-                </div>
-                <div class="text-sm text-gray-400 flex gap-2">
-                  <DocumentIcon class="h-5 w-5"/>
-                  {{ file.name.split('.').at(-1) }} - {{ humanizeSize(file.size) }}
-                </div>
-              </div>
-              <div>
-                <a title="Download file" :href="file.downloadUrl" :download="file.name.split('/').at(-1)">
-                  <ArrowDownTrayIcon
-                    class="h-6 w-6 cursor-pointer"
-                  />
-                </a>
-              </div>
-            </div>
-          </div>
+          <FileListItem
+            v-for="file in download.files"
+            :key="file._id"
+            :name="file.name"
+            :size="file.size"
+          >
+            <template #icon>
+              <a title="Download file" :href="file.downloadUrl" :download="file.name.split('/').at(-1)">
+                <ArrowDownTrayIcon
+                  class="h-6 w-6 cursor-pointer"
+                />
+              </a>
+            </template>
+          </FileListItem>
         </div>
       </div>
 
@@ -111,6 +105,7 @@ import { apiClient, downloaderProvider, showToast, windowUnloadManager } from "@
 import { humanizeSize, ApiError, type DownloadRequestResult, ensure, isOperationCancelledError, isNetworkError } from "@/core";
 import { ArrowDownTrayIcon } from "@heroicons/vue/24/solid";
 import { FolderIcon, DocumentIcon, PlusCircleIcon } from "@heroicons/vue/24/outline";
+import FileListItem from '@/components/FileListItem.vue';
 
 type DownloadState = 'pending' | 'complete' | 'inProgress';
 

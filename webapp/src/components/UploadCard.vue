@@ -14,35 +14,21 @@
       </h2>
       <div>
         <div ref="fileListContainer" class="h-60 overflow-auto">
-          <div v-for="dir in directories" :key="dir.name" class="border-b border-b-gray-100 py-1">
-            <div class="text-sm flex justify-between">
-              {{ dir.name }}
-              <span title="Remove folder">
-                <XMarkIcon
-                  @click="removeDirectory(dir.name)"
-                  class="h-6 w-6 cursor-pointer"
-                />
-              </span>
-            </div>
-            <div class="text-sm text-gray-400 flex content-center align-middle gap-2">
-              <FolderIcon class="h-5 w-5"/> {{ dir.totalFiles }} files - {{ humanizeSize(dir.totalSize) }}
-            </div>
-          </div>
-          <div v-for="file in rootFiles" :key="file.path" class="border-b border-b-gray-100 py-1">
-            <div class="text-sm flex justify-between">
-              {{ file.path }}
-              <span title="Remove file">
-                <XMarkIcon
-                  @click="removeFile(file.path)"
-                  class="h-6 w-6 cursor-pointer"
-                />
-              </span>
-            </div>
-            <div class="text-sm text-gray-400 flex gap-2">
-              <DocumentIcon class="h-5 w-5"/>
-              {{ file.path.split('.').at(-1) || file.file.type }} - {{ humanizeSize(file.file.size) }}
-            </div>
-          </div>
+          <UploadListFolderItem
+            v-for="dir in directories"
+            :key="dir.name"
+            :name="dir.name"
+            :numFiles="dir.totalFiles"
+            :totalSize="dir.totalSize"
+            @remove="removeDirectory(dir.name)"
+          />
+          <UploadListFileItem
+            v-for="file in rootFiles"
+            :key="file.path"
+            :name="file.path"
+            :size="file.file.size"
+            @remove="removeFile(file.path)"
+          />
         </div>
       </div>
       <p class="flex justify-between content-center mt-2">
@@ -111,6 +97,8 @@ import { FolderIcon, DocumentIcon, PlusCircleIcon } from "@heroicons/vue/24/outl
 import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
+import UploadListFileItem from './UploadListFileItem.vue';
+import UploadListFolderItem from './UploadListFolderItem.vue';
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
