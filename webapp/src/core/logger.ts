@@ -3,37 +3,41 @@ import * as Sentry from '@sentry/vue';
 export type LogLevel = "fatal" | "error" | "warning" | "log" | "info" | "debug";
 
 export class Logger {
-    log(message: string, level: LogLevel = 'log') {
+    message(level: LogLevel, ...messages: any[]) {
         // TODO: remove console.log in prod
         if (level === 'warning') {
-            console.warn(message);
+            console.warn(...messages);
         } else if (level === 'error' || level === 'fatal') {
-            console.error(message)
+            console.error(...messages)
         } else {
-            console.log(message);
+            console.log(...messages);
         }
 
         if (['warning', 'fatal', 'error', 'info'].includes(level)) {
-            Sentry.captureMessage(message, level);
+            Sentry.captureMessage(messages.join(' '), level);
         }
     }
 
+    log(...messages: any[]) {
+        this.message('log', ...messages);
+    }
+
     error(message: string, e?: any) {
-        this.log(message, 'error');
+        this.message('error', message);
         if (e) {
             Sentry.captureException(e);
         }
     }
 
     warn(message: string) {
-        this.log(message, 'warning');
+        this.message('warning', message);
     }
 
     info(message: string) {
-        this.log(message, 'info');
+        this.message('info', message);
     }
 
     debug(message: string) {
-        this.log(message, 'debug');
+        this.message('debug', message);
     }
 }

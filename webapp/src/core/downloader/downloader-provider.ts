@@ -14,7 +14,7 @@ export class DownloaderProvider {
             return new DirectFileSystemZipDownloader(this.logger);
         }
 
-        return new InMemoryZipDownloader();
+        return new InMemoryZipDownloader(this.logger);
     }
 
     /**

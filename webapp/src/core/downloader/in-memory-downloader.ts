@@ -3,16 +3,19 @@ import Zip from "jszip";
 import type { DownloadRequestResult } from "../api-client";
 import { ensure, executeTasksInBatches, isNetworkError } from "../util";
 import { type ZipDownloader } from "./types.js";
+import type { Logger } from "..";
 
 
 export class InMemoryZipDownloader implements ZipDownloader {
+    constructor(private logger?: Logger) {}
+
     async download(
         transfer: DownloadRequestResult,
         suggestedFileName: string,
         onProgress: (percentage: number) => unknown,
         onFilePicked: (fileName: string) => unknown,
     ): Promise<void> {
-        const downloadTask = new DownloadTask(transfer, suggestedFileName, onProgress, onFilePicked);
+        const downloadTask = new DownloadTask(transfer, suggestedFileName, onProgress, onFilePicked, this.logger);
         await downloadTask.download();
     }
 }
@@ -24,6 +27,7 @@ class DownloadTask {
         private suggestedFileName: string,
         private onProgress: (progressPercent: number) => unknown,
         private onFilePicked: (fileName: string) => unknown,
+        private logger?: Logger,
     ) {
         this.zip = new Zip();
     }
@@ -76,15 +80,15 @@ class DownloadTask {
             this.onProgress(percentage);
         }
         
-        console.log('generating zip', Date.now() - started);
+        this.logger?.log('generating zip', Date.now() - started);
         const content = await this.zip.generateAsync({
             compression: 'STORE',
             type: 'blob'
         }, updateZipProgress) as Blob;
 
-        console.log('generating object url', Date.now() - started);
+        this.logger?.log('generating object url', Date.now() - started);
         const url = URL.createObjectURL(content);
-        console.log('generating link element', Date.now() - started);
+        this.logger?.log('generating link element', Date.now() - started);
         const a = document.createElement('a');
         a.href = url;
         a.download = this.suggestedFileName;
@@ -100,12 +104,12 @@ class DownloadTask {
         // Comment out this line if you don't want a one-off download of the blob content
         a.addEventListener('click', clickHandler, false);
 
-        console.log('clicked download', Date.now() - started);
+        this.logger?.log('clicked download', Date.now() - started);
         a.click();
     }
 
     private async downloadFile(file: DownloadRequestResult["files"][0], onProgress: (currentProgress: number) => unknown) {
-        console.log('downloading file', file.name);
+        this.logger?.log('downloading file', file.name);
         const client = new BlockBlobClient(file.downloadUrl);
         let retry = true;
         while (retry) {
@@ -118,12 +122,12 @@ class DownloadTask {
 
                 const blobResult = await result.blobBody;
                 const blob = ensure(blobResult);
-                console.log('complete download file', file.name, blob.size);
+                this.logger?.log('complete download file', file.name, blob.size);
                 this.zip.file(file.name, blob);
-                console.log('adding file to zip', file.name);
+                this.logger?.log('adding file to zip', file.name);
                 retry = false;
             } catch (e) {
-                console.log('e', isNetworkError(e), e);
+                this.logger?.log('e', isNetworkError(e), e);
                 if (isNetworkError(e)) {
                     retry = true;
                 }
