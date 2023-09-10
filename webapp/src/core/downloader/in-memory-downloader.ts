@@ -73,7 +73,6 @@ class DownloadTask {
             // We don't need to update the last reported progress at this
             // point. If we've exceeded it, then subsequent progress updates will also
             // exceed it and report new progress update
-            console.log('update zip progress', percentage);
             this.onProgress(percentage);
         }
         

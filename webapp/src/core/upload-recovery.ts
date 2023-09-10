@@ -240,8 +240,6 @@ class DefaultTransferTracker implements TransferTracker {
             }
         }
 
-        console.log('recovered transfer results', result);
-
         return result;
     }
 
