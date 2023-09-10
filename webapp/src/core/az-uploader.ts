@@ -1,5 +1,5 @@
 import { BlockBlobClient } from "@azure/storage-blob";
-import type { UploadTracker } from "./upload-recovery";
+import type { FileTracker } from "./upload-recovery";
 import type { Logger } from "./logger";
 
 export type UploadProgressCallback = (progress: number) => any;
@@ -8,7 +8,7 @@ export interface FileUploaderArgs {
     file: File,
     uploadUrl: string,
     blockSize: number,
-    tracker: UploadTracker,
+    tracker: FileTracker,
     onProgress: UploadProgressCallback,
     completedBlocks?: Map<number, Block>;
     logger?: Logger
@@ -65,6 +65,9 @@ export class AzUploader {
             }
         }
 
+        // We don't want to wait for the tracker to complete. This way,
+        // other uploads in the queue can start without delay.
+        this.config.tracker.completeUpload();
         const stopped = new Date();
         this.config.logger?.log(`Completed block list upload ${stopped.getTime() - started.getTime()}`);
     }

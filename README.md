@@ -13,7 +13,10 @@ Fast, resumable, reliable sharing of large files
 - [x] Generate download URL
 - [x] Support multiple regions?
 - [x] Region-ping latency detection
-- [ ] Multi-file transfers?
+- [x] Multi-file transfers
+- [ ] Large zip download support
+    - [ ] Zip download resilience
+    - [ ] Zip64 support
 - [ ] DB indexes
 - [ ] Validation
 - [ ] Perf benchmarks and tuning

@@ -4,5 +4,5 @@
 
 body {
     background-color: #0a272f;
-    height: 100vh;
+    min-height: 100vh;
 }

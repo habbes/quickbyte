@@ -1,17 +1,39 @@
 <template>
   <div class="card w-96 bg-base-100 shadow-xl">
     <!-- initial state -->
-    <div class="card-body" v-if="uploadState === 'initial' && !file">
-      <h2 class="card-title">Transfer a file</h2>
-      <Button @click="open()" class="">Select file to upload</Button>
+    <div class="card-body" v-if="uploadState === 'initial' && !transferDetails">
+      <h2 class="card-title">Transfer files</h2>
+      <Button @click="openFilePicker()" class="">Select files to upload</Button>
+      <Button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="">Select directory to upload</Button>
     </div>
 
     <!-- file selected -->
-    <div class="card-body" v-if="uploadState === 'initial' && file">
-      <h2 class="card-title">{{ file.name  }}</h2>
-      <p class="text-gray-400">
-        {{  humanizeSize(file.size) }} <br>
-        {{  file.type }}
+    <div class="card-body" v-if="uploadState === 'initial' && transferDetails">
+      <h2 class="card-title overflow-hidden text-ellipsis whitespace-nowrap" :title="transferDetails.name">
+        <span class="text-ellipsis">{{ transferDetails.name  }}</span>
+      </h2>
+      <div>
+        <div ref="fileListContainer" class="h-60 overflow-auto">
+          <UploadListFolderItem
+            v-for="dir in directories"
+            :key="dir.name"
+            :name="dir.name"
+            :numFiles="dir.totalFiles"
+            :totalSize="dir.totalSize"
+            @remove="removeDirectory(dir.name)"
+          />
+          <UploadListFileItem
+            v-for="file in rootFiles"
+            :key="file.path"
+            :name="file.path"
+            :size="file.file.size"
+            @remove="removeFile(file.path)"
+          />
+        </div>
+      </div>
+      <p class="flex justify-between content-center mt-2">
+        <span class="text-gray-400">{{ files?.length }} files - {{  humanizeSize(transferDetails.totalSize) }}</span>
+        <AddFilesDropDown @addFiles="openFilePicker()" @addFolder="openDirectoryPicker()" />
       </p>
       <div class="card-actions justify-center mt-4">
         <button class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
@@ -20,22 +42,22 @@
     </div>
 
     <!-- upload in progress -->
-    <div class="card-body" v-if="uploadState === 'progress' && file">
-      <h2 class="card-title">{{ file.name }}</h2>
+    <div class="card-body" v-if="uploadState === 'progress' && transferDetails">
+      <h2 class="card-title">{{ transferDetails.name }}</h2>
       <div class="flex justify-center">
         <div
           class="radial-progress bg-primary text-primary-content border-4 border-primary" style="--value:70;"
-          :style="{ '--value': Math.floor(100 * uploadProgress / file.size )}">
-            {{ Math.floor(100 * uploadProgress / file.size )}}%
+          :style="{ '--value': Math.floor(100 * uploadProgress / transferDetails.totalSize )}">
+            {{ Math.floor(100 * uploadProgress / transferDetails.totalSize )}}%
           </div>
       </div>
       <p class="text-gray-400 text-center">
-        {{ humanizeSize(uploadProgress) }} / {{  humanizeSize(file.size) }} <br>
+        {{ humanizeSize(uploadProgress) }} / {{ humanizeSize(transferDetails.totalSize) }} <br>
       </p>
     </div>
 
     <!-- upload complete -->
-    <div class="card-body" v-if="uploadState === 'complete' && file">
+    <div class="card-body" v-if="uploadState === 'complete' && transferDetails">
       <h2 class="card-title">Upload complete!</h2>
       <p>Copy and share the <a class="link" :href="downloadUrl" target="_blank">download link</a> with the recipients:</p>
       <div class="relative mb-6" @click="copyDownloadUrl()">
@@ -51,24 +73,56 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { useFileDialog, useClipboard } from '@vueuse/core';
-import { ref, computed } from "vue";
-import { apiClient, store, uploadRecoveryManager, logger } from '@/app-utils';
-import { humanizeSize, ensure, ApiError, AzUploader } from "@/core";
+import { useClipboard } from '@vueuse/core';
+import { ref, computed, watch } from "vue";
+import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast } from '@/app-utils';
+import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
+import UploadListFileItem from './UploadListFileItem.vue';
+import UploadListFolderItem from './UploadListFolderItem.vue';
+import AddFilesDropDown from './AddFilesDropdown.vue';
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
-const { open, files, reset } = useFileDialog({ multiple: false });
+const {
+  openDirectoryPicker,
+  openFilePicker,
+  onError: onFilePickerError,
+  directoryPickerSupported,
+  files,
+  directories,
+  removeFile,
+  removeDirectory,
+  reset
+} = useFilePicker();
 const { copy } = useClipboard();
-const file = computed<File|undefined>(() =>
-  files.value && files.value.length ?
-    files.value[0] : undefined);
+
+onFilePickerError((e) => {
+  showToast(e.message, 'error');
+});
+
+const transferDetails = computed(() =>
+  (files.value.length > 0 || null) && {
+    name: directories.value.length && directories.value[0].name || files.value[0].file.name,
+    totalSize: files.value.map(f => f.file.size).reduce((a, b) => a + b)
+  });
+
+// files that are not in a folder
+const rootFiles = computed(() =>
+  Array.from(files.value.values()).filter(f => !f.path.includes('/')));
 
 const uploadProgress = ref<number>(0);
 const uploadState = ref<UploadState>('initial');
 const downloadUrl = ref<string|undefined>();
 const copiedDownloadUrl = ref<boolean>(false);
+const fileListContainer = ref<HTMLDivElement>();
+const addDropdown = ref<HTMLElement>();
+
+watch([files], () => {
+  if (!fileListContainer.value) return;
+  // TODO: this doesn't seem to work properly
+  fileListContainer.value.scrollTo(0, fileListContainer.value.scrollHeight);
+});
 
 function resetState() {
   reset();
@@ -76,6 +130,20 @@ function resetState() {
   uploadState.value = 'initial';
   uploadProgress.value = 0;
   copiedDownloadUrl.value = false;
+}
+
+function onClickAddFiles() {
+  openFilePicker();
+  closeAddDropdown();
+}
+
+function onClickAddFolder() {
+  openDirectoryPicker();
+  closeAddDropdown();
+}
+
+function closeAddDropdown() {
+  addDropdown.value?.attributes.removeNamedItem('open');
 }
 
 function copyDownloadUrl() {
@@ -86,7 +154,8 @@ function copyDownloadUrl() {
 }
 
 async function startUpload() {
-  if (!files.value?.length) return;
+  if (!files.value.length) return;
+  if (!transferDetails.value) return;
 
   uploadProgress.value = 0;
   downloadUrl.value = undefined;
@@ -96,36 +165,52 @@ async function startUpload() {
 
   const user = ensure(store.userAccount.value);
   const provider = ensure(store.preferredProvider.value);
-  const file = files.value[0];
-  const transfer = await apiClient.initTransfer(user.account._id, {
-    fileSize: file.size,
-    originalName: file.name,
+
+  const transfer = await apiClient.createTransfer(user.account._id, {
+    name: transferDetails.value.name,
     provider: provider.provider,
     region: provider.bestRegions[0],
-    fileType: file.type,
-    md5Hex: "hash"
+    files: Array.from(files.value.values()).map(f => ({ name: f.path, size: f.file.size }))
   });
 
-  const uploadTracker = uploadRecoveryManager.createUploadTracker({
-    filename: file.name,
-    size: file.size,
-    hash: "hash",
+  const transferTracker = uploadRecoveryManager.createTransferTracker({
+    name: transfer.name,
     id: transfer._id,
-    blockSize: blockSize
-  });
-
-  const uploader = new AzUploader({
-    file,
+    totalSize: transferDetails.value.totalSize,
     blockSize,
-    uploadUrl: transfer.secureUploadUrl,
-    tracker: uploadTracker,
-    onProgress: (progress) => {
-      uploadProgress.value = progress;
-    },
-    logger
+    files: transfer.files.map(f => ({ size: f.size, path: f.name })),
+    directories: directories.value.map(d => ({ totalFiles: d.totalFiles, totalSize: d.totalSize, name: d.name }))
   });
 
-  await uploader.uploadFile();
+  const uploader = new MultiFileUploader({
+    files: transfer.files,
+    onProgress: (progress) => {
+      uploadProgress.value = progress
+    },
+    uploaderFactory: (file, onFileProgress, fileIndex) => {
+      if (!files.value) throw new Error("Excepted files.value to be set");
+      
+      const fileToTrack = ensure(
+        transfer.files.find(f => f.name === files.value[fileIndex].path),
+        `Cannot find file '${files.value[fileIndex].path}' in transfer package.`);
+
+      return new AzUploader({
+        file: files.value[fileIndex].file,
+        blockSize,
+        uploadUrl: file.uploadUrl,
+        tracker: transferTracker.createFileTracker({
+          blockSize,
+          id: fileToTrack._id,
+          filename: fileToTrack.name,
+          size: fileToTrack.size
+        }),
+        onProgress: onFileProgress,
+        logger
+      })
+    }
+  });
+
+  await uploader.uploadFiles();
   
   const stopped = new Date();
   logger.log(`full upload operation took ${stopped.getTime() - started.getTime()}`);
@@ -133,7 +218,7 @@ async function startUpload() {
   let retry = true;
   while (retry) {
     try {
-      const download = await apiClient.requestDownload(user.account._id, transfer._id);
+      const download = await apiClient.finalizeTransfer(user.account._id, transfer._id);
       retry = false;
       downloadUrl.value = `${location.origin}/d/${download._id}`;
       uploadState.value = 'complete';
@@ -150,6 +235,6 @@ async function startUpload() {
     }
   }
 
-  await uploadTracker.completeUpload(); // we shouldn't block for this, maybe use promise.then?
+  await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
 }
 </script>

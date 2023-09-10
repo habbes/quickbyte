@@ -62,6 +62,23 @@ export interface File extends PersistedModel {
     fileType: string;
 }
 
+export interface Transfer extends PersistedModel {
+    provider: string;
+    region: string;
+    accountId: string;
+    name: string;
+    status: TransferStatus;
+    expiresAt: Date;
+}
+
+export type TransferStatus = 'pending' | 'progress' | 'completed';
+
+export interface TransferFile extends PersistedModel {
+    transferId: string;
+    name: string;
+    size: number;
+}
+
 export interface Upload extends PersistedModel {
     fileId: string;
     blockSize: number;

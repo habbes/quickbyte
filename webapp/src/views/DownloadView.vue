@@ -1,5 +1,32 @@
 <template>
-  <div class="flex flex-col p-5 sm:items-center sm:mt-20">
+  <div class="flex flex-col p-5 gap-2 sm:items-center sm:mt-20">
+    <div v-if="!optimalDownloaderSupported"
+      class="alert alert-warning w-96">
+      <span class="text-xs">
+        This browser does not support an optimal download experience.
+        Consider using Microsoft Edge or Google Chrome
+        if you're downloading large files.
+      </span>
+    </div>
+    <div v-if="download && error"
+      class="alert alert-error w-96 cursor-pointer"
+      @click="error = undefined"
+    >
+      <span class="text-xs">{{ error.message }}</span>
+    </div>
+    <div v-if="download && zipDownloadState === 'complete'"
+      class="alert alert-success w-96 cursor-pointer"
+      @click="zipDownloadState = 'pending'">
+      <span class="text-xs">Download complete. Look for <b>{{ zipFileName }}</b> on your device.</span>
+    </div>
+    <div v-else-if="download && zipDownloadState === 'inProgress'"
+      class="alert alert-info w-96"
+      @click="zipDownloadState = 'pending'">
+      <span class="text-xs">
+        Downloading <b>{{ zipFileName || 'the zip file' }}</b> ({{ humanizeSize(totalSize || 0) }}).
+        Do not close or reload the browser tab.
+      </span>
+    </div>
     <div class="card max-w-96 sm:w-96 bg-base-100 shadow-xl">
       <!-- loading -->
       <div class="card-body" v-if="loading">
@@ -8,13 +35,47 @@
 
       <!-- file found -->
       <div class="card-body" v-else-if="download">
-        <h2 class="card-title">{{ download.originalName  }}</h2>
-        <p class="text-gray-400">
-          {{  humanizeSize(download.fileSize) }} <br>
-          {{  download.fileType }}
-        </p>
-        <div class="card-actions justify-center mt-4">
-          <a class="btn btn-primary w-full" :href="download.downloadUrl">Download</a>
+        <h2 class="card-title">{{ download.name  }}</h2>
+        <div v-if="zipDownloadState !== 'inProgress'" class="flex justify-between items-center mb-2">
+          <div class="text-gray-400">
+            {{ download.files.length }} files - {{  humanizeSize(totalSize || 0) }} <br>
+          </div>
+          <div>
+            <button class="btn btn-primary btn-sm w-full" @click="downloadZip()">
+              Download all
+            </button>
+          </div>
+        </div>
+        <div v-else-if="zipDownloadState === 'inProgress'" class="flex justify-between items-center mb-2">
+          <div class="text-gray-400">
+            {{ download.files.length }} files - {{  humanizeSize(totalSize || 0) }} <br>
+          </div>
+        </div>
+        <div v-if="zipDownloadState === 'inProgress'" class="flex flex-col gap-2">
+          <div class="flex justify-center">
+            <div
+              class="radial-progress bg-primary text-primary-content border-4 border-primary"
+              :style="{ '--value': Math.floor(downloadProgress) }">
+                {{ Math.floor(downloadProgress)}}%
+            </div>
+          </div>
+        </div>
+        
+        <div class="h-60 overflow-auto">
+          <FileListItem
+            v-for="file in download.files"
+            :key="file._id"
+            :name="file.name"
+            :size="file.size"
+          >
+            <template #icon>
+              <a title="Download file" :href="file.downloadUrl" :download="file.name.split('/').at(-1)">
+                <ArrowDownTrayIcon
+                  class="h-6 w-6 cursor-pointer"
+                />
+              </a>
+            </template>
+          </FileListItem>
         </div>
       </div>
 
@@ -38,16 +99,26 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onMounted, ref } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
-import { apiClient } from "@/app-utils";
-import { humanizeSize, ApiError, type DownloadRequestResult } from "@/core";
+import { apiClient, downloaderProvider, showToast, windowUnloadManager } from "@/app-utils";
+import { humanizeSize, ApiError, type DownloadRequestResult, ensure, isOperationCancelledError, isNetworkError } from "@/core";
+import { ArrowDownTrayIcon } from "@heroicons/vue/24/solid";
+import { FolderIcon, DocumentIcon, PlusCircleIcon } from "@heroicons/vue/24/outline";
+import FileListItem from '@/components/FileListItem.vue';
+
+type DownloadState = 'pending' | 'complete' | 'inProgress';
 
 const route = useRoute();
 route.params.downloadId;
 const error = ref<Error|undefined>();
 const download = ref<DownloadRequestResult|undefined>();
+const totalSize = computed(() => download.value && download.value.files.reduce((a, b) => a + b.size, 0));
+const downloadProgress = ref(0);
 const loading = ref(true);
+const zipDownloadState = ref<DownloadState>('pending');
+const zipFileName = ref<string>();
+const optimalDownloaderSupported = downloaderProvider.isOptimalDownloaderSupported();
 
 onMounted(async () => {
   if (!route.params.downloadId || typeof route.params.downloadId !== 'string') {
@@ -57,6 +128,7 @@ onMounted(async () => {
 
   try {
     download.value = await apiClient.getDownload(route.params.downloadId);
+    zipFileName.value = `${download.value.name}.zip`;
   }
   catch (e: any) {
     error.value = e;
@@ -64,6 +136,41 @@ onMounted(async () => {
   finally {
     loading.value = false;
   }
+});
+
+async function downloadZip() {
+  const transfer = ensure(download.value);
+  const downloader = downloaderProvider.getDownloader();
+  const removeOnExitWarning = windowUnloadManager.warnUserOnExit();
+  try {
+    await downloader.download(
+      transfer,
+      ensure(zipFileName.value),
+      (progress) => {
+        downloadProgress.value = progress;
+      },
+      (userSelectedFileName) => {
+        zipFileName.value = userSelectedFileName;
+        zipDownloadState.value = 'inProgress';
+      });
   
-})
+    zipDownloadState.value = 'complete';
+  }
+  catch (e: any) {
+    zipDownloadState.value = 'pending';
+    if (isOperationCancelledError(e)) {
+      return;
+    }
+
+    if (isNetworkError(e)) {
+      error.value = new Error('Network error occurred');
+    } else {
+      error.value = e as Error;
+    }
+  }
+  finally {
+    removeOnExitWarning();
+    downloadProgress.value = 0;
+  }
+};
 </script>
