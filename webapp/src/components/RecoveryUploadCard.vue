@@ -1,89 +1,89 @@
 <template>
-  <div class="card w-96 bg-base-100 shadow-xl">
-    <!-- initial state -->
-    <div class="card-body" v-if="uploadState === 'initial' && !files.length">
-      <div>Select the following files and folders to resume transfer:</div>
-      <div v-for="dir in recoveredUpload.directories" :key="dir.name">
-        {{ dir.name }} ({{ dir.totalFiles }} files)
-      </div>
-      <div v-for="file in rootFiles" :key="file.path">
-        {{ file.path }} ({{ humanizeSize(file.file.size) }})
-      </div>
-      <div class="card-actions">
-        <Button @click="openFilePicker()" class="">Select files to upload</Button>
-        <Button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="">Select directory to upload</Button>
-        <button @click="resetStateAndComplete()" class="btn">Cancel</button>
-      </div>
+  <div class="w-96 flex flex-col gap-2">
+    <div v-if="!filesMatch && files.length">
+      <div class="alert alert-error text-xs">
+          The selected files do not match the recovered files.
+          Please select the correct files to resume transfer.
+        </div>
     </div>
+    <div class="card w-96 bg-base-100 shadow-xl">
+      <!-- initial state -->
+      <div class="card-body" v-if="uploadState === 'initial'">
+        <div v-if="!filesMatch" class="font-bold text-sm">Select the following files and folders to resume transfer:</div>
+        <div v-if="!filesMatch" class="max-h-28 overflow-auto">
+          <FolderListItem
+            v-for="dir in foldersToRecover"
+            :key="dir.name"
+            :name="dir.name"
+            :numFiles="dir.totalFiles"
+            :totalSize="dir.totalSize"
+          />
+          <FileListItem
+            v-for="file in rootFilesToRecover"
+            :key="file.path"
+            :name="file.path"
+            :size="file.size"
+          />
+        </div>
+        <div class="font-bold text-sm">Currently selected files</div>
+        <div class="max-h-60 overflow-auto">
+          <FolderListItem
+            v-for="dir in directories"
+            :key="dir.name"
+            :name="dir.name"
+            :numFiles="dir.totalFiles"
+            :totalSize="dir.totalSize"
+          />
+          <FileListItem
+            v-for="file in rootFiles"
+            :key="file.path"
+            :name="file.path"
+            :size="file.file.size"
+          />
+        </div>
+        <div v-if="!filesMatch" class="card-actions flex items-center justify-between">
+          <AddFilesDropdown
+            buttonText="Select files"
+            @addFiles="openFilePicker()"
+            @addFolder="openDirectoryPicker()"
+          />
+        </div>
+        <div v-else class="card-actions flex items-center">
+          <button v-if="filesMatch" class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
+          <button @click="resetStateAndComplete()" class="btn">Cancel</button>
+        </div>
+        
+      </div>
 
-    <div class="card-body" v-if="uploadState === 'initial' && files.length && !filesMatch">
-      <div class="alert alert-error">
-        The selected files do not match the recovered files.
-        Please select the correct files to resume transfer.
+      <!-- upload in progress -->
+      <div class="card-body" v-if="uploadState === 'progress' && files.length && filesMatch">
+        <h2 class="card-title">{{ recoveredUpload.name }}</h2>
+        <div class="flex justify-center">
+          <div
+            class="radial-progress bg-primary text-primary-content border-4 border-primary" style="--value:70;"
+            :style="{ '--value': Math.floor(100 * uploadProgress / recoveredUpload.totalSize )}">
+              {{ Math.floor(100 * uploadProgress / recoveredUpload.totalSize )}}%
+            </div>
+        </div>
+        <p class="text-gray-400 text-center">
+          {{ humanizeSize(uploadProgress) }} / {{  humanizeSize(recoveredUpload.totalSize) }} <br>
+        </p>
       </div>
-      <!-- <div class="text-sm text-gray-400">
-        Recovered file: <b>{{ recoveredUpload.filename }}</b> {{ humanizeSize(recoveredUpload.size) }}
-      </div>
-      <div class="text-sm text-gray-400">
-        Selected file: <b>{{ file.name }}</b> {{ humanizeSize(file.size) }}
-      </div> -->
-      <div class="card-actions">
-        <Button @click="openFilePicker()" class="">Select files to upload</Button>
-        <Button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="">Select directory to upload</Button>
-        <button @click="resetStateAndComplete()" class="btn">Cancel</button>
-      </div>
-    </div>
 
-    <!-- file selected -->
-    <div class="card-body" v-if="uploadState === 'initial' && files.length && filesMatch">
-      <h2 class="card-title">{{ recoveredUpload.name  }}</h2>
-      <div>
-        <div>
-          <div v-for="dir in directories" :key="dir.name">
-            {{ dir.name }}
-          </div>
-          <div v-for="file in rootFiles" :key="file.path">
-            {{ file.path }}
+      <!-- upload complete -->
+      <div class="card-body" v-if="uploadState === 'complete' && files.length">
+        <h2 class="card-title">Upload complete!</h2>
+        <p>Copy and share the <a class="link" :href="downloadUrl" target="_blank">download link</a> with the recipients:
+        </p>
+        <div class="relative mb-6" @click="copyDownloadUrl()">
+          <div class="absolute left-0 right-0 overflow-auto border p-2 rounded-md">
+            {{ downloadUrl }}
           </div>
         </div>
-      </div>
-      <p class="text-gray-400">
-        {{ files?.length }} files - {{  humanizeSize(recoveredUpload.totalSize) }} <br>
-      </p>
-      <div class="card-actions justify-center mt-4">
-        <button class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
-        <button class="btn" @click="resetStateAndComplete()">Cancel</button>
-      </div>
-    </div>
-
-    <!-- upload in progress -->
-    <div class="card-body" v-if="uploadState === 'progress' && files.length && filesMatch">
-      <h2 class="card-title">{{ recoveredUpload.name }}</h2>
-      <div class="flex justify-center">
-        <div
-          class="radial-progress bg-primary text-primary-content border-4 border-primary" style="--value:70;"
-          :style="{ '--value': Math.floor(100 * uploadProgress / recoveredUpload.totalSize )}">
-            {{ Math.floor(100 * uploadProgress / recoveredUpload.totalSize )}}%
-          </div>
-      </div>
-      <p class="text-gray-400 text-center">
-        {{ humanizeSize(uploadProgress) }} / {{  humanizeSize(recoveredUpload.totalSize) }} <br>
-      </p>
-    </div>
-
-    <!-- upload complete -->
-    <div class="card-body" v-if="uploadState === 'complete' && files.length">
-      <h2 class="card-title">Upload complete!</h2>
-      <p>Copy and share the <a class="link" :href="downloadUrl" target="_blank">download link</a> with the recipients:
-      </p>
-      <div class="relative mb-6" @click="copyDownloadUrl()">
-        <div class="absolute left-0 right-0 overflow-auto border p-2 rounded-md">
-          {{ downloadUrl }}
+        <div class="card-actions justify-center mt-4">
+          <button v-if="!copiedDownloadUrl" class="btn btn-primary w-full" @click="copyDownloadUrl()">Copy link</button>
+          <button v-if="copiedDownloadUrl" class="btn btn-primary w-full" @click="resetStateAndComplete()">Send another file</button>
         </div>
-      </div>
-      <div class="card-actions justify-center mt-4">
-        <button v-if="!copiedDownloadUrl" class="btn btn-primary w-full" @click="copyDownloadUrl()">Copy link</button>
-        <button v-if="copiedDownloadUrl" class="btn btn-primary w-full" @click="resetStateAndComplete()">Send another file</button>
       </div>
     </div>
   </div>
@@ -94,6 +94,10 @@ import { ref, computed } from "vue";
 import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast, type FilePickerEntry } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader, type TrackedTransfer } from "@/core";
 import Button from "@/components/Button.vue";
+import FileListItem from '@/components/FileListItem.vue';
+import FolderListItem from '@/components/FolderListItem.vue';
+import AddFilesDropdown from '@/components/AddFilesDropdown.vue';
+import { file } from 'jszip';
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
@@ -108,6 +112,8 @@ const emit = defineEmits<{
 const {
   openDirectoryPicker,
   openFilePicker,
+  getFileByPath,
+  getDirectoryByName,
   onError: onFilePickerError,
   directoryPickerSupported,
   files,
@@ -125,9 +131,15 @@ const rootFiles = computed(() => files.value.filter(f => !f.path.includes('/')))
 
 const recoveredUpload = computed(() => ensure(store.recoveredTransfers.value.find(u => props.uploadId === u.id)));
 
+const unselectedFilesToRecover = computed(() => recoveredUpload.value.files.filter(file => !isFileSelected(file)));
+const rootFilesToRecover = computed(() => unselectedFilesToRecover.value.filter(f => !f.path.includes('/')));
+const foldersToRecover = computed(() => recoveredUpload.value.directories.filter(folder => !isDirectorySelected(folder)));
+
 const filesMatch = computed(() =>
   files.value && checkRecoveredAndUploadedFilesMatch(recoveredUpload.value, files.value)
 );
+
+// const unselectedFilesToRecover = computed(() => recoveredUpload.value.files.filter(file => isFileSelected(file)));
 
 const uploadProgress = ref<number>(0);
 const uploadState = ref<UploadState>('initial');
@@ -162,6 +174,20 @@ function checkRecoveredAndUploadedFilesMatch(recovered: TrackedTransfer, files: 
     .every(file =>
       files.some(otherFile =>
         otherFile.path === file.path && otherFile.file.size === file.size));
+}
+
+function isFileSelected(fileToRecover: TrackedTransfer['files'][0]) {
+  const selectedFile = getFileByPath(fileToRecover.path);
+  return !!(selectedFile && selectedFile.file.size === fileToRecover.size);
+}
+
+function isDirectorySelected(folderToRecover: TrackedTransfer['directories'][0]) {
+  const selectedFolder = getDirectoryByName(folderToRecover.name);
+  // TODO: this will consider a folder to be mismatch if it has added new files
+  // since the recovered upload. That might be a bit too restrictive,
+  // it may be sufficient to just ignore new files
+  return !!(selectedFolder?.totalFiles === folderToRecover.totalFiles
+    && selectedFolder?.totalSize === folderToRecover.totalSize);
 }
 
 async function startUpload() {

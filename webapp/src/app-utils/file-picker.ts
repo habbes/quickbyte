@@ -65,6 +65,7 @@ export function useFilePicker() {
     }
 
     const getFileByPath = (path: string) => files.value.get(path);
+    const getDirectoryByName = (name: string) => directories.value.get(name);
 
     const removeFile = (path: string) => {
         files.value.delete(path);
@@ -90,13 +91,14 @@ export function useFilePicker() {
         reset,
         onError,
         getFileByPath,
+        getDirectoryByName,
         removeFile,
         removeDirectory,
         directoryPickerSupported
     }
 }
 
-function isDirectoryPickerSupported() {
+export function isDirectoryPickerSupported() {
     return 'showDirectoryPicker' in window && window.self === window.top;
 }
 

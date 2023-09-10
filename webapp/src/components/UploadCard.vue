@@ -33,24 +33,7 @@
       </div>
       <p class="flex justify-between content-center mt-2">
         <span class="text-gray-400">{{ files?.length }} files - {{  humanizeSize(transferDetails.totalSize) }}</span>
-        <details ref="addDropdown" class="dropdown">
-          <summary role="button" class="text-primary hover:text-primary-focus cursor-pointer flex gap-1">
-            <span>add more</span>
-            <PlusCircleIcon class="h-6 w-6"/>
-          </summary>
-          <ul class="p-1 shadow-md border menu dropdown-content z-[1] bg-base-100 rounded-box w-auto">
-            <li class="text-xs p-1">
-              <a class="p-1 whitespace-nowrap" @click="onClickAddFiles()">
-                <DocumentIcon class="h-4 w-4"/> Add files
-              </a>
-            </li>
-            <li class="text-xs p-1">
-              <a class="p-1 whitespace-nowrap" @click="onClickAddFolder()">
-                <FolderIcon class="h-4 w-4"/> Add folder
-              </a>
-            </li>
-          </ul>
-        </details>
+        <AddFilesDropDown @addFiles="openFilePicker()" @addFolder="openDirectoryPicker()" />
       </p>
       <div class="card-actions justify-center mt-4">
         <button class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
@@ -92,13 +75,12 @@
 <script lang="ts" setup>
 import { useClipboard } from '@vueuse/core';
 import { ref, computed, watch } from "vue";
-import { XMarkIcon } from "@heroicons/vue/24/solid";
-import { FolderIcon, DocumentIcon, PlusCircleIcon } from "@heroicons/vue/24/outline";
 import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
 import UploadListFileItem from './UploadListFileItem.vue';
 import UploadListFolderItem from './UploadListFolderItem.vue';
+import AddFilesDropDown from './AddFilesDropdown.vue';
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
