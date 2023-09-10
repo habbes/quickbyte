@@ -2,15 +2,16 @@
   <div class="w-96 flex flex-col gap-2">
     <div v-if="!filesMatch && files.length">
       <div class="alert alert-error text-xs">
-          The selected files do not match the recovered files.
-          Please select the correct files to resume transfer.
+          Ensure you select all files that were
+          part of the recovered transfer
+          and do not add files which were not part it.
         </div>
     </div>
     <div class="card w-96 bg-base-100 shadow-xl">
       <!-- initial state -->
       <div class="card-body" v-if="uploadState === 'initial'">
         <div v-if="!filesMatch" class="font-bold text-sm">Select the following files and folders to resume transfer:</div>
-        <div v-if="!filesMatch" class="max-h-28 overflow-auto">
+        <div v-if="!filesMatch" class="max-h-52 overflow-auto">
           <FolderListItem
             v-for="dir in foldersToRecover"
             :key="dir.name"
@@ -25,20 +26,22 @@
             :size="file.size"
           />
         </div>
-        <div class="font-bold text-sm">Currently selected files</div>
+        <div v-if="files.length" class="font-bold text-sm">Currently selected files</div>
         <div class="max-h-60 overflow-auto">
-          <FolderListItem
+          <UploadListFolderItem
             v-for="dir in directories"
             :key="dir.name"
             :name="dir.name"
             :numFiles="dir.totalFiles"
             :totalSize="dir.totalSize"
+            @remove="removeDirectory(dir.name)"
           />
-          <FileListItem
+          <UploadListFileItem
             v-for="file in rootFiles"
             :key="file.path"
             :name="file.path"
             :size="file.file.size"
+            @remove="removeFile(file.path)"
           />
         </div>
         <div v-if="!filesMatch" class="card-actions flex items-center justify-between">
@@ -52,7 +55,6 @@
           <button v-if="filesMatch" class="btn btn-primary flex-1" @click="startUpload()">Upload</button>
           <button @click="resetStateAndComplete()" class="btn">Cancel</button>
         </div>
-        
       </div>
 
       <!-- upload in progress -->
@@ -96,8 +98,9 @@ import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader, type Tra
 import Button from "@/components/Button.vue";
 import FileListItem from '@/components/FileListItem.vue';
 import FolderListItem from '@/components/FolderListItem.vue';
+import UploadListFolderItem from '@/components/UploadListFolderItem.vue';
+import UploadListFileItem from '@/components/UploadListFileItem.vue';
 import AddFilesDropdown from '@/components/AddFilesDropdown.vue';
-import { file } from 'jszip';
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
@@ -114,6 +117,8 @@ const {
   openFilePicker,
   getFileByPath,
   getDirectoryByName,
+  removeDirectory,
+  removeFile,
   onError: onFilePickerError,
   directoryPickerSupported,
   files,
@@ -170,10 +175,19 @@ function checkRecoveredAndUploadedFilesMatch(recovered: TrackedTransfer, files: 
   // TODO: check other factors like "lastModified" and "hash"
   // check that every file in TrackedTransfer exists among the upload files
   // we should probably emit a warning when there are new files
-  return recovered.files
+  const allFilesToRecoverSelected = recovered.files
     .every(file =>
       files.some(otherFile =>
         otherFile.path === file.path && otherFile.file.size === file.size));
+  
+  const recoveredFileNames = recovered.files.map(f => f.path);
+  const includesUnknownFiles = files.some(file =>
+    // We don't check unknown files inside folders.
+    // But those files won't be included in the upload.
+    !file.path.includes('/')
+    && !recoveredFileNames.includes(file.path));
+  
+  return allFilesToRecoverSelected && !includesUnknownFiles;
 }
 
 function isFileSelected(fileToRecover: TrackedTransfer['files'][0]) {
@@ -183,11 +197,13 @@ function isFileSelected(fileToRecover: TrackedTransfer['files'][0]) {
 
 function isDirectorySelected(folderToRecover: TrackedTransfer['directories'][0]) {
   const selectedFolder = getDirectoryByName(folderToRecover.name);
-  // TODO: this will consider a folder to be mismatch if it has added new files
-  // since the recovered upload. That might be a bit too restrictive,
-  // it may be sufficient to just ignore new files
-  return !!(selectedFolder?.totalFiles === folderToRecover.totalFiles
-    && selectedFolder?.totalSize === folderToRecover.totalSize);
+  if (!selectedFolder) return false;
+  // Using >= to account for the fact that files may have been added
+  // to the folder since it was last selected. However,
+  // such files will not be included in the upload because they
+  // were not in the original transfer.
+  return !!(selectedFolder.totalFiles >= folderToRecover.totalFiles
+    && selectedFolder.totalSize >= folderToRecover.totalSize);
 }
 
 async function startUpload() {
