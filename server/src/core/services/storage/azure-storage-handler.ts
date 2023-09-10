@@ -171,11 +171,7 @@ export class AzureStorageHandler implements IStorageHandler {
         // azure will reject requests with "invalid characters" in the name.
         // For now we use the blobName (which is likely randomly generated) for the default download name.
         // But we should ideally normalize/sanitize the original name and use that instead.
-        let defaultDownloadName = blobName;
-        const ext = originalName.split('.').at(-1);
-        if (ext) {
-            defaultDownloadName += `.${ext}`;
-        }
+        const defaultDownloadName = normalizeFileNameForSasUrl(originalName);
 
         try {
             const container = this.regionAccounts[region].container;
@@ -195,6 +191,23 @@ export class AzureStorageHandler implements IStorageHandler {
             throw createAppError(e);
         }
     }
+}
+
+/**
+ * Removes characters not supported in Azure SAS URLs
+ * @param name
+ */
+function normalizeFileNameForSasUrl(name: string): string {
+    const chars = new Array(name.length);
+    for (let i = 0; i < name.length; i++) {
+        if (name.charCodeAt(i) >= 127) {
+            chars[i] = '_';
+        } else {
+            chars[i] = name.charAt(i);
+        }
+    }
+
+    return chars.join('');
 }
 
 export interface AzureStorageHandlerConfig {
