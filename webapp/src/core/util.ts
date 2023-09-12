@@ -43,23 +43,25 @@ export function ensure<T>(obj?: T, message?: string): T {
 export async function executeTasksInBatches<TSource, TResult>(
     source: TSource[],
     createTask: (s: TSource) => Promise<TResult>,
-    batchSize: number
+    numWorkers: number
 ): Promise<TResult[]> {
-    let nextBatchIndex = 0;
     const result = new Array<TResult>(source.length);
-    while (nextBatchIndex < source.length) {
-        const batch = source.slice(nextBatchIndex, nextBatchIndex + batchSize);
-        const batchTasks = batch.map(s => createTask(s));
-        const batchResult = await Promise.all(batchTasks);
-        
-        for (let i = 0; i < batchResult.length; i++) {
-            result[nextBatchIndex + i] = batchResult[i];
-        }
-
-        nextBatchIndex += batchSize;
+    const workers = new Array<Promise<void>>(numWorkers);
+    for (let w = 0; w < numWorkers; w++) {
+        workers[w] = executeBatchWorker(w, numWorkers, source, createTask, result);
     }
 
+    await Promise.all(workers);
     return result;
+}
+
+async function executeBatchWorker<TSource, TResult>(startIndex: number, numWorkers: number, taskSources: TSource[], createTask: (s: TSource) => Promise<TResult>, results: TResult[]) {
+    let nextTaskIndex = startIndex;
+    while (nextTaskIndex < taskSources.length) {
+        const result = await createTask(taskSources[nextTaskIndex]);
+        results[nextTaskIndex] = result;
+        nextTaskIndex += numWorkers;
+    }
 }
 
 export function isNetworkError(e: any) {
@@ -68,12 +70,11 @@ export function isNetworkError(e: any) {
 }
 
 export async function compareLatency(regions: RegionInfo[]): Promise<RegionPingResult[]> {
-    const started = Date.now();
     const concurrency = 4;
     const samples = 3;
     const tasks = [];
     for (let i = 0; i < samples; i++) {
-        for (let region of regions) {
+        for (const region of regions) {
             tasks.push(region);
         }
     }
