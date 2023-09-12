@@ -1,6 +1,6 @@
 import { type DownloadRequestResult } from "../api-client.js";
 import { type ZipDownloader } from "./types.js";
-import { ensure, executeTasksInBatches, isNetworkError } from '../util.js';
+import { ensure, executeTasksInBatches, isNetworkError, noop } from '../util.js';
 import { BlockBlobClient } from "@azure/storage-blob";
 import { createOperationCancelledError, type Logger } from "..";
 
@@ -77,6 +77,19 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
         // @ts-ignore
         const writable = await handle.createWritable();
 
+        // const downloadTasks = transfer.files.map(file => {
+        //     const downloader = new FileDownloader(
+        //         writable,
+        //         file,
+        //         ensure(zipEntries.entries.get(file._id)),
+        //         BLOCK_SIZE,
+        //         this.logger,
+        //         fileProgress => setFileProgress(file.name, fileProgress)
+        //     );
+        //     return downloader.download()
+        // });
+        // await Promise.all(downloadTasks);
+
         const downloadTasks = executeTasksInBatches(
             transfer.files,
             file => {
@@ -90,9 +103,9 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
                 );
                 return downloader.download()
             },
-            5);
-
+            16);
         await downloadTasks;
+
         await writeEndOfCentralDirectory(writable, zipEntries.eocd, incrementProgress);
 
         await writable.close();
@@ -102,6 +115,7 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
 
 class FileDownloader {
     private client: BlockBlobClient;
+    private currentProgress: number = 0;
     constructor(
         // @ts-ignore
         private writer: FileSystemWritableFileStream,
@@ -129,15 +143,16 @@ class FileDownloader {
         this.zipEntry.checksum = checksum;
         this.zipEntry.hasChecksum = true;
 
-        let currentProgress = 0;
         const incrementProgress = (value: number) => {
-            currentProgress += value;
-            this.onProgress && this.onProgress(currentProgress);
+            this.currentProgress += value;
+            this.onProgress && this.onProgress(this.currentProgress);
         }
 
         const tasks = [
             writeLocalHeader(this.writer, this.zipEntry, incrementProgress),
-            writeCompleteFileData(this.writer, this.zipEntry, blobData, incrementProgress),
+            // Since we update file progress when downloading the file,
+            // we skip updating progress when adding the downloaded file to the zip
+            writeCompleteFileData(this.writer, this.zipEntry, blobData, noop),
             writeCentralDirectoryHeader(this.writer, this.zipEntry, incrementProgress)
         ];
 
@@ -147,9 +162,15 @@ class FileDownloader {
 
     private async downloadFile() {
         let retry = true;
+        let lastUpdatedProgress = 0;
         while (retry) {
             try {
-                const result = await this.client.download();
+                const result = await this.client.download(undefined, undefined, {
+                    onProgress: (progress) => {
+                        this.currentProgress += progress.loadedBytes - lastUpdatedProgress;
+                        lastUpdatedProgress = progress.loadedBytes;
+                    }
+                });
                 return result;
             } catch (e) {
                 if (isNetworkError(e)) {

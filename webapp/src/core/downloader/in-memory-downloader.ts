@@ -60,7 +60,7 @@ class DownloadTask {
             this.onProgress(percentage);
         }
 
-        const batchSize = 5;
+        const batchSize = 16;
         await executeTasksInBatches(
             this.transfer.files,
             file => this.downloadFile(

@@ -7,6 +7,11 @@ const BYTES_PER_MB = 1024 * 1024;
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 const BYTES_PER_TB = 1024 * BYTES_PER_GB;
 
+/**
+ * Utility function that does nothing
+ */
+export function noop() {};
+
 export function humanizeSize(bytes: number): string {
     if (bytes < BYTES_PER_KB) {
         return `${bytes} Bytes`;

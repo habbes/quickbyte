@@ -93,7 +93,7 @@
 <script lang="ts" setup>
 import { useClipboard } from '@vueuse/core';
 import { ref, computed } from "vue";
-import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast, type FilePickerEntry } from '@/app-utils';
+import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast, type FilePickerEntry, windowUnloadManager } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader, type TrackedTransfer } from "@/core";
 import Button from "@/components/Button.vue";
 import FileListItem from '@/components/FileListItem.vue';
@@ -120,7 +120,6 @@ const {
   removeDirectory,
   removeFile,
   onError: onFilePickerError,
-  directoryPickerSupported,
   files,
   directories,
   reset
@@ -212,80 +211,87 @@ async function startUpload() {
   uploadProgress.value = 0;
   downloadUrl.value = undefined;
   uploadState.value = 'progress';
-  const started = new Date();
-  const blockSize = recoveredUpload.value.blockSize;
 
-  const user = ensure(store.userAccount.value);
-  ensure(store.preferredProvider.value);
+  const removeExitWarning = windowUnloadManager.warnUserOnExit();
+  try {
+    const started = new Date();
+    const blockSize = recoveredUpload.value.blockSize;
 
-  const transfer = await apiClient.getTransfer(user.account._id, recoveredUpload.value.id);
+    const user = ensure(store.userAccount.value);
+    ensure(store.preferredProvider.value);
 
-  const transferTracker = uploadRecoveryManager.recoverTransferTracker(recoveredUpload.value);
+    const transfer = await apiClient.getTransfer(user.account._id, recoveredUpload.value.id);
 
-  // todo: keep track of completed files either on the API or transfer tracker
-  // init transferRecovery to fetch completed files
-  const recoveryResult = await transferTracker.initRecovery();
-  
-  const uploader = new MultiFileUploader({
-    files: transfer.files,
-    completedFiles: recoveryResult.completedFiles,
-    onProgress: (progress) => {
-      uploadProgress.value = progress
-    },
-    uploaderFactory: (file, onFileProgress, fileIndex) => {
-      if (!files.value) throw new Error("Excepted files.value to be set");
-      
-      const fileToTrack = ensure(
-        transfer.files.find(f => f.name === files.value[fileIndex].path),
-        `Cannot find file '${files.value[fileIndex].path}' in transfer package.`);
+    const transferTracker = uploadRecoveryManager.recoverTransferTracker(recoveredUpload.value);
 
-      return new AzUploader({
-        file: files.value[fileIndex].file,
-        blockSize,
-        uploadUrl: file.uploadUrl,
-        completedBlocks: recoveryResult.inProgressFiles.get(fileToTrack.name)?.completedBlocks,
-        tracker: transferTracker.recoverFileTracker({
+    // todo: keep track of completed files either on the API or transfer tracker
+    // init transferRecovery to fetch completed files
+    const recoveryResult = await transferTracker.initRecovery();
+    
+    const uploader = new MultiFileUploader({
+      files: transfer.files,
+      completedFiles: recoveryResult.completedFiles,
+      onProgress: (progress) => {
+        uploadProgress.value = progress
+      },
+      uploaderFactory: (file, onFileProgress, fileIndex) => {
+        if (!files.value) throw new Error("Excepted files.value to be set");
+        
+        const fileToTrack = ensure(
+          transfer.files.find(f => f.name === files.value[fileIndex].path),
+          `Cannot find file '${files.value[fileIndex].path}' in transfer package.`);
+
+        return new AzUploader({
+          file: files.value[fileIndex].file,
           blockSize,
-          id: fileToTrack._id,
-          filename: fileToTrack.name,
-          size: fileToTrack.size
-        }),
-        onProgress: onFileProgress,
-        logger
-      })
-    }
-  });
+          uploadUrl: file.uploadUrl,
+          completedBlocks: recoveryResult.inProgressFiles.get(fileToTrack.name)?.completedBlocks,
+          tracker: transferTracker.recoverFileTracker({
+            blockSize,
+            id: fileToTrack._id,
+            filename: fileToTrack.name,
+            size: fileToTrack.size
+          }),
+          onProgress: onFileProgress,
+          logger,
+          concurrencyStrategy: transfer.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
+        })
+      }
+    });
 
-  await uploader.uploadFiles();
+    await uploader.uploadFiles();
 
-  const stopped = new Date();
-  logger.log(`full upload operation took ${stopped.getTime() - started.getTime()}`);
+    const stopped = new Date();
+    logger.log(`full upload operation took ${stopped.getTime() - started.getTime()}`);
 
-  let retry = true;
-  while (retry) {
-    try {
-      const download = await apiClient.finalizeTransfer(user.account._id, transfer._id);
-      retry = false;
-      downloadUrl.value = `${location.origin}/d/${download._id}`;
-      uploadState.value = 'complete';
-      logger.log(`full operation + download link took ${(new Date()).getTime() - started.getTime()}`);
-    } catch (e) {
-      if (e instanceof ApiError) {
-        // Do not retry on ApiError since it's not a network failure.
-        // TODO: handle this error some other way, e.g. alert message
+    let retry = true;
+    while (retry) {
+      try {
+        const download = await apiClient.finalizeTransfer(user.account._id, transfer._id);
         retry = false;
-      } else {
-        logger.error('Error fetching download', e);
-        retry = true;
+        downloadUrl.value = `${location.origin}/d/${download._id}`;
+        uploadState.value = 'complete';
+        logger.log(`full operation + download link took ${(new Date()).getTime() - started.getTime()}`);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          // Do not retry on ApiError since it's not a network failure.
+          // TODO: handle this error some other way, e.g. alert message
+          retry = false;
+        } else {
+          logger.error('Error fetching download', e);
+          retry = true;
+        }
       }
     }
-  }
 
-  await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
-  // TODO: We should monitor wether deleting the transfer from here will cause some error
-  // (since this component requires that transfer in the store)
-  // should we await the promise?
-  // Also, should the delete handler be triggered automatically by completeTransfer?
-  uploadRecoveryManager.deleteRecoveredTransfer(recoveredUpload.value.id);
+    await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
+    // TODO: We should monitor wether deleting the transfer from here will cause some error
+    // (since this component requires that transfer in the store)
+    // should we await the promise?
+    // Also, should the delete handler be triggered automatically by completeTransfer?
+    uploadRecoveryManager.deleteRecoveredTransfer(recoveredUpload.value.id);
+  } finally {
+    removeExitWarning();
+  }
 }
 </script>

@@ -4,6 +4,21 @@ import type { Logger } from "./logger";
 
 export type UploadProgressCallback = (progress: number) => any;
 
+export type ConcurrencyStrategy =
+    /**
+     * A fixed number of workers is used to upload all the blocks.
+     * Workers run in parallel. Blocks are distributed (almost) evenly
+     * across the workers. This works better when uploading multiple files.
+     */
+    'fixedWorkers' |
+    /**
+     * All blocks are uploaded at the same time using Promise.all,
+     * it's up to the browser to limit the number of concurrent
+     * network requests. This works well when you're uploading
+     * a single file.
+     */
+    'maxParallelism';
+
 export interface FileUploaderArgs {
     file: File,
     uploadUrl: string,
@@ -11,16 +26,22 @@ export interface FileUploaderArgs {
     tracker: FileTracker,
     onProgress: UploadProgressCallback,
     completedBlocks?: Map<number, Block>;
-    logger?: Logger
+    logger?: Logger,
+    /**
+     * How to manage concurrent upload of individual
+     * file blocks.
+     */
+    concurrencyStrategy: ConcurrencyStrategy
 }
 
 export class AzUploader {
     private blob: BlockBlobClient;
     private progress: number = 0;
-    private readonly concurrency = 5;
+    private readonly concurrency:number = 5;
 
     constructor(private config: FileUploaderArgs) {
         this.blob = new BlockBlobClient(this.config.uploadUrl);
+        this.concurrency = this.config.concurrencyStrategy === 'fixedWorkers' ? 5 : 16;
     }
 
     async uploadFile(): Promise<void> {
@@ -79,10 +100,36 @@ export class AzUploader {
 
     private async uploadBlockList(blockList: Block[]) {
         // TODO: benchmark to decide between different upload strategies
-        await this.uploadBlockListByIndependentWorkers(blockList);
+        // await this.uploadBlockListByIndependentWorkers(blockList);
+        if (this.config.concurrencyStrategy === 'maxParallelism') {
+            await this.uploadBlockListInParallel(blockList);
+        } else if (this.config.concurrencyStrategy === 'fixedWorkers') {
+            await this.uploadBlockListByIndependentWorkers(blockList);
+        }
+    }
+
+    private async uploadBlockListInParallel(blockList: Block[]) {
+        // TODO Promise.all() doesn't work for super huge files (e.g. 91gb)
+        // So for now we just set many workers
+        // this.config.logger?.log('parallel strategy');
+        // await Promise.all(blockList.map(block => this.uploadBlock(block)));
+        this.config.logger?.log('parallel workers strategy');
+        // In this strategy, we have n workers
+        // Each worker is responsible for uploading every kn + workerIndex block
+        // e.g. if n = 5, worker 3 will upload blocks 3, 8, 13, etc.
+        // The benefit is that we don't need to maintain a queue or synchronization between workers,
+        // there's not contention between workers because there's no overlap
+        // The downside is that workers that finish all their work first will
+        const workers = new Array(this.concurrency);
+        for (let i = 0; i < this.concurrency; i++) {
+            workers[i] = this.runUploadWorker(i, blockList);
+        }
+
+        await Promise.all(workers);
     }
 
     private async uploadBlockListByIndependentWorkers(blockList: Block[]) {
+        this.config.logger?.log('independent workers strategy');
         // In this strategy, we have n workers
         // Each worker is responsible for uploading every kn + workerIndex block
         // e.g. if n = 5, worker 3 will upload blocks 3, 8, 13, etc.
@@ -90,9 +137,8 @@ export class AzUploader {
         // there's not contention between workers because there's no overlap
         // The downside is that workers that finish all their work first will
         // remain idle even if there's still work to be done
-        const concurrency = 5;
         const workers = new Array(this.concurrency);
-        for (let i = 0; i < concurrency; i++) {
+        for (let i = 0; i < this.concurrency; i++) {
             workers[i] = this.runUploadWorker(i, blockList);
         }
 

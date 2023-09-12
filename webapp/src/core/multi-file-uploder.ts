@@ -1,3 +1,5 @@
+import { executeTasksInBatches } from ".";
+
 export class MultiFileUploader {
     private totalProgress: number = 0;
     private progresses: number[];
@@ -29,13 +31,23 @@ export class MultiFileUploader {
     }
 
     async uploadFiles(): Promise<void> {
-        for (const uploader of this.uploaders) {
-            if (!uploader) {
-                continue;
-            }
-
-            await uploader.uploadFile();
-        }
+        // await executeTasksInBatches(
+        //     this.uploaders.filter(u => !!u),
+        //     u => u!.uploadFile(),
+        //     6
+        // )
+        // using Promise.all seems to be faster than creating fixed workers
+        // seems the browser is smart enough to automatically limit the number
+        // of parallel uploads
+        // TODO: test how well this works on a slower network
+        await Promise.all(this.uploaders.filter(u => u).map(u => u?.uploadFile()));
+        // using Promise.all doesn't work for huge number of tasks, so for now
+        // we just limit to a high number of concurrent workers
+        // await executeTasksInBatches(
+        //     this.uploaders.filter(u => !!u),
+        //     u => u!.uploadFile(),
+        //     16
+        // );
     }
 
     private updateFileProgress(fileIndex: number, fileProgress: number) {
