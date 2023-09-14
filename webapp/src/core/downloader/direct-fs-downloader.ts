@@ -1,6 +1,6 @@
 import { type DownloadRequestResult } from "../api-client.js";
 import { type ZipDownloader } from "./types.js";
-import { ensure } from '../util.js';
+import { ensure, executeTasksInBatches, isNetworkError, noop } from '../util.js';
 import { BlockBlobClient } from "@azure/storage-blob";
 import { createOperationCancelledError, type Logger } from "..";
 
@@ -14,10 +14,10 @@ const BLOCK_SIZE = 16 * 1024 * 1024;
 
 const crc32Table = function() {
     const tbl = [];
-    var c;
-    for(var n = 0; n < 256; n++){
+    let c;
+    for(let n = 0; n < 256; n++){
         c = n;
-        for(var k =0; k < 8; k++){
+        for(let k =0; k < 8; k++){
             c = ((c&1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1));
         }
 
@@ -28,7 +28,7 @@ const crc32Table = function() {
 }();
 
 function crc32(data: ArrayLike<number>) {
-    var crc = -1;
+    let crc = -1;
     for(let i = 0; i < data.length; i++) {
         crc = (crc >>> 8) ^ crc32Table[(crc ^ data[i]) & 0xFF];
     }
@@ -77,19 +77,22 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
         // @ts-ignore
         const writable = await handle.createWritable();
 
-        const downloadTasks = transfer.files.map(file => {
-            const downloader = new FileDownloader(
-                writable,
-                file,
-                ensure(zipEntries.entries.get(file._id)),
-                BLOCK_SIZE,
-                this.logger,
-                fileProgress => setFileProgress(file.name, fileProgress)
-            );
-            return downloader.download()
-        });
+        const downloadTasks = executeTasksInBatches(
+            transfer.files,
+            file => {
+                const downloader = new FileDownloader(
+                    writable,
+                    file,
+                    ensure(zipEntries.entries.get(file._id)),
+                    BLOCK_SIZE,
+                    this.logger,
+                    fileProgress => setFileProgress(file.name, fileProgress)
+                );
+                return downloader.download()
+            },
+            16);
+        await downloadTasks;
 
-        await Promise.all(downloadTasks);
         await writeEndOfCentralDirectory(writable, zipEntries.eocd, incrementProgress);
 
         await writable.close();
@@ -99,6 +102,7 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
 
 class FileDownloader {
     private client: BlockBlobClient;
+    private currentProgress: number = 0;
     constructor(
         // @ts-ignore
         private writer: FileSystemWritableFileStream,
@@ -114,7 +118,7 @@ class FileDownloader {
     async download(): Promise<void> {
         this.logger?.debug(`Downloading file ${this.zipEntry.name}`);
         const started = Date.now();
-        const result = await this.client.download();
+        const result = await this.downloadFile();
         const blob = ensure(await result.blobBody);
         const blobBuffer = await blob.arrayBuffer();
         const blobData = new Uint8Array(blobBuffer);
@@ -126,20 +130,46 @@ class FileDownloader {
         this.zipEntry.checksum = checksum;
         this.zipEntry.hasChecksum = true;
 
-        let currentProgress = 0;
         const incrementProgress = (value: number) => {
-            currentProgress += value;
-            this.onProgress && this.onProgress(currentProgress);
+            this.currentProgress += value;
+            this.onProgress && this.onProgress(this.currentProgress);
         }
 
         const tasks = [
             writeLocalHeader(this.writer, this.zipEntry, incrementProgress),
-            writeCompleteFileData(this.writer, this.zipEntry, blobData, incrementProgress),
+            // Since we update file progress when downloading the file,
+            // we skip updating progress when adding the downloaded file to the zip
+            writeCompleteFileData(this.writer, this.zipEntry, blobData, noop),
             writeCentralDirectoryHeader(this.writer, this.zipEntry, incrementProgress)
         ];
 
         await Promise.all(tasks);
         this.logger?.debug(`Completed zip of file ${this.zipEntry.name} in ${Date.now() - started}`);
+    }
+
+    private async downloadFile() {
+        let retry = true;
+        let lastUpdatedProgress = 0;
+        while (retry) {
+            try {
+                const result = await this.client.download(undefined, undefined, {
+                    onProgress: (progress) => {
+                        this.currentProgress += progress.loadedBytes - lastUpdatedProgress;
+                        lastUpdatedProgress = progress.loadedBytes;
+                    }
+                });
+                return result;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    this.logger?.warn(`Network error occur, retrying download for ${this.file.name}: ${e}`);
+                    retry = true;
+                } else {
+                    throw e;
+                }
+            }
+        }
+
+        throw new Error('should not reach here');
     }
 }
 

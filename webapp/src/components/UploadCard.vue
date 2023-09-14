@@ -75,7 +75,7 @@
 <script lang="ts" setup>
 import { useClipboard } from '@vueuse/core';
 import { ref, computed, watch } from "vue";
-import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast } from '@/app-utils';
+import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast, windowUnloadManager } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
 import UploadListFileItem from './UploadListFileItem.vue';
@@ -116,7 +116,6 @@ const uploadState = ref<UploadState>('initial');
 const downloadUrl = ref<string|undefined>();
 const copiedDownloadUrl = ref<boolean>(false);
 const fileListContainer = ref<HTMLDivElement>();
-const addDropdown = ref<HTMLElement>();
 
 watch([files], () => {
   if (!fileListContainer.value) return;
@@ -132,20 +131,6 @@ function resetState() {
   copiedDownloadUrl.value = false;
 }
 
-function onClickAddFiles() {
-  openFilePicker();
-  closeAddDropdown();
-}
-
-function onClickAddFolder() {
-  openDirectoryPicker();
-  closeAddDropdown();
-}
-
-function closeAddDropdown() {
-  addDropdown.value?.attributes.removeNamedItem('open');
-}
-
 function copyDownloadUrl() {
   if (!downloadUrl.value) return;
 
@@ -157,84 +142,90 @@ async function startUpload() {
   if (!files.value.length) return;
   if (!transferDetails.value) return;
 
-  uploadProgress.value = 0;
-  downloadUrl.value = undefined;
-  uploadState.value = 'progress';
-  const started = new Date();
-  const blockSize = 16 * 1024 * 1024; // 16MB
+  const removeExitWarning = windowUnloadManager.warnUserOnExit();
+  try {
+    uploadProgress.value = 0;
+    downloadUrl.value = undefined;
+    uploadState.value = 'progress';
+    const started = new Date();
+    const blockSize = 16 * 1024 * 1024; // 16MB
 
-  const user = ensure(store.userAccount.value);
-  const provider = ensure(store.preferredProvider.value);
+    const user = ensure(store.userAccount.value);
+    const provider = ensure(store.preferredProvider.value);
 
-  const transfer = await apiClient.createTransfer(user.account._id, {
-    name: transferDetails.value.name,
-    provider: provider.provider,
-    region: provider.bestRegions[0],
-    files: Array.from(files.value.values()).map(f => ({ name: f.path, size: f.file.size }))
-  });
+    const transfer = await apiClient.createTransfer(user.account._id, {
+      name: transferDetails.value.name,
+      provider: provider.provider,
+      region: provider.bestRegions[0],
+      files: Array.from(files.value.values()).map(f => ({ name: f.path, size: f.file.size }))
+    });
 
-  const transferTracker = uploadRecoveryManager.createTransferTracker({
-    name: transfer.name,
-    id: transfer._id,
-    totalSize: transferDetails.value.totalSize,
-    blockSize,
-    files: transfer.files.map(f => ({ size: f.size, path: f.name })),
-    directories: directories.value.map(d => ({ totalFiles: d.totalFiles, totalSize: d.totalSize, name: d.name }))
-  });
+    const transferTracker = uploadRecoveryManager.createTransferTracker({
+      name: transfer.name,
+      id: transfer._id,
+      totalSize: transferDetails.value.totalSize,
+      blockSize,
+      files: transfer.files.map(f => ({ size: f.size, path: f.name })),
+      directories: directories.value.map(d => ({ totalFiles: d.totalFiles, totalSize: d.totalSize, name: d.name }))
+    });
 
-  const uploader = new MultiFileUploader({
-    files: transfer.files,
-    onProgress: (progress) => {
-      uploadProgress.value = progress
-    },
-    uploaderFactory: (file, onFileProgress, fileIndex) => {
-      if (!files.value) throw new Error("Excepted files.value to be set");
-      
-      const fileToTrack = ensure(
-        transfer.files.find(f => f.name === files.value[fileIndex].path),
-        `Cannot find file '${files.value[fileIndex].path}' in transfer package.`);
+    const uploader = new MultiFileUploader({
+      files: transfer.files,
+      onProgress: (progress) => {
+        uploadProgress.value = progress
+      },
+      uploaderFactory: (file, onFileProgress, fileIndex) => {
+        if (!files.value) throw new Error("Excepted files.value to be set");
+        
+        const fileToTrack = ensure(
+          transfer.files.find(f => f.name === files.value[fileIndex].path),
+          `Cannot find file '${files.value[fileIndex].path}' in transfer package.`);
 
-      return new AzUploader({
-        file: files.value[fileIndex].file,
-        blockSize,
-        uploadUrl: file.uploadUrl,
-        tracker: transferTracker.createFileTracker({
+        return new AzUploader({
+          file: files.value[fileIndex].file,
           blockSize,
-          id: fileToTrack._id,
-          filename: fileToTrack.name,
-          size: fileToTrack.size
-        }),
-        onProgress: onFileProgress,
-        logger
-      })
-    }
-  });
+          uploadUrl: file.uploadUrl,
+          tracker: transferTracker.createFileTracker({
+            blockSize,
+            id: fileToTrack._id,
+            filename: fileToTrack.name,
+            size: fileToTrack.size
+          }),
+          onProgress: onFileProgress,
+          logger,
+          concurrencyStrategy: transfer.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
+        })
+      }
+    });
 
-  await uploader.uploadFiles();
-  
-  const stopped = new Date();
-  logger.log(`full upload operation took ${stopped.getTime() - started.getTime()}`);
-  
-  let retry = true;
-  while (retry) {
-    try {
-      const download = await apiClient.finalizeTransfer(user.account._id, transfer._id);
-      retry = false;
-      downloadUrl.value = `${location.origin}/d/${download._id}`;
-      uploadState.value = 'complete';
-      logger.log(`full operation + download link took ${(new Date()).getTime() - started.getTime()}`);
-    } catch (e) {
-      if (e instanceof ApiError) {
-        // Do not retry on ApiError since it's not a network failure.
-        // TODO: handle this error some other way, e.g. alert message
+    await uploader.uploadFiles();
+    
+    const stopped = new Date();
+    logger.log(`full upload operation took ${stopped.getTime() - started.getTime()}`);
+    
+    let retry = true;
+    while (retry) {
+      try {
+        const download = await apiClient.finalizeTransfer(user.account._id, transfer._id);
         retry = false;
-      } else {
-        logger.error('Error fetching download', e);
-        retry = true;
+        downloadUrl.value = `${location.origin}/d/${download._id}`;
+        uploadState.value = 'complete';
+        logger.log(`full operation + download link took ${(new Date()).getTime() - started.getTime()}`);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          // Do not retry on ApiError since it's not a network failure.
+          // TODO: handle this error some other way, e.g. alert message
+          retry = false;
+        } else {
+          logger.error('Error fetching download', e);
+          retry = true;
+        }
       }
     }
-  }
 
-  await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
+    await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
+  } finally {
+    removeExitWarning();
+  }
 }
 </script>
