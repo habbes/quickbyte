@@ -77,19 +77,6 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
         // @ts-ignore
         const writable = await handle.createWritable();
 
-        // const downloadTasks = transfer.files.map(file => {
-        //     const downloader = new FileDownloader(
-        //         writable,
-        //         file,
-        //         ensure(zipEntries.entries.get(file._id)),
-        //         BLOCK_SIZE,
-        //         this.logger,
-        //         fileProgress => setFileProgress(file.name, fileProgress)
-        //     );
-        //     return downloader.download()
-        // });
-        // await Promise.all(downloadTasks);
-
         const downloadTasks = executeTasksInBatches(
             transfer.files,
             file => {

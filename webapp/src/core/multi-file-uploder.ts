@@ -40,14 +40,14 @@ export class MultiFileUploader {
         // seems the browser is smart enough to automatically limit the number
         // of parallel uploads
         // TODO: test how well this works on a slower network
-        await Promise.all(this.uploaders.filter(u => u).map(u => u?.uploadFile()));
+        // await Promise.all(this.uploaders.filter(u => u).map(u => u?.uploadFile()));
         // using Promise.all doesn't work for huge number of tasks, so for now
         // we just limit to a high number of concurrent workers
-        // await executeTasksInBatches(
-        //     this.uploaders.filter(u => !!u),
-        //     u => u!.uploadFile(),
-        //     16
-        // );
+        await executeTasksInBatches(
+            this.uploaders.filter(u => !!u),
+            u => u!.uploadFile(),
+            16
+        );
     }
 
     private updateFileProgress(fileIndex: number, fileProgress: number) {
