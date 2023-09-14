@@ -15,24 +15,31 @@ Fast, resumable, reliable sharing of large files
 - [x] Region-ping latency detection
 - [x] Multi-file transfers
 - [ ] Large zip download support
-    - [ ] Zip download resilience
-    - [ ] Zip64 support
+  - [ ] Zip download resilience
+  - [ ] Zip64 support
 - [ ] DB indexes
 - [ ] Validation
 - [ ] Perf benchmarks and tuning
 - [x] Resumable uploads
 - [x] Deploy to staging
-- [ ] Deploy to prod? (maybe not)
+- [ ] Deploy to prod
 - [x] Deployment pipeline? (Vercel and Railway auto-deploy on merge to main)
 - [ ] Automation cloud resource provision (storage accounts, auth, etc.)
-    - [x] Automatic storage account provisioning and config with Terraform
-    - [ ] Automatic auth provisioning and config
+  - [x] Automatic storage account provisioning and config with Terraform
+  - [ ] Automatic auth provisioning and config
 - [ ] Payment integration
-- [ ] Location-awareness
+- [ ] Collect more data for better insights
+  - [ ] Transfer source location
+  - [ ] Transfer duration
+  - [ ] Download location
+  - [ ] Download kind (zip, individual files)
+- [ ] Allow user to track transfers and downloads
+- [ ] Make transfers invalid past expiry date
+- [ ] Handle all TODOs and deprecations
 - [ ] Legal pages
-    - [ ] Terms of service
-    - [ ] Privacy Policy
-    - [ ] Cookie Policy
+  - [ ] Terms of service
+  - [ ] Privacy Policy
+  - [ ] Cookie Policy
 - [ ] Tests?
 
 ### Client
@@ -42,6 +49,7 @@ Web app
 ## How it works (high-level overview)
 
 When client wants to transfer a file:
+
 - client pings regions in available provider to find provider/region with optimal latency
 - client sends request to server to initiate file upload, payload includes filename and other metadata
 also includes preferred provider and region
