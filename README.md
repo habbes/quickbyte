@@ -35,7 +35,7 @@ Fast, resumable, reliable sharing of large files
   - [ ] Download kind (zip, individual files)
   - [ ] Tune and optimize sentry telemetry
 - [ ] Allow user to track transfers and downloads
-- [ ] Make transfers invalid past expiry date
+- [x] Make transfers invalid past expiry date
 - [ ] Handle all TODOs and deprecations
 - [ ] Legal pages
   - [ ] Terms of service

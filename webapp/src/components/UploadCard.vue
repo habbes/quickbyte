@@ -9,8 +9,33 @@
 
     <!-- file selected -->
     <div class="card-body" v-if="uploadState === 'initial' && transferDetails">
-      <h2 class="card-title overflow-hidden text-ellipsis whitespace-nowrap" :title="transferDetails.name">
+      <h2
+        v-if="!editingTransferName"
+        class="card-title overflow-hidden text-ellipsis whitespace-nowrap flex justify-between"
+        :title="transferDetails.name"
+      >
         <span class="text-ellipsis">{{ transferDetails.name  }}</span>
+        <span
+          title="Edit title"
+          @click="toggleTransferNameEditing()"
+          class="cursor-pointer text-primary"
+        >
+          <PencilIcon class="w-4 h-4" />
+        </span>
+      </h2>
+      <h2
+        v-else
+        class="card-title overflow-hidden text-ellipsis whitespace-nowrap flex justify-between"
+        :title="transferDetails.name"
+      >
+        <input v-model="transferName" class="border-b border-b-gray-200 outline-none flex-1" />
+        <span
+          title="Finish editing title"
+          @click="toggleTransferNameEditing()"
+          class="cursor-pointer text-primary"
+        >
+          <CheckIcon class="w-4 h-4" />
+        </span>
       </h2>
       <div>
         <div ref="fileListContainer" class="h-60 overflow-auto">
@@ -73,8 +98,9 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { useClipboard } from '@vueuse/core';
+import { useClipboard, watchOnce } from '@vueuse/core';
 import { ref, computed, watch } from "vue";
+import { PencilIcon, CheckIcon } from "@heroicons/vue/24/outline";
 import { apiClient, store, uploadRecoveryManager, logger, useFilePicker, showToast, windowUnloadManager } from '@/app-utils';
 import { humanizeSize, ensure, ApiError, AzUploader, MultiFileUploader } from "@/core";
 import Button from "@/components/Button.vue";
@@ -101,9 +127,20 @@ onFilePickerError((e) => {
   showToast(e.message, 'error');
 });
 
+const transferName = ref<string>();
+const editingTransferName = ref(false);
+
+function toggleTransferNameEditing() {
+  if (!editingTransferName.value) {
+    editingTransferName.value = true;
+  } else if (transferName.value) {
+    editingTransferName.value = false;
+  }
+}
+
 const transferDetails = computed(() =>
   (files.value.length > 0 || null) && {
-    name: directories.value.length && directories.value[0].name || files.value[0].file.name,
+    name: transferName.value,
     totalSize: files.value.map(f => f.file.size).reduce((a, b) => a + b)
   });
 
@@ -118,6 +155,10 @@ const copiedDownloadUrl = ref<boolean>(false);
 const fileListContainer = ref<HTMLDivElement>();
 
 watch([files], () => {
+  if (!transferName.value) {
+    transferName.value = directories.value.length && directories.value[0].name || files.value[0].file.name;
+  }
+
   if (!fileListContainer.value) return;
   // TODO: this doesn't seem to work properly
   fileListContainer.value.scrollTo(0, fileListContainer.value.scrollHeight);
@@ -140,7 +181,7 @@ function copyDownloadUrl() {
 
 async function startUpload() {
   if (!files.value.length) return;
-  if (!transferDetails.value) return;
+  if (!transferDetails.value || !transferDetails.value.name) return;
 
   const removeExitWarning = windowUnloadManager.warnUserOnExit();
   try {
