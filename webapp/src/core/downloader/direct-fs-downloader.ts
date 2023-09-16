@@ -495,7 +495,7 @@ function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryIn
         centralDirOffset,
         centralDirSize,
         eocdOffset,
-        eocdSize: zip64 ? END_OF_CENTRAL_DIR_BASE_SIZE : END_OF_CENTRAL_DIR_ZIP64_SIZE,
+        eocdSize: zip64 ? END_OF_CENTRAL_DIR_ZIP64_SIZE : END_OF_CENTRAL_DIR_BASE_SIZE,
         zip64
     };
 
