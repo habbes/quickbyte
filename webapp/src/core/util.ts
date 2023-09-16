@@ -141,6 +141,8 @@ async function pingRegion(region: RegionInfo) {
     return duration;
 }
 
+
+
 interface RegionPingResult {
     region: string,
     duration: number

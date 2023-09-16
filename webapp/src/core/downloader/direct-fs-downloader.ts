@@ -1,6 +1,7 @@
 import { type DownloadRequestResult } from "../api-client.js";
 import { type ZipDownloader } from "./types.js";
 import { ensure, executeTasksInBatches, isNetworkError, noop } from '../util.js';
+import { crc32, CrcTracker } from '../crc.js';
 import { BlockBlobClient } from "@azure/storage-blob";
 import { createOperationCancelledError, type Logger } from "..";
 
@@ -11,30 +12,6 @@ const LOCAL_HEADER_BASE_SIZE = 30;
 const CENTRAL_HEADER_BASE_SIZE = 46;
 const END_OF_CENTRAL_DIR_BASE_SIZE = 22;
 const BLOCK_SIZE = 16 * 1024 * 1024;
-
-const crc32Table = function() {
-    const tbl = [];
-    let c;
-    for(let n = 0; n < 256; n++){
-        c = n;
-        for(let k =0; k < 8; k++){
-            c = ((c&1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1));
-        }
-
-        tbl[n] = c;
-    }
-
-    return tbl;
-}();
-
-function crc32(data: ArrayLike<number>) {
-    let crc = -1;
-    for(let i = 0; i < data.length; i++) {
-        crc = (crc >>> 8) ^ crc32Table[(crc ^ data[i]) & 0xFF];
-    }
-    return (crc ^ (-1)) >>> 0;
-}
-
 
 export class DirectFileSystemZipDownloader implements ZipDownloader {
     constructor(private logger?: Logger) {
@@ -103,6 +80,8 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
 class FileDownloader {
     private client: BlockBlobClient;
     private currentProgress: number = 0;
+    private crcTracker: CrcTracker;
+
     constructor(
         // @ts-ignore
         private writer: FileSystemWritableFileStream,
@@ -113,6 +92,9 @@ class FileDownloader {
         private onProgress?: (progress: number) => unknown
     ) {
         this.client = new BlockBlobClient(file.downloadUrl);
+        this.crcTracker = new CrcTracker(
+            Math.ceil(file.size / this.blockSize)
+        );
     }
 
     async download(): Promise<void> {
@@ -131,6 +113,9 @@ class FileDownloader {
         ];
 
         await Promise.all(tasks);
+
+        const finalCrc = this.crcTracker.computeFinalCrc();
+        writeFileCrc32(this.writer, finalCrc, this.zipEntry);
         this.logger?.debug(`Completed zip of file ${this.zipEntry.name} in ${Date.now() - started}`);
     }
 
@@ -209,6 +194,8 @@ class FileDownloader {
                     offset,
                     data,
                 );
+                
+                this.crcTracker.updateChunk(data, index);
                 
                 retry = false;
             } catch (e) {
