@@ -15,7 +15,7 @@ Fast, resumable, reliable sharing of large files
 - [x] Region-ping latency detection
 - [x] Multi-file transfers
 - [ ] Large zip download support
-  - [ ] Zip download resilience
+  - [x] Zip download resilience (chunked downloads + retries)
   - [ ] Zip64 support
 - [ ] DB indexes
 - [ ] Validation
