@@ -18,7 +18,7 @@
         <span
           title="Edit title"
           @click="toggleTransferNameEditing()"
-          class="cursor-pointer text-primary"
+          class="cursor-pointer"
         >
           <PencilIcon class="w-4 h-4" />
         </span>
@@ -32,7 +32,7 @@
         <span
           title="Finish editing title"
           @click="toggleTransferNameEditing()"
-          class="cursor-pointer text-primary"
+          class="cursor-pointer"
         >
           <CheckIcon class="w-4 h-4" />
         </span>
@@ -198,7 +198,12 @@ async function startUpload() {
       name: transferDetails.value.name,
       provider: provider.provider,
       region: provider.bestRegions[0],
-      files: Array.from(files.value.values()).map(f => ({ name: f.path, size: f.file.size }))
+      files: Array.from(files.value.values()).map(f => ({ name: f.path, size: f.file.size })),
+      meta: {
+        ip: store.deviceData.value?.ip,
+        countryCode: store.deviceData.value?.countryCode,
+        userAgent: store.deviceData.value?.userAgent
+      }
     });
 
     const transferTracker = uploadRecoveryManager.createTransferTracker({
@@ -265,6 +270,8 @@ async function startUpload() {
     }
 
     await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
+    // reset transfer name so that a new transfer starts on a blank state
+    transferName.value = undefined;
   } finally {
     removeExitWarning();
   }

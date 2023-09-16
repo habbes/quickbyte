@@ -140,6 +140,7 @@ export class AzureStorageHandler implements IStorageHandler {
         this.ensureInitialized();
 
         if (!(region in this.regionAccounts)) {
+            // TODO: this error occurred during testing, it should ideally never occur, please investigate
             throw createResourceNotFoundError(`Unknown region '${region}' for the specified provider '${this.name()}'`);
         }
         

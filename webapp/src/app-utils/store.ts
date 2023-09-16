@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import type { StorageProvider, UserAccount, PreferredProviderRegionResult, TrackedTransfer } from '@/core';
-import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs } from '@/core';
+import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
 import { apiClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 
@@ -8,6 +8,7 @@ const userAccount = ref<UserAccount|undefined>();
 const providers = ref<StorageProvider[]>([]);
 const preferredProvider = ref<PreferredProviderRegionResult>();
 const recoveredTransfers = ref<TrackedTransfer[]>([]);
+const deviceData = ref<DeviceData>();
 
 export async function initUserData() {
     userAccount.value = await apiClient.getAccount();
@@ -29,6 +30,14 @@ export async function initUserData() {
 
     const transfers = await uploadRecoveryManager.getRecoveredTransfers();
     recoveredTransfers.value = transfers;
+
+    await getDeviceData();
+}
+
+export async function getDeviceData() {
+    deviceData.value = await getIpLocation();
+    deviceData.value.userAgent = navigator.userAgent;
+    return deviceData.value;
 }
 
 export async function clearData() {
@@ -39,9 +48,16 @@ export async function clearData() {
     await uploadRecoveryManager.clearRecoveredTransfers();
 }
 
+interface DeviceData {
+    ip: string;
+    countryCode: string;
+    userAgent?: string;
+}
+
 export const store = {
     userAccount,
     providers,
     preferredProvider,
-    recoveredTransfers
+    recoveredTransfers,
+    deviceData
 };

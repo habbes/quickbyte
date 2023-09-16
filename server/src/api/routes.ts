@@ -52,8 +52,11 @@ routes.get('/accounts/:accountId/transfers/:transferId',
 routes.get('/me', requireAuth(), wrapResponse(req =>
     req.services.auth.getUserByToken(req.headers.authorization?.split(" ")[1] || "")));
 
-routes.get('/downloads/:downloadId', wrapResponse(req =>
-    req.services.downloads.getById(req.params.downloadId)));
+routes.post('/downloads/:transferId', wrapResponse(req =>
+    req.services.downloads.requestDownload(req.params.transferId, req.body)));
+
+routes.patch('/downloads/:transferId/requests/:requestId', wrapResponse(req =>
+    req.services.downloads.updateDownloadRequest(req.params.transferId, req.params.requestId, req.body)));
 
 routes.get('/providers', wrapResponse(req =>
     Promise.resolve(req.services.storageProvider.getHandlerInfos())));

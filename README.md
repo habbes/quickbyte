@@ -29,10 +29,10 @@ Fast, resumable, reliable sharing of large files
   - [ ] Automatic auth provisioning and config
 - [ ] Payment integration
 - [ ] Collect more data for better insights
-  - [ ] Transfer source location
-  - [ ] Transfer duration
-  - [ ] Download location
-  - [ ] Download kind (zip, individual files)
+  - [x] Transfer source location
+  - [x] Transfer duration
+  - [x] Download location
+  - [x] Download kind (zip, individual files)
   - [ ] Tune and optimize sentry telemetry
 - [ ] Allow user to track transfers and downloads
 - [x] Make transfers invalid past expiry date

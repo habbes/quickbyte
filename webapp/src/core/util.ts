@@ -1,6 +1,7 @@
 // import { RegionInfo } from './types.js';
 
 import { RestError } from "@azure/storage-blob";
+import { json } from "stream/consumers";
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = 1024 * 1024;
@@ -66,6 +67,42 @@ async function executeBatchWorker<TSource, TResult>(startIndex: number, numWorke
         const result = await createTask(taskSources[nextTaskIndex]);
         results[nextTaskIndex] = result;
         nextTaskIndex += numWorkers;
+    }
+}
+
+export interface RetryOnFailureOptions {
+    /**
+     * A function that determines whether to retry the task for the specified error.
+     * If it returns true, the job will not be retried and the error will be rethrown
+     * instead.
+     * @param err 
+     */
+    ignoreError?: (err: any) => boolean;
+    /**
+     * When set, it limits the maximum number of retries.
+     * After the job has been retried max times, the next error will be rethrown.
+     * @remarks retries are counted after the first failure.
+     */
+    maxRetryCount?: number;
+}
+
+export async function retryOnError<T>(job: () => Promise<T>, options?: RetryOnFailureOptions): Promise<T> {
+    let retryCount = 0;
+    while (true) {
+        try {
+            const result = await job();
+            return result;
+        } catch (e: any) {
+            if (options && options.ignoreError && options.ignoreError(e)) {
+                throw e;
+            }
+
+            if (options && options.maxRetryCount !== undefined && options.maxRetryCount === retryCount) {
+                throw e;
+            }
+
+            retryCount++;
+        }
     }
 }
 
@@ -140,6 +177,26 @@ async function pingRegion(region: RegionInfo) {
     const duration = ended - started;
     return duration;
 }
+
+export async function getIpLocation(): Promise<{ ip: string, countryCode: string }> {
+    const json = await retryOnError(async () => {
+        const response = await fetch('https://jsonip.com');
+        if (response.status !== 200) {
+            throw new Error(await response.text())
+        }
+
+        const data = await response.json();
+        return data;
+    }, {
+        maxRetryCount: 3
+    });
+
+    return {
+        ip: json.ip,
+        countryCode: json.country
+    };
+}
+
 
 
 

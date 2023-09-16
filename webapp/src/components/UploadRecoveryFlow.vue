@@ -6,16 +6,18 @@
         <button @click="cancel()" class="btn btn-sm">Cancel</button>
         <span @click="deleteAll()" class="text-error underline cursor-pointer">Delete all</span>
       </div>
-      <div
-        v-for="transfer in recoveredUploads"
-        :key="transfer.id"
-        class="bg-base-200 p-5 rounded-md flex flex-col gap-2"
-      >
-        <div>{{ transfer.name }}</div>
-        <div class="text-gray-400 text-sm">{{ humanizeSize(transfer.totalSize) }}</div>
-        <div class="flex flex-row justify-end gap-2">
-          <button class="btn btn-primary btn-sm" @click="recoverUpload(transfer.id)">Resume</button>
-          <button @click="deleteUpload(transfer.id)" class="btn btn-error btn-sm">Delete</button>
+      <div class="h-72 overflow-auto flex flex-col gap-1">
+        <div
+          v-for="transfer in recoveredUploads"
+          :key="transfer.id"
+          class="bg-base-200 p-5 rounded-md flex flex-col gap-2"
+        >
+          <div>{{ transfer.name }}</div>
+          <div class="text-gray-400 text-sm">{{ humanizeSize(transfer.totalSize) }}</div>
+          <div class="flex flex-row justify-end gap-2">
+            <button class="btn btn-primary btn-sm" @click="recoverUpload(transfer.id)">Resume</button>
+            <button @click="deleteUpload(transfer.id)" class="btn btn-error btn-sm">Delete</button>
+          </div>
         </div>
       </div>
     </div>
