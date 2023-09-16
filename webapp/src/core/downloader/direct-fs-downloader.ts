@@ -377,6 +377,7 @@ async function writeEndOfCentralDirectory(writer: FileSystemWritableFileStream, 
     }
 }
 
+// @ts-ignore
 async function writeEndOfCentralDirectory32(writer: FileSystemWritableFileStream, entry: EndOfCentralDirEntry, incrementProgress: (value: number) => unknown) {
     const header = new Uint8Array(entry.eocdSize);
     const eocdDataView = new DataView(header.buffer);
@@ -395,6 +396,7 @@ async function writeEndOfCentralDirectory32(writer: FileSystemWritableFileStream
     incrementProgress(header.length);
 }
 
+// @ts-ignore
 async function writeEndOfCentralDirectory64(writer: FileSystemWritableFileStream, entry: EndOfCentralDirEntry, incrementProgress: (value: number) => unknown) {
     const header = new Uint8Array(entry.eocdSize);
     const eocdDataView = new DataView(header.buffer);
