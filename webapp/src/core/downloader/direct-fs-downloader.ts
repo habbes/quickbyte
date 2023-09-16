@@ -108,7 +108,7 @@ class FileDownloader {
         private writer: FileSystemWritableFileStream,
         private file: DownloadRequestResult["files"][0],
         private zipEntry: ZipFileEntry,
-        blockSize: number,
+        private blockSize: number,
         private logger?: Logger,
         private onProgress?: (progress: number) => unknown
     ) {
@@ -116,6 +116,25 @@ class FileDownloader {
     }
 
     async download(): Promise<void> {
+        this.logger?.debug(`Downloading file ${this.zipEntry.name}`);
+        const started = Date.now();
+
+        const incrementProgress = (value: number) => {
+            this.currentProgress += value;
+            this.onProgress && this.onProgress(this.currentProgress);
+        }
+
+        const tasks = [
+            writeLocalHeader(this.writer, this.zipEntry, incrementProgress),
+            this.downloadInChunks(incrementProgress),
+            writeCentralDirectoryHeader(this.writer, this.zipEntry, incrementProgress)
+        ];
+
+        await Promise.all(tasks);
+        this.logger?.debug(`Completed zip of file ${this.zipEntry.name} in ${Date.now() - started}`);
+    }
+
+    private async downloadWholeFile(): Promise<void> {
         this.logger?.debug(`Downloading file ${this.zipEntry.name}`);
         const started = Date.now();
         const result = await this.downloadFile();
@@ -145,6 +164,64 @@ class FileDownloader {
 
         await Promise.all(tasks);
         this.logger?.debug(`Completed zip of file ${this.zipEntry.name} in ${Date.now() - started}`);
+    }
+
+    private async downloadInChunks(incrementProgress: (value: number) => unknown): Promise<void> {
+        const totalBlocks = Math.ceil(this.file.size / this.blockSize)
+        const blocks = new Array<{ index: number, size: number}>(totalBlocks);
+        let remainingSize = this.file.size;
+        // TODO improve this code, we don't need a loop or even to create an array
+        for (let i = 0; i < blocks.length; i++) {
+            const blockSize = Math.min(this.blockSize, remainingSize);
+            blocks[i] = { index: i, size: blockSize };
+            remainingSize -= blockSize;
+        }
+
+        const numWorkers = 16;
+        await executeTasksInBatches(
+            blocks,
+            (block) => this.downloadBlock(block.index, block.size, incrementProgress),
+            numWorkers
+        );
+    }
+
+    private async downloadBlock(index: number, size: number, incrementProgress: (value: number) => unknown) {
+        const offset = index * this.blockSize;
+        let retry = true;
+        let lastUpdatedProgress = 0;
+        while (retry) {
+            try {
+                const result = await this.client.download(offset, size, {
+                    onProgress: (progress) => {
+                        const addedProgress = progress.loadedBytes - lastUpdatedProgress;
+                        incrementProgress(addedProgress);
+                        lastUpdatedProgress = progress.loadedBytes;
+                    }
+                });
+
+                const blob = await ensure(result.blobBody);
+                const buffer = await blob.arrayBuffer();
+                const data = new Uint8Array(buffer);
+
+                await writeFileChunk(
+                    this.writer,
+                    this.zipEntry,
+                    offset,
+                    data,
+                );
+                
+                retry = false;
+            } catch (e) {
+                if (isNetworkError(e)) {
+                    this.logger?.warn(`Network error occur, retrying download of block ${index} of ${this.file.name}: ${e}`);
+                    retry = true;
+                    // TODO revisit
+                    lastUpdatedProgress = -lastUpdatedProgress;
+                } else {
+                    throw e;
+                }
+            }
+        }
     }
 
     private async downloadFile() {
@@ -192,6 +269,12 @@ async function writeCompleteFileData(writer: FileSystemWritableFileStream, entry
     const offset = entry.localHeaderOffset + entry.localHeaderTotalSize;
     await writer.write({ position: offset, data, type: 'write' });
     incrementProgress(data.length);
+}
+
+// @ts-ignore
+async function writeFileChunk(writer: FileSystemWritableFileStream, entry: ZipFileEntry, blockOffset: number, data: Uint8Array) {
+    const offsetInFile = entry.localHeaderOffset + entry.localHeaderTotalSize + blockOffset;
+    await writer.write({ position: offsetInFile, data, type: 'write'});
 }
 
 // @ts-ignore

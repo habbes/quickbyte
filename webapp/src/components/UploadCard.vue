@@ -4,7 +4,7 @@
     <div class="card-body" v-if="uploadState === 'initial' && !transferDetails">
       <h2 class="card-title">Transfer files</h2>
       <Button @click="openFilePicker()" class="">Select files to upload</Button>
-      <Button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="">Select directory to upload</Button>
+      <Button v-if="directoryPickerSupported" @click="openDirectoryPicker()" class="">Select folder to upload</Button>
     </div>
 
     <!-- file selected -->
