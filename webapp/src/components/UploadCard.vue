@@ -18,7 +18,7 @@
         <span
           title="Edit title"
           @click="toggleTransferNameEditing()"
-          class="cursor-pointer text-primary"
+          class="cursor-pointer"
         >
           <PencilIcon class="w-4 h-4" />
         </span>
@@ -32,7 +32,7 @@
         <span
           title="Finish editing title"
           @click="toggleTransferNameEditing()"
-          class="cursor-pointer text-primary"
+          class="cursor-pointer"
         >
           <CheckIcon class="w-4 h-4" />
         </span>
@@ -265,6 +265,8 @@ async function startUpload() {
     }
 
     await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
+    // reset transfer name so that a new transfer starts on a blank state
+    transferName.value = undefined;
   } finally {
     removeExitWarning();
   }
