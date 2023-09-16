@@ -69,6 +69,15 @@ export interface Transfer extends PersistedModel {
     name: string;
     status: TransferStatus;
     expiresAt: Date;
+    transferCompletedAt?: Date;
+}
+
+export interface DbTransfer extends Transfer {
+    meta?: {
+        ip?: string;
+        countryCode?: string;
+        userAgent?: string;
+    }
 }
 
 export type TransferStatus = 'pending' | 'progress' | 'completed';
@@ -85,6 +94,9 @@ export interface Upload extends PersistedModel {
     blocksCompleted: number;
 }
 
+/**
+ * @deprecated
+ */
 export interface Download extends PersistedModel {
     fileId: string;
     accountId: string;
@@ -96,4 +108,13 @@ export interface Download extends PersistedModel {
     downloadUrl: string;
     expiryDate: Date;
     fileType: string;
+}
+
+export interface DownloadRequest extends PersistedModel {
+    transferId: string;
+    ip?: string;
+    countryCode?: string;
+    userAgent?: string;
+    downloadAllZip?: string;
+    filesRequested?: string[];
 }

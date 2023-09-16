@@ -1,17 +1,19 @@
-import { Db, Collection } from "mongodb";
+import { Db, Collection, UpdateFilter } from "mongodb";
 import { createAppError, createResourceNotFoundError, rethrowIfAppError } from '../error.js';
-import { AuthContext, createPersistedModel, TransferFile, Transfer, Download } from '../models.js';
+import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, Download, DownloadRequest } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 
 const COLLECTION = "transfers";
 // TODO: this collection should just be called "files"
 const FILES_COLLECTION = "transferFiles";
+// TODO: this collection maybe should be called downloads
+const DOWNLOADS_COLLECTION = "download_requests";
 const LEGACY_DOWNLOAD_COLLECTION = "downloads";
 const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * 24 * 60 * 60 * 1000; // 5 days
 const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export class TransferService {
-    private collection: Collection<Transfer>;
+    private collection: Collection<DbTransfer>;
     private filesCollection: Collection<TransferFile>;
 
     constructor(private db: Db, private authContext: AuthContext, private providerRegistry: IStorageHandlerProvider) {
@@ -25,15 +27,19 @@ export class TransferService {
             
 
             const baseModel = createPersistedModel({ type: "user", _id: this.authContext.user._id });
-            const transfer: Transfer = {
+            const transfer: DbTransfer = {
                 ...baseModel,
                 name: args.name,
                 provider: provider.name(),
                 region: args.region,
                 accountId: this.authContext.user.account._id,
-                status: 'pending',
+                status: 'progress',
                 expiresAt: new Date(Date.now() + DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS)
             };
+            
+            if (args.meta) {
+                transfer.meta = args.meta;
+            }
 
             const transferFiles = args.files.map(f => createTransferFile(transfer, f));
 
@@ -88,7 +94,8 @@ export class TransferService {
                 $set: {
                     status: 'completed',
                     _updatedAt: new Date(),
-                    _updatedBy: { type: 'user', _id: this.authContext.user._id }
+                    _updatedBy: { type: 'user', _id: this.authContext.user._id },
+                    transferCompletedAt: new Date()
                 }
             }, {
                 returnDocument: 'after'
@@ -114,15 +121,18 @@ export class TransferDownloadService {
     private legacyDownloadCollection: Collection<Download>;
     private collection: Collection<Transfer>;
     private filesCollection: Collection<TransferFile>;
+    private downloadsCollection: Collection<DownloadRequest>;
 
     constructor (private db: Db, private providerRegistry: IStorageHandlerProvider) {
         this.legacyDownloadCollection = db.collection(LEGACY_DOWNLOAD_COLLECTION);
         this.collection = db.collection(COLLECTION);
         this.filesCollection = db.collection(FILES_COLLECTION);
+        this.downloadsCollection = db.collection(DOWNLOADS_COLLECTION);
     }
 
-    async getById(id: string): Promise<DownloadTransferResult> {
+    async requestDownload(transferId: string, args: DownloadRequestArgs): Promise<DownloadTransferResult> {
         try {
+            const id = transferId;
             // TODO: this is for backwards compatibility, should be removed
             // after preview
             const legacyDownload = await this.legacyDownloadCollection.findOne({ _id: id });
@@ -131,13 +141,24 @@ export class TransferDownloadService {
             }
 
             const [transfer, files] = await Promise.all([
-                this.collection.findOne({ _id: id }),
+                this.collection.findOne({ _id: id, expiresAt: { gt: new Date()} }),
                 this.filesCollection.find({ transferId: id }).toArray()
             ]);
 
             if (!transfer || !files.length) {
                 throw createResourceNotFoundError('Transfer does not exist');
             }
+
+            const baseModel = createPersistedModel({ type: 'system', _id: 'system'});
+            const request: DownloadRequest = {
+                ...baseModel,
+                transferId: id,
+                ip: args.ip,
+                userAgent: args.userAgent,
+                countryCode: args.countryCode
+            };
+
+            await this.downloadsCollection.insertOne(request);
 
             const provider = this.providerRegistry.getHandler(transfer.provider);
             const downloadableFiles = await Promise.all(
@@ -148,7 +169,54 @@ export class TransferDownloadService {
                 _id: transfer._id,
                 _createdAt: transfer._createdAt,
                 name: transfer.name,
-                files: downloadableFiles
+                files: downloadableFiles,
+                downloadRequestId: request._id
+            }
+
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async updateDownloadRequest(transferId: string, args: DownloadRequestUpdateArgs): Promise<void> {
+        try {
+            const fieldsToSet: Partial<DownloadRequest> = {
+                _updatedAt: new Date(),
+                _updatedBy: { type: 'system', _id: 'system' }
+            };
+            if (args.ip) {
+                fieldsToSet.ip = args.ip;
+            }
+
+            if (args.countryCode) {
+                fieldsToSet.countryCode = args.countryCode;
+            }
+
+            if (args.downloadAllZip) {
+                fieldsToSet.downloadAllZip;
+            }
+
+            const update: UpdateFilter<DownloadRequest> = {};
+            update.$set = fieldsToSet;
+
+            if (args.requestedFiles) {
+                // TODO: do we want to validate that all the files here are valid?
+                update.$addToSet = {
+                    filesRequested: args.requestedFiles
+                };
+            }
+
+            const result = await this.downloadsCollection.findOneAndUpdate(
+                { _id: args.id, transferId },
+                update,
+                {
+                    returnDocument: 'after'
+                }
+            );
+
+            if (!result) {
+                throw createResourceNotFoundError('Download request not found');
             }
 
         } catch (e: any) {
@@ -159,7 +227,7 @@ export class TransferDownloadService {
 }
 
 export type ITransferService = Pick<TransferService, 'create'|'finalize'|'getById'>;
-export type ITransferDownloadService = Pick<TransferDownloadService, 'getById'>;
+export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDownload'|'updateDownloadRequest'>;
 
 function transformLegacyDownload(download: Download): DownloadTransferResult {
     return {
@@ -175,7 +243,8 @@ function transformLegacyDownload(download: Download): DownloadTransferResult {
                 _createdAt: download._createdAt,
                 transferId: download._id
             }
-        ]
+        ],
+        downloadRequestId: ''
     }
 }
 
@@ -193,7 +262,7 @@ function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): T
 
 async function createResultFile(provider: IStorageHandler, transfer: Transfer, file: TransferFile): Promise<CreateTransferFileResult> {
     const blobName = `${transfer._id}/${file._id}`;
-    const expiryDate = new Date(Date.now() + UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS);
+    const expiryDate = new Date(transfer.expiresAt);
     const uploadUrl = await provider.getBlobUploadUrl(transfer.region, transfer.accountId, blobName, expiryDate);
     return {
         ...file,
@@ -203,7 +272,8 @@ async function createResultFile(provider: IStorageHandler, transfer: Transfer, f
 
 async function createDownloadFile(provider: IStorageHandler, transfer: Transfer, file: TransferFile): Promise<DownloadTransferFileResult> {
     const blobName = `${transfer._id}/${file._id}`;
-    const expiryDate = new Date(Date.now() + DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS);
+    // TODO: what if the owner changes the expiry date?
+    const expiryDate = new Date(transfer.expiresAt);
     const fileName = file.name.split('/').at(-1) || file._id;
     const downloadUrl = await provider.getBlobDownloadUrl(transfer.region, transfer.accountId, blobName, expiryDate, fileName);
 
@@ -222,6 +292,12 @@ export interface CreateTransferArgs {
     provider: string;
     region: string;
     files: CreateTransferFileArgs[];
+    meta?: {
+        ip?: string;
+        countryCode?: string;
+        state?: string;
+        userAgent?: string;
+    }
 }
 
 export interface CreateTransferFileArgs {
@@ -245,8 +321,24 @@ export interface GetTransferFileResult extends TransferFile {
     uploadUrl: string;
 }
 
+export interface DownloadRequestArgs {
+    ip?: string;
+    countryCode?: string;
+    userAgent?: string;
+}
+
+export interface DownloadRequestUpdateArgs {
+    id: string;
+    ip?: string;
+    countryCode?: string;
+    userAgent?: string;
+    requestedFiles?: string[];
+    downloadAllZip?: boolean;
+}
+
 export interface DownloadTransferResult extends Pick<Transfer, '_id'|'name'|'_createdAt'> {
     files: DownloadTransferFileResult[];
+    downloadRequestId: string;
 }
 
 export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'> {
