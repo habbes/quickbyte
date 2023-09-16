@@ -9,9 +9,13 @@ import { createOperationCancelledError, type Logger } from "..";
 
 // The size of the local file header before the name
 const LOCAL_HEADER_BASE_SIZE = 30;
+// The size of the section added to the local header for ZIP64 support
+const LOCAL_HEADER_ZIP64_SECTION_SIZE = 28;
 const CENTRAL_HEADER_BASE_SIZE = 46;
 const END_OF_CENTRAL_DIR_BASE_SIZE = 22;
+const END_OF_CENTRAL_DIR_ZIP64_SIZE = 56;
 const BLOCK_SIZE = 16 * 1024 * 1024;
+const ZIP64_THRESHOLD = Math.pow(2, 32);
 
 export class DirectFileSystemZipDownloader implements ZipDownloader {
     constructor(private logger?: Logger) {
@@ -278,16 +282,36 @@ async function writeLocalHeader(writer: FileSystemWritableFileStream, entry: Zip
     if (entry.hasChecksum) {
         dataView.setUint32(14, entry.checksum, true);
     }
+
     // Compressed size
-    dataView.setUint32(18, entry.size, true);
+    dataView.setUint32(18, entry.zip64 ? 0xffffffff : entry.size, true);
     // Uncompressied size
-    dataView.setUint32(22, entry.size, true);
+    dataView.setUint32(22, entry.zip64 ? 0xffffffff : entry.size, true);
+
     // File name length
     dataView.setUint16(26, entry.encodedName.length, true);
     // Extra field length
-    dataView.setUint16(28, 0, true);
+    dataView.setUint16(28, entry.zip64 ? LOCAL_HEADER_ZIP64_SECTION_SIZE : 0, true);
     // File name
     headerData.set(entry.encodedName, 30);
+
+    if (entry.zip64) {
+        const zip64Offset = entry.localHeaderZip64SectionOffset!;
+        // Header ID 0x0001
+        dataView.setUint16(zip64Offset, 0x0001, true);
+        // Size of the extra field chunk, 24 since we store 3 fields, but this should be in entry as well
+        dataView.setUint16(zip64Offset + 2, 24, true);
+        // Original uncompressed size
+        // really we should have a BigInt size from the beginning since
+        // Number doesn't represent ints well past MAX_SAFE_INTEGER (2**53)
+        // see: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#number_type
+        // But who'll be uploading files that big?
+        dataView.setBigUint64(zip64Offset + 4, BigInt(entry.size), true);
+        // Compressed size
+        dataView.setBigUint64(zip64Offset + 12, BigInt(entry.size), true);
+        // Offset of local header record
+        dataView.setBigUint64(zip64Offset + 20, BigInt(entry.localHeaderOffset), true);
+    }
   
     // write header
     await writer.write({ data: headerData, position: offset, type: 'write' });
@@ -306,15 +330,39 @@ async function writeCentralDirectoryHeader(writer: FileSystemWritableFileStream,
         dataView.setUint32(16, entry.checksum, true);
     }
 
-    dataView.setUint32(20, entry.size, true);
-    dataView.setUint32(24, entry.size, true);
+    // Compressed size
+    dataView.setUint32(20, entry.zip64 ? 0xffffffff : entry.size, true);
+    // Uncompressed size
+    dataView.setUint32(24, entry.zip64 ? 0xffffffff : entry.size, true);
+    // File name length
     dataView.setUint16(28, entry.encodedName.length, true);
+    // Extra field length
+    dataView.setUint16(30, entry.zip64 ? LOCAL_HEADER_ZIP64_SECTION_SIZE : 0, true);
+
     // Disk number
     dataView.setUint32(34, 0, true);
     // 42, relative offset of local file header
-    dataView.setUint32(42, entry.localHeaderOffset, true);
+    dataView.setUint32(42, entry.zip64 ? 0xffffffff : entry.localHeaderOffset, true);
     // file name
     header.set(entry.encodedName, 46);
+
+    if (entry.zip64) {
+        const zip64Offset = entry.centralHeaderZip64SectionOffset!;
+        // Header ID 0x0001
+        dataView.setUint16(zip64Offset, 0x0001, true);
+        // Size of the extra field chunk, 24 since we store 3 fields, but this should be in entry as well
+        dataView.setUint16(zip64Offset + 2, 24, true);
+        // Original uncompressed size
+        // really we should have a BigInt size from the beginning since
+        // Number doesn't represent ints well past MAX_SAFE_INTEGER (2**53)
+        // see: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#number_type
+        // But who'll be uploading files that big?
+        dataView.setBigUint64(zip64Offset + 4, BigInt(entry.size), true);
+        // Compressed size
+        dataView.setBigUint64(zip64Offset + 12, BigInt(entry.size), true);
+        // Offset of local header record
+        dataView.setBigUint64(zip64Offset + 20, BigInt(entry.localHeaderOffset), true);
+    }
 
     await writer.write({ position: entry.centralHeaderOffset, data: header, type: 'write' });
     incrementProgress(header.length);
@@ -322,18 +370,48 @@ async function writeCentralDirectoryHeader(writer: FileSystemWritableFileStream,
 
 // @ts-ignore
 async function writeEndOfCentralDirectory(writer: FileSystemWritableFileStream, entry: EndOfCentralDirEntry, incrementProgress: (value: number) => unknown) {
+    if (entry.zip64) {
+        await writeEndOfCentralDirectory64(writer, entry, incrementProgress);
+    } else {
+        await writeEndOfCentralDirectory32(writer, entry, incrementProgress);
+    }
+}
+
+async function writeEndOfCentralDirectory32(writer: FileSystemWritableFileStream, entry: EndOfCentralDirEntry, incrementProgress: (value: number) => unknown) {
     const header = new Uint8Array(entry.eocdSize);
     const eocdDataView = new DataView(header.buffer);
     // End of central directory signature = 0x06054b50
     eocdDataView.setUint32(0, 0x06054b50, true);
     // Number of central directory records on this disk (or 0xffff for ZIP64)
-    eocdDataView.setUint16(8, 1, true);
+    eocdDataView.setUint16(8, entry.numEntries, true);
     // Total number of central directory records (or 0xffff for ZIP64)
-    eocdDataView.setUint16(10, 1, true);
+    eocdDataView.setUint16(10, entry.numEntries, true);
     // Size of central directory (bytes) (or 0xffffffff for ZIP64)
     eocdDataView.setUint32(12, entry.centralDirSize, true);
     // Offset of start of central directory, relative to start of archive (or 0xffffffff for ZIP64)
     eocdDataView.setUint32(16, entry.centralDirOffset, true);
+
+    await writer.write({ position: entry.eocdOffset, data: header, type: 'write' });
+    incrementProgress(header.length);
+}
+
+async function writeEndOfCentralDirectory64(writer: FileSystemWritableFileStream, entry: EndOfCentralDirEntry, incrementProgress: (value: number) => unknown) {
+    const header = new Uint8Array(entry.eocdSize);
+    const eocdDataView = new DataView(header.buffer);
+    // End of central directory signature = 0x06054b50
+    eocdDataView.setUint32(0, 0x06064b50, true);
+    // Size of EOCD64 - 12 (12 is the offset after this field)
+    eocdDataView.setBigUint64(4, BigInt(entry.eocdSize - 12), true);
+
+    // Number of central directories on this disk
+    eocdDataView.setBigUint64(24, BigInt(entry.numEntries), true);
+    // Total number of central directories
+    eocdDataView.setBigUint64(32, BigInt(entry.numEntries), true);
+    // Size of central directory (bytes)
+    eocdDataView.setBigUint64(40, BigInt(entry.centralDirSize), true);
+    // Offset of start of central directory, relative to start of archive
+    eocdDataView.setBigUint64(48, BigInt(entry.centralDirOffset), true);
+
 
     await writer.write({ position: entry.eocdOffset, data: header, type: 'write' });
     incrementProgress(header.length);
@@ -362,6 +440,8 @@ function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryIn
     const zipEntries = new Map<string, ZipFileEntry>();
     const encoder = new TextEncoder();
     let currentOffset = 0;
+    let hasZip64File = false;
+
     for (const file of files) {
         const encodedName = encoder.encode(file.name);
         const entry: ZipFileEntry = {
@@ -377,6 +457,15 @@ function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryIn
             hasChecksum: false,
             checksum: 0
         };
+
+        if (file.size >= ZIP64_THRESHOLD) {
+            entry.zip64 = true;
+            entry.localHeaderZip64SectionOffset = entry.localHeaderTotalSize;
+            entry.localHeaderTotalSize += LOCAL_HEADER_ZIP64_SECTION_SIZE;
+            entry.centralHeaderZip64SectionOffset = entry.centralHeaderTotalSize;
+            entry.centralHeaderTotalSize += LOCAL_HEADER_ZIP64_SECTION_SIZE;
+            hasZip64File = true;
+        }
 
         zipEntries.set(entry.id, entry);
 
@@ -397,12 +486,17 @@ function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryIn
     const centralDirSize = currentOffset - centralDirOffset;
     const eocdOffset = currentOffset;
 
+    const zip64 = hasZip64File
+        || (files.length >= Math.pow(2, 16)
+        || (eocdOffset + END_OF_CENTRAL_DIR_ZIP64_SIZE >= ZIP64_THRESHOLD));
+
     const eocdEntry: EndOfCentralDirEntry = {
         numEntries: files.length,
         centralDirOffset,
         centralDirSize,
         eocdOffset,
-        eocdSize: END_OF_CENTRAL_DIR_BASE_SIZE
+        eocdSize: zip64 ? END_OF_CENTRAL_DIR_BASE_SIZE : END_OF_CENTRAL_DIR_ZIP64_SIZE,
+        zip64
     };
 
     const totalZipSize = centralDirOffset + eocdEntry.centralDirSize + eocdEntry.eocdSize;
@@ -429,9 +523,15 @@ interface ZipFileEntry {
     centralHeaderOffset: number;
     checksum: number;
     hasChecksum?: boolean;
+    zip64?: boolean;
+    localHeaderZip64SectionOffset?: number;
+    centralHeaderZip64SectionOffset?: number;
 }
 
 interface EndOfCentralDirEntry {
+    /**
+     * Number of files in the archive
+     */
     numEntries: number;
     /**
      * Total size of the central directory size. This is a sum
@@ -453,4 +553,5 @@ interface EndOfCentralDirEntry {
      * The size of te end-of-central-directory record
      */
     eocdSize: number;
+    zip64: boolean;
 }
