@@ -6,7 +6,7 @@
         <button @click="cancel()" class="btn btn-sm">Cancel</button>
         <span @click="deleteAll()" class="text-error underline cursor-pointer">Delete all</span>
       </div>
-      <div class="h-70 overflow-auto flex flex-col gap-1">
+      <div class="h-72 overflow-auto flex flex-col gap-1">
         <div
           v-for="transfer in recoveredUploads"
           :key="transfer.id"

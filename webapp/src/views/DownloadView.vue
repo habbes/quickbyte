@@ -69,7 +69,7 @@
             :size="file.size"
           >
             <template #icon>
-              <a title="Download file" :href="file.downloadUrl" :download="file.name.split('/').at(-1)">
+              <a title="Download file" @click="downloadFile(file._id)" :href="file.downloadUrl" :download="file.name.split('/').at(-1)">
                 <ArrowDownTrayIcon
                   class="h-6 w-6 cursor-pointer"
                 />
@@ -99,12 +99,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue"
+import { computed, onMounted, onUnmounted, ref } from "vue"
 import { useRoute } from "vue-router"
-import { apiClient, downloaderProvider, showToast, windowUnloadManager } from "@/app-utils";
-import { humanizeSize, ApiError, type DownloadRequestResult, ensure, isOperationCancelledError, isNetworkError } from "@/core";
+import { apiClient, downloaderProvider, logger, windowUnloadManager, getDeviceData, store } from "@/app-utils";
+import { humanizeSize, ApiError, type DownloadRequestResult, ensure, isOperationCancelledError, isNetworkError, retryOnError } from "@/core";
 import { ArrowDownTrayIcon } from "@heroicons/vue/24/solid";
-import { FolderIcon, DocumentIcon, PlusCircleIcon } from "@heroicons/vue/24/outline";
 import FileListItem from '@/components/FileListItem.vue';
 
 type DownloadState = 'pending' | 'complete' | 'inProgress';
@@ -119,6 +118,9 @@ const loading = ref(true);
 const zipDownloadState = ref<DownloadState>('pending');
 const zipFileName = ref<string>();
 const optimalDownloaderSupported = downloaderProvider.isOptimalDownloaderSupported();
+const deviceData = store.deviceData;
+// keeps track of files that have been individually downloaded
+const requestFiles = ref<string[]>([]);
 
 onMounted(async () => {
   if (!route.params.downloadId || typeof route.params.downloadId !== 'string') {
@@ -126,8 +128,10 @@ onMounted(async () => {
     return;
   }
 
+  await getDeviceData();
+
   try {
-    download.value = await apiClient.getDownload(route.params.downloadId);
+    download.value = await apiClient.getDownload(route.params.downloadId, deviceData.value || {});
     zipFileName.value = `${download.value.name}.zip`;
   }
   catch (e: any) {
@@ -137,6 +141,36 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+const updateRequestedFilesInterval = setInterval(async () => {
+  if (!requestFiles.value.length) {
+    return;
+  }
+
+  try {
+    const transfer = ensure(download.value);
+    if (!transfer.downloadRequestId) {
+      // TODO: this is a legacy transfer that does not support download requests
+      return;
+    }
+
+    apiClient.updateDownloadRequest(transfer._id, transfer.downloadRequestId, {
+      requestedFiles: requestFiles.value
+    });
+
+    requestFiles.value = [];
+  } catch (e: any) {
+    logger.error(e);
+  }
+}, 10000);
+
+onUnmounted(() => {
+  clearInterval(updateRequestedFilesInterval);
+});
+
+function downloadFile(id: string) {
+  requestFiles.value.push(id);
+}
 
 async function downloadZip() {
   const transfer = ensure(download.value);
@@ -171,6 +205,20 @@ async function downloadZip() {
   finally {
     removeOnExitWarning();
     downloadProgress.value = 0;
+
+    // attempt to update server
+    if (transfer.downloadRequestId) {
+      // TODO: after MVP we should expect downloadRequestId to exist
+      retryOnError(() => {
+        return apiClient.updateDownloadRequest(transfer._id, transfer.downloadRequestId, {
+          downloadAllZip: true
+        })
+      }, {
+        maxRetryCount: 3
+      });
+    }
   }
 };
+
+
 </script>

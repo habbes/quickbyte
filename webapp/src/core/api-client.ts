@@ -142,19 +142,74 @@ export class ApiClient {
         return data;
     }
 
-    async getDownload(downloadId: string): Promise<DownloadRequestResult> {
-        const res = await fetch(`${this.config.baseUrl}/downloads/${downloadId}`, {
-            mode: 'cors'
-        });
-
-        const data = await res.json();
-
-        if (res.status >= 400) {
-            const error = new ApiError(data.message, res.status, data.code);
-            throw error;
-        }
+    async getDownload(transferId: string, args: DownloadRequestArgs): Promise<DownloadRequestResult> {
+        const data = await this.makeRequest<DownloadRequestResult>(
+            `downloads/${transferId}`,
+            'POST',
+            args,
+            false
+        );
 
         return data;
+    }
+
+    async updateDownloadRequest(transferId: string, requestId: string, args: DownloadRequestUpdateArgs): Promise<void> {
+        await this.makeRequest<void>(
+            `downloads/${transferId}/requests/${requestId}`,
+            'PATCH',
+            args,
+            false
+        );
+    }
+
+    private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
+        return this.makeRequest<T>(endpoint, 'GET', undefined, auth);
+    }
+
+    private async makeRequest<TResult>(endpoint: string, method: string = 'GET', body: any = undefined, auth: boolean = true): Promise<TResult> {
+        const url = `${this.config.baseUrl}/${endpoint}`;
+        const headers: Record<string, string> = {};
+        const options: RequestInit = {
+            method,
+            headers: {},
+            mode: 'cors',
+        };
+
+        if (auth) {
+            headers['Authorization'] = `Bearer ${this.config.getToken()}`;
+        }
+
+        if (body) {
+            options.body = JSON.stringify(body);
+            headers['Content-Type'] = 'application/json';
+        }
+
+        options.headers = headers;
+
+        const res = await fetch(url, options);
+        if (res.status >= 400) {
+            if (res.headers.get('Content-Length')) {
+                const data = await res.json();
+                const error = new ApiError(data.message, res.status, data.code);
+                throw error;
+            } else {
+                const error = new ApiError(res.statusText, res.status, 'UnknownError');
+                throw error;
+            }
+        }
+
+        try {
+            const data = await res.json();
+            return data;
+        } catch (e: any) {
+            if (!(/JSON/.test(e.message))) {
+                throw e;
+            }
+        }
+
+        // TODO: this is a hack to make the compiler accept the return type. The problem is that sometimes the return should be void
+        // i.e. when there's no response body.
+        return '' as any;
     }
 }
 
@@ -178,6 +233,20 @@ export interface InitFileUploadResult {
     secureUploadUrl: string;
 }
 
+export interface DownloadRequestArgs {
+    ip?: string;
+    countryCode?: string;
+    userAgent?: string;
+}
+
+export interface DownloadRequestUpdateArgs {
+    ip?: string;
+    countryCode?: string;
+    userAgent?: string;
+    downloadAllZip?: boolean;
+    requestedFiles?: string[];
+}
+
 export interface DownloadRequestResult {
     _id: string;
     name: string;
@@ -186,7 +255,8 @@ export interface DownloadRequestResult {
         name: string;
         size: number;
         downloadUrl: string;
-    }[]
+    }[];
+    downloadRequestId: string;
 }
 
 export interface CreateTransferArgs {
@@ -194,6 +264,12 @@ export interface CreateTransferArgs {
     provider: string;
     region: string;
     files: CreateTransferFileArgs[];
+    meta?: {
+        ip?: string;
+        countryCode?: string;
+        // TODO: this should probably be retrieved from the headers
+        userAgent?: string;
+    }
 }
 
 export interface CreateTransferFileArgs {

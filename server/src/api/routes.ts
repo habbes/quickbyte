@@ -56,7 +56,7 @@ routes.post('/downloads/:transferId', wrapResponse(req =>
     req.services.downloads.requestDownload(req.params.transferId, req.body)));
 
 routes.patch('/downloads/:transferId/requests/:requestId', wrapResponse(req =>
-    req.services.downloads.updateDownloadRequest(req.params.transferId, req.body)));
+    req.services.downloads.updateDownloadRequest(req.params.transferId, req.params.requestId, req.body)));
 
 routes.get('/providers', wrapResponse(req =>
     Promise.resolve(req.services.storageProvider.getHandlerInfos())));

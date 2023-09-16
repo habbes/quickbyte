@@ -86,7 +86,6 @@ export class TransferService {
     }
 
     async finalize(id: string): Promise<Transfer> {
-        console.log('here', id);
         try {
             const result = await this.collection.findOneAndUpdate({
                 _id: id
@@ -141,7 +140,7 @@ export class TransferDownloadService {
             }
 
             const [transfer, files] = await Promise.all([
-                this.collection.findOne({ _id: id, expiresAt: { gt: new Date()} }),
+                this.collection.findOne({ _id: id, expiresAt: { $gt: new Date()} }),
                 this.filesCollection.find({ transferId: id }).toArray()
             ]);
 
@@ -179,7 +178,7 @@ export class TransferDownloadService {
         }
     }
 
-    async updateDownloadRequest(transferId: string, args: DownloadRequestUpdateArgs): Promise<void> {
+    async updateDownloadRequest(transferId: string, requestId: string, args: DownloadRequestUpdateArgs): Promise<void> {
         try {
             const fieldsToSet: Partial<DownloadRequest> = {
                 _updatedAt: new Date(),
@@ -203,19 +202,19 @@ export class TransferDownloadService {
             if (args.requestedFiles) {
                 // TODO: do we want to validate that all the files here are valid?
                 update.$addToSet = {
-                    filesRequested: args.requestedFiles
+                    filesRequested: { $each: args.requestedFiles }
                 };
             }
 
             const result = await this.downloadsCollection.findOneAndUpdate(
-                { _id: args.id, transferId },
+                { _id: requestId, transferId },
                 update,
                 {
                     returnDocument: 'after'
                 }
             );
 
-            if (!result) {
+            if (!result.value) {
                 throw createResourceNotFoundError('Download request not found');
             }
 
@@ -328,7 +327,6 @@ export interface DownloadRequestArgs {
 }
 
 export interface DownloadRequestUpdateArgs {
-    id: string;
     ip?: string;
     countryCode?: string;
     userAgent?: string;

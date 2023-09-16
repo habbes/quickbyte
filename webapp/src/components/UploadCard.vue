@@ -198,7 +198,12 @@ async function startUpload() {
       name: transferDetails.value.name,
       provider: provider.provider,
       region: provider.bestRegions[0],
-      files: Array.from(files.value.values()).map(f => ({ name: f.path, size: f.file.size }))
+      files: Array.from(files.value.values()).map(f => ({ name: f.path, size: f.file.size })),
+      meta: {
+        ip: store.deviceData.value?.ip,
+        countryCode: store.deviceData.value?.countryCode,
+        userAgent: store.deviceData.value?.userAgent
+      }
     });
 
     const transferTracker = uploadRecoveryManager.createTransferTracker({
