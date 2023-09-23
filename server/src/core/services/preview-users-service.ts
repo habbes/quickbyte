@@ -2,12 +2,14 @@ import { Db, Collection, UpdateFilter } from "mongodb";
 import { EmailHandler } from "./email/index.js";
 import { PreviewUser, SystemPrincipal, createPersistedModel } from "../models.js";
 import { createAppError, rethrowIfAppError } from "../error.js";
+import { AdminAlertsService } from "./admin-alerts-service.js";
 
 // TODO: this service should be removed after the preview
 const COLLECTION = 'preview_users';
 
 export interface PreviewUsersServiceConfig {
     emailHandler: EmailHandler;
+    alerts: AdminAlertsService;
 }
 
 export class PreviewUsersService {
@@ -28,11 +30,13 @@ export class PreviewUsersService {
 
             await this.collection.insertOne(user);
 
-            await this.config.emailHandler.sendEmail({
-                to: { email: user.email },
-                subject: 'Welcome to Quickbyte Preview',
-                message: 'This is a test'
-            });
+            await this.config.alerts.sendNotification('Quickbyte Lead', `Email: ${user.email}\nCountry: ${user.countryCode}`);
+            // TODO: Send email when email provider activates our account
+            // await this.config.emailHandler.sendEmail({
+            //     to: { email: user.email },
+            //     subject: 'Welcome to Quickbyte Preview',
+            //     message: 'This is a test'
+            // });
         }
         catch (e: any) {
             rethrowIfAppError(e);

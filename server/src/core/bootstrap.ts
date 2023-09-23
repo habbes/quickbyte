@@ -13,9 +13,13 @@ import {
     TransferDownloadService,
     LocalEmailHandler,
     MailjetEmailHandler,
-EmailHandler
+EmailHandler,
+AdminAlertsService
 } from "./services/index.js";
 import { IPreviewUserService, PreviewUsersService } from "./services/preview-users-service.js";
+import { SmsHandler } from "./services/sms/types.js";
+import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
+import { AtSmsHandler } from "./services/sms/at-sms-handler.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = await getDbConnection(config);
@@ -52,6 +56,14 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
             }
         });
     
+    const smsHandler: SmsHandler = config.smsProvider === 'local' ?
+        new LocalSmsHandler() :
+        new AtSmsHandler({
+            apiKey: config.atApiKey,
+            username: config.atUsername,
+            sender: config.atSender
+        })
+    
 
     const accounts = new AccountService(db, storageProvider);
     const auth = new AuthService(db, {
@@ -62,8 +74,15 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     });
 
     const downloads = new TransferDownloadService(db, storageProvider);
+    const adminAlerts = new AdminAlertsService({
+        smsHandler: smsHandler,
+        smsRecipient: config.systemSmsRecipient
+    });
 
-    const previewUsers = new PreviewUsersService(db, { emailHandler });
+    const previewUsers = new PreviewUsersService(db, {
+        emailHandler,
+        alerts: adminAlerts
+    });
 
     return {
         storageProvider,
