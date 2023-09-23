@@ -86,3 +86,21 @@ Your service principal also needs permissions to create applications and service
 Specifically, you need to grant it the `Application.ReadWrite.All` permission in your tenant.
 You can follow the following steps: https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/guides/service_principal_configuration
 
+I didn't get Terraform to automate the Azure AD config (probably something to do with authentication or managed identities, or something). So I
+configured the auth tenant manually on the entra portal (https://entra.microsoft.com). The critical think is to ensure
+to use Entra External ID for customers also called CIAM, here are the docs: https://learn.microsoft.com/en-us/azure/active-directory/external-identities/customers/
+
+I used the Quickstart guide from the portal for the initial setup, which setup a trial tenant (I can't change the tenant name):
+- Tenant name: `TrialTenantlDF1TAkb` (unfortunately I can't change the name)
+- Tenant ID: `b01dbca9-6567-4d7e-9bca-7abf151864a8`
+
+I configured an email+password sign-in flow and also added `Display Name` as an extra field collected during sign up. This field's label
+should be changed to `Name` in the user flow's page layout customization options.
+
+I configured Google Sign-In federation using this guide: 
+https://learn.microsoft.com/en-us/azure/active-directory/external-identities/customers/how-to-google-federation-customers
+
+For the preview, I created a project in Google console called `quickbyte-preview`. It's currently still in test-mode
+and only allows sign-ins from Google email addresses I've manually whitelisted in the settings. For the official release
+I'll create a different project that I'll move to production mode (and it may need to be reviewed).
+
