@@ -7,8 +7,12 @@ import { createServer } from './server/index.js';
 async function startServer() {
     try {
         const config = getAppConfigFromEnv(process.env);
+
+        const server = createServer(config);
+
         const appServices = await bootstrapApp(config);
-        const server = createServer();
+        
+        
         mountApi(server, "/api", appServices);
 
         server.listen(config.port, () => {
