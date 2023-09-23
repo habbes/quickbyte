@@ -25,10 +25,9 @@ export interface PersistedModel {
 export type Principal = {
     type: 'user',
     _id: string;
-} | {
-    type: 'system',
-    _id: 'system'
-}
+} | typeof SystemPrincipal;
+
+export const SystemPrincipal = { type: 'system' as const, _id: 'system' as const};
 
 export interface Account extends PersistedModel {
     owner: Principal;
@@ -117,4 +116,14 @@ export interface DownloadRequest extends PersistedModel {
     userAgent?: string;
     downloadAllZip?: string;
     filesRequested?: string[];
+}
+
+/**
+ * @deprecated Should be removed after preview
+ */
+export interface PreviewUser extends PersistedModel {
+    email: string;
+    countryCode?: string;
+    userAgent?: string;
+    ip?: string;
 }

@@ -98,6 +98,12 @@ export interface AppConfig {
      * The name of the ping file
      */
     azPingBlob: string;
+    // Email
+    emailProvider: 'mailjet'|'local';
+    mailjetApiKey: string;
+    mailjetApiSecret: string;
+    mailjetSenderName: string;
+    mailjetSenderEmail: string;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -120,7 +126,12 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         azResourcePrefix: getRequiredEnv(env, 'AZ_RESOURCE_PREFIX'),
         azDataContainer: env.AZ_DATA_CONTAINER || 'data',
         azPingContainer: env.AZ_PING_CONTAINER || 'ping',
-        azPingBlob: env.AZ_PING_BLOB || 'ping.txt'
+        azPingBlob: env.AZ_PING_BLOB || 'ping.txt',
+        mailjetApiKey: getRequiredEnv(env, 'MAILJET_API_KEY'),
+        mailjetApiSecret: getRequiredEnv(env, 'MAILJET_API_SECRET'),
+        mailjetSenderEmail: getRequiredEnv(env, 'MAILJET_SENDER_EMAIL'),
+        mailjetSenderName: getRequiredEnv(env, 'MAILJET_SENDER_NAME'),
+        emailProvider: env.EMAIL_PROVIDER === 'mailjet' ? 'mailjet' : 'local'
     }
 }
 

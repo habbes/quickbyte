@@ -10,8 +10,12 @@ import {
     AuthService,
     IAccountService,
     ITransferDownloadService,
-    TransferDownloadService
+    TransferDownloadService,
+    LocalEmailHandler,
+    MailjetEmailHandler,
+EmailHandler
 } from "./services/index.js";
+import { IPreviewUserService, PreviewUsersService } from "./services/preview-users-service.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = await getDbConnection(config);
@@ -37,6 +41,18 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const storageProvider = new StorageHandlerProvider();
     storageProvider.registerHandler(azureStorageHandler);
 
+    const emailHandler: EmailHandler = config.emailProvider === 'local'?
+        new LocalEmailHandler() :
+        new MailjetEmailHandler({
+            apiKey: config.mailjetApiKey,
+            apiSecret: config.mailjetApiSecret,
+            sender: {
+                email: config.mailjetSenderEmail,
+                name: config.mailjetSenderName
+            }
+        });
+    
+
     const accounts = new AccountService(db, storageProvider);
     const auth = new AuthService(db, {
         aadClientId: config.aadClientId,
@@ -47,19 +63,23 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
 
     const downloads = new TransferDownloadService(db, storageProvider);
 
+    const previewUsers = new PreviewUsersService(db, { emailHandler });
+
     return {
         storageProvider,
         accounts,
         auth,
-        downloads
+        downloads,
+        previewUsers
     };
 }
 
 export interface AppServices {
-    storageProvider: IStorageHandlerProvider,
-    accounts: IAccountService,
-    auth: IAuthService,
-    downloads: ITransferDownloadService
+    storageProvider: IStorageHandlerProvider;
+    accounts: IAccountService;
+    auth: IAuthService;
+    downloads: ITransferDownloadService;
+    previewUsers: IPreviewUserService;
 }
 
 async function getDbConnection(config: AppConfig) {
