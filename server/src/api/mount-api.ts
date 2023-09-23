@@ -14,7 +14,7 @@ export function mountApi(server: Express, apiRoot: string, services: AppServices
     server.use(apiRoot, createRouter());
 
     server.use(errorHandler());
-    server.use(error404handler);
+    server.use(error404handler('Resource does not exist or you do not have sufficient permissions.'));
 }
 
 function injectServices(services: AppServices): RequestHandler {
