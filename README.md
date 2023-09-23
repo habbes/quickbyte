@@ -36,7 +36,7 @@ Fast, resumable, reliable sharing of large files
   - [ ] Tune and optimize sentry telemetry
 - [x] Make transfers invalid past expiry date
 - [ ] Handle all TODOs and deprecations
-- [ ] Improve landing page and first-time-user flow
+- [ ] Improve landing page, sign up and first-time-user flow
 - [ ] Legal pages
   - [ ] Terms of service
   - [ ] Privacy Policy
