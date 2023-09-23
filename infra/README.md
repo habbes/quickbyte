@@ -104,3 +104,9 @@ For the preview, I created a project in Google console called `quickbyte-preview
 and only allows sign-ins from Google email addresses I've manually whitelisted in the settings. For the official release
 I'll create a different project that I'll move to production mode (and it may need to be reviewed).
 
+
+## Sentry Config
+
+We use Sentry for logging and tracing.
+
+Sentry for Vue.js: https://docs.sentry.io/platforms/javascript/guides/vue/

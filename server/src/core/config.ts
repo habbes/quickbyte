@@ -110,6 +110,9 @@ export interface AppConfig {
     atUsername: string;
     atSender: string;
     systemSmsRecipient: string;
+    // Sentry
+    enableSentry: boolean;
+    sentryDsn: string;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -143,6 +146,8 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         atSender: getRequiredEnv(env, 'AT_SENDER'),
         systemSmsRecipient: getRequiredEnv(env, 'SYSTEM_SMS_RECIPIENT'),
         smsProvider: env.SMS_PROVIDER === 'at' ? 'at' : 'local',
+        enableSentry: env.ENABLE_SENTRY === 'true',
+        sentryDsn: env.ENABLE_SENTRY === 'true' ? getRequiredEnv(env, 'SENTRY_DSN') : '',
     }
 }
 

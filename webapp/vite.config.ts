@@ -15,7 +15,7 @@ export default defineConfig({
     sentryVitePlugin({
       authToken: process.env.SENTRY_AUTH_TOKEN,
       org: "quickbyte",
-      project: "javascript-vue",
+      project: "quickbyte-webapp",
     }),
   ],
   resolve: {

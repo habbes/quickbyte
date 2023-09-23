@@ -4,13 +4,18 @@ export type LogLevel = "fatal" | "error" | "warning" | "log" | "info" | "debug";
 
 export class Logger {
     message(level: LogLevel, ...messages: any[]) {
-        // TODO: remove console.log in prod
         if (level === 'warning') {
-            console.warn(...messages);
+            if (import.meta.env.MODE === 'development') {
+                console.warn(...messages);
+            }
         } else if (level === 'error' || level === 'fatal') {
-            console.error(...messages)
+            if (import.meta.env.MODE === 'development') {
+                console.error(...messages)
+            }
         } else {
-            console.log(...messages);
+            if (import.meta.env.MODE === 'development') {
+                console.log(...messages);
+            }
         }
 
         if (['warning', 'fatal', 'error', 'info'].includes(level)) {

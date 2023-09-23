@@ -27,13 +27,13 @@ Fast, resumable, reliable sharing of large files
 - [x] Automation cloud resource provision (storage accounts, auth, etc.)
   - [x] Automatic storage account provisioning and config with Terraform
 - [ ] Payment integration
-- [ ] Collect more data for better insights
+- [x] Collect more data for better insights
   - [x] Transfer source location
   - [x] Transfer duration
   - [x] Download location
   - [x] Download kind (zip, individual files)
   - [x] Add duration and file stats to transfer object
-  - [ ] Tune and optimize sentry telemetry
+  - [x] Tune and optimize sentry telemetry
 - [x] Make transfers invalid past expiry date
 - [ ] Handle all TODOs and deprecations
 - [ ] Improve landing page, sign up and first-time-user flow
