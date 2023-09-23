@@ -161,7 +161,7 @@
 
 					getUserInfo()
 					.then((ipInfo) => {
-						const url = 'http://localhost:3000/api/previewUsers';
+						const url = 'https://quickbyte-production.up.railway.app/api/previewUsers';
 						const body = {
 							email,
 							countryCode: ipInfo.country,
