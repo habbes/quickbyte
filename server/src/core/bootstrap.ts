@@ -10,8 +10,16 @@ import {
     AuthService,
     IAccountService,
     ITransferDownloadService,
-    TransferDownloadService
+    TransferDownloadService,
+    LocalEmailHandler,
+    MailjetEmailHandler,
+EmailHandler,
+AdminAlertsService
 } from "./services/index.js";
+import { IPreviewUserService, PreviewUsersService } from "./services/preview-users-service.js";
+import { SmsHandler } from "./services/sms/types.js";
+import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
+import { AtSmsHandler } from "./services/sms/at-sms-handler.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = await getDbConnection(config);
@@ -37,6 +45,26 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const storageProvider = new StorageHandlerProvider();
     storageProvider.registerHandler(azureStorageHandler);
 
+    const emailHandler: EmailHandler = config.emailProvider === 'local'?
+        new LocalEmailHandler() :
+        new MailjetEmailHandler({
+            apiKey: config.mailjetApiKey,
+            apiSecret: config.mailjetApiSecret,
+            sender: {
+                email: config.mailjetSenderEmail,
+                name: config.mailjetSenderName
+            }
+        });
+    
+    const smsHandler: SmsHandler = config.smsProvider === 'local' ?
+        new LocalSmsHandler() :
+        new AtSmsHandler({
+            apiKey: config.atApiKey,
+            username: config.atUsername,
+            sender: config.atSender
+        })
+    
+
     const accounts = new AccountService(db, storageProvider);
     const auth = new AuthService(db, {
         aadClientId: config.aadClientId,
@@ -46,20 +74,31 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     });
 
     const downloads = new TransferDownloadService(db, storageProvider);
+    const adminAlerts = new AdminAlertsService({
+        smsHandler: smsHandler,
+        smsRecipient: config.systemSmsRecipient
+    });
+
+    const previewUsers = new PreviewUsersService(db, {
+        emailHandler,
+        alerts: adminAlerts
+    });
 
     return {
         storageProvider,
         accounts,
         auth,
-        downloads
+        downloads,
+        previewUsers
     };
 }
 
 export interface AppServices {
-    storageProvider: IStorageHandlerProvider,
-    accounts: IAccountService,
-    auth: IAuthService,
-    downloads: ITransferDownloadService
+    storageProvider: IStorageHandlerProvider;
+    accounts: IAccountService;
+    auth: IAuthService;
+    downloads: ITransferDownloadService;
+    previewUsers: IPreviewUserService;
 }
 
 async function getDbConnection(config: AppConfig) {

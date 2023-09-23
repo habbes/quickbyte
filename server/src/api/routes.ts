@@ -61,4 +61,7 @@ routes.patch('/downloads/:transferId/requests/:requestId', wrapResponse(req =>
 routes.get('/providers', wrapResponse(req =>
     Promise.resolve(req.services.storageProvider.getHandlerInfos())));
 
+routes.post('/previewUsers', wrapResponse(req =>
+    req.services.previewUsers.createPreviewUser(req.body), 201));
+
 

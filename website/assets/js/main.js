@@ -28,6 +28,11 @@
 			}, 100);
 		});
 
+		function getUserInfo() {
+			return fetch('https://jsonip.com')
+			.then(res => res.json());
+		}
+
 
 	// Slideshow Background.
 		(function() {
@@ -152,34 +157,36 @@
 
 					// Disable submit.
 						$submit.disabled = true;
+					const email = $form.email.value
 
-						
-					const url = 'https://hooks.zapier.com/hooks/catch/15620963/3h47g0r';
-					const body = {
-						email: $form.email.value
-					};
-					console.log('body', body);
-					fetch(url, {
-						method: 'POST',
-						// headers: {
-						// 	"Content-Type": "application/json",
-						// },
-						mode: 'cors',
-						body: JSON.stringify(body)
-					}).then(response => {
-						$form.reset();
-						$submit.disabled = false;
+					getUserInfo()
+					.then((ipInfo) => {
+						const url = 'http://localhost:3000/api/previewUsers';
+						const body = {
+							email,
+							countryCode: ipInfo.country,
+							userAgent: navigator.userAgent
+						};
 
-						if (response.ok) {
-							$message._show('success', 'Thank you! We\'ll let you know when we launch.');
-						} else {
-							$message._show('failure', 'Something went wrong. Please try again.');
-						}
-					})
-					.catch(e => {
-						$message._show('failure', e.message);
+						console.log('body', body);
+						fetch(url, {
+							method: 'POST',
+							headers: {
+								"Content-Type": "application/json",
+							},
+							mode: 'cors',
+							body: JSON.stringify(body)
+						}).then(response => {
+							$form.reset();
+							$submit.disabled = false;
+
+							if (response.ok) {
+								$message._show('success', 'Thank you! We\'ll let you know when we launch.');
+							} else {
+								$message._show('failure', 'Something went wrong. Please try again.');
+							}
+						})
 					});
-
 				});
 
 		})();
