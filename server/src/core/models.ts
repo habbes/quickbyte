@@ -69,6 +69,10 @@ export interface Transfer extends PersistedModel {
     status: TransferStatus;
     expiresAt: Date;
     transferCompletedAt?: Date;
+    // TODO: this field should be required after the preview
+    numFiles?: number;
+    // TODO: this field should be required after the preview
+    totalSize?: number;
 }
 
 export interface DbTransfer extends Transfer {
@@ -76,6 +80,8 @@ export interface DbTransfer extends Transfer {
         ip?: string;
         countryCode?: string;
         userAgent?: string;
+        duration?: number;
+        recovered?: boolean;
     }
 }
 

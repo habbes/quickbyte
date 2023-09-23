@@ -122,23 +122,13 @@ export class ApiClient {
         return data;
     }
 
-    async finalizeTransfer(accountId: string, transferId: string): Promise<Transfer> {
-        const token = await this.config.getToken();
-        const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/transfers/${transferId}/finalize`, {
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-                Authorization: `Bearer ${token}`,
-            }
-        });
-
-        const data = await res.json();
-
-        if (res.status >= 400) {
-            const error = new ApiError(data.message, res.status, data.code);
-            throw error;
-        }
-
+    async finalizeTransfer(accountId: string, transferId: string, args: FinalizeTransferArgs): Promise<Transfer> {
+        const data = await this.makeRequest<Transfer>(
+            `accounts/${accountId}/transfers/${transferId}/finalize`,
+            'POST',
+            args,
+            true);
+        
         return data;
     }
 
@@ -176,7 +166,8 @@ export class ApiClient {
         };
 
         if (auth) {
-            headers['Authorization'] = `Bearer ${this.config.getToken()}`;
+            const token = await this.config.getToken();
+            headers['Authorization'] = `Bearer ${token}`;
         }
 
         if (body) {
@@ -231,6 +222,11 @@ export interface InitFileUploadArgs {
 export interface InitFileUploadResult {
     _id: string;
     secureUploadUrl: string;
+}
+
+export interface FinalizeTransferArgs {
+    duration: number;
+    recovered?: boolean;
 }
 
 export interface DownloadRequestArgs {

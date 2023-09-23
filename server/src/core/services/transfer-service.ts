@@ -34,7 +34,9 @@ export class TransferService {
                 region: args.region,
                 accountId: this.authContext.user.account._id,
                 status: 'progress',
-                expiresAt: new Date(Date.now() + DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS)
+                expiresAt: new Date(Date.now() + DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS),
+                numFiles: args.files.length,
+                totalSize: args.files.reduce((sizeSoFar, file) => sizeSoFar + file.size, 0)
             };
             
             if (args.meta) {
@@ -85,7 +87,7 @@ export class TransferService {
         }
     }
 
-    async finalize(id: string): Promise<Transfer> {
+    async finalize(id: string, args: FinalizeTransferArgs): Promise<Transfer> {
         try {
             const result = await this.collection.findOneAndUpdate({
                 _id: id
@@ -94,7 +96,9 @@ export class TransferService {
                     status: 'completed',
                     _updatedAt: new Date(),
                     _updatedBy: { type: 'user', _id: this.authContext.user._id },
-                    transferCompletedAt: new Date()
+                    transferCompletedAt: new Date(),
+                    'meta.duration': args.duration,
+                    'meta.recovered': args.recovered,
                 }
             }, {
                 returnDocument: 'after'
@@ -318,6 +322,11 @@ export interface GetTransferResult extends Transfer {
 
 export interface GetTransferFileResult extends TransferFile {
     uploadUrl: string;
+}
+
+export interface FinalizeTransferArgs {
+    duration: number;
+    recovered?: boolean;
 }
 
 export interface DownloadRequestArgs {

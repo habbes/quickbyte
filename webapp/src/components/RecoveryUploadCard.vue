@@ -267,7 +267,10 @@ async function startUpload() {
     let retry = true;
     while (retry) {
       try {
-        const download = await apiClient.finalizeTransfer(user.account._id, transfer._id);
+        const download = await apiClient.finalizeTransfer(user.account._id, transfer._id, {
+          recovered: true,
+          duration: Date.now() - new Date(transfer._createdAt).getTime()
+        });
         retry = false;
         downloadUrl.value = `${location.origin}/d/${download._id}`;
         uploadState.value = 'complete';
