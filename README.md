@@ -7,7 +7,7 @@ Fast, resumable, reliable sharing of large files
 ### API
 
 - [x] User sign up and authentication
-- [ ] Social auth providers
+- [ ] Sign-in with Google
 - [x] Basic permissions
 - [x] Init file uploads with secure file URL
 - [x] Generate download URL
@@ -17,31 +17,30 @@ Fast, resumable, reliable sharing of large files
 - [x] Large zip download support
   - [x] Zip download resilience (chunked downloads + retries)
   - [x] Zip64 support
-- [ ] DB indexes
 - [ ] Validation
 - [ ] Perf benchmarks and tuning
 - [x] Resumable uploads
 - [x] Deploy to staging
 - [ ] Deploy to prod
+- [ ] Email provider integration
 - [x] Deployment pipeline? (Vercel and Railway auto-deploy on merge to main)
-- [ ] Automation cloud resource provision (storage accounts, auth, etc.)
+- [x] Automation cloud resource provision (storage accounts, auth, etc.)
   - [x] Automatic storage account provisioning and config with Terraform
-  - [ ] Automatic auth provisioning and config
 - [ ] Payment integration
 - [ ] Collect more data for better insights
   - [x] Transfer source location
   - [x] Transfer duration
   - [x] Download location
   - [x] Download kind (zip, individual files)
+  - [ ] Add duration and file stats to transfer object
   - [ ] Tune and optimize sentry telemetry
-- [ ] Allow user to track transfers and downloads
 - [x] Make transfers invalid past expiry date
 - [ ] Handle all TODOs and deprecations
+- [ ] Improve landing page and first-time-user flow
 - [ ] Legal pages
   - [ ] Terms of service
   - [ ] Privacy Policy
   - [ ] Cookie Policy
-- [ ] Tests?
 
 ### Client
 
