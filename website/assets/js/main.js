@@ -168,7 +168,6 @@
 							userAgent: navigator.userAgent
 						};
 
-						console.log('body', body);
 						fetch(url, {
 							method: 'POST',
 							headers: {

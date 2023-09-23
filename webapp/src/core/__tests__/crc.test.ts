@@ -7,7 +7,6 @@ describe('CRC32', () => {
 
     describe('crc32 function', () => {
         test('It computes the correct crc32 for a blob', () => {
-            console.log('curr dir', __dirname);
             const data = readFileSync(FILE_PATH);
             const crc = crc32(data);
             expect(crc).toBe(0xa51b82bf);
