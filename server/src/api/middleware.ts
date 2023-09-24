@@ -26,6 +26,9 @@ export const errorHandler = (): ErrorRequestHandler =>
                 return sendErrorResponse(res, 401, error);
             case 'permissionDenied':
                 return sendErrorResponse(res, 403, error);
+            case 'subscriptionRequired':
+            case 'subscriptionInsufficient':
+                return sendErrorResponse(res, 403, error);
             default:
                 if (error instanceof SyntaxError) {
                     return sendErrorResponse(res, 400,

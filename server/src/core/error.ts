@@ -14,7 +14,9 @@ export type ErrorCode =
     | 'resourceConflict'
     | 'permissionDenied'
     | 'authenticationError'
-    | 'dbError';
+    | 'dbError'
+    | 'subscriptionRequired'
+    | 'subscriptionInsufficient';
 
 /**
  * Checks whether the error is a MongoDB duplicate key error
@@ -66,3 +68,11 @@ export const createResourceConflictError =
 export const createValidationError = (message: ErrorMessage) => createAppError(message, 'validationError');
 
 export const createAuthError = (message: ErrorMessage) => createAppError(message, 'authenticationError');
+
+export const createSubscriptionRequiredError =
+    (message: ErrorMessage = 'This operation requires an active subscription. Please purchase a subscription plan and try again.') => createAppError(message, 'subscriptionRequired');
+
+export const createSubscriptionInsufficientError =
+    (message: ErrorMessage = 'Your active subscription does not support this operation. Please upgrade your plan and try again.') => createAppError(message,
+        'subscriptionInsufficient');
+

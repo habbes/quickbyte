@@ -1,3 +1,4 @@
+import { toHandlers } from 'vue';
 import type { UserAccount, StorageProvider, Transfer, TransferFile } from './types.js'
 
 export interface ApiClientConfig {
@@ -50,19 +51,13 @@ export class ApiClient {
     }
 
     async createTransfer(accountId: string, args: CreateTransferArgs): Promise<CreateTransferResult> {
-        const token = await this.config.getToken();
-        const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/transfers`, {
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(args)
-        });
-
-        const data = res.json();
-        return data;
+        const result = await this.makeRequest<CreateTransferResult>(
+            `accounts/${accountId}/transfers`,
+            'POST',
+            args
+        );
+        
+        return result;
     }
 
     async getTransfer(accountId: string, transferId: string): Promise<GetTransferResult> {

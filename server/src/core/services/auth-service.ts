@@ -129,7 +129,14 @@ export class AuthService {
         const user = await this.getOrCreateUser(parsed.payload);
         const account = await this.args.accounts.getOrCreateByOwner(user._id);
 
-        return { ...user, account };
+        const userWithAccount: UserWithAccount = { ...user, account }
+
+        const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveSubscription();
+        if (sub) {
+            userWithAccount.account.subscription = sub;
+        }
+
+        return userWithAccount ;
     }
 
     private async getUserByToken_Broken(token: string): Promise<any> {

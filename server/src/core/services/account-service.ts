@@ -48,7 +48,10 @@ export class AccountService {
     }
 
     transfers(authContext: AuthContext): ITransferService {
-        return new TransferService(this.db, authContext, this.storageProvider);
+        return new TransferService(this.db, authContext, {
+            providerRegistry: this.storageProvider,
+            transactions: this.transactions(authContext)
+        });
     }
 
     transactions(authContext: AuthContext): ITransactionService {

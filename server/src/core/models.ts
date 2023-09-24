@@ -40,8 +40,16 @@ export interface User extends PersistedModel {
 }
 
 export interface UserWithAccount extends User {
-    account: Account
+    account: AccountWithSubscription
 };
+
+export interface AccountWithSubscription extends Account {
+    subscription?: SubscriptionAndPlan;
+}
+
+export interface SubscriptionAndPlan extends Subscription {
+    plan: Plan;
+}
 
 export interface AuthContext {
     user: UserWithAccount;
@@ -156,7 +164,8 @@ export interface Subscription extends PersistedModel {
     accountId: string;
     planName: string;
     nextRenewalDate?: Date;
-    expiryDate?: Date;
+    validFrom?: Date;
+    expiresAt?: Date;
     status: SubscriptionStatus,
 }
 

@@ -1,6 +1,6 @@
 import { Db, Collection } from 'mongodb';
 import { AuthContext, Subscription, Plan, Transaction, createPersistedModel } from '../../models.js';
-import { rethrowIfAppError, createAppError } from '../../error.js';
+import { rethrowIfAppError, createAppError, createResourceNotFoundError } from '../../error.js';
 import { IPlanService } from './plan-service.js';
 
 const COLLECTION = 'transactions';
@@ -50,6 +50,39 @@ export class TransactionService {
         }
     }
 
+    async getActiveSubscription(): Promise<GetActiveSubscriptionResult> {
+        const sub = await this.tryGetActiveSubscription();
+        if (!sub) {
+            throw createResourceNotFoundError('Your account does not have a valid subscription. Purchase a subscription plan and try again.');
+        }
+
+        return sub;
+    }
+
+    async tryGetActiveSubscription(): Promise<GetActiveSubscriptionResult|undefined> {
+        try {
+            const now = new Date();
+            const sub = await this.subscriptionCollection.findOne({
+                accountId: this.authContext.user.account._id,
+                status: 'active',
+                validFrom: { $gte: now},
+                expiresAt: { $gt: now }
+            });
+
+            if (!sub) {
+                return undefined;
+            }
+
+            return {
+                ...sub,
+                plan: await this.config.plans.getByName(sub.planName)
+            }
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     private async createSubscription(plan: Plan): Promise<Subscription> {
         try {
             const subscription: Subscription = {
@@ -70,7 +103,7 @@ export class TransactionService {
     }
 }
 
-export type ITransactionService = Pick<TransactionService, 'initiateSubscription'>;
+export type ITransactionService = Pick<TransactionService, 'initiateSubscription'|'getActiveSubscription'|'tryGetActiveSubscription'>;
 
 export interface InitiateSubscrptionArgs {
     plan: string;
@@ -80,4 +113,8 @@ export interface InitiateSubscriptionResult {
     transaction: Transaction,
     plan: Plan,
     subscription: Subscription
+}
+
+export interface GetActiveSubscriptionResult extends Subscription {
+    plan: Plan;
 }
