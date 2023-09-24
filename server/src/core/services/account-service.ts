@@ -1,12 +1,12 @@
 import { Db, Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, FileService, IFileService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransferService, Principal, rethrowIfAppError, TransferService } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, FileService, IFileService, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService } from "../index.js";
 
 const COLLECTION = 'accounts';
 
 export class AccountService {
     private collection: Collection<Account>;
 
-    constructor(private db: Db, private storageProvider: IStorageHandlerProvider) {
+    constructor(private db: Db, private storageProvider: IStorageHandlerProvider, private planService: IPlanService) {
         this.collection = this.db.collection<Account>(COLLECTION);
     }
 
@@ -50,6 +50,10 @@ export class AccountService {
     transfers(authContext: AuthContext): ITransferService {
         return new TransferService(this.db, authContext, this.storageProvider);
     }
+
+    transactions(authContext: AuthContext): ITransactionService {
+        return new TransactionService(this.db, authContext, { plans: this.planService });
+    }
 }
 
-export type IAccountService = Pick<AccountService, 'getOrCreateByOwner' | 'files' | 'transfers'>;
+export type IAccountService = Pick<AccountService, 'getOrCreateByOwner' | 'files' | 'transfers' | 'transactions'>;

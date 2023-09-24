@@ -133,3 +133,44 @@ export interface PreviewUser extends PersistedModel {
     userAgent?: string;
     ip?: string;
 }
+
+export interface Transaction extends PersistedModel {
+    userId: string;
+    status: TransactionStatus;
+    error?: string;
+    failureReason?: FailureReason;
+    amount: number;
+    currency: string;
+    provider: string;
+    providerId?: string;
+    metadata: Record<string, any>;
+    reason: TransactionReason;
+    subscriptionId?: string;
+}
+
+export type TransactionStatus = 'pending' | 'success' | 'cancelled' | 'failed';
+export type FailureReason = 'error'|'amountMismatch'|'other';
+export type TransactionReason = 'subscription';
+
+export interface Subscription extends PersistedModel {
+    accountId: string;
+    planName: string;
+    nextRenewalDate?: Date;
+    expiryDate?: Date;
+    status: SubscriptionStatus,
+}
+
+export type SubscriptionStatus = 'pending' | 'active' | 'inactive';
+
+export interface Plan {
+    name: string;
+    displayName: string;
+    price: number;
+    currency: string;
+    renewalRate: PlanRenewalRate;
+    maxTransferSize: number;
+    maxStorageSize: number;
+    providerIds: Record<string, string>;
+}
+
+export type PlanRenewalRate = 'monthly';

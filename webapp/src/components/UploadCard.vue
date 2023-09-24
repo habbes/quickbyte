@@ -155,6 +155,10 @@ const copiedDownloadUrl = ref<boolean>(false);
 const fileListContainer = ref<HTMLDivElement>();
 
 watch([files], () => {
+  if (!files.value.length) {
+    return;
+  }
+
   if (!transferName.value) {
     transferName.value = directories.value.length && directories.value[0].name || files.value[0].file.name;
   }

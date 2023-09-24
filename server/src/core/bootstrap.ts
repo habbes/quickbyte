@@ -13,8 +13,10 @@ import {
     TransferDownloadService,
     LocalEmailHandler,
     MailjetEmailHandler,
-EmailHandler,
-AdminAlertsService
+    PlanService,
+    EmailHandler,
+    AdminAlertsService,
+IPlanService
 } from "./services/index.js";
 import { IPreviewUserService, PreviewUsersService } from "./services/preview-users-service.js";
 import { SmsHandler } from "./services/sms/types.js";
@@ -64,8 +66,14 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
             sender: config.atSender
         })
     
+    const plans = new PlanService({
+        paystackPlanCodes: {
+            starterMonthly: config.paystackStarterMonthlyPlan
+        }
+    });
 
-    const accounts = new AccountService(db, storageProvider);
+    const accounts = new AccountService(db, storageProvider, plans);
+
     const auth = new AuthService(db, {
         aadClientId: config.aadClientId,
         aadClientSecret: config.aadClientSecret,
@@ -89,7 +97,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         accounts,
         auth,
         downloads,
-        previewUsers
+        previewUsers,
+        plans
     };
 }
 
@@ -99,6 +108,7 @@ export interface AppServices {
     auth: IAuthService;
     downloads: ITransferDownloadService;
     previewUsers: IPreviewUserService;
+    plans: IPlanService;
 }
 
 async function getDbConnection(config: AppConfig) {

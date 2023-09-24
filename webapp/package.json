@@ -16,6 +16,7 @@
     "@azure/msal-browser": "^2.37.1",
     "@azure/storage-blob": "^12.14.0",
     "@heroicons/vue": "^2.0.18",
+    "@paystack/inline-js": "^2.13.0",
     "@sentry/vite-plugin": "^2.4.0",
     "@sentry/vue": "^7.60.0",
     "@vueuse/core": "^10.2.0",
