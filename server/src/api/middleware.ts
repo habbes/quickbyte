@@ -28,7 +28,7 @@ export const errorHandler = (): ErrorRequestHandler =>
                 return sendErrorResponse(res, 403, error);
             case 'subscriptionRequired':
             case 'subscriptionInsufficient':
-                return sendErrorResponse(res, 403, error);
+                return sendErrorResponse(res, 402, error);
             default:
                 if (error instanceof SyntaxError) {
                     return sendErrorResponse(res, 400,

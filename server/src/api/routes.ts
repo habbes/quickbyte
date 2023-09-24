@@ -48,6 +48,17 @@ routes.get('/accounts/:accountId/transfers/:transferId',
     wrapResponse(req =>
         req.services.accounts.transfers(req.authContext).getById(req.params.transferId)));
 
+routes.post('/accounts/:accountId/subscriptions',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.transactions(req.authContext).initiateSubscription(req.body)));
+
+routes.get('/accounts/:accountId/transactions/:transactionId',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.transactions(req.authContext).verifyTransaction(req.params.transactionId)));
 
 routes.get('/me', requireAuth(), wrapResponse(req =>
     req.services.auth.getUserByToken(req.headers.authorization?.split(" ")[1] || "")));
@@ -61,6 +72,7 @@ routes.patch('/downloads/:transferId/requests/:requestId', wrapResponse(req =>
 routes.get('/providers', wrapResponse(req =>
     Promise.resolve(req.services.storageProvider.getHandlerInfos())));
 
+// TODO: remove after preview
 routes.post('/previewUsers', wrapResponse(req =>
     req.services.previewUsers.createPreviewUser(req.body), 201));
 

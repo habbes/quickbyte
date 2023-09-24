@@ -147,8 +147,23 @@ export class ApiClient {
         );
     }
 
+    async initiateSubscription(accountId: string, args: { plan: string }): Promise<InitiateSubscriptionResult> {
+        const result = await this.post<InitiateSubscriptionResult>(`accounts/${accountId}/subscriptions`, args);
+        return result;
+    }
+
+    // TODO: do this method properly
+    async getTransaction(accountId: string, transactionId: string): Promise<{ _id: string, status: string }> {
+        const result = await this.get<any>(`accounts/${accountId}/transactions/${transactionId}`);
+        return result;
+    }
+
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
         return this.makeRequest<T>(endpoint, 'GET', undefined, auth);
+    }
+
+    private post<T>(endpoint: string, body: any = undefined, auth: boolean = true): Promise<T> {
+        return this.makeRequest<T>(endpoint, 'POST', body, auth);
     }
 
     private async makeRequest<TResult>(endpoint: string, method: string = 'GET', body: any = undefined, auth: boolean = true): Promise<TResult> {
@@ -278,4 +293,22 @@ export interface CreateTransferFileResult extends TransferFile {
     _id: string,
     name: string,
     uploadUrl: string;
+}
+
+export interface InitiateSubscriptionResult {
+    plan: {
+        name: string;
+        price: number;
+        providerIds: {
+            paystack: string;
+        }
+    },
+    transaction: {
+        _id: string;
+        provider: string;
+        metadata: Record<string, any>;
+    },
+    subscription: {
+        _id: string;
+    }
 }

@@ -14,7 +14,7 @@ export class PlanService {
     constructor(private config: PlanSeriviceConfig) {
         this.plans = [
             {
-                name: 'startMonthly',
+                name: 'starterMonthly',
                 displayName: 'Quickbyte Starter - Monthly',
                 price: 1000,
                 currency: 'KES',

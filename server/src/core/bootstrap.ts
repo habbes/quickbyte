@@ -2,21 +2,23 @@ import { MongoClient } from "mongodb";
 import { AppConfig } from "./config.js";
 import { createAppError } from "./error.js";
 import {
-    AzureStorageHandler,
-    IStorageHandlerProvider,
-    StorageHandlerProvider,
-    AccountService,
-    IAuthService,
-    AuthService,
-    IAccountService,
-    ITransferDownloadService,
-    TransferDownloadService,
-    LocalEmailHandler,
-    MailjetEmailHandler,
-    PlanService,
-    EmailHandler,
-    AdminAlertsService,
-IPlanService
+AzureStorageHandler,
+IStorageHandlerProvider,
+StorageHandlerProvider,
+AccountService,
+IAuthService,
+AuthService,
+IAccountService,
+ITransferDownloadService,
+TransferDownloadService,
+LocalEmailHandler,
+MailjetEmailHandler,
+PlanService,
+EmailHandler,
+AdminAlertsService,
+IPlanService,
+PaymentHandlerProvider,
+PaystackPaymentHandler
 } from "./services/index.js";
 import { IPreviewUserService, PreviewUsersService } from "./services/preview-users-service.js";
 import { SmsHandler } from "./services/sms/types.js";
@@ -72,7 +74,19 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         }
     });
 
-    const accounts = new AccountService(db, storageProvider, plans);
+    const paystackHandler = new PaystackPaymentHandler({
+        publicKey: config.paystackPublicKey,
+        secretKey: config.paystackSecretKey,
+    });
+
+    const paymentHandlers = new PaymentHandlerProvider();
+    paymentHandlers.register(paystackHandler);
+
+    const accounts = new AccountService(db, {
+        plans: plans,
+        storageHandlers: storageProvider,
+        paymentHandlers
+    });
 
     const auth = new AuthService(db, {
         aadClientId: config.aadClientId,

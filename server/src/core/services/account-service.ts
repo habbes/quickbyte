@@ -1,12 +1,18 @@
 import { Db, Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, FileService, IFileService, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, FileService, IFileService, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService } from "../index.js";
 
 const COLLECTION = 'accounts';
+
+export interface AccountServiceConfig {
+    storageHandlers: IStorageHandlerProvider;
+    plans: IPlanService;
+    paymentHandlers: IPaymentHandlerProvider;
+}
 
 export class AccountService {
     private collection: Collection<Account>;
 
-    constructor(private db: Db, private storageProvider: IStorageHandlerProvider, private planService: IPlanService) {
+    constructor(private db: Db, private config: AccountServiceConfig) {
         this.collection = this.db.collection<Account>(COLLECTION);
     }
 
@@ -44,18 +50,21 @@ export class AccountService {
 
 
     files(authContext: AuthContext): IFileService {
-        return new FileService(this.db, authContext, this.storageProvider);
+        return new FileService(this.db, authContext, this.config.storageHandlers);
     }
 
     transfers(authContext: AuthContext): ITransferService {
         return new TransferService(this.db, authContext, {
-            providerRegistry: this.storageProvider,
+            providerRegistry: this.config.storageHandlers,
             transactions: this.transactions(authContext)
         });
     }
 
     transactions(authContext: AuthContext): ITransactionService {
-        return new TransactionService(this.db, authContext, { plans: this.planService });
+        return new TransactionService(this.db, authContext, {
+            plans: this.config.plans,
+            paymentHandlers: this.config.paymentHandlers
+        });
     }
 }
 

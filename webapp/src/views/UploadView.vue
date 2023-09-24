@@ -17,7 +17,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { store } from '@/app-utils';
 import UploadCard from '@/components/UploadCard.vue';
 import UploadRecoveryFlow from '@/components/UploadRecoveryFlow.vue';
@@ -25,6 +26,10 @@ import RecoveryUploadCard from '@/components/RecoveryUploadCard.vue';
 
 type State = 'newUpload' | 'recoveryFlow' | 'recoveryUpload';
 
+const router = useRouter();
+if (!store.userAccount.value?.account.subscription) {
+  router.push({ name: 'pay' });
+}
 const state = ref<State>('newUpload');
 const selectedRecoveredTransferId = ref<string>();
 
