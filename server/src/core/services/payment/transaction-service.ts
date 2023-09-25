@@ -1,8 +1,9 @@
 import { Db, Collection } from 'mongodb';
 import { AuthContext, Subscription, Plan, Transaction, createPersistedModel } from '../../models.js';
-import { rethrowIfAppError, createAppError, createResourceNotFoundError } from '../../error.js';
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError } from '../../error.js';
 import { IPlanService } from './plan-service.js';
 import { IPaymentHandlerProvider } from './payment-handler-provider.js';
+import { PaymentHandler } from './types.js';
 
 const COLLECTION = 'transactions';
 const SUBSCRIPTION_COLLECTION = 'subscriptions';
@@ -25,7 +26,7 @@ export class TransactionService {
         try {
             const handler = this.config.paymentHandlers.getDefault();
             const plan =  await this.config.plans.getByName(args.plan);
-            const subscription = await this.createSubscription(plan);
+            const subscription = await this.createSubscription(plan, handler.name());
 
             const transaction: Transaction = {
                 ...createPersistedModel({ type: 'user', _id: this.authContext.user._id }),
@@ -57,7 +58,7 @@ export class TransactionService {
         }
     }
 
-    async verifyTransaction(id: string): Promise<Transaction> {
+    async verifyTransaction(id: string): Promise<VerifyTransactionResult> {
         try {
             const tx = await this.collection.findOne({ _id: id, userId: this.authContext.user._id });
             if (!tx) {
@@ -71,10 +72,10 @@ export class TransactionService {
 
             const update: Partial<Transaction> = {};
             const provider = this.config.paymentHandlers.getByName(tx.provider);
-            const result = await provider.verifyTransaction(tx);
-            update.status = result.status;
-            update.error = result.errorMessage;
-            if (result.status === 'failed' && result.errorMessage) {
+            const providerResult = await provider.verifyTransaction(tx);
+            update.status = providerResult.status;
+            update.error = providerResult.errorMessage;
+            if (providerResult.status === 'failed' && providerResult.errorMessage) {
                 update.failureReason = 'error';
             }
 
@@ -82,8 +83,13 @@ export class TransactionService {
             // But what if someone paid in a different currency and currency conversion made
             // the price different?
 
-            update.metadata = { ...tx.metadata, ...result.metadata };
-            update.providerId = result.providerId;
+            update.metadata = { ...tx.metadata, ...providerResult.metadata };
+            update.providerId = providerResult.providerId;
+            update._updatedAt = new Date();
+            update._updatedBy = {
+                _id: this.authContext.user._id,
+                type: 'user'
+            };
 
             // TODO: we should also update the subscription and mark it active
 
@@ -95,12 +101,26 @@ export class TransactionService {
                 returnDocument: 'after'
             });
 
-            if (updateResult.value) {
-                return updateResult.value;
+            if (!updateResult.value) {
+                throw createAppError(`Failed to update transaction ${updateResult.lastErrorObject}`);
             }
 
-            throw createAppError(`Failed to update transaction ${updateResult.lastErrorObject}`);
+            const result: VerifyTransactionResult = updateResult.value;
 
+            if (result.reason === 'subscription' && result.subscriptionId) {
+                const sub = await this.subscriptionCollection.findOne({ _id: result.subscriptionId });
+                if (!sub) {
+                    throw createInvalidAppStateError(
+                        `Subscription '${result.subscriptionId} not found for transaction '${result._id}'.`
+                    );
+                }
+
+                
+                const updatedSub = await this.verifySubscriptionAtProvider(provider, result, sub);
+                result.subscription = updatedSub;
+            }
+            
+            return result;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -140,18 +160,56 @@ export class TransactionService {
         }
     }
 
-    private async createSubscription(plan: Plan): Promise<Subscription> {
+    private async createSubscription(plan: Plan, provider: string): Promise<Subscription> {
         try {
             const subscription: Subscription = {
                 ...createPersistedModel({ type: 'user', _id: this.authContext.user._id }),
                 accountId: this.authContext.user.account._id,
                 planName: plan.name,
-                status: 'pending'
+                status: 'pending',
+                willRenew: true,
+                provider,
+                metadata: {},
             };
 
             await this.subscriptionCollection.insertOne(subscription);
 
             return subscription;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async verifySubscriptionAtProvider(handler: PaymentHandler, transaction: Transaction, subscription: Subscription): Promise<Subscription> {
+        try {
+            const result = await handler.verifySubscription(transaction, subscription);
+            const subUpdate: Partial<Subscription> = {
+                _updatedAt: new Date(),
+                _updatedBy: {
+                    _id: this.authContext.user._id,
+                    type: 'user'
+                },
+                status: result.status,
+                willRenew: result.willRenew,
+                providerId: result.providerId,
+                metadata: result.metadata
+            };
+
+            const updateResult = await this.subscriptionCollection.findOneAndUpdate({
+                _id: subscription._id
+            }, {
+                $set: subUpdate
+            }, {
+                returnDocument: 'after'
+            });
+
+            if (!updateResult.value) {
+                throw createAppError(`Failed to update subscription ${updateResult.lastErrorObject}`);
+            }
+
+            return updateResult.value;
         }
         catch (e: any) {
             rethrowIfAppError(e);
@@ -174,4 +232,8 @@ export interface InitiateSubscriptionResult {
 
 export interface GetActiveSubscriptionResult extends Subscription {
     plan: Plan;
+}
+
+export interface VerifyTransactionResult extends Transaction {
+    subscription?: Subscription;
 }

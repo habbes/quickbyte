@@ -1,6 +1,6 @@
 import { Axios } from 'axios';
-import { PaymentHandler, VerifyTransactionResult } from './types.js';
-import { Transaction } from '../../models.js'
+import { PaymentHandler, VerifySubscriptionResult, VerifyTransactionResult } from './types.js';
+import { Subscription, Transaction, Plan } from '../../models.js'
 import { createAppError } from '../../error.js';
 
 export interface PaystackHandlerConfig {
@@ -40,6 +40,13 @@ export class PaystackPaymentHandler implements PaymentHandler {
         }
 
         const result = data.data;
+        const metadata: PaystackTransactionMetadata = {
+            channel: result.channel,
+            authorization: result.authorization,
+            amount: result.amount,
+            currency: result.currency,
+            customer: result.customer
+        };
 
         return {
             status: result.status === 'success' ? 'success' : 'failed',
@@ -47,17 +54,42 @@ export class PaystackPaymentHandler implements PaymentHandler {
             providerId: String(result.id),
             amount: result.amount,
             currency: result.currency,
-            metadata: {
-                channel: result.channel,
-                authorization: result.authorization,
-                amount: result.amount,
-                currency: result.currency
-            }
-        }
+            metadata
+        };
+    }
+
+    async verifySubscription(tx: Transaction, sub: Subscription, plan: Plan): Promise<VerifySubscriptionResult> {
+        const txMeta = tx.metadata as PaystackTransactionMetadata;
+        const response = await this.client.get<PaystackFetchSubscriptionResult>(
+            `subscription?customer=${txMeta.customer.id}&plan=${plan.providerIds.paystack}`
+        );
+
+        const paystackSubs = response.data.data;
+        
+        // if there are multiple subs, how do we pick the right one?
+        // check date range of subscription?
+        
+
     }
 }
 
 type PaystackTransactionStatus = 'success';
+
+interface PaystackTransactionMetadata {
+    channel: string;
+    authorization: {
+        authorization_code: string;
+        last4: string;
+        channel: string;
+        card_type: string;
+    };
+    customer: {
+        id: number;
+        email: string;
+    };
+    amount: number;
+    currency: string;
+}
 
 // see: https://paystack.com/docs/payments/verify-payments/
 interface PaystackVerifyTransactionResult {
@@ -155,4 +187,76 @@ interface PaystackVerifyTransactionResult {
             "account_number": string
         }
     }
+}
+
+interface PaystackFetchSubscriptionResult {
+    status: boolean;
+    message: string;
+    data: PaystackSubscription[];
+}
+
+interface PaystackSubscription {
+    "customer": {
+        "first_name": string,
+        "last_name": string,
+        "email": string,
+        "phone": string,
+        "metadata": null,
+        "domain": string,
+        "customer_code": string,
+        "risk_action": string,
+        "id": number,
+        "integration": number,
+        "createdAt": string,
+        "updatedAt": string
+    },
+    "plan": {
+        "domain": string,
+        "name": string,
+        "plan_code": string,
+        "description": string,
+        "amount": number,
+        "interval": string,
+        "send_invoices": boolean,
+        "send_sms": boolean,
+        "hosted_page": boolean,
+        "hosted_page_url": string|null,
+        "hosted_page_summary": string|null,
+        "currency": string,
+        "migrate": string|null,
+        "id": number,
+        "integration": number,
+        "createdAt": string,
+        "updatedAt": string
+    },
+    "integration": number,
+    "authorization": {
+        "authorization_code": string,
+        "bin": string,
+        "last4": string,
+        "exp_month": string,
+        "exp_year": string,
+        "channel": string,
+        "card_type": string,
+        "bank": string,
+        "country_code": string,
+        "brand": string,
+        "reusable": boolean,
+        "signature": string,
+        "account_name": string
+    },
+    "domain": string,
+    "start": number,
+    "status": string,
+    "quantity": number,
+    "amount": number,
+    "subscription_code": string,
+    "email_token": string,
+    "easy_cron_id": string
+    "cron_expression": string,
+    "next_payment_date": string,
+    "open_invoice": string,
+    "id": number,
+    "createdAt": string,
+    "updatedAt": string
 }

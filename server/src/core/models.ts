@@ -163,10 +163,14 @@ export type TransactionReason = 'subscription';
 export interface Subscription extends PersistedModel {
     accountId: string;
     planName: string;
+    willRenew: boolean;
     nextRenewalDate?: Date;
     validFrom?: Date;
     expiresAt?: Date;
     status: SubscriptionStatus,
+    metadata: Record<string, any>;
+    provider: string;
+    providerId?: string;
 }
 
 export type SubscriptionStatus = 'pending' | 'active' | 'inactive';

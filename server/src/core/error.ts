@@ -16,7 +16,10 @@ export type ErrorCode =
     | 'authenticationError'
     | 'dbError'
     | 'subscriptionRequired'
-    | 'subscriptionInsufficient';
+    | 'subscriptionInsufficient'
+    // When the app is an state that should never occur
+    // and that could point to an undetected logic error
+    | 'invalidAppState';
 
 /**
  * Checks whether the error is a MongoDB duplicate key error
@@ -76,3 +79,5 @@ export const createSubscriptionInsufficientError =
     (message: ErrorMessage = 'Your active subscription does not support this operation. Please upgrade your plan and try again.') => createAppError(message,
         'subscriptionInsufficient');
 
+export const createInvalidAppStateError =
+    (message: ErrorMessage = 'Invalid app state detected.') => createAppError(message, 'invalidAppState');
