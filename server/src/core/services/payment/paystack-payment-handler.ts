@@ -69,7 +69,6 @@ export class PaystackPaymentHandler implements PaymentHandler {
         
         const data = JSON.parse(response.data) as PaystackFetchSubscriptionResult;
         const paystackSubs = data.data;
-        console.log('fetched subs', paystackSubs);
         // if there are multiple subs, how do we pick the right one?
         // we find the subscription with matching transaction id and plan
         // there should only be one!

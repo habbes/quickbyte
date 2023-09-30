@@ -1,5 +1,6 @@
 import { Db, Collection } from 'mongodb';
-import { AuthContext, Subscription, Plan, Transaction, createPersistedModel } from '../../models.js';
+import { DateTime as LuxonDateTime } from 'luxon';
+import { AuthContext, Subscription, Plan, Transaction, createPersistedModel, SubscriptionAndPlan } from '../../models.js';
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createResourceConflictError } from '../../error.js';
 import { IPlanService } from './plan-service.js';
 import { IPaymentHandlerProvider } from './payment-handler-provider.js';
@@ -39,7 +40,17 @@ export class TransactionService {
 
             const handler = this.config.paymentHandlers.getDefault();
             const plan =  await this.config.plans.getByName(args.plan);
-            const subscription = await this.createSubscription(plan, handler.name());
+
+            const subscription: Subscription = {
+                ...createPersistedModel({ type: 'user', _id: this.authContext.user._id }),
+                accountId: this.authContext.user.account._id,
+                planName: plan.name,
+                status: 'pending',
+                willRenew: true,
+                provider: handler.name(),
+                lastTransactionId: '',
+                metadata: {},
+            };
 
             const transaction: Transaction = {
                 ...createPersistedModel({ type: 'user', _id: this.authContext.user._id }),
@@ -55,9 +66,11 @@ export class TransactionService {
 
             const metadata = await handler.initializeMetadata(transaction);
             transaction.metadata = metadata;
-            console.log('tx', transaction);
 
             await this.collection.insertOne(transaction);
+
+            subscription.lastTransactionId = transaction._id;
+            await this.subscriptionCollection.insertOne(subscription);
 
             return {
                 transaction,
@@ -218,7 +231,7 @@ export class TransactionService {
             const sub = await this.subscriptionCollection.findOne({
                 accountId: this.authContext.user.account._id,
                 status: 'active',
-                validFrom: { $gte: now},
+                validFrom: { $lte: now},
                 expiresAt: { $gt: now }
             });
 
@@ -236,21 +249,24 @@ export class TransactionService {
         }
     }
 
-    private async createSubscription(plan: Plan, provider: string): Promise<Subscription> {
+    async tryGetActiveOrPendingSubscription(): Promise<SubscriptionAndPlan|undefined> {
         try {
-            const subscription: Subscription = {
-                ...createPersistedModel({ type: 'user', _id: this.authContext.user._id }),
+            const now = new Date();
+            const sub = await this.subscriptionCollection.findOne({
                 accountId: this.authContext.user.account._id,
-                planName: plan.name,
-                status: 'pending',
-                willRenew: true,
-                provider,
-                metadata: {},
+                status: { $ne: 'inactive' },
+                validFrom: { $lte: now },
+                expiresAt: { $gt: now }
+            });
+
+            if (!sub) {
+                return undefined;
+            }
+
+            return {
+                ...sub,
+                plan: await this.config.plans.getByName(sub.planName)
             };
-
-            await this.subscriptionCollection.insertOne(subscription);
-
-            return subscription;
         }
         catch (e: any) {
             rethrowIfAppError(e);
@@ -260,10 +276,11 @@ export class TransactionService {
 
     private async verifySubscriptionAtProvider(handler: PaymentHandler, transaction: Transaction, subscription: Subscription): Promise<Subscription> {
         try {
+            const now = new Date();
             const plan = await this.config.plans.getByName(subscription.planName);
             const result = await handler.verifySubscription(transaction, subscription, plan);
             const subUpdate: Partial<Subscription> = {
-                _updatedAt: new Date(),
+                _updatedAt: now,
                 _updatedBy: {
                     _id: this.authContext.user._id,
                     type: 'user'
@@ -273,8 +290,24 @@ export class TransactionService {
                 providerId: result.providerId,
                 metadata: result.metadata,
                 cancelled: result.cancelled,
-                renewsAt: result.renewsAt,
+                renewsAt: result.renewsAt
             };
+
+            if (subscription.status !== 'active' && result.status === 'active') {
+                subUpdate.validFrom = now;
+                // We use Luxon to compute the expiry date because it handles leap year
+                // quirks for us.
+                // If a subscription is created on day 28 or later of the month, then it will
+                // be renewed on 28th of each subsequent month. This means that if the user
+                // subscribes on 30th September then cancels the subscription, it would
+                // end on 28th October, which is less than a month.
+                // So instead, we use calculate the expiry date separately. Luxon ensures
+                // handles month additions gracefully even when months have different number
+                // of days.
+                // For example, October 31 + 1 month = November 30
+                // Jan 30 + 1 = Feb 28
+                subUpdate.expiresAt = LuxonDateTime.fromJSDate(now).plus({ months: 1 }).toJSDate();
+            }
 
             const updateResult = await this.subscriptionCollection.findOneAndUpdate({
                 _id: subscription._id
@@ -295,31 +328,13 @@ export class TransactionService {
             throw createAppError(e);
         }
     }
-
-    private async tryGetActiveOrPendingSubscription(): Promise<Subscription|undefined> {
-        try {
-            const sub = await this.subscriptionCollection.findOne({
-                accountId: this.authContext.user.account._id,
-                status: { $ne: 'inactive' }
-            });
-
-            if (sub) {
-                return sub;
-            }
-
-            return undefined;
-        }
-        catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
 }
 
 export type ITransactionService = Pick<TransactionService,
     'initiateSubscription'
     |'getActiveSubscription'
     |'tryGetActiveSubscription'
+    |'tryGetActiveOrPendingSubscription'
     |'verifyTransaction'
     |'cancelTransaction'>;
 

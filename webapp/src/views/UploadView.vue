@@ -27,9 +27,26 @@ import RecoveryUploadCard from '@/components/RecoveryUploadCard.vue';
 type State = 'newUpload' | 'recoveryFlow' | 'recoveryUpload';
 
 const router = useRouter();
-if (!store.userAccount.value?.account.subscription) {
-  router.push({ name: 'pay' });
-}
+
+onMounted(() => {
+  if (!store.userAccount.value?.account.subscription) {
+    router.push({ name: 'pay' });
+  }
+
+  if (store.userAccount.value?.account.subscription) {
+    const subscription = store.userAccount.value.account.subscription;
+    if (subscription.status === 'inactive') {
+      router.push({ name: 'pay' });
+    }
+    else if (subscription.status === 'pending') {
+      router.push({
+        name: 'transaction',
+        params: { transactionId: subscription.lastTransactionId }
+      });
+    }
+  }
+});
+
 const state = ref<State>('newUpload');
 const selectedRecoveredTransferId = ref<string>();
 

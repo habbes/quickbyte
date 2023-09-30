@@ -22,7 +22,7 @@ import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ensure, type VerifyTransansactionResult } from '@/core';
 import VerifyTransactionCard from '@/components/VerifyTransactionCard.vue';
-import { apiClient, store, logger } from '@/app-utils';
+import { apiClient, store, logger, tryUpdateAccountSubscription } from '@/app-utils';
 
 const transaction = ref<VerifyTransansactionResult>();
 const error = ref<string>();
@@ -43,6 +43,7 @@ async function fetchTransaction() {
     const account = ensure(store.userAccount.value?.account);
     
     transaction.value = await apiClient.getTransaction(account._id, id);
+    tryUpdateAccountSubscription(transaction.value.subscription);
   } catch (e: any) {
     logger.error(e);
     error.value = e.message;

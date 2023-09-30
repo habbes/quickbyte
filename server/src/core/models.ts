@@ -162,6 +162,7 @@ export type TransactionReason = 'subscription';
 
 export interface Subscription extends PersistedModel {
     accountId: string;
+    lastTransactionId: string;
     planName: string;
     willRenew: boolean;
     renewsAt?: Date;

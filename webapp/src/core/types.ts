@@ -24,10 +24,12 @@ export interface UserAccount {
 export interface Subscription {
     _id: string;
     accountId: string;
+    lastTransactionId: string;
     planName: string;
-    nextRenewalDate?: Date;
-    validFrom?: Date;
-    expiresAt?: Date;
+    renewsAt?: string;
+    validFrom?: string;
+    expiresAt?: string;
+    status: 'pending'|'active'|'inactive';
     plan: {
         name: string;
         displayName: string;

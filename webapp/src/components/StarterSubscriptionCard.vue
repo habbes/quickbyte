@@ -10,7 +10,7 @@
         <li class="">More features coming soon</li>
       </ul>
       <div class="border-t border-t-gray-200 mt-2 mb-2"></div>
-      <div class="flex gap justify-center items-center text-primary mb-2">
+      <div class="flex gap-1 justify-center items-center text-primary mb-2">
         <span class="font-bold text-xl">$6</span>
         <span> / month</span>
       </div>

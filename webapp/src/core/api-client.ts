@@ -1,5 +1,4 @@
-import { toHandlers } from 'vue';
-import type { UserAccount, StorageProvider, Transfer, TransferFile } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription } from './types.js'
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -314,9 +313,7 @@ export interface InitiateSubscriptionResult {
         metadata: Record<string, any>;
         status: TransactionStatus;
     },
-    subscription: {
-        _id: string;
-    }
+    subscription: Subscription
 }
 
 export interface VerifyTransansactionResult {
@@ -328,11 +325,7 @@ export interface VerifyTransansactionResult {
     status: TransactionStatus;
     error?: string;
     failureReason?: 'error'|'amountMismatch'|'other';
-    subscription: {
-        _id: string;
-        renewsAt: string;
-        planName: string;
-    },
+    subscription: Subscription,
     plan: {
         name: string;
         displayName: string;

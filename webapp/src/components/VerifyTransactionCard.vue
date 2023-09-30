@@ -24,14 +24,14 @@
           </div>
           <div class="flex justify-between text-gray-500 text-xs mb-2">
             <div>Next renewal</div>
-            <div>{{ new Date(transaction.subscription.renewsAt).toLocaleDateString() }}</div>
+            <div>{{ transaction.subscription.renewsAt && new Date(transaction.subscription.renewsAt).toLocaleDateString() }}</div>
           </div>
         </template>
 
         <div class="mt-4 mb-2 border-t border-t-gray-200 border-dashed"></div>
 
         <div class="text-center mt-5">
-          <router-link :to="{ name: 'home' }" class="btn btn-sm">Back Home</router-link>
+          <router-link :to="homeRoute" class="btn btn-sm">Back Home</router-link>
         </div>
       </div>
 
@@ -62,7 +62,7 @@
         <div class="mt-4 mb-2 border-t border-t-gray-200 border-dashed"></div>
 
         <div class="text-center mt-5">
-          <router-link :to="{ name: 'home' }" class="btn btn-sm">Back Home</router-link>
+          <router-link :to="homeRoute" class="btn btn-sm">Back Home</router-link>
         </div>
       </div>
 
@@ -75,7 +75,7 @@
         <div class="mt-2 mb-2 border-t border-t-gray-200 border-dashed"></div>
 
         <div class="text-center mt-5">
-          <router-link :to="{ name: 'home' }" class="btn btn-sm">Back Home</router-link>
+          <router-link :to="homeRoute" class="btn btn-sm">Back Home</router-link>
         </div>
       </div>
 
@@ -104,19 +104,20 @@
 
         <div class="flex justify-between items-center">
           <Button sm primary @click="verifyTransaction()" :loading="loading">Check Status</Button>
-          <router-link :to="{ name: 'home' }" class="btn btn-sm">Back Home</router-link>
+          <router-link :to="homeRoute" class="btn btn-sm">Back Home</router-link>
         </div>
       </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { apiClient, showToast, store } from '@/app-utils';
+import { apiClient, showToast, store, tryUpdateAccountSubscription } from '@/app-utils';
 import { type VerifyTransansactionResult, ensure } from '@/core';
 import { ref } from 'vue';
 import { CheckCircleIcon, FaceFrownIcon, ExclamationCircleIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 import { RouterLink } from 'vue-router';
 import Button from '@/components/Button.vue';
+import { logger } from '@azure/storage-blob';
 
 const props = defineProps<{
   transaction: VerifyTransansactionResult
@@ -126,13 +127,20 @@ const user = ensure(store.userAccount.value);
 
 const currentTransaction = ref(props.transaction);
 const loading = ref(false);
+// TODO: it's more maintainable to foward to the home /
+// route. But for some reason, that leads to a blank page.
+// So for now we just hardcode the home links to the upload view.
+const homeRoute = { name: 'upload' };
 
 async function verifyTransaction() {
   try {
     loading.value = true;
     currentTransaction.value = await apiClient.getTransaction(user.account._id, currentTransaction.value._id);
+
+    tryUpdateAccountSubscription(currentTransaction.value.subscription);
   }
   catch (e: any) {
+    logger.error(e);
     showToast(e.message, 'error');
   }
   finally {

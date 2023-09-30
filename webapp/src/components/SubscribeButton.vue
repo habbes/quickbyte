@@ -5,7 +5,7 @@
 </template>
 <script lang="ts" setup>
 import PaystackPop from '@paystack/inline-js';
-import { apiClient, store, showToast } from '@/app-utils';
+import { apiClient, store, showToast, logger } from '@/app-utils';
 import { ensure, type VerifyTransansactionResult } from '@/core';
 
 // TODO: we hardcode this for now because
@@ -33,13 +33,12 @@ async function pay() {
       plan: result.plan.providerIds.paystack,
       reference: result.transaction._id,
       callback: async (response) => {
-        console.log('resp', response);
-        // TODO: verify transaction on the server
         try {
           const verifiedTx = await apiClient.getTransaction(user.account._id, result.transaction._id);
           emit('transaction', verifiedTx);
         } catch (e: any) {
           showToast(e.message, 'error');
+          logger.error(e);
         }
       },
       onClose: async () => {
@@ -48,6 +47,7 @@ async function pay() {
           showToast('Transaction cancelled.', 'info');
         } catch (e: any) {
           showToast(e.message, 'error');
+          logger.error(e);
         }
       }
     });

@@ -67,7 +67,7 @@ routes.post('/accounts/:accountId/transactions/:transactionId/cancel',
         req.services.accounts.transactions(req.authContext).cancelTransaction(req.params.transactionId)));
 
 routes.get('/me', requireAuth(), wrapResponse(req =>
-    req.services.auth.getUserByToken(req.headers.authorization?.split(" ")[1] || "")));
+    Promise.resolve(req.authContext.user)));
 
 routes.post('/downloads/:transferId', wrapResponse(req =>
     req.services.downloads.requestDownload(req.params.transferId, req.body)));
