@@ -1,12 +1,14 @@
 <template>
-  <button type='button' class="btn" @click="pay()">
+  <Button @click="pay()" :loading="loading">
     <slot></slot>
-  </button>
+  </Button>
 </template>
 <script lang="ts" setup>
+import { ref } from 'vue';
 import PaystackPop from '@paystack/inline-js';
 import { apiClient, store, showToast, logger } from '@/app-utils';
 import { ensure, type VerifyTransansactionResult } from '@/core';
+import Button from './Button.vue';
 
 // TODO: we hardcode this for now because
 // we only have one plan at the moment.
@@ -20,9 +22,12 @@ const emit = defineEmits<{
   (e: 'transaction', transaction: VerifyTransansactionResult): void;
 }>();
 
+const loading = ref(false);
+
 async function pay() {
   const user = ensure(store.userAccount.value);
   try {
+    loading.value = true;
     const result = await apiClient.initiateSubscription(user.account._id, { plan: props.planName });
 
     const paystackTx = PaystackPop.setup({
@@ -34,11 +39,13 @@ async function pay() {
       reference: result.transaction._id,
       callback: async (response) => {
         try {
+          loading.value = true;
           const verifiedTx = await apiClient.getTransaction(user.account._id, result.transaction._id);
           emit('transaction', verifiedTx);
         } catch (e: any) {
           showToast(e.message, 'error');
           logger.error(e);
+          loading.value = false;
         }
       },
       onClose: async () => {
@@ -55,6 +62,9 @@ async function pay() {
     paystackTx.openIframe();
   } catch (e: any) {
     showToast(e.message, 'error');
+    logger.error(e);
+  } finally {
+    loading.value = false;
   }
 }
 </script>

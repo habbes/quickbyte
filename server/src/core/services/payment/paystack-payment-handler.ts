@@ -91,7 +91,7 @@ export class PaystackPaymentHandler implements PaymentHandler {
         candidateSubs.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
         const paystackSub = candidateSubs[0];
 
-        const isActive = (['active', 'attention', 'non-renewing', 'completed'] as PaystackSubscriptionStatus[]).includes(paystackSub.status);
+        const isActive = (['active', 'attention', 'non-renewing'] as PaystackSubscriptionStatus[]).includes(paystackSub.status);
 
         const result: VerifyHandlerSubscriptionResult = {
             status: isActive ? 'active' : 'inactive',
