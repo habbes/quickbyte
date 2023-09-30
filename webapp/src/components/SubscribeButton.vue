@@ -6,7 +6,7 @@
 <script lang="ts" setup>
 import PaystackPop from '@paystack/inline-js';
 import { apiClient, store, showToast } from '@/app-utils';
-import { ensure } from '@/core';
+import { ensure, type VerifyTransansactionResult } from '@/core';
 
 // TODO: we hardcode this for now because
 // we only have one plan at the moment.
@@ -16,6 +16,9 @@ const props = defineProps<{
   planName: PlanName
 }>();
 
+const emit = defineEmits<{
+  (e: 'transaction', transaction: VerifyTransansactionResult): void;
+}>();
 
 async function pay() {
   const user = ensure(store.userAccount.value);
@@ -34,7 +37,7 @@ async function pay() {
         // TODO: verify transaction on the server
         try {
           const verifiedTx = await apiClient.getTransaction(user.account._id, result.transaction._id);
-          console.log('verified tx', verifiedTx);
+          emit('transaction', verifiedTx);
         } catch (e: any) {
           showToast(e.message, 'error');
         }

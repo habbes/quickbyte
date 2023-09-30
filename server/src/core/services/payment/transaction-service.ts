@@ -127,8 +127,23 @@ export class TransactionService {
                 throw createResourceNotFoundError('Transaction not found.');
             }
 
+            // TODO: we should use an aggregation
+            // to fetch the related subscription in a single
+            // DB call.
             if (tx.status !== 'pending') {
-                return tx;
+                const txWithSub: TransactionWithSubcription = tx;
+                if (tx.reason === 'subscription' && tx.subscriptionId) {
+                    const sub = await this.subscriptionCollection.findOne({ _id: tx.subscriptionId });
+                    
+                    if (!sub) {
+                        throw createAppError(`Cannot find subscription ${tx.subscriptionId} related to transaction ${tx._id}`);
+                    }
+
+                    txWithSub.subscription = sub;
+                    txWithSub.plan = await this.config.plans.getByName(sub.planName);
+                }
+
+                return txWithSub;
             }
 
             const update: Partial<Transaction> = {};
@@ -175,10 +190,10 @@ export class TransactionService {
                         `Subscription '${result.subscriptionId} not found for transaction '${result._id}'.`
                     );
                 }
-
                 
                 const updatedSub = await this.verifySubscriptionAtProvider(provider, result, sub);
                 result.subscription = updatedSub;
+                result.plan = await this.config.plans.getByName(updatedSub.planName);
             }
             
             return result;
@@ -324,4 +339,5 @@ export interface GetActiveSubscriptionResult extends Subscription {
 
 export interface TransactionWithSubcription extends Transaction {
     subscription?: Subscription;
+    plan?: Plan;
 }

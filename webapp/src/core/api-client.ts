@@ -153,12 +153,12 @@ export class ApiClient {
     }
 
     // TODO: do this method properly
-    async getTransaction(accountId: string, transactionId: string): Promise<{ _id: string, status: string }> {
+    async getTransaction(accountId: string, transactionId: string): Promise<VerifyTransansactionResult> {
         const result = await this.get<any>(`accounts/${accountId}/transactions/${transactionId}`);
         return result;
     }
 
-    async cancelTransaction(accountId: string, transactionId: string): Promise<InitiateSubscriptionResult> {
+    async cancelTransaction(accountId: string, transactionId: string): Promise<VerifyTransansactionResult> {
         const result = await this.post<any>(`accounts/${accountId}/transactions/${transactionId}/cancel`);
         return result;
     }
@@ -312,8 +312,31 @@ export interface InitiateSubscriptionResult {
         _id: string;
         provider: string;
         metadata: Record<string, any>;
+        status: TransactionStatus;
     },
     subscription: {
         _id: string;
     }
 }
+
+export interface VerifyTransansactionResult {
+    _id: string;
+    provider: string;
+    amount: number;
+    currency: string;
+    metadata: Record<string, any>;
+    status: TransactionStatus;
+    error?: string;
+    failureReason?: 'error'|'amountMismatch'|'other';
+    subscription: {
+        _id: string;
+        renewsAt: string;
+        planName: string;
+    },
+    plan: {
+        name: string;
+        displayName: string;
+    }
+}
+
+export type TransactionStatus = 'pending' | 'success' | 'cancelled' | 'failed';
