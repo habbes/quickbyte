@@ -1,5 +1,5 @@
 import { Axios } from 'axios';
-import { PaymentHandler, VerifySubscriptionResult, VerifyTransactionResult } from './types.js';
+import { PaymentHandler, VerifyHandlerSubscriptionResult, VerifyHandlerTransactionResult } from './types.js';
 import { Subscription, Transaction, Plan } from '../../models.js'
 import { createAppError } from '../../error.js';
 
@@ -30,10 +30,9 @@ export class PaystackPaymentHandler implements PaymentHandler {
         });
     }
 
-    async verifyTransaction(tx: Transaction): Promise<VerifyTransactionResult> {
+    async verifyTransaction(tx: Transaction): Promise<VerifyHandlerTransactionResult> {
         const response = await this.client.get<string>(`transaction/verify/${tx._id}`);
         const data = JSON.parse(response.data) as PaystackVerifyTransactionResult;
-        console.log('paystack result', typeof data, data);
 
         if (!data.data || !data.status) {
             throw createAppError(`Failed to verify transaction: ${data.message}`);
@@ -58,18 +57,54 @@ export class PaystackPaymentHandler implements PaymentHandler {
         };
     }
 
-    async verifySubscription(tx: Transaction, sub: Subscription, plan: Plan): Promise<VerifySubscriptionResult> {
+    async verifySubscription(tx: Transaction, sub: Subscription, plan: Plan): Promise<VerifyHandlerSubscriptionResult> {
         const txMeta = tx.metadata as PaystackTransactionMetadata;
-        const response = await this.client.get<PaystackFetchSubscriptionResult>(
-            `subscription?customer=${txMeta.customer.id}&plan=${plan.providerIds.paystack}`
+
+        // TODO we can filter by plan using a URL like the one below. But currently, we're only
+        // storing the plan code, not the plan ID.
+        // const url = `subscription?customer=${txMeta.customer.id}&plan=${plan.providerIds.paystack}`;
+        const response = await this.client.get(
+            `subscription?customer=${txMeta.customer.id}`
         );
-
-        const paystackSubs = response.data.data;
         
+        const data = JSON.parse(response.data) as PaystackFetchSubscriptionResult;
+        const paystackSubs = data.data;
+        console.log('fetched subs', paystackSubs);
         // if there are multiple subs, how do we pick the right one?
-        // check date range of subscription?
-        
+        // we find the subscription with matching transaction id and plan
+        // there should only be one!
 
+        // Paystack seems to support only one active subscription per customer per plan (understandbly).
+        // If the customer pays for another subscription for the same plan, the duplicate
+        // subscription will not be created on Paystack's end despite the duplicate transaction.
+        // To avoid this situation, we should add validation to prevent creating a subscription when
+        // one a valid or pending one already exists.
+ 
+        
+        const candidateSubs = paystackSubs.map(p => ({ ...p, createdAt: new Date(p.createdAt) }))
+        .filter(p => String(p.most_recent_invoice.transaction) === tx.providerId && p.plan.plan_code === plan.providerIds.paystack);
+        
+        if (!candidateSubs.length) {
+            throw createAppError('Could not match Paystack subscription to transaction.');
+        }
+
+        // find the subscription nearest to the transaction time
+        candidateSubs.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        const paystackSub = candidateSubs[0];
+
+        const isActive = (['active', 'attention', 'non-renewing', 'completed'] as PaystackSubscriptionStatus[]).includes(paystackSub.status);
+
+        const result: VerifyHandlerSubscriptionResult = {
+            status: isActive ? 'active' : 'inactive',
+            renewsAt: paystackSub.next_payment_date ? new Date(paystackSub.next_payment_date) : undefined,
+            willRenew: paystackSub.status === 'active',
+            providerId: String(paystackSub.id),
+            cancelled: paystackSub.status === 'cancelled',
+            attention: paystackSub.status === 'attention',
+            metadata: {}
+        };
+
+        return result;
     }
 }
 
@@ -245,9 +280,31 @@ interface PaystackSubscription {
         "signature": string,
         "account_name": string
     },
+    "most_recent_invoice": {
+        subscription: number,
+        integration: number,
+        domain: string,
+        invoice_code: string,
+        customer: number,
+        transaction: number,
+        amount: number,
+        period_start: string,
+        period_end: string,
+        status: string,
+        paid: number,
+        retries: number,
+        authorization: number,
+        paid_at: string,
+        next_notification: string
+        notification_flag: string|null,
+        description: string|null,
+        id: number,
+        created_at: string,
+        updated_at: string
+    },
     "domain": string,
     "start": number,
-    "status": string,
+    "status": PaystackSubscriptionStatus,
     "quantity": number,
     "amount": number,
     "subscription_code": string,
@@ -260,3 +317,30 @@ interface PaystackSubscription {
     "createdAt": string,
     "updatedAt": string
 }
+
+// see: https://paystack.com/docs/payments/subscriptions/#managing-subscriptions
+type PaystackSubscriptionStatus =
+    /**
+     * The subscription is currently active, and will be charged on the next payment date.
+     */
+    'active'
+    /**
+     * The subscription is currently active, but we won't be charging it on the next payment date.
+     * This occurs when a subscription is about to be complete, or has been cancelled
+     * (but we haven't reached the next payment date yet).
+     */
+    |'non-renewing'
+    /**
+     * The subscription is still active, but there was an issue while trying to charge the customer's card.
+     * The issue can be an expired card, insufficient funds, etc.
+     * We'll attempt charging the card again on the next payment date.
+     */
+    |'attention'
+    /**
+     * The subscription is complete, and will no longer be charged.
+     */
+    |'completed'
+    /**
+     * The subscription has been cancelled, and we'll no longer attempt to charge the card on the subscription.
+     */
+    |'cancelled';

@@ -158,6 +158,11 @@ export class ApiClient {
         return result;
     }
 
+    async cancelTransaction(accountId: string, transactionId: string): Promise<InitiateSubscriptionResult> {
+        const result = await this.post<any>(`accounts/${accountId}/transactions/${transactionId}/cancel`);
+        return result;
+    }
+
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
         return this.makeRequest<T>(endpoint, 'GET', undefined, auth);
     }

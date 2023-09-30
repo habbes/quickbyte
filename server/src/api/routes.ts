@@ -60,6 +60,12 @@ routes.get('/accounts/:accountId/transactions/:transactionId',
     wrapResponse(req =>
         req.services.accounts.transactions(req.authContext).verifyTransaction(req.params.transactionId)));
 
+routes.post('/accounts/:accountId/transactions/:transactionId/cancel',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.transactions(req.authContext).cancelTransaction(req.params.transactionId)));
+
 routes.get('/me', requireAuth(), wrapResponse(req =>
     req.services.auth.getUserByToken(req.headers.authorization?.split(" ")[1] || "")));
 

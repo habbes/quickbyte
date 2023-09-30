@@ -5,7 +5,7 @@
 </template>
 <script lang="ts" setup>
 import PaystackPop from '@paystack/inline-js';
-import { apiClient, store } from '@/app-utils';
+import { apiClient, store, showToast } from '@/app-utils';
 import { ensure } from '@/core';
 
 // TODO: we hardcode this for now because
@@ -19,27 +19,39 @@ const props = defineProps<{
 
 async function pay() {
   const user = ensure(store.userAccount.value);
-  const result = await apiClient.initiateSubscription(user.account._id, { plan: props.planName });
+  try {
+    const result = await apiClient.initiateSubscription(user.account._id, { plan: props.planName });
 
-  const paystackTx = PaystackPop.setup({
-    key: result.transaction.metadata.key,
-    email: user.email,
-    // amount is required, but will be replaced by the plan's configured amount on Paystack
-    amount: result.plan.price,
-    plan: result.plan.providerIds.paystack,
-    reference: result.transaction._id,
-    callback: async (response) => {
-      console.log('resp', response);
-      // TODO: verify transaction on the server
-      const verifiedTx = await apiClient.getTransaction(user.account._id, result.transaction._id);
-      console.log('verified tx', verifiedTx);
-    },
-    onClose: () => {
-      console.log('closed');
-      // TODO: cancel transaction
-    }
-  });
-  
-  paystackTx.openIframe();
+    const paystackTx = PaystackPop.setup({
+      key: result.transaction.metadata.key,
+      email: user.email,
+      // amount is required, but will be replaced by the plan's configured amount on Paystack
+      amount: result.plan.price,
+      plan: result.plan.providerIds.paystack,
+      reference: result.transaction._id,
+      callback: async (response) => {
+        console.log('resp', response);
+        // TODO: verify transaction on the server
+        try {
+          const verifiedTx = await apiClient.getTransaction(user.account._id, result.transaction._id);
+          console.log('verified tx', verifiedTx);
+        } catch (e: any) {
+          showToast(e.message, 'error');
+        }
+      },
+      onClose: async () => {
+        try {
+          const cancelledTx = await apiClient.cancelTransaction(user.account._id, result.transaction._id);
+          showToast('Transaction cancelled.', 'info');
+        } catch (e: any) {
+          showToast(e.message, 'error');
+        }
+      }
+    });
+    
+    paystackTx.openIframe();
+  } catch (e: any) {
+    showToast(e.message, 'error');
+  }
 }
 </script>

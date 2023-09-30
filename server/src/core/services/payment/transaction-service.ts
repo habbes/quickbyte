@@ -1,6 +1,6 @@
 import { Db, Collection } from 'mongodb';
 import { AuthContext, Subscription, Plan, Transaction, createPersistedModel } from '../../models.js';
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError } from '../../error.js';
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createResourceConflictError } from '../../error.js';
 import { IPlanService } from './plan-service.js';
 import { IPaymentHandlerProvider } from './payment-handler-provider.js';
 import { PaymentHandler } from './types.js';
@@ -24,6 +24,19 @@ export class TransactionService {
 
     async initiateSubscription(args: InitiateSubscrptionArgs): Promise<InitiateSubscriptionResult> {
         try {
+            // check if the customer has a valid subscription already.
+            // this helps prevent the customer from making another
+            // transaction before a pending subscription has been confirmed.
+            // In the future there could be scenarios where we want to allow
+            // creating a transaction when one exists (e.g. plan upgrade),
+            // we'll cross that bridge when we get there.
+            if (await this.tryGetActiveOrPendingSubscription()) {
+                throw createResourceConflictError(
+                    'Unable to create the subscription because this account already ' +
+                    'has an active or pending subscription. Please contact support if this is a mistake: support@quickbyte.io'
+                );
+            }
+
             const handler = this.config.paymentHandlers.getDefault();
             const plan =  await this.config.plans.getByName(args.plan);
             const subscription = await this.createSubscription(plan, handler.name());
@@ -46,7 +59,6 @@ export class TransactionService {
 
             await this.collection.insertOne(transaction);
 
-
             return {
                 transaction,
                 plan,
@@ -58,7 +70,57 @@ export class TransactionService {
         }
     }
 
-    async verifyTransaction(id: string): Promise<VerifyTransactionResult> {
+    async cancelTransaction(id: string): Promise<TransactionWithSubcription> {
+        try {
+            const txUpdate: Partial<Transaction> = {
+                status: 'cancelled',
+                _updatedAt: new Date(),
+                _updatedBy: { _id: this.authContext.user._id, type: 'user' }
+            };
+            
+            const result = await this.collection.findOneAndUpdate({
+                _id: id,
+                status: 'pending'
+            }, {
+                $set: txUpdate
+            }, {
+                returnDocument: 'after'
+            });
+
+            if (!result.value) {
+               throw createResourceNotFoundError('Transaction does not exist or is already completed.');
+            }
+
+            // if associated with a subscription, then cancel that subscription as well
+            const tx: TransactionWithSubcription = result.value;
+            if (tx.reason === 'subscription' && tx.subscriptionId) {
+                const subUpdate: Partial<Subscription> = {
+                    status: 'inactive',
+                    willRenew: false,
+                    cancelled: true
+                }
+
+                const subResult = await this.subscriptionCollection.findOneAndUpdate({
+                    _id: tx.subscriptionId
+                }, {
+                    $set: subUpdate
+                }, {
+                    returnDocument: 'after'
+                });
+
+                if (subResult.value) {
+                    tx.subscription = subResult.value;
+                }
+            }
+
+            return tx;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async verifyTransaction(id: string): Promise<TransactionWithSubcription> {
         try {
             const tx = await this.collection.findOne({ _id: id, userId: this.authContext.user._id });
             if (!tx) {
@@ -66,7 +128,6 @@ export class TransactionService {
             }
 
             if (tx.status !== 'pending') {
-                // transaction already final
                 return tx;
             }
 
@@ -105,7 +166,7 @@ export class TransactionService {
                 throw createAppError(`Failed to update transaction ${updateResult.lastErrorObject}`);
             }
 
-            const result: VerifyTransactionResult = updateResult.value;
+            const result: TransactionWithSubcription = updateResult.value;
 
             if (result.reason === 'subscription' && result.subscriptionId) {
                 const sub = await this.subscriptionCollection.findOne({ _id: result.subscriptionId });
@@ -184,7 +245,8 @@ export class TransactionService {
 
     private async verifySubscriptionAtProvider(handler: PaymentHandler, transaction: Transaction, subscription: Subscription): Promise<Subscription> {
         try {
-            const result = await handler.verifySubscription(transaction, subscription);
+            const plan = await this.config.plans.getByName(subscription.planName);
+            const result = await handler.verifySubscription(transaction, subscription, plan);
             const subUpdate: Partial<Subscription> = {
                 _updatedAt: new Date(),
                 _updatedBy: {
@@ -194,7 +256,9 @@ export class TransactionService {
                 status: result.status,
                 willRenew: result.willRenew,
                 providerId: result.providerId,
-                metadata: result.metadata
+                metadata: result.metadata,
+                cancelled: result.cancelled,
+                renewsAt: result.renewsAt,
             };
 
             const updateResult = await this.subscriptionCollection.findOneAndUpdate({
@@ -216,9 +280,33 @@ export class TransactionService {
             throw createAppError(e);
         }
     }
+
+    private async tryGetActiveOrPendingSubscription(): Promise<Subscription|undefined> {
+        try {
+            const sub = await this.subscriptionCollection.findOne({
+                accountId: this.authContext.user.account._id,
+                status: { $ne: 'inactive' }
+            });
+
+            if (sub) {
+                return sub;
+            }
+
+            return undefined;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
 }
 
-export type ITransactionService = Pick<TransactionService, 'initiateSubscription'|'getActiveSubscription'|'tryGetActiveSubscription'|'verifyTransaction'>;
+export type ITransactionService = Pick<TransactionService,
+    'initiateSubscription'
+    |'getActiveSubscription'
+    |'tryGetActiveSubscription'
+    |'verifyTransaction'
+    |'cancelTransaction'>;
 
 export interface InitiateSubscrptionArgs {
     plan: string;
@@ -234,6 +322,6 @@ export interface GetActiveSubscriptionResult extends Subscription {
     plan: Plan;
 }
 
-export interface VerifyTransactionResult extends Transaction {
+export interface TransactionWithSubcription extends Transaction {
     subscription?: Subscription;
 }

@@ -164,7 +164,9 @@ export interface Subscription extends PersistedModel {
     accountId: string;
     planName: string;
     willRenew: boolean;
-    nextRenewalDate?: Date;
+    renewsAt?: Date;
+    cancelled?: boolean;
+    attention?: boolean;
     validFrom?: Date;
     expiresAt?: Date;
     status: SubscriptionStatus,
