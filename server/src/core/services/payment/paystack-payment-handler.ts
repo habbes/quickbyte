@@ -85,7 +85,7 @@ export class PaystackPaymentHandler implements PaymentHandler {
         // one a valid or pending one already exists.
  
         
-        const candidateSubs = paystackSubs.map(p => ({ ...p, createdAt: new Date(p.createdAt) }))
+        const candidateSubs = paystackSubs
         .filter(p => String(p.most_recent_invoice.transaction) === tx.providerId && p.plan.plan_code === plan.providerIds.paystack);
         
         if (!candidateSubs.length) {
@@ -93,10 +93,14 @@ export class PaystackPaymentHandler implements PaymentHandler {
         }
 
         // find the subscription nearest to the transaction time
-        candidateSubs.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
         const paystackSub = candidateSubs[0];
 
         const isActive = (['active', 'attention', 'non-renewing'] as PaystackSubscriptionStatus[]).includes(paystackSub.status);
+
+        const metadata: PaystackSubscriptionMetadata = {
+            subscriptionCode: paystackSub.subscription_code,
+            paystackSubscription: paystackSub
+        }
 
         const result: VerifyHandlerSubscriptionResult = {
             status: isActive ? 'active' : 'inactive',
@@ -105,7 +109,7 @@ export class PaystackPaymentHandler implements PaymentHandler {
             providerId: String(paystackSub.id),
             cancelled: paystackSub.status === 'cancelled',
             attention: paystackSub.status === 'attention',
-            metadata: {}
+            metadata
         };
 
         return result;
@@ -114,8 +118,7 @@ export class PaystackPaymentHandler implements PaymentHandler {
     async getSubscriptionManagementUrl(sub: Subscription, plan: Plan): Promise<SubscriptionManagementResult> {
         try {
             // see: https://paystack.com/docs/payments/subscriptions/#updating-the-card-on-a-subscription
-            const code = 'SUB_9rnt1uy03jovgeq'; // TODO: store subscription code in metadata
-            const result = await this.client.get(`subscription/${code}/manage/link`);
+            const result = await this.client.get(`subscription/${sub.metadata.subscriptionCode}/manage/link`);
             const data = JSON.parse(result.data) as { data: { link: string } };
             return {
                 link: data.data.link
@@ -143,6 +146,12 @@ interface PaystackTransactionMetadata {
     };
     amount: number;
     currency: string;
+    paystackTransaction: PaystackVerifyTransactionResult['data']
+}
+
+interface PaystackSubscriptionMetadata {
+    subscriptionCode: string;
+    paystackSubscription: PaystackSubscription;
 }
 
 // see: https://paystack.com/docs/payments/verify-payments/
