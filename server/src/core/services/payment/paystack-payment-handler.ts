@@ -63,7 +63,53 @@ export class PaystackPaymentHandler implements PaymentHandler {
         }
     }
 
-    async verifySubscription(tx: Transaction, sub: Subscription, plan: Plan): Promise<VerifyHandlerSubscriptionResult> {
+    async verifySubscription(sub: Subscription, plan: Plan, tx?: Transaction): Promise<VerifyHandlerSubscriptionResult> {
+        let paystackSub: PaystackSubscription;
+        if (sub.providerId) {
+            paystackSub = await this.fetchSubscriptionById(sub.providerId);
+        } else if (tx) {
+            paystackSub = await this.fetchSubscriptionByTransaction(tx, plan);
+        } else {
+            throw createAppError('Either a subscription with a provider id, or transaction must be provided to verify subscription.');
+        }
+
+        const isActive = (['active', 'attention', 'non-renewing'] as PaystackSubscriptionStatus[]).includes(paystackSub.status);
+
+        const metadata: PaystackSubscriptionMetadata = {
+            subscriptionCode: paystackSub.subscription_code,
+            customer: paystackSub.customer,
+            paystackSubscription: paystackSub
+        }
+
+        const result: VerifyHandlerSubscriptionResult = {
+            status: isActive ? 'active' : 'inactive',
+            renewsAt: paystackSub.next_payment_date ? new Date(paystackSub.next_payment_date) : undefined,
+            willRenew: paystackSub.status === 'active',
+            providerId: String(paystackSub.id),
+            cancelled: paystackSub.status === 'cancelled',
+            attention: paystackSub.status === 'attention',
+            metadata
+        };
+
+        return result;
+    }
+    
+
+    async getSubscriptionManagementUrl(sub: Subscription, plan: Plan): Promise<SubscriptionManagementResult> {
+        try {
+            // see: https://paystack.com/docs/payments/subscriptions/#updating-the-card-on-a-subscription
+            const result = await this.client.get(`subscription/${sub.metadata.subscriptionCode}/manage/link`);
+            const data = JSON.parse(result.data) as { data: { link: string } };
+            return {
+                link: data.data.link
+            };
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async fetchSubscriptionByTransaction(tx: Transaction, plan: Plan): Promise<PaystackSubscription> {
         const txMeta = tx.metadata as PaystackTransactionMetadata;
 
         // TODO we can filter by plan using a URL like the one below. But currently, we're only
@@ -72,7 +118,7 @@ export class PaystackPaymentHandler implements PaymentHandler {
         const response = await this.client.get(
             `subscription?customer=${txMeta.customer.id}`
         );
-        
+       
         const data = JSON.parse(response.data) as PaystackFetchSubscriptionResult;
         const paystackSubs = data.data;
         // if there are multiple subs, how do we pick the right one?
@@ -95,39 +141,14 @@ export class PaystackPaymentHandler implements PaymentHandler {
 
         // find the subscription nearest to the transaction time
         const paystackSub = candidateSubs[0];
-
-        const isActive = (['active', 'attention', 'non-renewing'] as PaystackSubscriptionStatus[]).includes(paystackSub.status);
-
-        const metadata: PaystackSubscriptionMetadata = {
-            subscriptionCode: paystackSub.subscription_code,
-            paystackSubscription: paystackSub
-        }
-
-        const result: VerifyHandlerSubscriptionResult = {
-            status: isActive ? 'active' : 'inactive',
-            renewsAt: paystackSub.next_payment_date ? new Date(paystackSub.next_payment_date) : undefined,
-            willRenew: paystackSub.status === 'active',
-            providerId: String(paystackSub.id),
-            cancelled: paystackSub.status === 'cancelled',
-            attention: paystackSub.status === 'attention',
-            metadata
-        };
-
-        return result;
+        return paystackSub;
     }
 
-    async getSubscriptionManagementUrl(sub: Subscription, plan: Plan): Promise<SubscriptionManagementResult> {
-        try {
-            // see: https://paystack.com/docs/payments/subscriptions/#updating-the-card-on-a-subscription
-            const result = await this.client.get(`subscription/${sub.metadata.subscriptionCode}/manage/link`);
-            const data = JSON.parse(result.data) as { data: { link: string } };
-            return {
-                link: data.data.link
-            };
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+    private async fetchSubscriptionById(id: string|number): Promise<PaystackSubscription> {
+        const response = await this.client.get(`subscription/${id}`);
+        const data = JSON.parse(response.data);
+
+        return data.data;
     }
 }
 
@@ -152,6 +173,7 @@ interface PaystackTransactionMetadata {
 
 interface PaystackSubscriptionMetadata {
     subscriptionCode: string;
+    customer: PaystackSubscription['customer'];
     paystackSubscription: PaystackSubscription;
 }
 

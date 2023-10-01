@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { error404handler, errorHandler } from './api/middleware.js';
-import { mountApi } from './api/index.js';
+import { error404handler, errorHandler, injectServices } from './api/middleware.js';
+import { mountApi, } from './api/index.js';
 import { mountWebHooks } from './webhooks/index.js';
 import { bootstrapApp, getAppConfigFromEnv } from './core/index.js';
 import { createServer } from './server/index.js';
@@ -18,6 +18,7 @@ async function startServer() {
         
         server.use(express.json());
         server.use(cors());
+        server.use(injectServices(appServices));
         mountApi(server, "/api", appServices);
         mountWebHooks(server, "/webhooks", appServices, config);
         server.use(errorHandler());

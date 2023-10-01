@@ -78,6 +78,7 @@ import { ref } from 'vue';
 
 const user = ensure(store.userAccount.value);
 const subscription = user.account.subscription;
+console.log('sub', subscription);
 const loading = ref(false);
 
 async function getManagementUrl() {

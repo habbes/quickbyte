@@ -6,8 +6,8 @@ import { IPlanService } from './plan-service.js';
 import { IPaymentHandlerProvider } from './payment-handler-provider.js';
 import { PaymentHandler, SubscriptionManagementResult } from './types.js';
 
-const COLLECTION = 'transactions';
-const SUBSCRIPTION_COLLECTION = 'subscriptions';
+export const COLLECTION = 'transactions';
+export const SUBSCRIPTION_COLLECTION = 'subscriptions';
 
 export interface TransactionServiceConfig {
     plans: IPlanService;
@@ -122,7 +122,8 @@ export class TransactionService {
                 });
 
                 if (subResult.value) {
-                    tx.subscription = subResult.value;
+                    const plan = await this.config.plans.getByName(subResult.value.planName);
+                    tx.subscription = { ...subResult.value, plan };
                 }
             }
 
@@ -152,8 +153,12 @@ export class TransactionService {
                         throw createAppError(`Cannot find subscription ${tx.subscriptionId} related to transaction ${tx._id}`);
                     }
 
-                    txWithSub.subscription = sub;
-                    txWithSub.plan = await this.config.plans.getByName(sub.planName);
+                    // TODO: this is messy code, we store plan both as a field
+                    // of the tx and of the sub. This is due some confusion
+                    // on what is expected by the client. This should be cleaned up
+                    const plan = await this.config.plans.getByName(sub.planName);
+                    txWithSub.subscription = { ...sub, plan };
+                    txWithSub.plan = plan;
                 }
 
                 return txWithSub;
@@ -204,9 +209,10 @@ export class TransactionService {
                     );
                 }
                 
-                const updatedSub = await this.verifySubscriptionAtProvider(provider, result, sub);
-                result.subscription = updatedSub;
-                result.plan = await this.config.plans.getByName(updatedSub.planName);
+                const updatedSub = await this.verifySubscriptionAtProvider(provider, sub, result);
+                const plan = await this.config.plans.getByName(updatedSub.planName);
+                result.subscription = { ...updatedSub, plan };
+                result.plan = plan;
             }
             
             return result;
@@ -297,11 +303,11 @@ export class TransactionService {
         }
     }
 
-    private async verifySubscriptionAtProvider(handler: PaymentHandler, transaction: Transaction, subscription: Subscription): Promise<Subscription> {
+    async verifySubscriptionAtProvider(handler: PaymentHandler, subscription: Subscription, transaction?: Transaction): Promise<Subscription> {
         try {
             const now = new Date();
             const plan = await this.config.plans.getByName(subscription.planName);
-            const result = await handler.verifySubscription(transaction, subscription, plan);
+            const result = await handler.verifySubscription(subscription, plan, transaction);
             const subUpdate: Partial<Subscription> = {
                 _updatedAt: now,
                 _updatedBy: {
@@ -359,6 +365,7 @@ export type ITransactionService = Pick<TransactionService,
     |'tryGetActiveSubscription'
     |'tryGetActiveOrPendingSubscription'
     |'verifyTransaction'
+    |'verifySubscriptionAtProvider'
     |'cancelTransaction'
     |'getSubscriptionManagementUrl'>;
 
@@ -377,6 +384,6 @@ export interface GetActiveSubscriptionResult extends Subscription {
 }
 
 export interface TransactionWithSubcription extends Transaction {
-    subscription?: Subscription;
+    subscription?: SubscriptionAndPlan;
     plan?: Plan;
 }

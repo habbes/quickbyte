@@ -18,7 +18,9 @@ EmailHandler,
 AdminAlertsService,
 IPlanService,
 PaymentHandlerProvider,
-PaystackPaymentHandler
+PaystackPaymentHandler,
+IUnauthenicatedTransactionService,
+UnauthenticatedTransactionService
 } from "./services/index.js";
 import { IPreviewUserService, PreviewUsersService } from "./services/preview-users-service.js";
 import { SmsHandler } from "./services/sms/types.js";
@@ -106,13 +108,19 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         alerts: adminAlerts
     });
 
+    const transactions = new UnauthenticatedTransactionService(db, {
+        paymentHandlers: paymentHandlers,
+        plans: plans
+    });
+
     return {
         storageProvider,
         accounts,
         auth,
         downloads,
         previewUsers,
-        plans
+        plans,
+        transactions
     };
 }
 
@@ -123,6 +131,7 @@ export interface AppServices {
     downloads: ITransferDownloadService;
     previewUsers: IPreviewUserService;
     plans: IPlanService;
+    transactions: IUnauthenicatedTransactionService;
 }
 
 async function getDbConnection(config: AppConfig) {

@@ -4,7 +4,7 @@ export interface PaymentHandler {
     name(): string;
     initializeMetadata(tx: Transaction): Promise<Record<string, string>>;
     verifyTransaction(tx: Transaction): Promise<VerifyHandlerTransactionResult>;
-    verifySubscription(tx: Transaction, sub: Subscription, plan: Plan): Promise<VerifyHandlerSubscriptionResult>;
+    verifySubscription(sub: Subscription, plan: Plan, tx?: Transaction): Promise<VerifyHandlerSubscriptionResult>;
     getSubscriptionManagementUrl(sub: Subscription, plan: Plan): Promise<SubscriptionManagementResult>
 }
 

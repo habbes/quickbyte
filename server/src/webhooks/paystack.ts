@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { Router, Request, Response, NextFunction} from 'express';
 import { AppServices, createResourceNotFoundError } from '../core/index.js';
+import { wrapResponse } from '../api/middleware.js';
 
 export function createPaystackWebhooks(services: AppServices, secretKey: string): Router {
     const routes = Router();
@@ -9,11 +10,8 @@ export function createPaystackWebhooks(services: AppServices, secretKey: string)
 
     routes.use(verificationEventOrigin(secretKey));
 
-    routes.post('/', (req: Request, res: Response) => {
-        const event = req.body;
-        console.log('paystack event received', event);
-        res.status(200).send();
-    });
+    routes.post('/', wrapResponse(async (req) =>
+        req.services.transactions.handlePaystackEvent(req.body, req.services)))
 
     return routes;
 }
