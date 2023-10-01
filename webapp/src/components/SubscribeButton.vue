@@ -1,5 +1,5 @@
 <template>
-  <Button @click="pay()" :loading="loading">
+  <Button primary @click="pay()" :loading="loading">
     <slot></slot>
   </Button>
 </template>

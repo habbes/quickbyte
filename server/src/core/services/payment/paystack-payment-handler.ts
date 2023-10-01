@@ -45,7 +45,8 @@ export class PaystackPaymentHandler implements PaymentHandler {
                 authorization: result.authorization,
                 amount: result.amount,
                 currency: result.currency,
-                customer: result.customer
+                customer: result.customer,
+                paystackTransaction: data.data
             };
 
             return {
@@ -106,7 +107,7 @@ export class PaystackPaymentHandler implements PaymentHandler {
             status: isActive ? 'active' : 'inactive',
             renewsAt: paystackSub.next_payment_date ? new Date(paystackSub.next_payment_date) : undefined,
             willRenew: paystackSub.status === 'active',
-            providerId: String(paystackSub.id),
+            providerId: String(paystackSub.subscription_code),
             cancelled: paystackSub.status === 'cancelled',
             attention: paystackSub.status === 'attention',
             metadata
