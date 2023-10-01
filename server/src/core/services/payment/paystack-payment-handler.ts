@@ -107,7 +107,7 @@ export class PaystackPaymentHandler implements PaymentHandler {
             status: isActive ? 'active' : 'inactive',
             renewsAt: paystackSub.next_payment_date ? new Date(paystackSub.next_payment_date) : undefined,
             willRenew: paystackSub.status === 'active',
-            providerId: String(paystackSub.subscription_code),
+            providerId: String(paystackSub.id),
             cancelled: paystackSub.status === 'cancelled',
             attention: paystackSub.status === 'attention',
             metadata
@@ -373,3 +373,8 @@ type PaystackSubscriptionStatus =
      * The subscription has been cancelled, and we'll no longer attempt to charge the card on the subscription.
      */
     |'cancelled';
+
+export interface SubscriptionEvent {
+    event: string;
+    data: Subscription;
+}
