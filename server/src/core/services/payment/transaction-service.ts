@@ -4,7 +4,7 @@ import { AuthContext, Subscription, Plan, Transaction, createPersistedModel, Sub
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createResourceConflictError } from '../../error.js';
 import { IPlanService } from './plan-service.js';
 import { IPaymentHandlerProvider } from './payment-handler-provider.js';
-import { PaymentHandler } from './types.js';
+import { PaymentHandler, SubscriptionManagementResult } from './types.js';
 
 const COLLECTION = 'transactions';
 const SUBSCRIPTION_COLLECTION = 'subscriptions';
@@ -274,6 +274,29 @@ export class TransactionService {
         }
     }
 
+    async getSubscriptionManagementUrl(subscriptionId: string): Promise<SubscriptionManagementResult> {
+        try {
+            const sub = await this.subscriptionCollection.findOne({
+                accountId: this.authContext.user.account._id,
+                _id: subscriptionId
+            });
+
+            if (!sub) {
+                throw createResourceNotFoundError('The subscription does not exist.');
+            }
+
+            const handler = this.config.paymentHandlers.getByName(sub.provider);
+            const plan = await this.config.plans.getByName(sub.planName);
+            const result = await handler.getSubscriptionManagementUrl(sub, plan);
+
+            return result;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     private async verifySubscriptionAtProvider(handler: PaymentHandler, transaction: Transaction, subscription: Subscription): Promise<Subscription> {
         try {
             const now = new Date();
@@ -336,7 +359,8 @@ export type ITransactionService = Pick<TransactionService,
     |'tryGetActiveSubscription'
     |'tryGetActiveOrPendingSubscription'
     |'verifyTransaction'
-    |'cancelTransaction'>;
+    |'cancelTransaction'
+    |'getSubscriptionManagementUrl'>;
 
 export interface InitiateSubscrptionArgs {
     plan: string;

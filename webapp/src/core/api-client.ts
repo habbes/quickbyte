@@ -162,6 +162,11 @@ export class ApiClient {
         return result;
     }
 
+    async getSubscriptionManagementUrl(accountId: string, subscriptionId: string): Promise<SubscriptionManagementResult> {
+        const result = await this.post<SubscriptionManagementResult>(`accounts/${accountId}/subscriptions/${subscriptionId}/manage`);
+        return result;
+    }
+
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
         return this.makeRequest<T>(endpoint, 'GET', undefined, auth);
     }
@@ -333,3 +338,7 @@ export interface VerifyTransansactionResult {
 }
 
 export type TransactionStatus = 'pending' | 'success' | 'cancelled' | 'failed';
+
+export interface SubscriptionManagementResult {
+    link: string;
+}

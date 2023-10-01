@@ -187,6 +187,7 @@ export interface Plan {
     maxTransferSize: number;
     maxStorageSize: number;
     providerIds: Record<string, string>;
+    maxTransferValidity?: number;
 }
 
 export type PlanRenewalRate = 'monthly';

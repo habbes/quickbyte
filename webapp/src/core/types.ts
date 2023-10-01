@@ -29,6 +29,7 @@ export interface Subscription {
     renewsAt?: string;
     validFrom?: string;
     expiresAt?: string;
+    willRenew: boolean;
     status: 'pending'|'active'|'inactive';
     plan: {
         name: string;
@@ -39,6 +40,7 @@ export interface Subscription {
         maxTransferSize: number;
         maxStorageSize: number;
         providerIds: Record<string, string>;
+        maxTransferValidity?: number;
     }
 }
 

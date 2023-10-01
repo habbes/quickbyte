@@ -21,6 +21,7 @@ export class PlanService {
                 maxStorageSize: 200 * GB,
                 maxTransferSize: 200 * GB,
                 renewalRate: 'monthly',
+                maxTransferValidity: 30,
                 providerIds: {
                     paystack: config.paystackPlanCodes.starterMonthly
                 }

@@ -66,6 +66,13 @@ routes.post('/accounts/:accountId/transactions/:transactionId/cancel',
     wrapResponse(req =>
         req.services.accounts.transactions(req.authContext).cancelTransaction(req.params.transactionId)));
 
+routes.post('/accounts/:accountId/subscriptions/:subscriptionId/manage',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.transactions(req.authContext)
+        .getSubscriptionManagementUrl(req.params.subscriptionId)));
+
 routes.get('/me', requireAuth(), wrapResponse(req =>
     Promise.resolve(req.authContext.user)));
 

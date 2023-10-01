@@ -10,8 +10,10 @@ const FILES_COLLECTION = "transferFiles";
 // TODO: this collection maybe should be called downloads
 const DOWNLOADS_COLLECTION = "download_requests";
 const LEGACY_DOWNLOAD_COLLECTION = "downloads";
-const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * 24 * 60 * 60 * 1000; // 5 days
-const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
+const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * DAYS_TO_MILLIS // 5 days
+const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
+
 
 export interface TransferServiceConfig {
     providerRegistry: IStorageHandlerProvider,
@@ -44,6 +46,8 @@ export class TransferService {
             
 
             const baseModel = createPersistedModel({ type: "user", _id: this.authContext.user._id });
+            const validityInMillis = sub.plan.maxTransferValidity ?
+                sub.plan.maxTransferValidity * DAYS_TO_MILLIS : DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS;
             const transfer: DbTransfer = {
                 ...baseModel,
                 name: args.name,
@@ -51,7 +55,7 @@ export class TransferService {
                 region: args.region,
                 accountId: this.authContext.user.account._id,
                 status: 'progress',
-                expiresAt: new Date(Date.now() + DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS),
+                expiresAt: new Date(Date.now() + validityInMillis),
                 numFiles: args.files.length,
                 totalSize: args.files.reduce((sizeSoFar, file) => sizeSoFar + file.size, 0)
             };

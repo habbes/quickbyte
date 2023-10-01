@@ -1,7 +1,7 @@
 import { Axios } from 'axios';
-import { PaymentHandler, VerifyHandlerSubscriptionResult, VerifyHandlerTransactionResult } from './types.js';
+import { PaymentHandler, SubscriptionManagementResult, VerifyHandlerSubscriptionResult, VerifyHandlerTransactionResult } from './types.js';
 import { Subscription, Transaction, Plan } from '../../models.js'
-import { createAppError } from '../../error.js';
+import { createAppError, createAuthError, rethrowIfAppError } from '../../error.js';
 
 export interface PaystackHandlerConfig {
     publicKey: string;
@@ -31,30 +31,35 @@ export class PaystackPaymentHandler implements PaymentHandler {
     }
 
     async verifyTransaction(tx: Transaction): Promise<VerifyHandlerTransactionResult> {
-        const response = await this.client.get<string>(`transaction/verify/${tx._id}`);
-        const data = JSON.parse(response.data) as PaystackVerifyTransactionResult;
+        try {
+            const response = await this.client.get<string>(`transaction/verify/${tx._id}`);
+            const data = JSON.parse(response.data) as PaystackVerifyTransactionResult;
 
-        if (!data.data || !data.status) {
-            throw createAppError(`Failed to verify transaction: ${data.message}`);
+            if (!data.data || !data.status) {
+                throw createAppError(`Failed to verify transaction: ${data.message}`);
+            }
+
+            const result = data.data;
+            const metadata: PaystackTransactionMetadata = {
+                channel: result.channel,
+                authorization: result.authorization,
+                amount: result.amount,
+                currency: result.currency,
+                customer: result.customer
+            };
+
+            return {
+                status: result.status === 'success' ? 'success' : 'failed',
+                errorMessage: result.message || undefined,
+                providerId: String(result.id),
+                amount: result.amount,
+                currency: result.currency,
+                metadata
+            };
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
         }
-
-        const result = data.data;
-        const metadata: PaystackTransactionMetadata = {
-            channel: result.channel,
-            authorization: result.authorization,
-            amount: result.amount,
-            currency: result.currency,
-            customer: result.customer
-        };
-
-        return {
-            status: result.status === 'success' ? 'success' : 'failed',
-            errorMessage: result.message || undefined,
-            providerId: String(result.id),
-            amount: result.amount,
-            currency: result.currency,
-            metadata
-        };
     }
 
     async verifySubscription(tx: Transaction, sub: Subscription, plan: Plan): Promise<VerifyHandlerSubscriptionResult> {
@@ -104,6 +109,21 @@ export class PaystackPaymentHandler implements PaymentHandler {
         };
 
         return result;
+    }
+
+    async getSubscriptionManagementUrl(sub: Subscription, plan: Plan): Promise<SubscriptionManagementResult> {
+        try {
+            // see: https://paystack.com/docs/payments/subscriptions/#updating-the-card-on-a-subscription
+            const code = 'SUB_9rnt1uy03jovgeq'; // TODO: store subscription code in metadata
+            const result = await this.client.get(`subscription/${code}/manage/link`);
+            const data = JSON.parse(result.data) as { data: { link: string } };
+            return {
+                link: data.data.link
+            };
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 }
 
