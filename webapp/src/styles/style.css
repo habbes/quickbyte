@@ -10,8 +10,10 @@
 /* Common gradient styles */
 body {
     min-height: 100vh;
-    background: linear-gradient(135deg, #4a90e2, #7046aa);
-    background: linear-gradient(135deg, #721e51, #2c3850);
+    /* background: linear-gradient(135deg, #4a90e2, #7046aa);
+    background: linear-gradient(135deg, #721e51, #2c3850); */
+    background: linear-gradient(135deg, #0883e0, #9e4b97);
+    background: linear-gradient(313deg, #e00824, #9e4b97);
 }
   
 /* Media Query for Dark Mode */

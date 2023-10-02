@@ -125,7 +125,6 @@ export class AuthService {
             throw createAuthError("Invalid token");
         }
 
-
         const user = await this.getOrCreateUser(parsed.payload);
         const account = await this.args.accounts.getOrCreateByOwner(user._id);
 
