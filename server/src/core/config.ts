@@ -118,6 +118,7 @@ export interface AppConfig {
     paystackPublicKey: string;
     paystackSecretKey: string;
     paystackStarterMonthlyPlan: string;
+    paystackStarterAnnualPlan: string;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -156,7 +157,8 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         paymentProvider: 'paystack',
         paystackPublicKey: getRequiredEnv(env, 'PAYSTACK_PUBLIC_KEY'),
         paystackSecretKey: getRequiredEnv(env, 'PAYSTACK_SECRET_KEY'),
-        paystackStarterMonthlyPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_MONTHLY_PLAN')
+        paystackStarterMonthlyPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_MONTHLY_PLAN'),
+        paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN')
     }
 }
 

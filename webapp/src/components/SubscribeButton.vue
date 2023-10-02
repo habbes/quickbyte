@@ -11,8 +11,8 @@ import { ensure, type VerifyTransansactionResult } from '@/core';
 import Button from './Button.vue';
 
 // TODO: we hardcode this for now because
-// we only have one plan at the moment.
-type PlanName = 'starterMonthly';
+// we only have a few plans at the moment.
+type PlanName = 'starterMonthly'|'starterAnnual';
 
 const props = defineProps<{
   planName: PlanName

@@ -6,6 +6,7 @@ const GB = 1024 * 1024 * 1024;
 export interface PlanSeriviceConfig {
     paystackPlanCodes: {
         starterMonthly: string;
+        starterAnnual: string;
     }
 }
 
@@ -18,12 +19,25 @@ export class PlanService {
                 displayName: 'Quickbyte Starter - Monthly',
                 price: 1000,
                 currency: 'KES',
-                maxStorageSize: 200 * GB,
+                maxStorageSize: 500 * GB,
                 maxTransferSize: 200 * GB,
                 renewalRate: 'monthly',
                 maxTransferValidity: 30,
                 providerIds: {
                     paystack: config.paystackPlanCodes.starterMonthly
+                }
+            },
+            {
+                name: 'starterAnnual',
+                displayName: 'Quickbyte Starter - Annual',
+                price: 9600,
+                currency: 'KES',
+                maxStorageSize: 500 * GB,
+                maxTransferSize: 200 * GB,
+                renewalRate: 'annual',
+                maxTransferValidity: 30,
+                providerIds: {
+                    paystack: config.paystackPlanCodes.starterAnnual
                 }
             }
         ];

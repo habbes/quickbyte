@@ -8,7 +8,6 @@
           </router-link>
         </div>
         <div class="flex items-center gap-4">
-          <FeaturebaseFeedback />
           <FeaturebaseChangelog class="text-white"/>
           <div v-if="user">
             <UserDropDownMenu :user="user"/>
@@ -18,7 +17,8 @@
     </div>
     <Toast />
     <router-view></router-view>
-    <FeaturebasePlugin v-if="userAccount" :user="userAccount" />
+    <FeaturebaseFeedback />
+    <FeaturebaseUserConnect v-if="userAccount" :user="userAccount" />
   </div>
 </template>
 <script lang="ts" setup>
@@ -26,7 +26,7 @@ import { watch } from 'vue';
 import { useUser, initAuth, initUserData, logger, store } from "@/app-utils";
 import UserDropDownMenu from './components/UserDropDownMenu.vue';
 import Toast from '@/components/Toast.vue';
-import FeaturebasePlugin from '@/components/FeaturebasePlugin.vue';
+import FeaturebaseUserConnect from '@/components/FeaturebaseUserConnect.vue';
 import FeaturebaseChangelog from '@/components/FeaturebaseChangelog.vue';
 import FeaturebaseFeedback from './components/FeaturebaseFeedback.vue';
 

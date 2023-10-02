@@ -190,4 +190,4 @@ export interface Plan {
     maxTransferValidity?: number;
 }
 
-export type PlanRenewalRate = 'monthly';
+export type PlanRenewalRate = 'monthly'|'annual';
