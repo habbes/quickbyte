@@ -17,6 +17,13 @@
       </li>
       <Separator />
       <li @click="closeDropdown()">
+        <a href="https://quickbyte.featurebase.app" target="_blank">
+          <StarIcon class="w-6 h-6" />
+          Share feedback
+        </a>
+      </li>
+      <Separator />
+      <li @click="closeDropdown()">
         <a @click="auth.signOut()">
           <ArrowLeftOnRectangleIcon class="w-6 h-6" />
           Sign out
@@ -29,7 +36,7 @@
 import { ref } from "vue";
 import { auth } from "@/app-utils";
 import type { User } from '@/core';
-import { ArrowLeftOnRectangleIcon, CreditCardIcon } from "@heroicons/vue/24/outline";
+import { ArrowLeftOnRectangleIcon, CreditCardIcon, StarIcon } from "@heroicons/vue/24/outline";
 import Separator from "./Separator.vue";
 
 const props = defineProps<{
