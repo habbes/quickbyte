@@ -126,7 +126,6 @@ export class TransferService {
                 throw createResourceNotFoundError();
             }
 
-            console.log('result value', result.value);
             return result.value;
 
         } catch (e: any) {

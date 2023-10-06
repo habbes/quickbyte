@@ -82,6 +82,7 @@ export interface AppConfig {
     mailjetApiSecret: string;
     mailjetSenderName: string;
     mailjetSenderEmail: string;
+    systemEmailRecipient: string;
     // Sms
     smsProvider: 'at'|'local';
     atApiKey: string;
@@ -121,6 +122,7 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         mailjetSenderEmail: getRequiredEnv(env, 'MAILJET_SENDER_EMAIL'),
         mailjetSenderName: getRequiredEnv(env, 'MAILJET_SENDER_NAME'),
         emailProvider: env.EMAIL_PROVIDER === 'mailjet' ? 'mailjet' : 'local',
+        systemEmailRecipient: getRequiredEnv(env, 'SYSTEM_EMAIL_RECIPIENT'),
         atUsername: getRequiredEnv(env, 'AT_USERNAME'),
         atApiKey: getRequiredEnv(env, 'AT_API_KEY'),
         atSender: getRequiredEnv(env, 'AT_SENDER'),

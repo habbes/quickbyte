@@ -90,13 +90,16 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         aadClientId: config.aadClientId,
         aadClientSecret: config.aadClientSecret,
         aadTenantId: config.aadTenantId,
-        accounts
+        accounts,
+        email: emailHandler
     });
 
     const downloads = new TransferDownloadService(db, storageProvider);
     const adminAlerts = new AdminAlertsService({
         smsHandler: smsHandler,
-        smsRecipient: config.systemSmsRecipient
+        smsRecipient: config.systemSmsRecipient,
+        emailHandler,
+        emailRecipient: config.systemEmailRecipient
     });
 
     const transactions = new UnauthenticatedTransactionService(db, {

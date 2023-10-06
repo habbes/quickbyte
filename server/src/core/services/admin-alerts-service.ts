@@ -1,8 +1,11 @@
+import { EmailHandler } from "./index.js";
 import { SmsHandler } from "./sms/index.js";
 
 export interface AdminAlertsServiceConfig {
     smsRecipient: string;
     smsHandler: SmsHandler;
+    emailHandler: EmailHandler;
+    emailRecipient: string;
 }
 
 /**
@@ -13,10 +16,17 @@ export class AdminAlertsService {
     constructor(private config: AdminAlertsServiceConfig) {
     }
 
-    sendNotification(subject: string, message: string): Promise<void> {
-        return this.config.smsHandler.sendSms(
-            this.config.smsRecipient,
-            `${subject}\n${message}`
-        );
+    async sendNotification(subject: string, message: string): Promise<void> {
+        await Promise.all([
+            this.config.smsHandler.sendSms(
+                this.config.smsRecipient,
+                `${subject}\n${message}`
+            ),
+            this.config.emailHandler.sendEmail({
+                to: { email: this.config.emailRecipient },
+                subject: `Quickbyte Admin Alert: ${subject}`,
+                message: message
+            })
+        ]);
     }
 }
