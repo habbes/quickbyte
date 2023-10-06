@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 
-const TOAST_TIMEOUT_MS = 3000;
+const TOAST_TIMEOUT_MS = 5000;
 
 export const toasts = ref<Toast[]>([]);
 

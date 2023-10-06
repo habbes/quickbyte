@@ -2,19 +2,25 @@ import { MongoClient } from "mongodb";
 import { AppConfig } from "./config.js";
 import { createAppError } from "./error.js";
 import {
-    AzureStorageHandler,
-    IStorageHandlerProvider,
-    StorageHandlerProvider,
-    AccountService,
-    IAuthService,
-    AuthService,
-    IAccountService,
-    ITransferDownloadService,
-    TransferDownloadService,
-    LocalEmailHandler,
-    MailjetEmailHandler,
+AzureStorageHandler,
+IStorageHandlerProvider,
+StorageHandlerProvider,
+AccountService,
+IAuthService,
+AuthService,
+IAccountService,
+ITransferDownloadService,
+TransferDownloadService,
+LocalEmailHandler,
+MailjetEmailHandler,
+PlanService,
 EmailHandler,
-AdminAlertsService
+AdminAlertsService,
+IPlanService,
+PaymentHandlerProvider,
+PaystackPaymentHandler,
+IUnauthenicatedTransactionService,
+UnauthenticatedTransactionService
 } from "./services/index.js";
 import { IPreviewUserService, PreviewUsersService } from "./services/preview-users-service.js";
 import { SmsHandler } from "./services/sms/types.js";
@@ -64,8 +70,27 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
             sender: config.atSender
         })
     
+    const plans = new PlanService({
+        paystackPlanCodes: {
+            starterMonthly: config.paystackStarterMonthlyPlan,
+            starterAnnual: config.paystackStarterAnnualPlan
+        }
+    });
 
-    const accounts = new AccountService(db, storageProvider);
+    const paystackHandler = new PaystackPaymentHandler({
+        publicKey: config.paystackPublicKey,
+        secretKey: config.paystackSecretKey,
+    });
+
+    const paymentHandlers = new PaymentHandlerProvider();
+    paymentHandlers.register(paystackHandler);
+
+    const accounts = new AccountService(db, {
+        plans: plans,
+        storageHandlers: storageProvider,
+        paymentHandlers
+    });
+
     const auth = new AuthService(db, {
         aadClientId: config.aadClientId,
         aadClientSecret: config.aadClientSecret,
@@ -84,12 +109,19 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         alerts: adminAlerts
     });
 
+    const transactions = new UnauthenticatedTransactionService(db, {
+        paymentHandlers: paymentHandlers,
+        plans: plans
+    });
+
     return {
         storageProvider,
         accounts,
         auth,
         downloads,
-        previewUsers
+        previewUsers,
+        plans,
+        transactions
     };
 }
 
@@ -99,6 +131,8 @@ export interface AppServices {
     auth: IAuthService;
     downloads: ITransferDownloadService;
     previewUsers: IPreviewUserService;
+    plans: IPlanService;
+    transactions: IUnauthenicatedTransactionService;
 }
 
 async function getDbConnection(config: AppConfig) {

@@ -3,7 +3,7 @@ import msal, { ConfidentialClientApplication, ICachePlugin } from "@azure/msal-n
 import axios from "axios";
 import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
-import { createAppError, createAuthError, createDbError, createResourceConflictError, isAppError, isMongoDuplicateKeyError } from "../error.js";
+import { createAppError, createAuthError, createDbError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, User, UserWithAccount } from "../models.js";
 import { IAccountService } from "./account-service.js";
 
@@ -125,11 +125,32 @@ export class AuthService {
             throw createAuthError("Invalid token");
         }
 
-
         const user = await this.getOrCreateUser(parsed.payload);
         const account = await this.args.accounts.getOrCreateByOwner(user._id);
 
-        return { ...user, account };
+        const userWithAccount: UserWithAccount = { ...user, account }
+
+        const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription();
+        if (sub) {
+            userWithAccount.account.subscription = sub;
+        }
+
+        return userWithAccount ;
+    }
+
+    async getUserById(id: string): Promise<UserWithAccount> {
+        try {
+            const user = await this.usersCollection.findOne({ _id: id });
+            if (!user) {
+                throw createResourceNotFoundError('User not found.');
+            }
+
+            const account = await this.args.accounts.getOrCreateByOwner(user._id);
+            return { ...user, account};
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 
     private async getUserByToken_Broken(token: string): Promise<any> {
@@ -206,7 +227,7 @@ export class AuthService {
    
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' |'getUserById'>;
 
 export interface AuthServiceArgs {
     aadClientId: string;

@@ -1,5 +1,5 @@
 import { ErrorRequestHandler, RequestHandler, Response, NextFunction } from "express";
-import { AppError, createValidationError, createResourceNotFoundError, createAuthError, createAppError } from "../core/index.js";
+import { AppError, createValidationError, createResourceNotFoundError, createAuthError, createAppError, AppServices } from "../core/index.js";
 import { AppRequest } from "./types.js";
 import { sendErrorResponse, sendServerError } from "./util.js";
 
@@ -26,6 +26,9 @@ export const errorHandler = (): ErrorRequestHandler =>
                 return sendErrorResponse(res, 401, error);
             case 'permissionDenied':
                 return sendErrorResponse(res, 403, error);
+            case 'subscriptionRequired':
+            case 'subscriptionInsufficient':
+                return sendErrorResponse(res, 402, error);
             default:
                 if (error instanceof SyntaxError) {
                     return sendErrorResponse(res, 400,
@@ -59,6 +62,7 @@ export const requireAuth = (): RequestHandler =>
             return next(createAuthError("Missing access token."));
         }
         try {
+            const now = Date.now();
             await req.services.auth.verifyToken(token);
             const user = await req.services.auth.getUserByToken(token);
             req.authContext = { user };
@@ -116,4 +120,14 @@ export function wrapResponse(handler: WrappedHandler, statusCode = 200): Request
 
 interface WrappedHandler {
     (req: AppRequest): Promise<any>;
+}
+
+export function injectServices(services: AppServices): RequestHandler {
+    // TODO: This causes an issue cause AppRequest contains
+    // extra properties not in Request
+    // @ts-ignore
+    return (req: AppRequest, res, next) => {
+        req.services = services;
+        next();
+    }
 }

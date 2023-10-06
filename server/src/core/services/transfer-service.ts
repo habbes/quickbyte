@@ -1,7 +1,8 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
-import { createAppError, createResourceNotFoundError, rethrowIfAppError } from '../error.js';
+import { createAppError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, Download, DownloadRequest } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
+import { ITransactionService } from "./index.js";
 
 const COLLECTION = "transfers";
 // TODO: this collection should just be called "files"
@@ -9,24 +10,44 @@ const FILES_COLLECTION = "transferFiles";
 // TODO: this collection maybe should be called downloads
 const DOWNLOADS_COLLECTION = "download_requests";
 const LEGACY_DOWNLOAD_COLLECTION = "downloads";
-const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * 24 * 60 * 60 * 1000; // 5 days
-const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
+const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * DAYS_TO_MILLIS // 5 days
+const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
+
+
+export interface TransferServiceConfig {
+    providerRegistry: IStorageHandlerProvider,
+    transactions: ITransactionService,
+}
 
 export class TransferService {
     private collection: Collection<DbTransfer>;
     private filesCollection: Collection<TransferFile>;
 
-    constructor(private db: Db, private authContext: AuthContext, private providerRegistry: IStorageHandlerProvider) {
+    constructor(private db: Db, private authContext: AuthContext, private config: TransferServiceConfig) {
         this.collection = this.db.collection(COLLECTION);
         this.filesCollection = this.db.collection(FILES_COLLECTION);
     }
 
     async create(args: CreateTransferArgs): Promise<CreateTransferResult> {
         try {
-            const provider = this.providerRegistry.getHandler(args.provider);
+
+            const sub = await this.config.transactions.tryGetActiveSubscription();
+            if (!sub) {
+                throw createSubscriptionRequiredError();
+            }
+
+            const totalSize = args.files.reduce((sizeSoFar, file) => sizeSoFar + file.size, 0);
+            if (totalSize > sub.plan.maxTransferSize) {
+                throw createSubscriptionInsufficientError();
+            }
+
+            const provider = this.config.providerRegistry.getHandler(args.provider);
             
 
             const baseModel = createPersistedModel({ type: "user", _id: this.authContext.user._id });
+            const validityInMillis = sub.plan.maxTransferValidity ?
+                sub.plan.maxTransferValidity * DAYS_TO_MILLIS : DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS;
             const transfer: DbTransfer = {
                 ...baseModel,
                 name: args.name,
@@ -34,7 +55,7 @@ export class TransferService {
                 region: args.region,
                 accountId: this.authContext.user.account._id,
                 status: 'progress',
-                expiresAt: new Date(Date.now() + DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS),
+                expiresAt: new Date(Date.now() + validityInMillis),
                 numFiles: args.files.length,
                 totalSize: args.files.reduce((sizeSoFar, file) => sizeSoFar + file.size, 0)
             };
@@ -73,7 +94,7 @@ export class TransferService {
                 throw createResourceNotFoundError('The transfer does not exist.');
             }
 
-            const provider = this.providerRegistry.getHandler(transfer.provider);
+            const provider = this.config.providerRegistry.getHandler(transfer.provider);
 
             const resultFiles = await Promise.all(files.map(file => createResultFile(provider, transfer, file)));
             

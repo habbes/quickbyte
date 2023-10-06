@@ -113,6 +113,12 @@ export interface AppConfig {
     // Sentry
     enableSentry: boolean;
     sentryDsn: string;
+    // Payment
+    paymentProvider: 'paystack';
+    paystackPublicKey: string;
+    paystackSecretKey: string;
+    paystackStarterMonthlyPlan: string;
+    paystackStarterAnnualPlan: string;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -148,6 +154,11 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         smsProvider: env.SMS_PROVIDER === 'at' ? 'at' : 'local',
         enableSentry: env.ENABLE_SENTRY === 'true',
         sentryDsn: env.ENABLE_SENTRY === 'true' ? getRequiredEnv(env, 'SENTRY_DSN') : '',
+        paymentProvider: 'paystack',
+        paystackPublicKey: getRequiredEnv(env, 'PAYSTACK_PUBLIC_KEY'),
+        paystackSecretKey: getRequiredEnv(env, 'PAYSTACK_SECRET_KEY'),
+        paystackStarterMonthlyPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_MONTHLY_PLAN'),
+        paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN')
     }
 }
 

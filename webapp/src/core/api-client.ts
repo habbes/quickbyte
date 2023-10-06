@@ -1,4 +1,4 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription } from './types.js'
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -50,19 +50,13 @@ export class ApiClient {
     }
 
     async createTransfer(accountId: string, args: CreateTransferArgs): Promise<CreateTransferResult> {
-        const token = await this.config.getToken();
-        const res = await fetch(`${this.config.baseUrl}/accounts/${accountId}/transfers`, {
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(args)
-        });
-
-        const data = res.json();
-        return data;
+        const result = await this.makeRequest<CreateTransferResult>(
+            `accounts/${accountId}/transfers`,
+            'POST',
+            args
+        );
+        
+        return result;
     }
 
     async getTransfer(accountId: string, transferId: string): Promise<GetTransferResult> {
@@ -152,8 +146,33 @@ export class ApiClient {
         );
     }
 
+    async initiateSubscription(accountId: string, args: { plan: string }): Promise<InitiateSubscriptionResult> {
+        const result = await this.post<InitiateSubscriptionResult>(`accounts/${accountId}/subscriptions`, args);
+        return result;
+    }
+
+    // TODO: do this method properly
+    async getTransaction(accountId: string, transactionId: string): Promise<VerifyTransansactionResult> {
+        const result = await this.get<any>(`accounts/${accountId}/transactions/${transactionId}`);
+        return result;
+    }
+
+    async cancelTransaction(accountId: string, transactionId: string): Promise<VerifyTransansactionResult> {
+        const result = await this.post<any>(`accounts/${accountId}/transactions/${transactionId}/cancel`);
+        return result;
+    }
+
+    async getSubscriptionManagementUrl(accountId: string, subscriptionId: string): Promise<SubscriptionManagementResult> {
+        const result = await this.post<SubscriptionManagementResult>(`accounts/${accountId}/subscriptions/${subscriptionId}/manage`);
+        return result;
+    }
+
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
         return this.makeRequest<T>(endpoint, 'GET', undefined, auth);
+    }
+
+    private post<T>(endpoint: string, body: any = undefined, auth: boolean = true): Promise<T> {
+        return this.makeRequest<T>(endpoint, 'POST', body, auth);
     }
 
     private async makeRequest<TResult>(endpoint: string, method: string = 'GET', body: any = undefined, auth: boolean = true): Promise<TResult> {
@@ -283,4 +302,43 @@ export interface CreateTransferFileResult extends TransferFile {
     _id: string,
     name: string,
     uploadUrl: string;
+}
+
+export interface InitiateSubscriptionResult {
+    plan: {
+        name: string;
+        price: number;
+        providerIds: {
+            paystack: string;
+        }
+    },
+    transaction: {
+        _id: string;
+        provider: string;
+        metadata: Record<string, any>;
+        status: TransactionStatus;
+    },
+    subscription: Subscription
+}
+
+export interface VerifyTransansactionResult {
+    _id: string;
+    provider: string;
+    amount: number;
+    currency: string;
+    metadata: Record<string, any>;
+    status: TransactionStatus;
+    error?: string;
+    failureReason?: 'error'|'amountMismatch'|'other';
+    subscription: Subscription,
+    plan: {
+        name: string;
+        displayName: string;
+    }
+}
+
+export type TransactionStatus = 'pending' | 'success' | 'cancelled' | 'failed';
+
+export interface SubscriptionManagementResult {
+    link: string;
 }

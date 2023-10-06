@@ -17,13 +17,35 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { store } from '@/app-utils';
 import UploadCard from '@/components/UploadCard.vue';
 import UploadRecoveryFlow from '@/components/UploadRecoveryFlow.vue';
 import RecoveryUploadCard from '@/components/RecoveryUploadCard.vue';
 
 type State = 'newUpload' | 'recoveryFlow' | 'recoveryUpload';
+
+const router = useRouter();
+
+onMounted(() => {
+  if (!store.userAccount.value?.account.subscription) {
+    router.push({ name: 'pay' });
+  }
+
+  if (store.userAccount.value?.account.subscription) {
+    const subscription = store.userAccount.value.account.subscription;
+    if (subscription.status === 'inactive') {
+      router.push({ name: 'pay' });
+    }
+    else if (subscription.status === 'pending') {
+      router.push({
+        name: 'transaction',
+        params: { transactionId: subscription.lastTransactionId }
+      });
+    }
+  }
+});
 
 const state = ref<State>('newUpload');
 const selectedRecoveredTransferId = ref<string>();

@@ -1,12 +1,11 @@
 <template>
   <router-view v-if="userAccount" />
-  <SignInView v-else />
+  <WelcomeView v-else />
 </template>
 
 <script setup lang="ts">
 import { store } from '@/app-utils'
-import SignInView from "./SignInView.vue";
-import UploadView from "./UploadView.vue";
+import WelcomeView from "./WelcomeView.vue";
 
 const userAccount = store.userAccount;
 </script>

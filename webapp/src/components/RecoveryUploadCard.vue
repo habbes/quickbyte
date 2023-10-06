@@ -217,8 +217,8 @@ async function startUpload() {
     const started = new Date();
     const blockSize = recoveredUpload.value.blockSize;
 
-    const user = ensure(store.userAccount.value);
-    ensure(store.preferredProvider.value);
+    const user = ensure(store.userAccount.value, 'User account not set in store.');
+    ensure(store.preferredProvider.value, 'Preferred provider not set in store.');
 
     const transfer = await apiClient.getTransfer(user.account._id, recoveredUpload.value.id);
 

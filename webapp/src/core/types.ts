@@ -17,6 +17,30 @@ export interface UserAccount {
     aadId: string;
     account: {
         _id: string;
+        subscription?: Subscription;
+    }
+}
+
+export interface Subscription {
+    _id: string;
+    accountId: string;
+    lastTransactionId: string;
+    planName: string;
+    renewsAt?: string;
+    validFrom?: string;
+    expiresAt?: string;
+    willRenew: boolean;
+    status: 'pending'|'active'|'inactive';
+    plan: {
+        name: string;
+        displayName: string;
+        price: number;
+        currency: string;
+        renewalRate: 'monthly';
+        maxTransferSize: number;
+        maxStorageSize: number;
+        providerIds: Record<string, string>;
+        maxTransferValidity?: number;
     }
 }
 

@@ -155,6 +155,10 @@ const copiedDownloadUrl = ref<boolean>(false);
 const fileListContainer = ref<HTMLDivElement>();
 
 watch([files], () => {
+  if (!files.value.length) {
+    return;
+  }
+
   if (!transferName.value) {
     transferName.value = directories.value.length && directories.value[0].name || files.value[0].file.name;
   }
@@ -275,7 +279,12 @@ async function startUpload() {
     await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
     // reset transfer name so that a new transfer starts on a blank state
     transferName.value = undefined;
-  } finally {
+  } catch (e: any) {
+    logger.error(e.message, e);
+    uploadState.value ='initial';
+    showToast(e.message, 'error');
+  }
+  finally {
     removeExitWarning();
   }
 }

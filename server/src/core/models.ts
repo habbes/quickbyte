@@ -40,8 +40,16 @@ export interface User extends PersistedModel {
 }
 
 export interface UserWithAccount extends User {
-    account: Account
+    account: AccountWithSubscription
 };
+
+export interface AccountWithSubscription extends Account {
+    subscription?: SubscriptionAndPlan;
+}
+
+export interface SubscriptionAndPlan extends Subscription {
+    plan: Plan;
+}
 
 export interface AuthContext {
     user: UserWithAccount;
@@ -133,3 +141,53 @@ export interface PreviewUser extends PersistedModel {
     userAgent?: string;
     ip?: string;
 }
+
+export interface Transaction extends PersistedModel {
+    userId: string;
+    status: TransactionStatus;
+    error?: string;
+    failureReason?: FailureReason;
+    amount: number;
+    currency: string;
+    provider: string;
+    providerId?: string;
+    metadata: Record<string, any>;
+    reason: TransactionReason;
+    subscriptionId?: string;
+}
+
+export type TransactionStatus = 'pending' | 'success' | 'cancelled' | 'failed';
+export type FailureReason = 'error'|'amountMismatch'|'other';
+export type TransactionReason = 'subscription';
+
+export interface Subscription extends PersistedModel {
+    accountId: string;
+    lastTransactionId: string;
+    planName: string;
+    willRenew: boolean;
+    renewsAt?: Date;
+    cancelled?: boolean;
+    attention?: boolean;
+    validFrom?: Date;
+    expiresAt?: Date;
+    status: SubscriptionStatus,
+    metadata: Record<string, any>;
+    provider: string;
+    providerId?: string;
+}
+
+export type SubscriptionStatus = 'pending' | 'active' | 'inactive';
+
+export interface Plan {
+    name: string;
+    displayName: string;
+    price: number;
+    currency: string;
+    renewalRate: PlanRenewalRate;
+    maxTransferSize: number;
+    maxStorageSize: number;
+    providerIds: Record<string, string>;
+    maxTransferValidity?: number;
+}
+
+export type PlanRenewalRate = 'monthly'|'annual';

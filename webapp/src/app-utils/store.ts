@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { StorageProvider, UserAccount, PreferredProviderRegionResult, TrackedTransfer } from '@/core';
+import type { StorageProvider, UserAccount, PreferredProviderRegionResult, TrackedTransfer, Subscription } from '@/core';
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
 import { apiClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
@@ -46,6 +46,15 @@ export async function clearData() {
     preferredProvider.value = undefined;
     clearPrefs();
     await uploadRecoveryManager.clearRecoveredTransfers();
+}
+
+export function tryUpdateAccountSubscription(subscription: Subscription) {
+    if (store.userAccount.value
+        && subscription
+        && subscription.status === 'active'
+    ) {
+        store.userAccount.value.account.subscription = subscription;
+    }
 }
 
 interface DeviceData {
