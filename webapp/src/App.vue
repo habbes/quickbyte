@@ -38,7 +38,12 @@ watch(user, async () => {
   if (!user.value) return;
 
   logger.log('User update, refreshing data');
-  await initUserData();
+  try {
+    await initUserData();
+  } catch (e: any) {
+    showToast(e.message, 'error');
+    logger.error(e.message, e);
+  }
 });
 
 onErrorCaptured((error: Error) => {

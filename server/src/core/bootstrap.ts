@@ -20,7 +20,8 @@ IPlanService,
 PaymentHandlerProvider,
 PaystackPaymentHandler,
 IUnauthenicatedTransactionService,
-UnauthenticatedTransactionService
+UnauthenticatedTransactionService,
+IAlertService,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -63,7 +64,14 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
             apiKey: config.atApiKey,
             username: config.atUsername,
             sender: config.atSender
-        })
+        });
+    
+    const adminAlerts = new AdminAlertsService({
+        smsHandler: smsHandler,
+        smsRecipient: config.systemSmsRecipient,
+        emailHandler,
+        emailRecipient: config.systemEmailRecipient
+    });
     
     const plans = new PlanService({
         paystackPlanCodes: {
@@ -91,16 +99,11 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         aadClientSecret: config.aadClientSecret,
         aadTenantId: config.aadTenantId,
         accounts,
-        email: emailHandler
+        email: emailHandler,
+        adminAlerts: adminAlerts
     });
 
     const downloads = new TransferDownloadService(db, storageProvider);
-    const adminAlerts = new AdminAlertsService({
-        smsHandler: smsHandler,
-        smsRecipient: config.systemSmsRecipient,
-        emailHandler,
-        emailRecipient: config.systemEmailRecipient
-    });
 
     const transactions = new UnauthenticatedTransactionService(db, {
         paymentHandlers: paymentHandlers,
@@ -113,7 +116,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         auth,
         downloads,
         plans,
-        transactions
+        transactions,
+        alerts: adminAlerts
     };
 }
 
@@ -124,13 +128,12 @@ export interface AppServices {
     downloads: ITransferDownloadService;
     plans: IPlanService;
     transactions: IUnauthenicatedTransactionService;
+    alerts: IAlertService;
 }
 
 async function getDbConnection(config: AppConfig) {
     try {
-        const client = new MongoClient(config.dbUrl, {
-            serverApi: ServerApiVersion.v1
-        })
+        const client = await MongoClient.connect(config.dbUrl)
 
         return client.db(config.dbName);
     } catch (e: any) {

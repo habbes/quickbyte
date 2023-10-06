@@ -17,11 +17,8 @@ export class AdminAlertsService {
     }
 
     async sendNotification(subject: string, message: string): Promise<void> {
+        // TODO: add SMS if necessary
         await Promise.all([
-            this.config.smsHandler.sendSms(
-                this.config.smsRecipient,
-                `${subject}\n${message}`
-            ),
             this.config.emailHandler.sendEmail({
                 to: { email: this.config.emailRecipient },
                 subject: `Quickbyte Admin Alert: ${subject}`,
@@ -30,3 +27,5 @@ export class AdminAlertsService {
         ]);
     }
 }
+
+export type IAlertService = Pick<AdminAlertsService, 'sendNotification'>;

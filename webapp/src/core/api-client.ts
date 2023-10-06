@@ -16,15 +16,8 @@ export class ApiClient {
     }
 
     async getAccount(): Promise<UserAccount> {
-        const token = await this.config.getToken();
-        const res = await fetch(`${this.config.baseUrl}/me`, {
-            mode: 'cors',
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-        const data = await res.json();
-        return data;
+        const res = await this.get<UserAccount>('me');
+        return res;
     }
 
     /**

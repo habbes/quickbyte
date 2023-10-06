@@ -13,8 +13,8 @@ const user = ref<User|undefined>();
  */
 export const msalConfig = {
     auth: {
-        clientId: 'e59f0dbb-066d-448e-8420-711b83a71710', // This is the ONLY mandatory field that you need to supply.
-        authority: 'https://TrialTenantlDF1TAkb.ciamlogin.com/', // Replace the placeholder with your tenant subdomain
+        clientId: import.meta.env.VITE_AAD_CLIENT_ID, // This is the ONLY mandatory field that you need to supply.
+        authority: import.meta.env.VITE_AAD_AUTHORITY, // Replace the placeholder with your tenant subdomain
         redirectUri: '/', // You must register this URI on Azure Portal/App Registration. Defaults to window.location.href e.g. http://localhost:3000/
         navigateToLoginRequestUrl: true, // If "true", will navigate back to the original request location before processing the auth code response.
     },

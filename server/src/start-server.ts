@@ -21,7 +21,7 @@ async function startServer() {
         server.use(injectServices(appServices));
         mountApi(server, "/api", appServices);
         mountWebHooks(server, "/webhooks", appServices, config);
-        server.use(errorHandler());
+        server.use(errorHandler(appServices.alerts));
         server.use(error404handler('Resource does not exist or you do not have sufficient permissions.'));
 
         server.listen(config.port, () => {

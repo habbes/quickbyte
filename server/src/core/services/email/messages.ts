@@ -1,3 +1,4 @@
+import { AppError } from "../../error.js";
 
 export function createWelcomeEmail(name: string) {
     return `
@@ -38,4 +39,23 @@ Regards,
 <br>
 Quickbyte Team
     `;
+}
+
+export function createServerErrorEmail(errors: AppError[]): string {
+    let message = '';
+    for (let error of errors) {
+        message += `
+<div>
+<h3>Code: ${error.code}</h3>
+<p>
+${error.message}
+</p>
+<pre>
+${error.stack}
+</pre>
+<div>
+`
+    }
+
+    return message;
 }
