@@ -33,7 +33,7 @@ export const msalConfig = {
                         logger.error(message);
                         return;
                     case LogLevel.Info:
-                        logger.info(message);
+                        logger.debug(message);
                         return;
                     case LogLevel.Verbose:
                         logger.debug(message);
@@ -53,7 +53,7 @@ export const msalConfig = {
  * For more information about OIDC scopes, visit: 
  * https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent#openid-connect-scopes
  */
-const scopes = ["api://c84523c3-c74d-4174-a87d-cce9d81bd0a3/.default", "openid", "offline_access"];
+const scopes = [`api://${import.meta.env.VITE_AAD_API_CLIENT_ID}/.default`, "openid", "offline_access"];
 
 export const auth = new AuthHandler({
     msalConfig,
