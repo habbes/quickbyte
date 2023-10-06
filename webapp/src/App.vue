@@ -22,8 +22,8 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { watch } from 'vue';
-import { useUser, initAuth, initUserData, logger, store } from "@/app-utils";
+import { watch, onErrorCaptured } from 'vue';
+import { useUser, initAuth, initUserData, logger, store, showToast } from "@/app-utils";
 import UserDropDownMenu from './components/UserDropDownMenu.vue';
 import Toast from '@/components/Toast.vue';
 import FeaturebaseUserConnect from '@/components/FeaturebaseUserConnect.vue';
@@ -39,5 +39,10 @@ watch(user, async () => {
 
   logger.log('User update, refreshing data');
   await initUserData();
+});
+
+onErrorCaptured((error: Error) => {
+  logger.error(error.message, error);
+  showToast(error.message, 'error');
 });
 </script>

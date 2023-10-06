@@ -1,5 +1,5 @@
 import { Db, Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, FileService, IFileService, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService } from "../index.js";
 
 const COLLECTION = 'accounts';
 
@@ -35,7 +35,7 @@ export class AccountService {
                     _id: ownerId
                 }
             };
-    
+
             await this.collection.insertOne(newAccount);
             return newAccount;
         } catch (e: any) {
@@ -63,11 +63,6 @@ export class AccountService {
         }
     }
 
-
-    files(authContext: AuthContext): IFileService {
-        return new FileService(this.db, authContext, this.config.storageHandlers);
-    }
-
     transfers(authContext: AuthContext): ITransferService {
         return new TransferService(this.db, authContext, {
             providerRegistry: this.config.storageHandlers,
@@ -83,4 +78,4 @@ export class AccountService {
     }
 }
 
-export type IAccountService = Pick<AccountService, 'getOrCreateByOwner'|'getById' | 'files' | 'transfers' | 'transactions'>;
+export type IAccountService = Pick<AccountService, 'getOrCreateByOwner' | 'getById' | 'transfers' | 'transactions'>;

@@ -185,8 +185,6 @@ export class TransactionService {
                 type: 'user'
             };
 
-            // TODO: we should also update the subscription and mark it active
-
             const updateResult = await this.collection.findOneAndUpdate({
                 _id: id
             }, {

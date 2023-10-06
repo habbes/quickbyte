@@ -1,15 +1,12 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
 import { createAppError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
-import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, Download, DownloadRequest } from '../models.js';
+import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 
 const COLLECTION = "transfers";
-// TODO: this collection should just be called "files"
-const FILES_COLLECTION = "transferFiles";
-// TODO: this collection maybe should be called downloads
-const DOWNLOADS_COLLECTION = "download_requests";
-const LEGACY_DOWNLOAD_COLLECTION = "downloads";
+const FILES_COLLECTION = "files";
+const DOWNLOADS_COLLECTION = "downloads";
 const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
 const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * DAYS_TO_MILLIS // 5 days
 const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
@@ -129,7 +126,6 @@ export class TransferService {
                 throw createResourceNotFoundError();
             }
 
-            console.log('result value', result.value);
             return result.value;
 
         } catch (e: any) {
@@ -142,13 +138,11 @@ export class TransferService {
 }
 
 export class TransferDownloadService {
-    private legacyDownloadCollection: Collection<Download>;
     private collection: Collection<Transfer>;
     private filesCollection: Collection<TransferFile>;
     private downloadsCollection: Collection<DownloadRequest>;
 
     constructor (private db: Db, private providerRegistry: IStorageHandlerProvider) {
-        this.legacyDownloadCollection = db.collection(LEGACY_DOWNLOAD_COLLECTION);
         this.collection = db.collection(COLLECTION);
         this.filesCollection = db.collection(FILES_COLLECTION);
         this.downloadsCollection = db.collection(DOWNLOADS_COLLECTION);
@@ -157,12 +151,6 @@ export class TransferDownloadService {
     async requestDownload(transferId: string, args: DownloadRequestArgs): Promise<DownloadTransferResult> {
         try {
             const id = transferId;
-            // TODO: this is for backwards compatibility, should be removed
-            // after preview
-            const legacyDownload = await this.legacyDownloadCollection.findOne({ _id: id });
-            if (legacyDownload) {
-                return transformLegacyDownload(legacyDownload);
-            }
 
             const [transfer, files] = await Promise.all([
                 this.collection.findOne({ _id: id, expiresAt: { $gt: new Date()} }),
@@ -253,32 +241,15 @@ export class TransferDownloadService {
 export type ITransferService = Pick<TransferService, 'create'|'finalize'|'getById'>;
 export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDownload'|'updateDownloadRequest'>;
 
-function transformLegacyDownload(download: Download): DownloadTransferResult {
-    return {
-        _id: download._id,
-        _createdAt: download._createdAt,
-        name: download.originalName,
-        files: [
-            {
-                _id: download.fileId,
-                name: download.originalName,
-                size: download.fileSize,
-                downloadUrl: download.downloadUrl,
-                _createdAt: download._createdAt,
-                transferId: download._id
-            }
-        ],
-        downloadRequestId: ''
-    }
-}
-
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
     const baseModel = createPersistedModel(transfer._createdBy);
     const file = {
         ...baseModel,
         transferId: transfer._id,
         name: args.name,
-        size: args.size
+        size: args.size,
+        provider: transfer.provider,
+        region: transfer.region
     };
 
     return file;

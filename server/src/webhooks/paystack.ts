@@ -6,8 +6,6 @@ import { wrapResponse } from '../api/middleware.js';
 export function createPaystackWebhooks(services: AppServices, secretKey: string): Router {
     const routes = Router();
 
-    console.log('paystack routes', secretKey);
-
     routes.use(verificationEventOrigin(secretKey));
 
     routes.post('/', wrapResponse(async (req) =>

@@ -6,6 +6,7 @@ import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, User, UserWithAccount } from "../models.js";
 import { IAccountService } from "./account-service.js";
+import { EmailHandler, createWelcomeEmail } from "./index.js";
 
 // We use AAD on-behalf-of flow for authentication:
 // https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
@@ -214,6 +215,17 @@ export class AuthService {
 
             await this.usersCollection.insertOne(newUser);
             await this.args.accounts.getOrCreateByOwner(newUser._id);
+            
+            // we don't want to fail operation due to an email failure
+            // so we don't await it
+            this.args.email.sendEmail({
+                to: { email: newUser.email, name: newUser.name },
+                subject: 'Welcome to Quickbyte!',
+                message: createWelcomeEmail(newUser.name)
+            }).catch(e => {
+                console.error(`Error sending welcome email`, e);
+            });
+
             return newUser;
         }
         catch (e: any) {
@@ -234,6 +246,7 @@ export interface AuthServiceArgs {
     aadClientSecret: string;
     aadTenantId: string;
     accounts: IAccountService;
+    email: EmailHandler;
 }
 
 interface AuthConfig {

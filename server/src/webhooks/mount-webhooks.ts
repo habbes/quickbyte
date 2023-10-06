@@ -7,5 +7,4 @@ export function mountWebHooks(server: Express, webhooksRoot: string, services: A
     router.use('/paystack', createPaystackWebhooks(services, config.paystackSecretKey));
 
     server.use(webhooksRoot, router);
-    console.log('mounted webhooks', webhooksRoot);
 }

@@ -10,28 +10,6 @@ export interface AppConfig {
      */
     dbName: string;
     /**
-     * Storage container for the legacy
-     * storage account, before we
-     * had multi-region support
-     * @deprecated For backwards compatibility. Remove when preview version is over.
-     */
-    legacyAzStorageContainer: string;
-    /**
-     * Connection string for the legacy
-     * storage account, before we
-     * had multi-region support
-     * @deprecated For backwards compatibility. Remove when preview version is over.
-     */
-    legacyAzStorageConnectionString: string;
-    /**
-     * @deprecated
-     */
-    legacyAzStoragePingContainer: string;
-    /**
-     * @deprecated
-     */
-    legacyAzStoragePingBlob: string;
-    /**
      * Port that the server will listen on
      */
     port: number;
@@ -104,6 +82,7 @@ export interface AppConfig {
     mailjetApiSecret: string;
     mailjetSenderName: string;
     mailjetSenderEmail: string;
+    systemEmailRecipient: string;
     // Sms
     smsProvider: 'at'|'local';
     atApiKey: string;
@@ -125,10 +104,6 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
     return {
         dbUrl: env.DB_URL || "mongodb://localhost:27017/quickbyte",
         dbName: env.DB_NAME || "quickbyte",
-        legacyAzStorageContainer: getRequiredEnv(env, 'AZ_STORAGE_CONTAINER'),
-        legacyAzStorageConnectionString: getRequiredEnv(env, 'AZ_SA_NORTH_STORAGE_CONNECTION_STRING'),
-        legacyAzStoragePingContainer: env.AZ_STORAGE_PING_CONTAINER || 'ping',
-        legacyAzStoragePingBlob: env.AZ_STORAGE_PING_BLOB || 'ping.txt',
         port: (env.PORT && Number(env.PORT)) || 3000,
         aadClientId: getRequiredEnv(env, 'AAD_CLIENT_ID'),
         aadClientSecret: getRequiredEnv(env, 'AAD_CLIENT_SECRET'),
@@ -147,6 +122,7 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         mailjetSenderEmail: getRequiredEnv(env, 'MAILJET_SENDER_EMAIL'),
         mailjetSenderName: getRequiredEnv(env, 'MAILJET_SENDER_NAME'),
         emailProvider: env.EMAIL_PROVIDER === 'mailjet' ? 'mailjet' : 'local',
+        systemEmailRecipient: getRequiredEnv(env, 'SYSTEM_EMAIL_RECIPIENT'),
         atUsername: getRequiredEnv(env, 'AT_USERNAME'),
         atApiKey: getRequiredEnv(env, 'AT_API_KEY'),
         atSender: getRequiredEnv(env, 'AT_SENDER'),

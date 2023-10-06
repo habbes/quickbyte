@@ -43,7 +43,6 @@ async function fetchTransaction() {
     const account = ensure(store.userAccount.value?.account);
     
     transaction.value = await apiClient.getTransaction(account._id, id);
-    console.log('tx', transaction.value);
     tryUpdateAccountSubscription(transaction.value.subscription);
   } catch (e: any) {
     logger.error(e);

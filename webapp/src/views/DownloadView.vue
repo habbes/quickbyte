@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col p-5 gap-2 sm:items-center sm:mt-20">
-    <div v-if="!optimalDownloaderSupported"
+  <div class="flex flex-col p-5 gap-2 justify-center sm:items-center sm:mt-20">
+    <div v-if="(!optimalDownloaderSupported) && (totalSize && totalSize > MIN_SIZE_FOR_DOWNLOAD_WARNING)"
       class="alert alert-warning w-96">
       <span class="text-xs">
         This browser does not support an optimal download experience.
@@ -91,10 +91,7 @@
       </div>
     </div>
     <div class="mt-5 sm:w-96">
-      <!-- TODO: we should link back to the upload/home page-->
-      <!-- <router-link class="btn w-full" :to="{ name: 'home' }">Have a file to send?</router-link> -->
-      <!-- TODO: during the preview we'll link to the landing page -->
-      <a class="btn w-full" href="https://quickbyte.io" target="_blank">Have a file to send?</a>
+      <router-link class="btn w-full" :to="{ name: 'home' }">Have a file to send?</router-link>
     </div>
   </div>
 </template>
@@ -108,6 +105,10 @@ import FileListItem from '@/components/FileListItem.vue';
 
 type DownloadState = 'pending' | 'complete' | 'inProgress';
 
+// When transfers are larger than this size,
+// a warning will be displayed on browers which
+// don't support optimial download experience
+const MIN_SIZE_FOR_DOWNLOAD_WARNING = 1 * 1024 * 1024 * 2014; // 1GB
 const route = useRoute();
 route.params.downloadId;
 const error = ref<Error|undefined>();

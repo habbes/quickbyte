@@ -151,7 +151,6 @@ export class ApiClient {
         return result;
     }
 
-    // TODO: do this method properly
     async getTransaction(accountId: string, transactionId: string): Promise<VerifyTransansactionResult> {
         const result = await this.get<any>(`accounts/${accountId}/transactions/${transactionId}`);
         return result;

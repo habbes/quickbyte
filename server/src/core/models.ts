@@ -77,10 +77,8 @@ export interface Transfer extends PersistedModel {
     status: TransferStatus;
     expiresAt: Date;
     transferCompletedAt?: Date;
-    // TODO: this field should be required after the preview
-    numFiles?: number;
-    // TODO: this field should be required after the preview
-    totalSize?: number;
+    numFiles: number;
+    totalSize: number;
 }
 
 export interface DbTransfer extends Transfer {
@@ -99,28 +97,14 @@ export interface TransferFile extends PersistedModel {
     transferId: string;
     name: string;
     size: number;
+    provider: string;
+    region: string;
 }
 
 export interface Upload extends PersistedModel {
     fileId: string;
     blockSize: number;
     blocksCompleted: number;
-}
-
-/**
- * @deprecated
- */
-export interface Download extends PersistedModel {
-    fileId: string;
-    accountId: string;
-    numRequests: number;
-    fileSize: number;
-    provider: string;
-    region: string;
-    originalName: string;
-    downloadUrl: string;
-    expiryDate: Date;
-    fileType: string;
 }
 
 export interface DownloadRequest extends PersistedModel {
@@ -132,15 +116,6 @@ export interface DownloadRequest extends PersistedModel {
     filesRequested?: string[];
 }
 
-/**
- * @deprecated Should be removed after preview
- */
-export interface PreviewUser extends PersistedModel {
-    email: string;
-    countryCode?: string;
-    userAgent?: string;
-    ip?: string;
-}
 
 export interface Transaction extends PersistedModel {
     userId: string;

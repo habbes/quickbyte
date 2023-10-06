@@ -14,7 +14,7 @@ import { sendErrorResponse, sendServerError } from "./util.js";
 export const errorHandler = (): ErrorRequestHandler =>
     (error: AppError, req, res, next) => {
         // TODO: proper logging
-        console.log(error);
+        console.error(error);
         switch (error.code) {
             case 'resourceNotFound':
                 return sendErrorResponse(res, 404, error);
