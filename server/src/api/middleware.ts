@@ -1,5 +1,5 @@
 import { ErrorRequestHandler, RequestHandler, Response, NextFunction } from "express";
-import { AppError, createValidationError, createResourceNotFoundError, createAuthError, createAppError, AppServices } from "../core/index.js";
+import { AppError, createValidationError, createResourceNotFoundError, createAuthError, createAppError, AppServices, IAlertService, createServerErrorEmail } from "../core/index.js";
 import { AppRequest } from "./types.js";
 import { sendErrorResponse, sendServerError } from "./util.js";
 
@@ -11,8 +11,21 @@ import { sendErrorResponse, sendServerError } from "./util.js";
  * Request handlers should not handle errors.
  * This global error handler should be used instead.
  */
-export const errorHandler = (): ErrorRequestHandler =>
-    (error: AppError, req, res, next) => {
+export const errorHandler = function (alertService: IAlertService): ErrorRequestHandler {
+    // send alerts periodically if there are 500-level errors
+    let queuedErrors: AppError[] = [];
+    const interval = 5 * 60 * 1000; // 5min
+    setInterval(() => {
+        if (queuedErrors.length == 0) {
+            return;
+        }
+
+        const alertMessage = createServerErrorEmail(queuedErrors);
+        alertService.sendNotification('Server errors occurred in the last 5 minutes.', alertMessage)
+        .catch(e => { console.error('Failed to send server errors alert', e)});
+    }, interval);
+
+    return (error: AppError, req, res, next) => {
         // TODO: proper logging
         console.error(error);
         switch (error.code) {
@@ -35,9 +48,11 @@ export const errorHandler = (): ErrorRequestHandler =>
                     createValidationError(`Invalid syntax in request body: ${error.message}`));
                 }
 
+                queuedErrors.push(error);
                 return sendServerError(res);
         }
     };
+}
 
 /**
  * This returns a 404 error if a route that does

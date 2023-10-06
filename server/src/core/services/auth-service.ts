@@ -6,7 +6,7 @@ import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, User, UserWithAccount } from "../models.js";
 import { IAccountService } from "./account-service.js";
-import { EmailHandler, createWelcomeEmail } from "./index.js";
+import { EmailHandler, IAlertService, createWelcomeEmail } from "./index.js";
 
 // We use AAD on-behalf-of flow for authentication:
 // https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
@@ -226,6 +226,13 @@ export class AuthService {
                 console.error(`Error sending welcome email`, e);
             });
 
+            this.args.adminAlerts.sendNotification(
+                'New user',
+                `New user signed up:<br>Name: ${newUser.name}<br>Email: ${newUser.email}`
+            ).catch(e => {
+                console.error('Failed to send new user alert', e);
+            });
+
             return newUser;
         }
         catch (e: any) {
@@ -247,6 +254,7 @@ export interface AuthServiceArgs {
     aadTenantId: string;
     accounts: IAccountService;
     email: EmailHandler;
+    adminAlerts: IAlertService;
 }
 
 interface AuthConfig {
