@@ -57,7 +57,7 @@ export class AuthService {
                 authority: `https://login.microsoftonline.com/${this.args.aadTenantId}`,
                 clientSecret: this.args.aadClientSecret
             },
-            webApiScope: "api://c84523c3-c74d-4174-a87d-cce9d81bd0a3/access_as_user openid offline_access",
+            webApiScope: `api://${this.args.aadClientId}/access_as_user openid offline_access`,
             discoveryKeysEndpoint: `https://login.microsoftonline.com/${this.args.aadTenantId}/discovery/v2.0/keys`
         };
 
