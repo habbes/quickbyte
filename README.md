@@ -26,7 +26,7 @@ Fast, resumable, reliable sharing of large files
 - [x] Deployment pipeline? (Vercel and Railway auto-deploy on merge to main)
 - [x] Automation cloud resource provision (storage accounts, auth, etc.)
   - [x] Automatic storage account provisioning and config with Terraform
-- [ ] Payment integration
+- [x] Payment integration
 - [x] Collect more data for better insights
   - [x] Transfer source location
   - [x] Transfer duration
@@ -36,11 +36,11 @@ Fast, resumable, reliable sharing of large files
   - [x] Tune and optimize sentry telemetry
 - [x] Make transfers invalid past expiry date
 - [ ] Handle all TODOs and deprecations
-- [ ] Improve landing page, sign up and first-time-user flow
-- [ ] Legal pages
-  - [ ] Terms of service
-  - [ ] Privacy Policy
-  - [ ] Cookie Policy
+- [x] Improve landing page, sign up and first-time-user flow
+- [x] Legal pages
+  - [x] Terms of service
+  - [x] Privacy Policy
+  - [x] Cookie Policy
 
 ### Client
 
