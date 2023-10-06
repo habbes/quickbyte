@@ -1,12 +1,12 @@
 {
   "name": "quickbyte-server",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Quickbyte server",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
+    "build": "tsc --module es2020",
     "start": "node dist/start-server.js",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org quickbyte --project quickbyte-server ./dist && sentry-cli sourcemaps upload --org quickbyte --project quickbyte-server ./dist"
   },

@@ -139,9 +139,54 @@ Then initalize the workspace:
 terraform init
 ```
 
+To see changes that will be perform on the infrastructure:
+```
+terraform plan
+```
+
+The following variables have been defined:
+
+```
+variable "az_resource_prefix" {
+  type    = string
+  default = "quickbytetest"
+}
+
+variable "az_data_container_name" {
+  type    = string
+  default = "data"
+}
+
+variable "az_ping_container_name" {
+  type    = string
+  default = "ping"
+}
+
+variable "az_ping_blob_name" {
+  type    = string
+  default = "ping.txt"
+}
+
+variable "az_ping_blob_content" {
+  type    = string
+  default = "ping"
+}
+```
+
+You can override them when runnging the apply command, for example:
+
+```
+terraform apply -var="az_resource_prefix=quickbyte"
+```
+
 Then run:
 ```
-terraform apply
+terraform apply -var...
+```
+
+To get the outputs of the run:
+```
+terraform output
 ```
 
 # Azure AD config
@@ -169,6 +214,14 @@ https://learn.microsoft.com/en-us/azure/active-directory/external-identities/cus
 For the preview, I created a project in Google console called `quickbyte-preview`. It's currently still in test-mode
 and only allows sign-ins from Google email addresses I've manually whitelisted in the settings. For the official release
 I'll create a different project that I'll move to production mode (and it may need to be reviewed).
+
+# Server and DB
+
+The server runs on [Railway](https://railway.app). In prod the DB runs in MongoDB Atlas. But in other environments, the DB runs on Railway as well.
+
+# Client
+
+The web app runs on [Vercel](https://vercel.com).
 
 
 # Sentry Config
