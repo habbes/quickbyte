@@ -35,7 +35,7 @@ Fast, resumable, reliable sharing of large files
   - [x] Add duration and file stats to transfer object
   - [x] Tune and optimize sentry telemetry
 - [x] Make transfers invalid past expiry date
-- [ ] Handle all TODOs and deprecations
+- [x] Handle TODOs and deprecations
 - [x] Improve landing page, sign up and first-time-user flow
 - [x] Legal pages
   - [x] Terms of service

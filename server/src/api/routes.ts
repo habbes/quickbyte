@@ -3,33 +3,6 @@ import { wrapResponse, requireAuth, requireAccountOwner } from './middleware.js'
 
 export const routes = Router();
 
-routes.post('/accounts/:accountId/files', requireAuth(), requireAccountOwner(), wrapResponse(req =>
-    req.services.accounts.files(req.authContext).initFileUpload(req.body)));
-
-routes.get('/accounts/:accountId/files',
-    requireAuth(),
-    requireAccountOwner(),
-    wrapResponse(req =>
-        req.services.accounts.files(req.authContext).getAll()));
-
-routes.post('/accounts/:accountId/files',
-    requireAuth(),
-    requireAccountOwner(),
-    wrapResponse(req =>
-        req.services.accounts.files(req.authContext).getAll()));
-
-routes.get('/accounts/:accountId/files/:fileId',
-    requireAuth(),
-    requireAccountOwner(),
-    wrapResponse(req =>
-        req.services.accounts.files(req.authContext).getById(req.params.fileId)));
-
-routes.get('/accounts/:accountId/files/:fileId/download',
-    requireAuth(),
-    requireAccountOwner(),
-    wrapResponse(req =>
-        req.services.accounts.files(req.authContext).requestDownload(req.params.fileId)));
-
 routes.post('/accounts/:accountId/transfers',
     requireAuth(),
     requireAccountOwner(),
@@ -85,8 +58,5 @@ routes.patch('/downloads/:transferId/requests/:requestId', wrapResponse(req =>
 routes.get('/providers', wrapResponse(req =>
     Promise.resolve(req.services.storageProvider.getHandlerInfos())));
 
-// TODO: remove after preview
-routes.post('/previewUsers', wrapResponse(req =>
-    req.services.previewUsers.createPreviewUser(req.body), 201));
 
 

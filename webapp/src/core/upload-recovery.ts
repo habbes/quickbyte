@@ -2,8 +2,7 @@ import { openDB, type IDBPDatabase, type DBSchema } from 'idb';
 import { ensure } from '.';
 import { Logger } from './logger';
 
-// TODO: we should start with version 1 when done with the preview
-const VERSION = 2;
+const VERSION = 1;
 const DB_NAME = 'quickbyte';
 const TRANSFERS_STORE = 'transfers';
 const FILES_STORE = 'files';
@@ -50,24 +49,10 @@ export class UploadRecoveryManager {
     }
 
     async init(): Promise<void> {
-        // TODO: define DB schema
         // TODO: handle errors
         const logger = this.args.logger;
         this.db = await openDB<RecoveryDbSchema>(DB_NAME, VERSION, {
             upgrade(db, oldVersion, newVesrsion) {
-                
-                // TODO: during the preview, we just delete older db version
-                // instead of implementing a migration
-                if (oldVersion === 1) {
-                    try {
-                        db.deleteObjectStore('files');
-                        db.deleteObjectStore('blocks');
-                    } catch {
-                        // pass
-                    }
-                }
-
-
                 const transfers = db.createObjectStore("transfers", {
                     keyPath: 'id'
                 })

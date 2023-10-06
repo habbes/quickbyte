@@ -22,7 +22,6 @@ PaystackPaymentHandler,
 IUnauthenicatedTransactionService,
 UnauthenticatedTransactionService
 } from "./services/index.js";
-import { IPreviewUserService, PreviewUsersService } from "./services/preview-users-service.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
 import { AtSmsHandler } from "./services/sms/at-sms-handler.js";
@@ -36,10 +35,6 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         clientSecret: config.azClientSecret,
         resourcePrefix: config.azResourcePrefix,
         availableRegionCodes: config.azStorageRegionCodes,
-        legacyAccountConnectionString: config.legacyAzStorageConnectionString,
-        legacyAccountContainer: config.legacyAzStorageContainer,
-        legacyPingContainer: config.legacyAzStoragePingContainer,
-        legacyPingBlob: config.legacyAzStoragePingBlob,
         keyVaultUri: config.azKeyVaultUri,
         dataContainer: config.azDataContainer,
         pingContainer: config.azPingContainer,
@@ -104,11 +99,6 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         smsRecipient: config.systemSmsRecipient
     });
 
-    const previewUsers = new PreviewUsersService(db, {
-        emailHandler,
-        alerts: adminAlerts
-    });
-
     const transactions = new UnauthenticatedTransactionService(db, {
         paymentHandlers: paymentHandlers,
         plans: plans
@@ -119,7 +109,6 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         accounts,
         auth,
         downloads,
-        previewUsers,
         plans,
         transactions
     };
@@ -130,7 +119,6 @@ export interface AppServices {
     accounts: IAccountService;
     auth: IAuthService;
     downloads: ITransferDownloadService;
-    previewUsers: IPreviewUserService;
     plans: IPlanService;
     transactions: IUnauthenicatedTransactionService;
 }

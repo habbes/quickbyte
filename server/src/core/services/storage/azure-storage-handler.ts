@@ -4,15 +4,6 @@ import { BlobSASPermissions, BlobServiceClient, ContainerClient } from "@azure/s
 import { IStorageHandler, StorageRegionInfo } from "./types.js";
 import { createAppError, createResourceNotFoundError, rethrowIfAppError } from "../../error.js";
 
-// For backwards compatibility. Should be removed in the next major version
-/**
- * The region code of the storage account we used
- * before we had support for multiple regions that
- * were provisioned by our infrastructure tooling.
- * @deprecated This used for backwards compatibility. It should be removed when the preview version is over.
- */
-const LEGACY_REGION = 'sa-north';
-
 export class AzureStorageHandler implements IStorageHandler {
     private regionAccounts: Record<string, AzureStorageAccount> = {};
     private keyVault: SecretClient;
@@ -50,10 +41,6 @@ export class AzureStorageHandler implements IStorageHandler {
             return this.regionAccounts[regionCode];
         }
 
-        if (regionCode === LEGACY_REGION) {
-            return this.getLegacyConfig();
-        }
-
         const connectionStringKey = `${this.config.resourcePrefix}${regionCode}-connection-string`;
         const secret = await this.keyVault.getSecret(connectionStringKey);
         const connectionString = secret.value;
@@ -86,38 +73,6 @@ export class AzureStorageHandler implements IStorageHandler {
         };
 
         return this.regionAccounts[regionCode];
-    }
-
-    private async getLegacyConfig(): Promise<AzureStorageAccount> {
-        if (LEGACY_REGION in this.regionAccounts) {
-            return this.regionAccounts[LEGACY_REGION];
-        }
-
-        const connetionString = this.config.legacyAccountConnectionString;
-        const containerName = this.config.legacyAccountContainer;
-        const client = BlobServiceClient.fromConnectionString(connetionString);
-        const container = client.getContainerClient(containerName);
-        const pingContainer = client.getContainerClient(this.config.legacyPingContainer);
-        const pingBlobName = this.config.legacyPingBlob;
-        const pingBlob = pingContainer.getBlobClient(pingBlobName);
-
-        const oneYear = 1 * 365 * 24 * 60 * 60 * 1000;
-        const expiryDate = new Date(oneYear + Date.now());
-        const pingUrl = await pingBlob.generateSasUrl({
-            permissions: BlobSASPermissions.from({ read: true }),
-            expiresOn: expiryDate,
-        });
-
-        this.regionAccounts[LEGACY_REGION] = {
-            regionCode: LEGACY_REGION,
-            client,
-            container,
-            pingContainer,
-            pingBlobName,
-            pingUrl
-        }
-
-        return Promise.resolve(this.regionAccounts[LEGACY_REGION]);
     }
 
     name(): string {
@@ -221,32 +176,6 @@ export interface AzureStorageHandlerConfig {
     dataContainer: string;
     pingContainer: string;
     pingBlob: string;
-    /**
-     * The connection string of the storage account
-     * that was used before we had support for multiple
-     * regions that were provisioned by our infrastracture
-     * tooling.
-     * @deprecated For backwards compatibility. This field should
-     * be removed when we launch publicly.
-     */
-    legacyAccountConnectionString: string;
-    /**
-     * The data container of the storage account
-     * that was used before we had support for multiple
-     * regions that were provisioned by our infrastracture
-     * tooling.
-     * @deprecated For backwards compatibility. This field should
-     * be removed when we launch publicly.
-     */
-    legacyAccountContainer: string;
-    /**
-     * @deprecated
-     */
-    legacyPingContainer: string;
-    /**
-     * @deprecated
-     */
-    legacyPingBlob: string;
 }
 
 interface AzureStorageAccount {

@@ -224,7 +224,6 @@ async function startUpload() {
 
     const transferTracker = uploadRecoveryManager.recoverTransferTracker(recoveredUpload.value);
 
-    // todo: keep track of completed files either on the API or transfer tracker
     // init transferRecovery to fetch completed files
     const recoveryResult = await transferTracker.initRecovery();
     

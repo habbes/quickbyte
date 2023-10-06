@@ -91,10 +91,7 @@
       </div>
     </div>
     <div class="mt-5 sm:w-96">
-      <!-- TODO: we should link back to the upload/home page-->
-      <!-- <router-link class="btn w-full" :to="{ name: 'home' }">Have a file to send?</router-link> -->
-      <!-- TODO: during the preview we'll link to the landing page -->
-      <a class="btn w-full" href="https://quickbyte.io" target="_blank">Have a file to send?</a>
+      <router-link class="btn w-full" :to="{ name: 'home' }">Have a file to send?</router-link>
     </div>
   </div>
 </template>
