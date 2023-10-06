@@ -42,10 +42,8 @@ onMounted(() => {
         (err: any) => {
           // Callback function. Called when identify completed.
           if (err) {
-            // console.error(err);
             logger.error(err);
           } else {
-            // console.log("Data sent successfully!");
           }
         }
       );

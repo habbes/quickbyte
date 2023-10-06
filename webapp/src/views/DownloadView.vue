@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col p-5 gap-2 sm:items-center sm:mt-20">
+  <div class="flex flex-col p-5 gap-2 justify-center sm:items-center sm:mt-20">
     <div v-if="(!optimalDownloaderSupported) && (totalSize && totalSize > MIN_SIZE_FOR_DOWNLOAD_WARNING)"
       class="alert alert-warning w-96">
       <span class="text-xs">
@@ -108,7 +108,7 @@ type DownloadState = 'pending' | 'complete' | 'inProgress';
 // When transfers are larger than this size,
 // a warning will be displayed on browers which
 // don't support optimial download experience
-const MIN_SIZE_FOR_DOWNLOAD_WARNING = 1 * 1024 * 1024;
+const MIN_SIZE_FOR_DOWNLOAD_WARNING = 1 * 1024 * 1024 * 2014; // 1GB
 const route = useRoute();
 route.params.downloadId;
 const error = ref<Error|undefined>();

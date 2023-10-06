@@ -11,7 +11,7 @@ export class AuthHandler {
         this.userHandler = config.userHandler
     }
 
-    signIn(): Promise<void> {
+    async signIn(): Promise<void> {
         /**
          * You can pass a custom request object below. This will override the initial configuration. For more information, visit:
          * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/request-response-object.md#request
