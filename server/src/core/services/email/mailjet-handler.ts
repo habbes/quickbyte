@@ -1,7 +1,7 @@
 
 // import Mailjet, { Client, SendEmailV3_1, LibraryResponse } from 'node-mailjet'
 import mailjet from 'node-mailjet';
-const { Client, SendEmailV3_1 } = mailjet;
+const { Client } = mailjet;
 import { EmailHandler, SendEmailArgs } from './types.js';
 import { createAppError } from '../../error.js';
 
@@ -19,6 +19,7 @@ export interface MailjetConfig {
 }
 
 export class MailjetEmailHandler implements EmailHandler {
+    // @ts-ignore
     private client: mailjet.Client;
     private sender: { name: string, email: string };
 
@@ -34,6 +35,7 @@ export class MailjetEmailHandler implements EmailHandler {
 
     async sendEmail(args: SendEmailArgs): Promise<void> {
         try {
+            // @ts-ignore
             const data: mailjet.SendEmailV3_1.Body = {
                 Messages: [
                     {
