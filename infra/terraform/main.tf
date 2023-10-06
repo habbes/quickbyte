@@ -13,12 +13,21 @@ terraform {
 
   required_version = ">= 1.1.0"
 
+  # Enable to provision testing infra
   cloud {
     organization = "habbes"
     workspaces {
       name = "learn-terraform"
     }
   }
+
+  # Enable to deploy to prod
+  # cloud {
+  #   organization = "AlphaManuscript"
+  #   workspaces {
+  #     name = "quickbyte-prod"
+  #   }
+  # }
 }
 
 provider "azurerm" {

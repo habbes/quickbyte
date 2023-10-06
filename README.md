@@ -21,7 +21,7 @@ Fast, resumable, reliable sharing of large files
 - [ ] Perf benchmarks and tuning
 - [x] Resumable uploads
 - [x] Deploy to staging
-- [ ] Deploy to prod
+- [x] Deploy to prod
 - [x] Email provider integration
 - [x] Deployment pipeline? (Vercel and Railway auto-deploy on merge to main)
 - [x] Automation cloud resource provision (storage accounts, auth, etc.)

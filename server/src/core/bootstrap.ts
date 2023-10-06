@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, ServerApiVersion } from "mongodb";
 import { AppConfig } from "./config.js";
 import { createAppError } from "./error.js";
 import {
@@ -128,7 +128,10 @@ export interface AppServices {
 
 async function getDbConnection(config: AppConfig) {
     try {
-        const client = await MongoClient.connect(config.dbUrl);
+        const client = new MongoClient(config.dbUrl, {
+            serverApi: ServerApiVersion.v1
+        })
+
         return client.db(config.dbName);
     } catch (e: any) {
         throw createAppError(`Database connection error: ${e.message}`, 'dbError');
