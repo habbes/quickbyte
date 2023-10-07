@@ -196,7 +196,7 @@ export class AuthService {
     }
 
     private async getOrCreateUser(data: jwt.JwtPayload) {
-        const email: string = data.unique_name;
+        const email: string = getEmailFromJwt(data);
         const aadId: string = data.oid;
         const name: string = data.name;
 
@@ -247,6 +247,24 @@ export class AuthService {
 }
 
 export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' |'getUserById'>;
+
+function getEmailFromJwt(jwtPayload: Record<string, string>): string {
+    if (jwtPayload.email) {
+        return jwtPayload.email;
+    }
+
+    const uniqueName = jwtPayload.unique_name;
+    if (uniqueName.includes('#')) {
+        // when using an external provider like Google,
+        // the uniqueName is of the format google#actualemail@gmail.com
+        const email = uniqueName.split('#')[1];
+        if (email) {
+            return email;
+        }
+    }
+
+    return uniqueName;
+}
 
 export interface AuthServiceArgs {
     aadClientId: string;
