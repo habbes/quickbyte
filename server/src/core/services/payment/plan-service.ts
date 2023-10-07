@@ -17,7 +17,7 @@ export class PlanService {
             {
                 name: 'starterMonthly',
                 displayName: 'Quickbyte Starter - Monthly',
-                price: 1000,
+                price: 900,
                 currency: 'KES',
                 maxStorageSize: 500 * GB,
                 maxTransferSize: 200 * GB,
@@ -30,7 +30,7 @@ export class PlanService {
             {
                 name: 'starterAnnual',
                 displayName: 'Quickbyte Starter - Annual',
-                price: 9600,
+                price: 9000,
                 currency: 'KES',
                 maxStorageSize: 500 * GB,
                 maxTransferSize: 200 * GB,
