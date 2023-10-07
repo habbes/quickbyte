@@ -91,7 +91,8 @@
       </div>
     </div>
     <div class="mt-5 sm:w-96">
-      <router-link class="btn w-full" :to="{ name: 'home' }">Have a file to send?</router-link>
+      <!-- for some reason, when redirecting to home, it goes to a blank page -->
+      <router-link class="btn w-full" :to="{ name: 'upload' }">Have a file to send?</router-link>
     </div>
   </div>
 </template>
