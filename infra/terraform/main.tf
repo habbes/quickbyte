@@ -14,20 +14,20 @@ terraform {
   required_version = ">= 1.1.0"
 
   # Enable to provision testing infra
-  cloud {
-    organization = "habbes"
-    workspaces {
-      name = "learn-terraform"
-    }
-  }
-
-  # Enable to deploy to prod
   # cloud {
-  #   organization = "AlphaManuscript"
+  #   organization = "habbes"
   #   workspaces {
-  #     name = "quickbyte-prod"
+  #     name = "learn-terraform"
   #   }
   # }
+
+  # Enable to deploy to prod
+  cloud {
+    organization = "AlphaManuscript"
+    workspaces {
+      name = "quickbyte-prod"
+    }
+  }
 }
 
 provider "azurerm" {
@@ -39,9 +39,11 @@ provider "azurerm" {
   }
 }
 
-provider "azuread" {
-  tenant_id = data.azurerm_client_config.current.tenant_id
-}
+# the SP we used doesn't have enough resources
+# to create new SPs
+# provider "azuread" {
+#   tenant_id = data.azurerm_client_config.current.tenant_id
+# }
 
 # this data source will be used to get current tenant and app id
 data "azurerm_client_config" "current" {}
@@ -51,17 +53,17 @@ data "azuread_client_config" "current" {}
 # to access the resources created here
 # we'll grant it access to relevant resources
 # and output its client id and secret
-resource "azuread_application" "server_app" {
-  display_name = "${var.az_resource_prefix}-server-app"
-}
+# resource "azuread_application" "server_app" {
+#   display_name = "${var.az_resource_prefix}-server-app"
+# }
 
-resource "azuread_service_principal" "server_app" {
-  application_id = azuread_application.server_app.application_id
-}
+# resource "azuread_service_principal" "server_app" {
+#   application_id = azuread_application.server_app.application_id
+# }
 
-resource "azuread_service_principal_password" "server_app" {
-  service_principal_id = azuread_service_principal.server_app.object_id
-}
+# resource "azuread_service_principal_password" "server_app" {
+#   service_principal_id = azuread_service_principal.server_app.object_id
+# }
 
 # Resource Group
 
@@ -169,18 +171,18 @@ resource "azurerm_key_vault" "key_vault" {
 
   # access policy granted to our server
   # the server only needs to read the secrets
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = azuread_service_principal.server_app.object_id
+  # access_policy {
+  #   tenant_id = data.azurerm_client_config.current.tenant_id
+  #   object_id = azuread_service_principal.server_app.object_id
 
-    key_permissions = [
-      "Get"
-    ]
+  #   key_permissions = [
+  #     "Get"
+  #   ]
 
-    secret_permissions = [
-      "Get"
-    ]
-  }
+  #   secret_permissions = [
+  #     "Get"
+  #   ]
+  # }
 }
 
 resource "azurerm_key_vault_secret" "secrets" {

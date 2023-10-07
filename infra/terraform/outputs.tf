@@ -24,14 +24,14 @@ output "storage_accounts_names" {
   }
 }
 
-output "server_sp_client_id" {
-  value = azuread_service_principal.server_app.object_id
-}
+# output "server_sp_client_id" {
+#   value = azuread_service_principal.server_app.object_id
+# }
 
-output "server_sp_client_secret" {
-  value     = azuread_service_principal_password.server_app.value
-  sensitive = true
-}
+# output "server_sp_client_secret" {
+#   value     = azuread_service_principal_password.server_app.value
+#   sensitive = true
+# }
 
 output "tenant_id" {
   value = data.azuread_client_config.current.tenant_id

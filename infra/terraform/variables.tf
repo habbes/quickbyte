@@ -36,7 +36,7 @@ variable "az_regions" {
 
 variable "az_resource_prefix" {
   type    = string
-  default = "quickbytetest"
+  default = "quickbyte"
 }
 
 variable "az_data_container_name" {
