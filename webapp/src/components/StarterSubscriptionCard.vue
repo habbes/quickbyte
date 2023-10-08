@@ -18,7 +18,7 @@
       </ul>
       <div class="border-t border-t-gray-200 mt-2 mb-2"></div>
       <div class="flex gap-1 justify-center items-center align-middle text-primary mb-2">
-        <span class="font-bold text-xl">${{ isAnnual ? '5' : '6' }}</span>
+        <span class="font-bold text-xl">{{ isAnnual ? monthlyFeeInAnnualPlan : monthlyFee }}</span>
         <span> / month</span>
         <span v-if="isAnnual" class="text-xs">(paid annually)</span>
       </div>
@@ -32,12 +32,30 @@
 import SubscribeButton from '@/components/SubscribeButton.vue';
 import type { VerifyTransansactionResult } from '@/core';
 import { ref, computed } from 'vue';
+import { store } from '@/app-utils';
 
 type PlanName = 'starterMonthly' | 'starterAnnual';
 
 defineEmits<{
   (e: 'transaction', transaction: VerifyTransansactionResult): void;
 }>();
+
+
+const monthlyFee = computed(() => {
+  if (store.deviceData.value?.countryCode === 'KE') {
+    return 'KES 900';
+  }
+
+  return '$6';
+});
+
+const monthlyFeeInAnnualPlan = computed(() => {
+  if (store.deviceData.value?.countryCode === 'KE') {
+    return 'KES 750';
+  }
+
+  return '$5';
+});
 
 const isAnnual = ref(true);
 const planName = computed<PlanName>(() => isAnnual.value ? 'starterAnnual' : 'starterMonthly');

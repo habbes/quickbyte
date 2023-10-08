@@ -1,7 +1,7 @@
 <template>
   <main>
     <button data-featurebase-changelog>
-      Changelog<span id="fb-update-badge"></span>
+      What's new<span id="fb-update-badge"></span>
     </button>
   </main>
 </template>

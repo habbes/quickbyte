@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col flex-1 min-h-screen relative">
-    <div class="absolute top-0 left-0 right-0">
-      <header class="flex flex-row justify-between items-center h-20 px-4 sm:px-10 py-7">
+    <div class=" top-0 left-0 right-0">
+      <header class="flex flex-row justify-between items-center h-20 px-4 sm:px-10 md:px-14 py-7">
         <div id="logo" class="text-white text-xl relative" style="font-family: 'Orbit'">
           <router-link :to="{ name: 'upload' }">
             Quickbyte
