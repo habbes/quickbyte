@@ -28,6 +28,7 @@ export const msalConfig = {
                 if (containsPii) {
                     return;
                 }
+
                 switch (level) {
                     case LogLevel.Error:
                         logger.error(message);
@@ -43,6 +44,7 @@ export const msalConfig = {
                         return;
                 }
             },
+            logLevel: LogLevel.Warning
         },
     },
 };
