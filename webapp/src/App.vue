@@ -1,8 +1,8 @@
-<template>
-  <div class="flex flex-col flex-1 min-h-screen relative">
-    <div class=" top-0 left-0 right-0">
-      <header class="flex flex-row justify-between items-center h-20 px-4 sm:px-10 md:px-14 py-7">
-        <div id="logo" class="text-white text-xl relative" style="font-family: 'Orbit'">
+<!-- <template>
+  <div class="relative flex flex-col flex-1 min-h-screen">
+    <div class="top-0 left-0 right-0 ">
+      <header class="flex flex-row items-center justify-between h-20 px-4 sm:px-10 md:px-14 py-7">
+        <div id="logo" class="relative text-xl text-white" style="font-family: 'Orbit'">
           <router-link :to="{ name: 'upload' }">
             Quickbyte
           </router-link>
@@ -50,4 +50,22 @@ onErrorCaptured((error: Error) => {
   logger.error(error.message, error);
   showToast(error.message, 'error');
 });
+</script> -->
+
+<script setup lang='ts'>
+import AOS from 'aos';
+import { onMounted } from 'vue'
+onMounted(() => {
+  AOS.init()
+})
 </script>
+
+<template>
+  <div class="flex flex-col items-center justify-between w-full min-h-screen mx-auto space-y-10 md:space-y-40 max-w-7xl">
+    <div>
+      <Navbar />
+      <router-view />
+    </div>
+    <FooterSection />
+  </div>
+</template>
