@@ -120,7 +120,7 @@ const pricingPlans = [
           </div>
         </div>
       </div>
-      <div class="absolute top-0 hidden translate-x-16 translate-y-16 right-[300px] xl:block">
+      <div class="absolute top-0 hidden translate-x-16 translate-y-16 right-[300px] lg:block">
         <svg
           class="w-16 h-auto text-orange-500" width="121" height="135" viewBox="0 0 121 135" fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -139,7 +139,7 @@ const pricingPlans = [
           />
         </svg>
       </div>
-      <div class="absolute hidden -translate-x-16 translate-y-16 bottom-10 left-48 md:block">
+      <div class="absolute hidden -translate-x-16 translate-y-16 bottom-10 left-48 lg:block">
         <svg
           class="w-56 h-auto text-cyan-500" width="347" height="188" viewBox="0 0 347 188" fill="none"
           xmlns="http://www.w3.org/2000/svg"
