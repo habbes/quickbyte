@@ -32,3 +32,11 @@ import LoginButton from '@/components/LoginButton.vue';
     <CTASection/>
   </main>
 </template>
+
+<script setup lang="ts">
+import HeroSection from '@/components/sections/HeroSection.vue'
+import FeatureSection from '@/components/sections/FeatureSection.vue'
+import PriceSection from '@/components/sections/PriceSection.vue'
+import FAQSection from '@/components/sections/FAQSection.vue';
+import CTASection from '@/components/sections/CTASection.vue';
+</script>

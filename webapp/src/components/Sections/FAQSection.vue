@@ -50,3 +50,8 @@
     </div>
   </Container>
 </template>
+
+<script setup lang="ts">
+import Container from '@/components/base/Container.vue'
+import Accordion from '@/components/base/Accordion.vue'
+</script>

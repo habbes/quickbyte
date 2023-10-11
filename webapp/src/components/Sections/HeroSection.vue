@@ -29,4 +29,9 @@
         </div>
     </Container>
 </template>
+<script setup lang="ts">
+import { Icon } from '@iconify/vue'
+import Container from '@/components/base/Container.vue'
+import ModalVideo from '@/components/modal/ModalVideo.vue'
+</script>
   

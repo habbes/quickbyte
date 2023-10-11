@@ -1,16 +1,3 @@
-<script setup lang="ts">
-import { ref } from 'vue'
-import { Switch } from '@headlessui/vue'
-
-const emit = defineEmits<{
-  (e: 'toggle', value: boolean): void
-}>()
-const enabled = ref(false)
-function handleToggleSubscription() {
-  return emit('toggle', enabled.value)
-}
-</script>
-
 <template>
   <div class="flex items-center justify-center">
     <button type="button" class="flex items-center" @click="handleToggleSubscription">
@@ -31,3 +18,17 @@ function handleToggleSubscription() {
     </button>
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { Switch } from '@headlessui/vue'
+
+const emit = defineEmits<{
+  (e: 'toggle', value: boolean): void
+}>()
+const enabled = ref(false)
+function handleToggleSubscription() {
+  return emit('toggle', enabled.value)
+}
+</script>
+

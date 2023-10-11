@@ -1,53 +1,3 @@
-<script setup lang="ts">
-import { computed, ref } from 'vue'
-
-const isToggled = ref(false)
-
-function handleToggleSubscription(value: boolean) {
-  isToggled.value = value
-}
-
-const subscriptionPrice = computed(() => {
-  return isToggled.value === true ? 'Sh 750' : 'Sh 900'
-})
-
-const pricingPlans = [
-  {
-    id: 1,
-    plan: 'Professional',
-    planDescription: 'Everything a small team needs.',
-    currency: 'KSH / month',
-    recommended: false,
-    features: [
-      {
-        id: 1,
-        feature: 'Send up to 200GB per transfer',
-      },
-
-      {
-        id: 2,
-        feature: 'Recover failed transfers within 7 days',
-      },
-
-      {
-        id: 3,
-        feature: '500GB total storage size',
-      },
-
-      {
-        id: 4,
-        feature: '30-day transfer expiry',
-      },
-
-      {
-        id: 5,
-        feature: 'More features coming soon',
-      },
-    ],
-  },
-]
-</script>
-
 <template>
   <section id="#pricing" class="max-w-[85rem] pt-20 px-4 sm:px-6 lg:px-8 mx-auto">
     <div class="mb-6 space-y-6">
@@ -66,7 +16,7 @@ const pricingPlans = [
       <div class="grid grid-cols-1 gap-6 lg:gap-8">
         <div v-for="plan in pricingPlans" :key="plan.id">
           <div
-            class="relative z-10 p-4 bg-black border border-[#131319] rounded-xl md:p-10 dark:bg-slate-900 dark:border-gray-700"
+            class="relative z-10 p-4 bg-black border border-[#131319] rounded-xl md:p-10 "
           >
             <h3 class="text-xl font-bold text-center text-white ">
               {{ plan.plan }}
@@ -76,7 +26,7 @@ const pricingPlans = [
             </div>
             <span
               v-if="plan.recommended"
-              class="absolute top-0 right-0 rounded-tr-xl rounded-bl-xl text-xs font-medium bg-[#5B53FF] text-white py-1.5 px-3 dark:bg-gray-900"
+              class="absolute top-0 right-0 rounded-tr-xl rounded-bl-xl text-xs font-medium bg-[#5B53FF] text-white py-1.5 px-3 "
             >Recommended</span>
 
             <div class="flex items-center mt-5 space-x-2">
@@ -153,3 +103,55 @@ const pricingPlans = [
     </div>
   </section>
 </template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import SubscriptionToggle from '@/components/base/SubscriptionToggle.vue'
+
+const isToggled = ref(false)
+
+function handleToggleSubscription(value: boolean) {
+  isToggled.value = value
+}
+
+const subscriptionPrice = computed(() => {
+  return isToggled.value === true ? 'Sh 750' : 'Sh 900'
+})
+
+const pricingPlans = [
+  {
+    id: 1,
+    plan: 'Professional',
+    planDescription: 'Everything a small team needs.',
+    currency: 'KSH / month',
+    recommended: false,
+    features: [
+      {
+        id: 1,
+        feature: 'Send up to 200GB per transfer',
+      },
+
+      {
+        id: 2,
+        feature: 'Recover failed transfers within 7 days',
+      },
+
+      {
+        id: 3,
+        feature: '500GB total storage size',
+      },
+
+      {
+        id: 4,
+        feature: '30-day transfer expiry',
+      },
+
+      {
+        id: 5,
+        feature: 'More features coming soon',
+      },
+    ],
+  },
+]
+</script>
+

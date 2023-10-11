@@ -1,20 +1,3 @@
-<script setup lang="ts">
-import { ref, watch } from 'vue'
-import {
-    Dialog,
-    DialogPanel,
-    TransitionRoot,
-    TransitionChild,
-} from '@headlessui/vue'
-
-const modalOpen = ref<boolean>(false)
-const videoRef = ref<HTMLVideoElement | null>(null)
-
-watch(videoRef, () => {
-    videoRef.value?.play()
-})
-</script>
-
 <template>
     <div>
         <button
@@ -60,3 +43,20 @@ watch(videoRef, () => {
         </TransitionRoot>
     </div>
 </template>
+<script setup lang="ts">
+import { Icon } from '@iconify/vue'
+import { ref, watch } from 'vue'
+import {
+    Dialog,
+    DialogPanel,
+    TransitionRoot,
+    TransitionChild,
+} from '@headlessui/vue'
+
+const modalOpen = ref<boolean>(false)
+const videoRef = ref<HTMLVideoElement | null>(null)
+
+watch(videoRef, () => {
+    videoRef.value?.play()
+})
+</script>

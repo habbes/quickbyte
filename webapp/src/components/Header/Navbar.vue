@@ -1,24 +1,3 @@
-<script setup lang='ts'>
-const navLinks = [
-  {
-    id: 1,
-    name: 'Features',
-    path: '#features',
-  },
-  {
-    id: 2,
-    name: 'Pricing',
-    path: '#pricing',
-  },
-
-  {
-    id: 4,
-    name: 'FAQs',
-    path: '#faqs',
-  },
-]
-</script>
-
 <template>
   <header class="sticky inset-0 top-0 z-50 w-full ">
     <nav class="border-b px-6 border-[#131319] backdrop-blur-[12px] ">
@@ -65,6 +44,27 @@ const navLinks = [
     </nav>
   </header>
 </template>
+
+<script setup lang='ts'>
+const navLinks = [
+  {
+    id: 1,
+    name: 'Features',
+    path: '#features',
+  },
+  {
+    id: 2,
+    name: 'Pricing',
+    path: '#pricing',
+  },
+
+  {
+    id: 4,
+    name: 'FAQs',
+    path: '#faqs',
+  },
+]
+</script>
 
 <style scoped>
 #toggle_nav:checked~div #hamburger #line {

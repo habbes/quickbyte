@@ -1,19 +1,3 @@
-<script setup lang="ts">
-import { computed, ref } from "vue"
-import { useElementSize } from "@vueuse/core"
-
-const show = ref(false)
-const contents = ref<HTMLElement>()
-
-const { height: targetHeight } = useElementSize(contents, undefined, {
-  box: "border-box",
-})
-
-const height = computed(() => (show.value ? targetHeight.value : 0))
-
-const toggle = () => (show.value = !show.value)
-</script>
-
 <template>
   <div
     class="group rounded-xl border border-[#101214] bg-[#010101] transition duration-500  md:rounded-2xl">
@@ -40,3 +24,20 @@ const toggle = () => (show.value = !show.value)
     </div>
   </div>
 </template>
+<script setup lang="ts">
+import { Icon } from '@iconify/vue'
+import { computed, ref } from "vue"
+import { useElementSize } from "@vueuse/core"
+
+const show = ref(false)
+const contents = ref<HTMLElement>()
+
+const { height: targetHeight } = useElementSize(contents, undefined, {
+  box: "border-box",
+})
+
+const height = computed(() => (show.value ? targetHeight.value : 0))
+
+const toggle = () => (show.value = !show.value)
+</script>
+

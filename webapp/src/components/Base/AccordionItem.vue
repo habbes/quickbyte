@@ -1,27 +1,3 @@
-<script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue"
-
-const contents = ref<HTMLElement>()
-
-const show = ref(false)
-const toggle = () => (show.value = !show.value)
-
-const targetHeight = ref(0)
-const height = computed(() => (show.value ? targetHeight.value : 0))
-
-const setTargetHeight = () => (targetHeight.value = (contents.value! as HTMLElement).offsetHeight)
-
-onMounted(() => {
-  setTargetHeight()
-
-  window.addEventListener("resize", setTargetHeight)
-})
-
-onUnmounted(() => {
-  window.removeEventListener("resize", setTargetHeight)
-})
-</script>
-
 <template>
   <div
     class="group rounded-xl border border-[#333333] bg-[#010101] transition duration-500 hover:bg-[#292929] md:rounded-2xl">
@@ -48,3 +24,28 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+<script setup lang="ts">
+import { Icon } from '@iconify/vue'
+import { computed, onMounted, onUnmounted, ref } from "vue"
+
+const contents = ref<HTMLElement>()
+
+const show = ref(false)
+const toggle = () => (show.value = !show.value)
+
+const targetHeight = ref(0)
+const height = computed(() => (show.value ? targetHeight.value : 0))
+
+const setTargetHeight = () => (targetHeight.value = (contents.value! as HTMLElement).offsetHeight)
+
+onMounted(() => {
+  setTargetHeight()
+
+  window.addEventListener("resize", setTargetHeight)
+})
+
+onUnmounted(() => {
+  window.removeEventListener("resize", setTargetHeight)
+})
+</script>
+
