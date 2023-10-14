@@ -4,9 +4,11 @@ import * as Sentry from "@sentry/vue";
 import './styles/style.css'
 import App from './App.vue'
 import { router } from './router'
+import VueSmoothScroll from 'vue3-smooth-scroll'
+import 'aos/dist/aos.css';
 
 const app = createApp(App)
-
+app.use(VueSmoothScroll)
 Sentry.init({
     app,
     dsn: import.meta.env.VITE_SENTRY_DSN,

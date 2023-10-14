@@ -5,7 +5,12 @@ export default {
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        Inter: 'Inter',
+        Orbit: 'Orbit',
+      },
+    },
   },
   plugins: [require("daisyui")],
   daisyui: {

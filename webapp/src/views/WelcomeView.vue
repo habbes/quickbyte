@@ -1,25 +1,42 @@
-<template>
-  <div class="flex flex-col md:flex-row items-center md:justify-between min-h-screen px-10 md:px-14 gap-5">
+<!-- <template>
+  <div class="flex flex-col items-center min-h-screen gap-5 px-10 md:flex-row md:justify-between md:px-14">
     <div class=sm:flex-1>
-      <div class="text-white mb-4">
+      <div class="mb-4 text-white">
         <h1
           class="text-white font-light text-4xl text-[50px] mb-10 opacity-80"
           style="font-family: 'Secular One'; line-height: 60px;"
         >
           Quickbyte is the best way to transfer large files.
         </h1>
-        <p class="mb-10 opacity-70 text-xl">
+        <p class="mb-10 text-xl opacity-70">
           Starting from just $6 a month.
         </p>
       </div>
       <LoginButton />
     </div>
-    <div class="sm:flex-1 bg-gray-900 p-1 md:p-1 rounded relative bg-opacity-50" >
-    <!-- <div class="flex-1 mockup-window border bg-base-300"> -->
+    <div class="relative p-1 bg-gray-900 bg-opacity-50 rounded sm:flex-1 md:p-1" >
+    <div class="flex-1 border mockup-window bg-base-300">
       <iframe class="w-full sm:w-full sm:h-[315px]" src="https://www.youtube.com/embed/aGQZpvjTF1M?si=9BKY3untP9fi2TQd" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
     </div>
   </div>
-</template>
-<script lang="ts" setup>
+</template> -->
+<!-- <script lang="ts" setup>
 import LoginButton from '@/components/LoginButton.vue';
+</script> -->
+<template>
+  <main class="space-y-20">
+    <HeroSection />
+    <FeatureSection />
+    <PriceSection />
+    <FAQSection />
+    <CTASection/>
+  </main>
+</template>
+
+<script setup lang="ts">
+import HeroSection from '@/components/sections/HeroSection.vue'
+import FeatureSection from '@/components/sections/FeatureSection.vue'
+import PriceSection from '@/components/sections/PriceSection.vue'
+import FAQSection from '@/components/sections/FAQSection.vue';
+import CTASection from '@/components/sections/CTASection.vue';
 </script>
