@@ -145,9 +145,14 @@ const pricingPlans = [
         id: 4,
         feature: '30-day transfer expiry',
       },
-
+      
       {
         id: 5,
+        feature: '15-day free trial',
+      },
+
+      {
+        id: 6,
         feature: 'More features coming soon',
       },
     ],
