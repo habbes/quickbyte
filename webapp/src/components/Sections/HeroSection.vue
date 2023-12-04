@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import { auth } from "@/app-utils";
 import { Icon } from '@iconify/vue'
-import Container from '@/components/base/Container.vue'
+import Container from '@/components/Base/Container.vue'
 import ModalVideo from '@/components/Modal/ModalVideo.vue'
 </script>
   

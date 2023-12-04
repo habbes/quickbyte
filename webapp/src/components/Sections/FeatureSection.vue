@@ -44,7 +44,7 @@
 
 <script setup lang='ts'>
 import { Icon } from '@iconify/vue'
-import Container from '@/components/base/Container.vue'
+import Container from '@/components/Base/Container.vue'
 import Badge from '@/components/Base/Badge.vue'
 
 const features = [

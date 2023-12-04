@@ -52,6 +52,6 @@
 </template>
 
 <script setup lang="ts">
-import Container from '@/components/base/Container.vue'
-import Accordion from '@/components/base/Accordion.vue'
+import Container from '@/components/Base/Container.vue'
+import Accordion from '@/components/Base/Accordion.vue'
 </script>
