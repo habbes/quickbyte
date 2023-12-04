@@ -1,9 +1,9 @@
 <template>
-  <main>
-    <button data-featurebase-changelog>
-      What's new<span id="fb-update-badge"></span>
-    </button>
-  </main>
+    <li class="pb-3 border-b border-[#131319] lg:border-none lg:pb-0">
+      <div data-featurebase-changelog class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white hover:cursor-pointer">
+        What's new<span id="fb-update-badge"></span>
+      </div>
+    </li>
 </template>
 <script setup lang="ts">
 import { onMounted, onBeforeMount } from "vue";

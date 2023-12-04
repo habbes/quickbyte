@@ -9,8 +9,9 @@
             </router-link>
           </div>
           <p class="mt-3 text-xs text-[#A1A1A1] hover:text-white transition-all duration-200 ease-in sm:text-sm ">
+            A product of
             <a href="https://manuscript.live/" target="_blank">
-              A product of Alpha Manuscript
+              Alpha Manuscript
               Limited
             </a>
           </p>

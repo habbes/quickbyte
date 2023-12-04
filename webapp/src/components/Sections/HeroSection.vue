@@ -9,13 +9,13 @@
                     </h1>
                 </div>
                 <p class="mt-3 text-sm text-center leading-6 lg:text-start md:text-lg md:leading-8 text-[#7B7F98] ">
-                    Blazingly fast, simple, and efficient way of transferring large files with the focus of delightful user
-                    experience in mind.
+                    Blazingly fast, simple, and efficient way of transferring large files.
                 </p>
                 <div class="grid w-full gap-3 mt-6 place-items-center lg:inline-flex">
                     <button
+                        @click="auth.signIn()"
                         class="px-4 py-3 text-white bg-[#5B53FF] hover:bg-[#5237F9] transition duration-200 ease-in rounded-md flex items-center space-x-2">
-                        <p>Get started</p>
+                        <span>Get started</span>
                         <Icon icon="ic:baseline-arrow-forward-ios" class="text-white" />
                     </button>
                 </div>
@@ -30,8 +30,9 @@
     </Container>
 </template>
 <script setup lang="ts">
+import { auth } from "@/app-utils";
 import { Icon } from '@iconify/vue'
 import Container from '@/components/base/Container.vue'
-import ModalVideo from '@/components/modal/ModalVideo.vue'
+import ModalVideo from '@/components/Modal/ModalVideo.vue'
 </script>
   
