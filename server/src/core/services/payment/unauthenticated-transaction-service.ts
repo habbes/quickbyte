@@ -44,6 +44,11 @@ export class UnauthenticatedTransactionService {
         if (event.event.startsWith('subscription')) {
             await this.handleSubscriptionEvent(event, appServices);
         }
+        else if (event.event == 'invoice.update') {
+            await this.handleInvoiceUpdateEvent(event, appServices);
+        }
+
+        console.log('Event not handled', event.event);
     }
 
     async handleSubscriptionEvent(event: PaystackEvent, appServices: AppServices) {
@@ -59,6 +64,32 @@ export class UnauthenticatedTransactionService {
             const authContext = { user: { ...user, account } };
             const txService = appServices.accounts.transactions(authContext);
             
+            await txService.verifySubscriptionAtProvider(handler, sub);
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async handleInvoiceUpdateEvent(event: PaystackEvent, appServices: AppServices) {
+        try {
+            // TODO: Since we have a the subscription and the charge,
+            // we could technically update the transaction and subscription details without
+            // having to make an extra call to paystack or all the db calls
+            // but I opted to re-use already existing code to implement this quicker
+            // even if it's less efficient. Might come back to improve this later.
+            const handler = await this.config.paymentHandlers.getByName('paystack');
+            // find subscription
+            console.log('subscription id', event.data.subscription.id, 'subscription code', event.data.subscription.subscription_code);
+            const sub = await this.getSubscriptionByProviderAndId('paystack', String(event.data.subscription.id));
+
+            // verify the subscription
+            // find user and account
+            const account = await appServices.accounts.getById(sub.accountId);
+            const user = await appServices.auth.getUserById(account.owner._id);
+            const authContext = { user: { ...user, account } };
+            const txService = appServices.accounts.transactions(authContext);
+
             await txService.verifySubscriptionAtProvider(handler, sub);
         } catch (e: any) {
             rethrowIfAppError(e);
