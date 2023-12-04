@@ -6,6 +6,9 @@ import PaymentView from '../views/PaymentView.vue';
 import TransactionView from '../views/TransactionView.vue';
 import SettingsView from '@/views/SettingsView.vue';
 import BillingView from '@/views/BillingView.vue';
+import PlayerView from '@/views/PlayerView.vue';
+import TransfersView from '@/views/TransfersView.vue';
+import AppView from '@/views/AppView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,31 +20,75 @@ const router = createRouter({
       children: [
         {
           path: '',
-          name: 'upload',
-          component: UploadView
-        },
-        {
-          path: 'pay',
-          name: 'pay',
-          component: PaymentView
-        },
-        {
-          path: 'transaction/:transactionId',
-          name: 'transaction',
-          component: TransactionView
-        },
-        {
-          path: 'settings',
-          name: 'settings',
-          component: SettingsView,
+          name: 'appHome',
+          component: AppView,
           children: [
             {
-              path: 'billing',
-              name: 'billing',
-              component: BillingView
+              path: '',
+              name: 'upload',
+              component: UploadView
+            },
+            {
+              path: 'pay',
+              name: 'pay',
+              component: PaymentView
+            },
+            {
+              path: 'transaction/:transactionId',
+              name: 'transaction',
+              component: TransactionView
+            },
+            {
+              path: 'transfers',
+              name: 'transfers',
+              component: TransfersView
+            },
+            {
+              path: 'settings',
+              name: 'settings',
+              component: SettingsView,
+              children: [
+                {
+                  path: 'billing',
+                  name: 'billing',
+                  component: BillingView
+                }
+              ]
             }
           ]
         }
+        // {
+        //   path: '',
+        //   name: 'upload',
+        //   component: UploadView
+        // },
+        // {
+        //   path: 'pay',
+        //   name: 'pay',
+        //   component: PaymentView
+        // },
+        // {
+        //   path: 'transaction/:transactionId',
+        //   name: 'transaction',
+        //   component: TransactionView
+        // },
+        // {
+        //   path: 'transfers',
+        //   name: 'transfers',
+        //   component: TransfersView
+        // },
+        // {
+        //   path: 'settings',
+        //   name: 'settings',
+        //   component: SettingsView,
+        //   children: [
+        //     {
+        //       path: 'billing',
+        //       name: 'billing',
+        //       component: BillingView
+        //     }
+        //   ]
+        // }
       ]
     },
     {
@@ -49,6 +96,11 @@ const router = createRouter({
       name: 'download',
       component: DownloadView
     },
+    {
+      path: '/player/:downloadId',
+      name: 'player',
+      component: PlayerView
+    }
   ]
 })
 

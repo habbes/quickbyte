@@ -53,18 +53,8 @@ onErrorCaptured((error: Error) => {
 </script> -->
 
 <template>
-  <div class="flex flex-col items-center justify-between w-full min-h-screen  mx-auto max-w-7xl">
-    <Navbar />
-    <div class="space-y-10 md:space-y-40">
-        
-        <!-- <div>
-          
-        </div> -->
-        <router-view />
-      <FooterSection />
-    </div>
-    <Toast />
-  </div>
+  <router-view />
+  <Toast />
 </template>
 
 <script setup lang='ts'>

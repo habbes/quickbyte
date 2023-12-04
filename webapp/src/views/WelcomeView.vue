@@ -24,13 +24,15 @@
 import LoginButton from '@/components/LoginButton.vue';
 </script> -->
 <template>
-  <div class="space-y-20">
-    <HeroSection />
-    <FeatureSection />
-    <PriceSection />
-    <FAQSection />
-    <CTASection/>
-  </div>
+  <LandingShell>
+    <div class="space-y-20">
+      <HeroSection />
+      <FeatureSection />
+      <PriceSection />
+      <FAQSection />
+      <CTASection/>
+    </div>
+  </LandingShell>
 </template>
 
 <script setup lang="ts">
@@ -39,4 +41,5 @@ import FeatureSection from '@/components/Sections/FeatureSection.vue'
 import PriceSection from '@/components/Sections/PriceSection.vue'
 import FAQSection from '@/components/Sections/FAQSection.vue';
 import CTASection from '@/components/Sections/CTASection.vue';
+import LandingShell from '@/components/LandingShell.vue';
 </script>

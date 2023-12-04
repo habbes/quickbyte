@@ -1,4 +1,5 @@
 <template>
+  <AppShell>
   <div class="flex flex-col p-5 gap-2 justify-center sm:items-center sm:mt-20">
     <div v-if="(!optimalDownloaderSupported) && (totalSize && totalSize > MIN_SIZE_FOR_DOWNLOAD_WARNING)"
       class="alert alert-warning w-96">
@@ -95,6 +96,7 @@
       <router-link class="btn w-full" :to="{ name: 'upload' }">Have a file to send?</router-link>
     </div>
   </div>
+  </AppShell>
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue"
@@ -103,6 +105,7 @@ import { apiClient, downloaderProvider, logger, windowUnloadManager, getDeviceDa
 import { humanizeSize, ApiError, type DownloadRequestResult, ensure, isOperationCancelledError, isNetworkError, retryOnError } from "@/core";
 import { ArrowDownTrayIcon } from "@heroicons/vue/24/solid";
 import FileListItem from '@/components/FileListItem.vue';
+import AppShell from '@/components/AppShell.vue'
 
 type DownloadState = 'pending' | 'complete' | 'inProgress';
 

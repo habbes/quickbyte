@@ -23,7 +23,14 @@
           class="absolute left-0 z-20 flex-col flex-wrap justify-end invisible w-full gap-6 py-6 transition-all duration-300 origin-top scale-95 translate-y-1 opacity-0 rounded-3xl top-full lg:relative lg:scale-100 lg:peer-checked:translate-y-0 lg:translate-y-0 lg:flex lg:flex-row lg:items-center lg:gap-0 lg:p-0 lg:bg-transparent lg:w-7/12 lg:visible lg:opacity-100 lg:border-none peer-checked:scale-100 peer-checked:opacity-100 peer-checked:visible lg:shadow-none">
           <div class="w-full lg:pr-4 lg:w-auto lg:pt-0">
             <ul
-              class="flex flex-col gap-6 font-medium tracking-wide text-black lg:text-sm lg:items-center lg:space-x-4 lg:flex-row lg:gap-0">
+              class="flex flex-col gap-6 font-medium tracking-wide text-black lg:text-sm lg:items-center lg:space-x-4 lg:flex-row lg:gap-0"
+            >
+              <li>
+                <router-link
+                  :to="{ name: 'transfers' }"
+                  class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"
+                >Transfers</router-link>
+              </li>
               <FeaturebaseChangelog />
               <li v-for="{ id, name, path } in navLinks" :key="id"
                 class="pb-3 border-b border-[#131319] lg:border-none lg:pb-0">
