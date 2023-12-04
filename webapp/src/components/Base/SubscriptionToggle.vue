@@ -23,10 +23,17 @@
 import { ref } from 'vue'
 import { Switch } from '@headlessui/vue'
 
+const props = defineProps<{
+  initialValue?: boolean
+}>();
+
 const emit = defineEmits<{
   (e: 'toggle', value: boolean): void
 }>()
-const enabled = ref(false)
+
+
+const enabled = ref(props.initialValue ? true : false);
+
 function handleToggleSubscription() {
   return emit('toggle', enabled.value)
 }

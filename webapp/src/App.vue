@@ -53,22 +53,46 @@ onErrorCaptured((error: Error) => {
 </script> -->
 
 <template>
-  <div class="flex flex-col items-center justify-between w-full min-h-screen mx-auto space-y-10 md:space-y-40 max-w-7xl">
-    <div>
-      <Navbar />
-      <router-view />
+  <div class="flex flex-col items-center justify-between w-full min-h-screen  mx-auto max-w-7xl">
+    <Navbar />
+    <div class="space-y-10 md:space-y-40">
+        
+        <!-- <div>
+          
+        </div> -->
+        <router-view />
+      <FooterSection />
     </div>
-    <FooterSection />
+    <Toast />
   </div>
 </template>
 
 <script setup lang='ts'>
+import { onMounted, watch, onErrorCaptured } from 'vue';
+import { useUser, initAuth, initUserData, logger, store, showToast } from "@/app-utils";
 // AOS stands for Animate On Scroll, is a library that adds cool animations to elements as you scroll down a webpage.
 import AOS from 'aos';
-import Navbar from '@/components/header/Navbar.vue'
-import FooterSection from '@/components/sections/FooterSection.vue'
-import { onMounted } from 'vue'
+import Navbar from '@/components/Header/Navbar.vue';
+import FooterSection from '@/components/Sections/FooterSection.vue';
+import Toast from '@/components/Toast.vue';
+
+const user = useUser();
+initAuth();
+const userAccount = store.userAccount;
+
 onMounted(() => {
   AOS.init()
-})
+});
+
+watch(user, async () => {
+  if (!user.value) return;
+
+  logger.log('User update, refreshing data');
+  try {
+    await initUserData();
+  } catch (e: any) {
+    showToast(e.message, 'error');
+    logger.error(e.message, e);
+  }
+});
 </script>

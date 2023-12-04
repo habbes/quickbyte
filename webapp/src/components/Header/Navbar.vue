@@ -24,6 +24,7 @@
           <div class="w-full lg:pr-4 lg:w-auto lg:pt-0">
             <ul
               class="flex flex-col gap-6 font-medium tracking-wide text-black lg:text-sm lg:items-center lg:space-x-4 lg:flex-row lg:gap-0">
+              <FeaturebaseChangelog />
               <li v-for="{ id, name, path } in navLinks" :key="id"
                 class="pb-3 border-b border-[#131319] lg:border-none lg:pb-0">
                 <router-link v-smooth-scroll :to="path"
@@ -33,9 +34,12 @@
               </li>
               <li>
                 <button
+                  v-if="!user"
+                  @click="auth.signIn()"
                   class="px-4 py-2 text-white bg-[#5B53FF] hover:bg-[#5237F9] transition duration-200 ease-in rounded-2xl">
                   Sign In
                 </button>
+                <UserDropDownMenu v-if="user" :user="user" />
               </li>
             </ul>
           </div>
@@ -46,24 +50,37 @@
 </template>
 
 <script setup lang='ts'>
-const navLinks = [
-  {
-    id: 1,
-    name: 'Features',
-    path: '#features',
-  },
-  {
-    id: 2,
-    name: 'Pricing',
-    path: '#pricing',
-  },
+import { computed } from 'vue';
+import { useUser, auth } from '@/app-utils';
+import FeaturebaseChangelog from '@/components/FeaturebaseChangelog.vue';
+import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
 
-  {
-    id: 4,
-    name: 'FAQs',
-    path: '#faqs',
-  },
-]
+const user = useUser();
+
+const navLinks = computed(() => {
+  if (!user.value) {
+    return [
+      {
+        id: 1,
+        name: 'Features',
+        path: '#features',
+      },
+      {
+        id: 2,
+        name: 'Pricing',
+        path: '#pricing',
+      },
+
+      {
+        id: 4,
+        name: 'FAQs',
+        path: '#faqs',
+      },
+    ]
+  }
+
+  return [];
+})
 </script>
 
 <style scoped>

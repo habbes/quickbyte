@@ -5,8 +5,9 @@
                 <div class="grid place-items-center" data-aos="fade-up">
                     <h1
                         class="max-w-lg text-2xl font-semibold leading-8 text-center text-white md:leading-tight md:text-4xl">
-                        QuickByte has features both <span class="text-[#5B53FF]">familiar</span> and <span
-                            class="text-[#5B53FF]">new</span>
+                        Quickbyte features
+                        <!-- both <span class="text-[#5B53FF]">familiar</span> and <span
+                            class="text-[#5B53FF]">new</span> -->
                     </h1>
                 </div>
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -44,7 +45,7 @@
 <script setup lang='ts'>
 import { Icon } from '@iconify/vue'
 import Container from '@/components/base/Container.vue'
-import Badge from '@/components/base/Badge.vue'
+import Badge from '@/components/Base/Badge.vue'
 
 const features = [
     {

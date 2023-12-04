@@ -24,19 +24,19 @@
 import LoginButton from '@/components/LoginButton.vue';
 </script> -->
 <template>
-  <main class="space-y-20">
+  <div class="space-y-20">
     <HeroSection />
     <FeatureSection />
     <PriceSection />
     <FAQSection />
     <CTASection/>
-  </main>
+  </div>
 </template>
 
 <script setup lang="ts">
-import HeroSection from '@/components/sections/HeroSection.vue'
-import FeatureSection from '@/components/sections/FeatureSection.vue'
-import PriceSection from '@/components/sections/PriceSection.vue'
-import FAQSection from '@/components/sections/FAQSection.vue';
-import CTASection from '@/components/sections/CTASection.vue';
+import HeroSection from '@/components/Sections/HeroSection.vue'
+import FeatureSection from '@/components/Sections/FeatureSection.vue'
+import PriceSection from '@/components/Sections/PriceSection.vue'
+import FAQSection from '@/components/Sections/FAQSection.vue';
+import CTASection from '@/components/Sections/CTASection.vue';
 </script>

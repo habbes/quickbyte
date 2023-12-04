@@ -3,13 +3,14 @@
     <div class="mb-6 space-y-6">
       <div class="grid space-y-4 text-center place-items-center">
         <p class="max-w-md text-3xl font-bold leading-10 text-gray-200 lg:text-4xl ">
-          A Plan that supports your <span class="text-[#5B53FF]" data-aos="fade-up">growth</span>
+          A plan that supports your <span class="text-[#5B53FF]" data-aos="fade-up">growth</span>
         </p>
-        <span class="max-w-md text-gray-200">Our pricing plan provides the necessary features and resources to
+        <!-- <span class="max-w-md text-gray-200">Our pricing plan provides the necessary features and resources to
           support
-          your continued expansion and success.</span>
+          your continued expansion and success.
+        </span> -->
       </div>
-      <SubscriptionToggle @toggle="handleToggleSubscription" />
+      <SubscriptionToggle :initialValue="true" @toggle="handleToggleSubscription" />
     </div>
 
     <div class="relative grid place-items-center xl:w-10/12 xl:mx-auto">
@@ -106,9 +107,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import SubscriptionToggle from '@/components/base/SubscriptionToggle.vue'
+import SubscriptionToggle from '@/components/Base/SubscriptionToggle.vue'
 
-const isToggled = ref(false)
+const isToggled = ref(true)
 
 function handleToggleSubscription(value: boolean) {
   isToggled.value = value
@@ -121,8 +122,8 @@ const subscriptionPrice = computed(() => {
 const pricingPlans = [
   {
     id: 1,
-    plan: 'Professional',
-    planDescription: 'Everything a small team needs.',
+    plan: 'Starter',
+    planDescription: 'For solo creators working with clients.',
     currency: 'KSH / month',
     recommended: false,
     features: [

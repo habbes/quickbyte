@@ -39,6 +39,18 @@ export class PlanService {
                 providerIds: {
                     paystack: config.paystackPlanCodes.starterAnnual
                 }
+            },
+            {
+                name: 'freeTrial',
+                displayName: 'Quickbyte Free Trial',
+                price: 0,
+                currency: 'KES',
+                maxStorageSize: 500 * GB,
+                maxTransferSize: 200 * GB,
+                renewalRate: 'monthly',
+                maxTransferValidity: 15,
+                providerIds: {
+                }
             }
         ];
     }
