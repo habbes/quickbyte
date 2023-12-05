@@ -8,6 +8,7 @@ import SettingsView from '@/views/SettingsView.vue';
 import BillingView from '@/views/BillingView.vue';
 import PlayerView from '@/views/PlayerView.vue';
 import TransfersView from '@/views/TransfersView.vue';
+import TransferView from '@/views/TransferView.vue';
 import AppView from '@/views/AppView.vue';
 
 const router = createRouter({
@@ -42,6 +43,11 @@ const router = createRouter({
               path: 'transfers',
               name: 'transfers',
               component: TransfersView
+            },
+            {
+              path: 'transfers/:transferId',
+              name: 'transfer',
+              component: TransferView
             },
             {
               path: 'settings',

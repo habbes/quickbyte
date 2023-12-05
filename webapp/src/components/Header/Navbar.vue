@@ -25,7 +25,7 @@
             <ul
               class="flex flex-col gap-6 font-medium tracking-wide text-black lg:text-sm lg:items-center lg:space-x-4 lg:flex-row lg:gap-0"
             >
-              <li>
+              <li v-if="user">
                 <router-link
                   :to="{ name: 'transfers' }"
                   class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"

@@ -158,6 +158,11 @@ export class ApiClient {
         const result = await this.post<SubscriptionManagementResult>(`accounts/${accountId}/subscriptions/${subscriptionId}/manage`);
         return result;
     }
+    
+    async getTransfers(accountId: string): Promise<Transfer[]> {
+        const result = await this.get<Transfer[]>(`accounts/${accountId}/transfers`);
+        return result;
+    }
 
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
         return this.makeRequest<T>(endpoint, 'GET', undefined, auth);
@@ -288,7 +293,7 @@ export interface CreateTransferResult extends Transfer {
     files: CreateTransferFileResult[]
 }
 
-type GetTransferResult = CreateTransferResult;
+export type GetTransferResult = CreateTransferResult;
 
 export interface CreateTransferFileResult extends TransferFile {
     _id: string,
