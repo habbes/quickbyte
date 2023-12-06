@@ -77,6 +77,9 @@ export interface Transfer extends PersistedModel {
     name: string;
     status: TransferStatus;
     expiresAt: Date;
+    totalSize: number;
+    numFiles: number;
+    transferCompletedAt: string;
 }
 
 export type TransferStatus = 'pending' | 'progress' | 'completed';

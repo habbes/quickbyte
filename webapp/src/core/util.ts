@@ -37,6 +37,12 @@ export function humanizeSize(bytes: number): string {
     return `${tbs} TB`;
 }
 
+export function pluralize(word: string, count: number, plural: string = '') {
+    plural = plural || `${word}s`;
+    // TODO handle special cases (e.g. directory -> directories)
+    return count == 1 ? word : plural;
+}
+
 export function getFileExtension(fileName: string) {
     return fileName.split('.').at(-1);
 }
@@ -44,6 +50,10 @@ export function getFileExtension(fileName: string) {
 export function ensure<T>(obj?: T, message?: string): T {
     if (!obj) throw new Error(message || 'Expected object to be defined.');
     return obj;
+}
+
+export function getTransferDownloadUrl(id: string): string {
+    return `${location.origin}/d/${id}`;
 }
 
 export async function executeTasksInBatches<TSource, TResult>(

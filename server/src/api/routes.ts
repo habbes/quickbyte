@@ -46,6 +46,12 @@ routes.post('/accounts/:accountId/subscriptions/:subscriptionId/manage',
         req.services.accounts.transactions(req.authContext)
         .getSubscriptionManagementUrl(req.params.subscriptionId)));
 
+routes.get('/accounts/:accountId/transfers',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.transfers(req.authContext).get()));
+
 routes.get('/me', requireAuth(), wrapResponse(req =>
     Promise.resolve(req.authContext.user)));
 

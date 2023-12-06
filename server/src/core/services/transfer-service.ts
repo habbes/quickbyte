@@ -105,6 +105,17 @@ export class TransferService {
         }
     }
 
+    async get(): Promise<Transfer[]> {
+        try {
+            const transfers = await this.collection.find({ accountId: this.authContext.user.account._id }).toArray();
+            return transfers;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     async finalize(id: string, args: FinalizeTransferArgs): Promise<Transfer> {
         try {
             const result = await this.collection.findOneAndUpdate({
@@ -238,7 +249,7 @@ export class TransferDownloadService {
     }
 }
 
-export type ITransferService = Pick<TransferService, 'create'|'finalize'|'getById'>;
+export type ITransferService = Pick<TransferService, 'create'|'finalize'|'getById'|'get'>;
 export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDownload'|'updateDownloadRequest'>;
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
