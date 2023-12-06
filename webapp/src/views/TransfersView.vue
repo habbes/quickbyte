@@ -32,7 +32,8 @@ onMounted(async () => {
   const user = ensure(store.userAccount.value);
   loading.value = true;
   try {
-    transfers.value = await apiClient.getTransfers(user.account._id);
+    const result = await apiClient.getTransfers(user.account._id);
+    transfers.value = result.sort((t1, t2) => new Date(t1._createdAt).getTime() - new Date(t2._createdAt).getTime());
   }
   catch (e: any) {
     logger.error(e);

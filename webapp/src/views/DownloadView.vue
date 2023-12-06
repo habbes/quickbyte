@@ -1,101 +1,101 @@
 <template>
   <AppShell>
-  <div class="flex flex-col p-5 gap-2 justify-center sm:items-center sm:mt-20">
-    <div v-if="(!optimalDownloaderSupported) && (totalSize && totalSize > MIN_SIZE_FOR_DOWNLOAD_WARNING)"
-      class="alert alert-warning w-96">
-      <span class="text-xs">
-        This browser does not support an optimal download experience.
-        Consider using Microsoft Edge or Google Chrome
-        if you're downloading large files.
-      </span>
-    </div>
-    <div v-if="download && error"
-      class="alert alert-error w-96 cursor-pointer"
-      @click="error = undefined"
-    >
-      <span class="text-xs">{{ error.message }}</span>
-    </div>
-    <div v-if="download && zipDownloadState === 'complete'"
-      class="alert alert-success w-96 cursor-pointer"
-      @click="zipDownloadState = 'pending'">
-      <span class="text-xs">Download complete. Look for <b>{{ zipFileName }}</b> on your device.</span>
-    </div>
-    <div v-else-if="download && zipDownloadState === 'inProgress'"
-      class="alert alert-info w-96"
-      @click="zipDownloadState = 'pending'">
-      <span class="text-xs">
-        Downloading <b>{{ zipFileName || 'the zip file' }}</b> ({{ humanizeSize(totalSize || 0) }}).
-        Do not close or reload the browser tab.
-      </span>
-    </div>
-    <div class="card max-w-96 sm:w-96 bg-base-100 shadow-xl">
-      <!-- loading -->
-      <div class="card-body" v-if="loading">
-        <p>Validating link...</p>
+    <div class="flex flex-col w-full p-5 gap-2 justify-center sm:items-center sm:mt-20">
+      <div v-if="(!optimalDownloaderSupported) && (totalSize && totalSize > MIN_SIZE_FOR_DOWNLOAD_WARNING)"
+        class="alert alert-warning w-96">
+        <span class="text-xs">
+          This browser does not support an optimal download experience.
+          Consider using Microsoft Edge or Google Chrome
+          if you're downloading large files.
+        </span>
       </div>
+      <div v-if="download && error"
+        class="alert alert-error w-96 cursor-pointer"
+        @click="error = undefined"
+      >
+        <span class="text-xs">{{ error.message }}</span>
+      </div>
+      <div v-if="download && zipDownloadState === 'complete'"
+        class="alert alert-success w-96 cursor-pointer"
+        @click="zipDownloadState = 'pending'">
+        <span class="text-xs">Download complete. Look for <b>{{ zipFileName }}</b> on your device.</span>
+      </div>
+      <div v-else-if="download && zipDownloadState === 'inProgress'"
+        class="alert alert-info w-96"
+        @click="zipDownloadState = 'pending'">
+        <span class="text-xs">
+          Downloading <b>{{ zipFileName || 'the zip file' }}</b> ({{ humanizeSize(totalSize || 0) }}).
+          Do not close or reload the browser tab.
+        </span>
+      </div>
+      <div class="card max-w-96 sm:w-96 bg-base-100 shadow-xl">
+        <!-- loading -->
+        <div class="card-body" v-if="loading">
+          <p>Validating link...</p>
+        </div>
 
-      <!-- file found -->
-      <div class="card-body" v-else-if="download">
-        <h2 class="card-title">{{ download.name  }}</h2>
-        <div v-if="zipDownloadState !== 'inProgress'" class="flex justify-between items-center mb-2">
-          <div class="text-gray-400">
-            {{ download.files.length }} files - {{  humanizeSize(totalSize || 0) }} <br>
-          </div>
-          <div>
-            <button class="btn btn-primary btn-sm w-full" @click="downloadZip()">
-              Download all
-            </button>
-          </div>
-        </div>
-        <div v-else-if="zipDownloadState === 'inProgress'" class="flex justify-between items-center mb-2">
-          <div class="text-gray-400">
-            {{ download.files.length }} files - {{  humanizeSize(totalSize || 0) }} <br>
-          </div>
-        </div>
-        <div v-if="zipDownloadState === 'inProgress'" class="flex flex-col gap-2">
-          <div class="flex justify-center">
-            <div
-              class="radial-progress bg-primary text-primary-content border-4 border-primary"
-              :style="{ '--value': Math.floor(downloadProgress) }">
-                {{ Math.floor(downloadProgress)}}%
+        <!-- file found -->
+        <div class="card-body" v-else-if="download">
+          <h2 class="card-title">{{ download.name  }}</h2>
+          <div v-if="zipDownloadState !== 'inProgress'" class="flex justify-between items-center mb-2">
+            <div class="text-gray-400">
+              {{ download.files.length }} files - {{  humanizeSize(totalSize || 0) }} <br>
+            </div>
+            <div>
+              <button class="btn btn-primary btn-sm w-full" @click="downloadZip()">
+                Download all
+              </button>
             </div>
           </div>
+          <div v-else-if="zipDownloadState === 'inProgress'" class="flex justify-between items-center mb-2">
+            <div class="text-gray-400">
+              {{ download.files.length }} files - {{  humanizeSize(totalSize || 0) }} <br>
+            </div>
+          </div>
+          <div v-if="zipDownloadState === 'inProgress'" class="flex flex-col gap-2">
+            <div class="flex justify-center">
+              <div
+                class="radial-progress bg-primary text-primary-content border-4 border-primary"
+                :style="{ '--value': Math.floor(downloadProgress) }">
+                  {{ Math.floor(downloadProgress)}}%
+              </div>
+            </div>
+          </div>
+          
+          <div class="h-60 overflow-auto">
+            <FileListItem
+              v-for="file in download.files"
+              :key="file._id"
+              :name="file.name"
+              :size="file.size"
+            >
+              <template #icon>
+                <a title="Download file" @click="downloadFile(file._id)" :href="file.downloadUrl" :download="file.name.split('/').at(-1)">
+                  <ArrowDownTrayIcon
+                    class="h-6 w-6 cursor-pointer"
+                  />
+                </a>
+              </template>
+            </FileListItem>
+          </div>
         </div>
-        
-        <div class="h-60 overflow-auto">
-          <FileListItem
-            v-for="file in download.files"
-            :key="file._id"
-            :name="file.name"
-            :size="file.size"
-          >
-            <template #icon>
-              <a title="Download file" @click="downloadFile(file._id)" :href="file.downloadUrl" :download="file.name.split('/').at(-1)">
-                <ArrowDownTrayIcon
-                  class="h-6 w-6 cursor-pointer"
-                />
-              </a>
-            </template>
-          </FileListItem>
-        </div>
-      </div>
 
-      <!-- error -->
-      <div class="card-body" v-else-if="error">
-        <p v-if="(error instanceof ApiError) && error.statusCode === 404" class="text-error">
-          The file does not exist or the link has expired. Make sure you're using
-          the correct link.
-        </p>
-        <p v-else class="text-error">
-          {{ error.message }}
-        </p>
+        <!-- error -->
+        <div class="card-body" v-else-if="error">
+          <p v-if="(error instanceof ApiError) && error.statusCode === 404" class="text-error">
+            The file does not exist or the link has expired. Make sure you're using
+            the correct link.
+          </p>
+          <p v-else class="text-error">
+            {{ error.message }}
+          </p>
+        </div>
+      </div>
+      <div class="mt-5 sm:w-96">
+        <!-- for some reason, when redirecting to home, it goes to a blank page -->
+        <router-link class="btn w-full" :to="{ name: 'upload' }">Have a file to send?</router-link>
       </div>
     </div>
-    <div class="mt-5 sm:w-96">
-      <!-- for some reason, when redirecting to home, it goes to a blank page -->
-      <router-link class="btn w-full" :to="{ name: 'upload' }">Have a file to send?</router-link>
-    </div>
-  </div>
   </AppShell>
 </template>
 <script setup lang="ts">

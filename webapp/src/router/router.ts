@@ -63,38 +63,6 @@ const router = createRouter({
             }
           ]
         }
-        // {
-        //   path: '',
-        //   name: 'upload',
-        //   component: UploadView
-        // },
-        // {
-        //   path: 'pay',
-        //   name: 'pay',
-        //   component: PaymentView
-        // },
-        // {
-        //   path: 'transaction/:transactionId',
-        //   name: 'transaction',
-        //   component: TransactionView
-        // },
-        // {
-        //   path: 'transfers',
-        //   name: 'transfers',
-        //   component: TransfersView
-        // },
-        // {
-        //   path: 'settings',
-        //   name: 'settings',
-        //   component: SettingsView,
-        //   children: [
-        //     {
-        //       path: 'billing',
-        //       name: 'billing',
-        //       component: BillingView
-        //     }
-        //   ]
-        // }
       ]
     },
     {
