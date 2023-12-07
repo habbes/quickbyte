@@ -23,10 +23,32 @@ export class UnauthenticatedTransactionService {
 
     async getSubscriptionByProviderAndId(provider: string, providerId: string): Promise<Subscription> {
         try {
-            const sub = await this.subCollection.findOne({
-                provider,
-                providerId: String(providerId)
-            });
+            let sub: Subscription|null;
+            // THIS is a hack, paystack has both an id and subscription_code,
+            // We use the id as the providerId field, but some paystack events
+            // only contain the subscription code
+            // Should we migrate the providerId to the subscriptionCode?
+            if (provider === 'paystack') {
+                sub = await this.subCollection.findOne({
+                    $and:
+                    [
+                        { provider: provider },
+                        {
+                            $or: [
+                                { providerId: providerId },
+                                {
+                                    'metadata.subscriptionCode': providerId
+                                }
+                            ]
+                        }
+                    ]
+                });
+            } else {
+                sub = await this.subCollection.findOne({
+                    provider,
+                    providerId: String(providerId)
+                });
+            }
 
             if (!sub) {
                 throw createResourceNotFoundError('Could not find subscription.');
@@ -80,9 +102,16 @@ export class UnauthenticatedTransactionService {
             // even if it's less efficient. Might come back to improve this later.
             const handler = await this.config.paymentHandlers.getByName('paystack');
             // find subscription
-            console.log('subscription id', event.data.subscription.id, 'subscription code', event.data.subscription.subscription_code);
-            const sub = await this.getSubscriptionByProviderAndId('paystack', String(event.data.subscription.id));
-
+            const subscriptionData = event.data.subscription;
+            console.log('subscription id', subscriptionData.id, 'subscription code', subscriptionData.subscription_code);
+            // THIS is a hack, paystack has both an id and subscription_code,
+            // We use the id as the providerId field, but some paystack events
+            // only contain the subscription code
+            const id = subscriptionData.id || subscriptionData.subscription_code;
+            console.log('id used', id);
+            
+            const sub = await this.getSubscriptionByProviderAndId('paystack', id);
+            console.log('found sub', sub);
             // verify the subscription
             // find user and account
             const account = await appServices.accounts.getById(sub.accountId);
