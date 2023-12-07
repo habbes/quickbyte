@@ -333,7 +333,33 @@ export class TransactionService {
                 // of days.
                 // For example, October 31 + 1 month = November 30
                 // Jan 30 + 1 = Feb 28
-                subUpdate.expiresAt = LuxonDateTime.fromJSDate(now).plus({ months: 1 }).toJSDate();
+                
+                if (plan.renewalRate === 'monthly') {
+                    subUpdate.expiresAt = LuxonDateTime.fromJSDate(now).plus({ months: 1 }).toJSDate();
+                } else if (plan.renewalRate === 'annual')
+                {
+                    subUpdate.expiresAt = LuxonDateTime.fromJSDate(now).plus({ years: 1 }).toJSDate();
+                } else {
+                    subUpdate.expiresAt = result.renewsAt;
+                }
+            }
+            // else if (result.status === 'active' && subscription.expiresAt && subscription.expiresAt?.getTime() <= Date.now()) {
+            //     // TODO: we should use this logic only when we're certain
+            //     // this is called only in response to a subscription renewal event
+            //     // otherwise it can update the expiry when it shouldn't. For that reason, I've commented
+            //     // out this block of code.
+            //     // If we've crossed the expiry date, then update the expiry date to the next period
+            //     const currentDate = LuxonDateTime.fromJSDate(subscription.expiresAt);
+            //     const nextExpiry = plan.renewalRate === 'monthly' ?
+            //         currentDate.plus({ months: 1 }).toJSDate() :
+            //         plan.renewalRate === 'annual'?
+            //         currentDate.plus({ years: 1 }).toJSDate() :
+            //         result.renewsAt;
+                
+            //         subUpdate.expiresAt = nextExpiry;
+            // }
+            else {
+                subUpdate.expiresAt = result.renewsAt;
             }
 
             const updateResult = await this.subscriptionCollection.findOneAndUpdate({
