@@ -4,7 +4,7 @@
     <div class="flex-1 flex flex-row">
       <div class="w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col justify-end">
         <div class="overflow-y-scroll flex flex-col justify-end" :style="commentsListClasses">
-          <div v-for="comment in comments" class="px-5 py-2 border-b border-b-[#120c11] last:border-b-0">
+          <div v-for="comment in comments" class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0">
             <div class="flex flex-row items-center justify-between mb-2">
               <div class="flex flex-row items-center gap-2">
                 <span class="text-sm text-white">{{ comment.commenter }}</span>
