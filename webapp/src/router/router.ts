@@ -50,6 +50,11 @@ const router = createRouter({
               component: TransferView
             },
             {
+              path: '/player/:downloadId',
+              name: 'player',
+              component: PlayerView
+            },
+            {
               path: 'settings',
               name: 'settings',
               component: SettingsView,
@@ -69,11 +74,6 @@ const router = createRouter({
       path: '/d/:downloadId',
       name: 'download',
       component: DownloadView
-    },
-    {
-      path: '/player/:downloadId',
-      name: 'player',
-      component: PlayerView
     }
   ]
 })

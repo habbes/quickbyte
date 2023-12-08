@@ -37,6 +37,20 @@ export function humanizeSize(bytes: number): string {
     return `${tbs} TB`;
 }
 
+export function formatTimestampDuration(timestampMillis: number): string {
+    // Convert milliseconds to seconds
+    const seconds = Math.floor(timestampMillis / 1000);
+  
+    // Calculate minutes and remaining seconds
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+  
+    // Format the duration as MM:SS
+    const formattedDuration = `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+  
+    return formattedDuration;
+  }
+
 export function pluralize(word: string, count: number, plural: string = '') {
     plural = plural || `${word}s`;
     // TODO handle special cases (e.g. directory -> directories)
