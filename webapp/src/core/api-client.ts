@@ -1,4 +1,4 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs } from './types.js'
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -162,6 +162,18 @@ export class ApiClient {
     async getTransfers(accountId: string): Promise<Transfer[]> {
         const result = await this.get<Transfer[]>(`accounts/${accountId}/transfers`);
         return result;
+    }
+
+    async getProjects(accountId: string): Promise<Project[]> {
+        return this.get<Project[]>(`accounts/${accountId}/projects`);
+    }
+
+    async getProject(accountId: string, projectId: string): Promise<Project> {
+        return this.get<Project>(`accounts/${accountId}/projects/${projectId}`);
+    }
+
+    async createProject(accountId: string, args: CreateProjectArgs):  Promise<Project> {
+        return this.post<Project>(`accounts/${accountId}/projects`, args);
     }
 
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {

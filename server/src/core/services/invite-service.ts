@@ -15,7 +15,7 @@ export interface InviteServiceConfig {
 export class InviteService {
     private collection: Collection<UserInvite>;
 
-    constructor(private db: Db, private authContext: AuthContext, private config: InviteServiceConfig) {
+    constructor(private db: Db, private config: InviteServiceConfig) {
         this.collection = db.collection(COLLECTION);
     }
 
@@ -25,7 +25,7 @@ export class InviteService {
             const now = Date.now();
             const expiresAt = new Date(now + DEFAULT_VALIDITY_MILLIS);
             const invite: UserInvite = {
-                ...createPersistedModel(this.authContext.user._id),
+                ...createPersistedModel(args.invitor._id),
                 name: args.name,
                 email: args.email,
                 message: args.message,
@@ -38,12 +38,12 @@ export class InviteService {
             };
 
             const message = args.resource.type === 'project' ?
-                createProjectInviteEmail(this.authContext.user.name, invite, this.config.webappBaseUrl) :
-                createGenericInviteEmail(this.authContext.user.name, invite._id, args.name || '', this.config.webappBaseUrl);
+                createProjectInviteEmail(args.invitor.name, invite, this.config.webappBaseUrl) :
+                createGenericInviteEmail(args.invitor.user.name, invite._id, args.name || '', this.config.webappBaseUrl);
             
             const subject = args.resource.type === 'project' ?
-                `Quickbyte: ${this.authContext.user.name} invited you to project ${invite.resource.name}` :
-                `${this.authContext.user.name} invited you to collaborate on Quickbyte`;
+                `Quickbyte: ${args.invitor.name} invited you to project ${invite.resource.name}` :
+                `${args.invitor.name} invited you to collaborate on Quickbyte`;
 
             await this.config.emails.sendEmail({
                 to: { name: args.name, email: args.email },
@@ -87,4 +87,5 @@ export interface CreateInviteArgs {
     name?: string;
     message?: string;
     resource: NamedResource;
+    invitor: User;
 }

@@ -1,5 +1,7 @@
 import { Db, Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService } from "../index.js";
+import { IProjectService, ProjectService } from "./project-service.js";
+import { IInviteService, InviteService } from "./invite-service.js";
 
 const COLLECTION = 'accounts';
 
@@ -7,6 +9,9 @@ export interface AccountServiceConfig {
     storageHandlers: IStorageHandlerProvider;
     plans: IPlanService;
     paymentHandlers: IPaymentHandlerProvider;
+    emailHandler: EmailHandler;
+    webappBaseUrl: string;
+    invites: IInviteService;
 }
 
 export class AccountService {
@@ -76,6 +81,13 @@ export class AccountService {
             paymentHandlers: this.config.paymentHandlers
         });
     }
+
+    projects(authContext: AuthContext): IProjectService {
+        return new ProjectService(this.db, authContext, {
+            transactions: this.transactions(authContext),
+            invites: this.config.invites
+        });
+    }
 }
 
-export type IAccountService = Pick<AccountService, 'getOrCreateByOwner' | 'getById' | 'transfers' | 'transactions'>;
+export type IAccountService = Pick<AccountService, 'getOrCreateByOwner' | 'getById' | 'transfers' | 'transactions' | 'projects'>;

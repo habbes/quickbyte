@@ -30,7 +30,8 @@ export class ProjectService {
             const project: Project = {
                 ...createPersistedModel(this.authContext.user._id),
                 accountId: this.authContext.user.account._id,
-                name: args.name
+                name: args.name,
+                description: args.description
             };
 
             await this.collection.insertOne(project);
@@ -100,7 +101,8 @@ export class ProjectService {
                     type: 'project',
                     id: project._id,
                     name: project.name
-                }
+                },
+                invitor: this.authContext.user
             }));
 
             await Promise.all(invites);
@@ -116,6 +118,7 @@ export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getByI
 
 export interface CreateProjectArgs {
     name: string;
+    description: string;
 }
 
 export interface UpdateProjectArgs {

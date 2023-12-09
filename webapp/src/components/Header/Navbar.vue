@@ -34,6 +34,13 @@
               </li>
               <li v-if="user">
                 <router-link
+                  :to="{ name: 'projects' }"
+                  class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"
+                  exactActiveClass="text-white"
+                >Projects</router-link>
+              </li>
+              <li v-if="user">
+                <router-link
                   :to="{ name: 'transfers' }"
                   class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"
                   activeClass="text-white"

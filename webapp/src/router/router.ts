@@ -10,6 +10,9 @@ import PlayerView from '@/views/PlayerView.vue';
 import TransfersView from '@/views/TransfersView.vue';
 import TransferView from '@/views/TransferView.vue';
 import AppView from '@/views/AppView.vue';
+import ProjectsView from '@/views/ProjectsView.vue';
+import ProjectView from '@/views/ProjectView.vue';
+import ProjectMediaView from '@/views/ProjectMediaView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -48,6 +51,23 @@ const router = createRouter({
               path: 'transfers/:transferId',
               name: 'transfer',
               component: TransferView
+            },
+            {
+              path: 'projects',
+              name: 'projects',
+              component: ProjectsView
+            },
+            {
+              path: 'projects/:projectId',
+              name: 'project',
+              component: ProjectView,
+              children: [
+                {
+                  path: '',
+                  name: 'project-media',
+                  component: ProjectMediaView
+                }
+              ]
             },
             {
               path: '/player/:downloadId',

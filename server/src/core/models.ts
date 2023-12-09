@@ -180,6 +180,7 @@ export type PlanRenewalRate = 'monthly'|'annual';
 
 export interface Project extends PersistedModel {
     name: string;
+    description: string;
     accountId: string;
 }
 

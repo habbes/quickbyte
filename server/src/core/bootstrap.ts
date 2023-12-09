@@ -26,6 +26,7 @@ IAlertService,
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
 import { AtSmsHandler } from "./services/sms/at-sms-handler.js";
+import { InviteService } from "./services/invite-service.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = await getDbConnection(config);
@@ -88,10 +89,18 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const paymentHandlers = new PaymentHandlerProvider();
     paymentHandlers.register(paystackHandler);
 
+    const invites = new InviteService(db, {
+        emails: emailHandler,
+        webappBaseUrl: config.webappBaseUrl
+    });
+
     const accounts = new AccountService(db, {
         plans: plans,
         storageHandlers: storageProvider,
-        paymentHandlers
+        paymentHandlers,
+        emailHandler,
+        webappBaseUrl: config.webappBaseUrl,
+        invites
     });
 
     const auth = new AuthService(db, {
@@ -100,7 +109,9 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         aadTenantId: config.aadTenantId,
         accounts,
         email: emailHandler,
-        adminAlerts: adminAlerts
+        adminAlerts: adminAlerts,
+        webappBaseUrl: config.webappBaseUrl,
+        invites
     });
 
     const downloads = new TransferDownloadService(db, storageProvider);

@@ -89,3 +89,13 @@ export interface TransferFile extends PersistedModel {
     name: string;
     size: number;
 }
+
+export interface Project extends PersistedModel {
+    name: string;
+    description: string;
+}
+
+export interface CreateProjectArgs {
+    name: string;
+    description: string;
+}
