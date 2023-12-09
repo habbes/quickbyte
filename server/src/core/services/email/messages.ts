@@ -1,6 +1,7 @@
 import { AppError } from "../../error.js";
+import { UserInvite } from "../../models.js";
 
-export function createWelcomeEmail(name: string) {
+export function createWelcomeEmail(name: string, baseUrl: string) {
     return `
 Hello ${name},
 
@@ -13,7 +14,7 @@ service for creatives.
 </p>
 
 <p>
-To start transfering files, head over to <a href="https://quickbyte.io">Quickbyte</a>.
+To start transfering files, head over to <a href="${baseUrl}>Quickbyte</a>.
 </p>
 
 <p>
@@ -57,5 +58,45 @@ ${error.stack}
 `
     }
 
+    return message;
+}
+
+export function createGenericInviteEmail(invitedBy: string, inviteId: string, name: string, appBaseUrl: string) {
+    const greeting = name ? `Hello ${name}` : 'Hello';
+    const inviteUrl = `${appBaseUrl}/i/${inviteId}`;
+
+    const message =`
+${greeting},
+<br>
+${invitedBy} has invited you to collaborate on Quickbyte.
+<br>
+Click the following link to accept the invite: <a href="${inviteUrl}">${inviteUrl}</a>.
+
+<br>
+<br>
+<i>PS: This invite expires in 2 days</i>.
+<br>
+Regards,
+<br>
+Quickbyte Team
+`
+    return message;
+}
+
+export function createProjectInviteEmail(invitedBy: string, invite: UserInvite, appBaseUrl: string) {
+    const greeting = invite.name ? `Hello ${invite.name}` : 'Hello';
+    const inviteUrl = `${appBaseUrl}/i/${invite._id}`;
+
+    const customMessage = invite.message ? `<p>${invite.message}</p>` : '';
+
+    const message = `
+${greeting},
+<br>
+${invitedBy} has invited you to collaborate on the project <b>${invite.resource.name}</b>.
+<br>
+${customMessage}
+<br>
+Click the following link to accept the invite and view the project: <a href="${inviteUrl}">${inviteUrl}</a>.
+`;
     return message;
 }

@@ -4,9 +4,10 @@ import axios from "axios";
 import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
-import { createPersistedModel, User, UserWithAccount } from "../models.js";
+import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createWelcomeEmail } from "./index.js";
+import { IInviteService } from "./invite-service.js";
 
 // We use AAD on-behalf-of flow for authentication:
 // https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
@@ -142,12 +143,41 @@ export class AuthService {
     async getUserById(id: string): Promise<UserWithAccount> {
         try {
             const user = await this.usersCollection.findOne({ _id: id });
-            if (!user) {
+            if (!user || user.isGuest) {
                 throw createResourceNotFoundError('User not found.');
             }
 
             const account = await this.args.accounts.getOrCreateByOwner(user._id);
             return { ...user, account};
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async acceptUserInvite(id: string, args: AcceptInviteArgs): Promise<User>  {
+        try {
+            const invite = await this.args.invites.verifyInvite(id, args.email);
+            // check if user already exists
+            const existingUser = await this.usersCollection.findOne({ email: args.email });
+            if (existingUser) {
+                return existingUser;
+            }
+
+            // user does not exist, let's create a guest user
+            const newUser: GuestUser = {
+                ...createPersistedModel({ _id: 'system', type: 'system' }),
+                email: args.email,
+                name: args.name,
+                invitedBy: invite._createdBy,
+                isGuest: true
+            };
+
+            this.usersCollection.insertOne(newUser);
+
+            // TODO: grant permission to project
+
+            return newUser;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -195,15 +225,19 @@ export class AuthService {
         }
     }
 
-    private async getOrCreateUser(data: jwt.JwtPayload) {
+    private async getOrCreateUser(data: jwt.JwtPayload): Promise<FullUser> {
         const email: string = getEmailFromJwt(data);
         const aadId: string = data.oid;
         const name: string = data.name;
 
         try {
             const existingUser = await this.usersCollection.findOne({ email: email, aadId: aadId });
-            if (existingUser) {
+            if (existingUser && !existingUser.isGuest) {
                 return existingUser;
+            }
+
+            if (existingUser && existingUser.isGuest) {
+                throw createAppError('Upgrading guest to full user not yet supported.');
             }
 
             const newUser: User = {
@@ -221,7 +255,7 @@ export class AuthService {
             this.args.email.sendEmail({
                 to: { email: newUser.email, name: newUser.name },
                 subject: 'Welcome to Quickbyte!',
-                message: createWelcomeEmail(newUser.name)
+                message: createWelcomeEmail(newUser.name, this.args.webappBaseUrl)
             }).catch(e => {
                 console.error(`Error sending welcome email`, e);
             });
@@ -273,6 +307,8 @@ export interface AuthServiceArgs {
     accounts: IAccountService;
     email: EmailHandler;
     adminAlerts: IAlertService;
+    invites: IInviteService;
+    webappBaseUrl: string;
 }
 
 interface AuthConfig {
@@ -283,4 +319,9 @@ interface AuthConfig {
     },
     webApiScope: string;
     discoveryKeysEndpoint: string;
+}
+
+export interface AcceptInviteArgs {
+    name: string;
+    email: string;
 }

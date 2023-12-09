@@ -98,6 +98,8 @@ export interface AppConfig {
     paystackSecretKey: string;
     paystackStarterMonthlyPlan: string;
     paystackStarterAnnualPlan: string;
+    // web app base url
+    webappBaseUrl: string;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -134,7 +136,8 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         paystackPublicKey: getRequiredEnv(env, 'PAYSTACK_PUBLIC_KEY'),
         paystackSecretKey: getRequiredEnv(env, 'PAYSTACK_SECRET_KEY'),
         paystackStarterMonthlyPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_MONTHLY_PLAN'),
-        paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN')
+        paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN'),
+        webappBaseUrl: getRequiredEnv(env, 'WEBAPP_BASE_URL')
     }
 }
 

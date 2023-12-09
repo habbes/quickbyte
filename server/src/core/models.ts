@@ -33,13 +33,24 @@ export interface Account extends PersistedModel {
     owner: Principal;
 }
 
-export interface User extends PersistedModel {
+export interface BaseUser extends PersistedModel {
     email: string;
     name: string;
-    aadId: string;
+    invitedBy?: Principal;
 }
 
-export interface UserWithAccount extends User {
+export interface FullUser extends BaseUser {
+    aadId: string;
+    isGuest?: false|undefined;
+}
+
+export interface GuestUser extends BaseUser {
+    isGuest: true;
+}
+
+export type User = FullUser | GuestUser;
+
+export interface UserWithAccount extends FullUser {
     account: AccountWithSubscription
 };
 
@@ -166,3 +177,57 @@ export interface Plan {
 }
 
 export type PlanRenewalRate = 'monthly'|'annual';
+
+export interface Project extends PersistedModel {
+    name: string;
+    accountId: string;
+}
+
+export interface Media extends PersistedModel {
+    name: string;
+    description?: string;
+    projectId: string;
+    fileKind: FileKind;
+    preferredVersionId: string;
+}
+
+export interface MediaVersion extends PersistedModel {
+    name: string;
+    fileId: string;
+    mediaId: string;
+}
+
+export interface Comment extends PersistedModel {
+    text: string;
+    projectId: string;
+    mediaId: string;
+    mediaVersionId: string;
+    hasTimestamp: boolean;
+    timestampMicroseconds?: number;
+}
+
+export interface CommentRead extends PersistedModel {
+    readBy: Principal
+}
+
+export type FileKind = 'video'|'image'|'audio'|'document'|'other';
+
+export interface UserInvite extends PersistedModel {
+    email: string;
+    name?: string;
+    message?: string;
+    resource: NamedResource;
+    expiresAt: Date;
+}
+
+export interface ResourceReference {
+    type: ResourceType;
+    id: string;
+}
+
+export interface NamedResource extends ResourceReference {
+    name?: string;
+}
+
+export type ResourceType = 'project';
+export type InviteResourceAccess = 'review';
