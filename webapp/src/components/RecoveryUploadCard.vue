@@ -133,7 +133,9 @@ const { copy } = useClipboard();
 
 const rootFiles = computed(() => files.value.filter(f => !f.path.includes('/')));
 
-const recoveredUpload = computed(() => ensure(store.recoveredTransfers.value.find(u => props.uploadId === u.id)));
+// We get the recoveredUpload once instead of using a computed() ref because the recoveredUpload will be deleted
+// from the store when upload is complete.
+const recoveredUpload = ref(ensure(store.recoveredTransfers.value.find(u => props.uploadId === u.id), `Cannot find recovered transfer ${props.uploadId}`));
 
 const unselectedFilesToRecover = computed(() => recoveredUpload.value.files.filter(file => !isFileSelected(file)));
 const rootFilesToRecover = computed(() => unselectedFilesToRecover.value.filter(f => !f.path.includes('/')));
