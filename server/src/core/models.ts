@@ -231,3 +231,13 @@ export interface NamedResource extends ResourceReference {
 
 export type ResourceType = 'project';
 export type InviteResourceAccess = 'review';
+
+export interface UserRole extends PersistedModel {
+    userId: string;
+    role: RoleType;
+    resourceType: ResourceType;
+    resourceId: string;
+}
+
+export type RoleType = 'reviewer';
+

@@ -4,7 +4,7 @@ import axios from "axios";
 import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
-import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
+import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser, UserRole, ResourceType, Principal, RoleType } from "../models.js";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
@@ -44,12 +44,14 @@ class MemoryCachePlugin implements ICachePlugin {
 const tokenCachePlugin = new MemoryCachePlugin();
 
 const COLLECTION = "users";
+const ROLES_COLLECTION = "users_roles";
 
 export class AuthService {
     private authConfig: AuthConfig;
     private jwksClient: JwksClient;
     private msalClient: ConfidentialClientApplication;
     private usersCollection: Collection<User>;
+    private rolesCollection: Collection<UserRole>;
 
     constructor(private db: Db, private args: AuthServiceArgs) {
         this.authConfig = {
@@ -81,6 +83,7 @@ export class AuthService {
         });
 
         this.usersCollection = this.db.collection<User>(COLLECTION);
+        this.rolesCollection = this.db.collection<UserRole>(ROLES_COLLECTION);
     }
 
     /**
@@ -159,25 +162,72 @@ export class AuthService {
         try {
             const invite = await this.args.invites.verifyInvite(id, args.email);
             // check if user already exists
-            const existingUser = await this.usersCollection.findOne({ email: args.email });
-            if (existingUser) {
-                return existingUser;
+            let user = await this.usersCollection.findOne({ email: args.email });
+    
+            if (!user) {
+                // user does not exist, let's create a guest user
+                const newUser: GuestUser = {
+                    ...createPersistedModel({ _id: 'system', type: 'system' }),
+                    email: args.email,
+                    name: args.name,
+                    invitedBy: invite._createdBy,
+                    isGuest: true
+                };
+
+                await this.usersCollection.insertOne(newUser);
+                user = newUser;
             }
 
-            // user does not exist, let's create a guest user
-            const newUser: GuestUser = {
-                ...createPersistedModel({ _id: 'system', type: 'system' }),
-                email: args.email,
-                name: args.name,
-                invitedBy: invite._createdBy,
-                isGuest: true
-            };
+            // TODO: should we embed roles in the user record? How do we ensure we don't store "duplicate" roles?
+            await this.setRole(user._id, invite.resource.type, invite.resource.id, 'reviewer', invite._createdBy);
 
-            this.usersCollection.insertOne(newUser);
+            // TODO: send email notifications
+            // TODO: add roles field to user object
+            return user;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
 
-            // TODO: grant permission to project
+    private async setRole(userId: string, resourceType: ResourceType, resourceId: string, role: RoleType, setBy: Principal): Promise<UserRole> {
+        try {
+            
+            const existingRole = await this.rolesCollection.findOne({
+                userId,
+                resourceType,
+                resourceId,
+            });
 
-            return newUser;
+            if (existingRole) {
+                const update = await this.rolesCollection.findOneAndUpdate({ _id: existingRole._id }, {
+                    $set: {
+                        updatedAt: new Date(),
+                        updatedBy: setBy,
+                        role: role
+                    }
+                }, {
+                    returnDocument: 'after'
+                });
+
+                if (!update.value) {
+                    throw createAppError(`Failed to update role: '${existingRole._id}': ${update.lastErrorObject}`);
+                }
+
+                return update.value;
+            } else {
+                const newRole: UserRole = {
+                    ...createPersistedModel(setBy),
+                    userId,
+                    resourceType,
+                    resourceId,
+                    role
+                };
+                
+                await this.rolesCollection.insertOne(newRole);
+
+                return newRole;
+            }
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -280,7 +330,7 @@ export class AuthService {
    
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' |'getUserById'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' |'getUserById'|'acceptUserInvite'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {
