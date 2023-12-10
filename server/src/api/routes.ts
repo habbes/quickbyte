@@ -71,6 +71,11 @@ routes.post('/accounts/:accountId/projects',
     wrapResponse(req =>
         req.services.accounts.projects(req.authContext).createProject(req.body)));
 
+routes.post('/accounts/:accountId/projects/:projectId/upload',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext).uploadMedia(req.params.projectId, req.body)));
 
 routes.get('/me', requireAuth(), wrapResponse(req =>
     Promise.resolve(req.authContext.user)));

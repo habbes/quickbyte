@@ -85,7 +85,8 @@ export class AccountService {
     projects(authContext: AuthContext): IProjectService {
         return new ProjectService(this.db, authContext, {
             transactions: this.transactions(authContext),
-            invites: this.config.invites
+            invites: this.config.invites,
+            transfers: this.transfers(authContext),
         });
     }
 }

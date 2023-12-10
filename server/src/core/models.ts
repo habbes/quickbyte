@@ -90,6 +90,18 @@ export interface Transfer extends PersistedModel {
     transferCompletedAt?: Date;
     numFiles: number;
     totalSize: number;
+    /**
+     * Hidden transfers are not shareable
+     * and not visible to the end user,
+     * they're meant to be used to upload project
+     * media assets
+     */
+    hidden?: boolean;
+    /**
+     * If this transfer is meant for a project,
+     * then this is the project it belongs to.
+     */
+    projectId?: string;
 }
 
 export interface DbTransfer extends Transfer {
@@ -188,14 +200,14 @@ export interface Media extends PersistedModel {
     name: string;
     description?: string;
     projectId: string;
-    fileKind: FileKind;
     preferredVersionId: string;
+    versions: MediaVersion[];
+    // TODO: add file kind?
 }
 
 export interface MediaVersion extends PersistedModel {
     name: string;
     fileId: string;
-    mediaId: string;
 }
 
 export interface Comment extends PersistedModel {

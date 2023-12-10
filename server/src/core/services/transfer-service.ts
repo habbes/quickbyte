@@ -1,6 +1,6 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
 import { createAppError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
-import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest } from '../models.js';
+import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 
@@ -26,7 +26,36 @@ export class TransferService {
         this.filesCollection = this.db.collection(FILES_COLLECTION);
     }
 
-    async create(args: CreateTransferArgs): Promise<CreateTransferResult> {
+    create(args: CreateShareableTransferArgs): Promise<CreateTransferResult> {
+        return this.createInternal(args);
+    }
+
+    async createProjectMediaUpload(project: Project, args: CreateProjectMediaUploadArgs): Promise<CreateTransferResult> {
+        try {
+            if (project.accountId !== this.authContext.user.account._id) {
+                // it's possible that the project belongs to a different account that the user has logged in if the user
+                // has been invited to projects owned by a different account.
+                // In that case we should make sure that the user's current account matches that of the project.
+                // TODO: may have to revisit this when we actually add support for multiple accounts, teams and invites
+                throw createResourceNotFoundError(`The target project '${project.name}' not found in the current active account.`);
+            }
+
+            const transfer = await this.createInternal({
+                ...args,
+                name: `Media upload for ${project.name} - (${new Date().toDateString()})`,
+                projectId: project._id,
+                hidden: true
+            });
+
+            return transfer;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async createInternal(args: CreateTransferArgs): Promise<CreateTransferResult> {
         try {
 
             const sub = await this.config.transactions.tryGetActiveSubscription();
@@ -51,6 +80,8 @@ export class TransferService {
                 provider: provider.name(),
                 region: args.region,
                 accountId: this.authContext.user.account._id,
+                hidden: args.hidden,
+                projectId: args.projectId,
                 status: 'progress',
                 expiresAt: new Date(Date.now() + validityInMillis),
                 numFiles: args.files.length,
@@ -107,7 +138,10 @@ export class TransferService {
 
     async get(): Promise<Transfer[]> {
         try {
-            const transfers = await this.collection.find({ accountId: this.authContext.user.account._id }).toArray();
+            const transfers = await this.collection.find({
+                accountId: this.authContext.user.account._id,
+                hidden: { $ne: true }
+            }).toArray();
             return transfers;
         }
         catch (e: any) {
@@ -249,7 +283,7 @@ export class TransferDownloadService {
     }
 }
 
-export type ITransferService = Pick<TransferService, 'create'|'finalize'|'getById'|'get'>;
+export type ITransferService = Pick<TransferService, 'create'| 'createProjectMediaUpload'|'finalize'|'getById'|'get'>;
 export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDownload'|'updateDownloadRequest'>;
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
@@ -293,17 +327,31 @@ async function createDownloadFile(provider: IStorageHandler, transfer: Transfer,
     };
 }
 
-export interface CreateTransferArgs {
+export interface CreateShareableTransferArgs {
     name: string;
     provider: string;
     region: string;
     files: CreateTransferFileArgs[];
-    meta?: {
-        ip?: string;
-        countryCode?: string;
-        state?: string;
-        userAgent?: string;
-    }
+    meta?: CreateTransferMeta;
+}
+
+export interface CreateProjectMediaUploadArgs {
+    provider: string;
+    region: string;
+    files: CreateTransferFileArgs[];
+    meta?: CreateTransferMeta;
+}
+
+interface CreateTransferMeta {
+    ip?: string;
+    countryCode?: string;
+    state?: string;
+    userAgent?: string;
+}
+
+export interface CreateTransferArgs extends CreateShareableTransferArgs {
+    hidden?: boolean;
+    projectId?: string;
 }
 
 export interface CreateTransferFileArgs {

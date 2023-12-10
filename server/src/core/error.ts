@@ -65,6 +65,16 @@ export const createDbError =
 export const createResourceNotFoundError =
     (message: ErrorMessage = "Resource does not exist or you do not have sufficient permissions.") => createAppError(message, 'resourceNotFound');
 
+/**
+ * Creates a permission-related error.
+ * **Note**: Prefer using `createResourceNotFoundError` for permission
+ * errors where some resource or operation is not accessible due to insufficient
+ * permissions. Use this error only in contexts where a "resourceNotFound" doesn't make sense.
+ * @param message 
+ */
+export const createPermissionError =
+    (message: ErrorMessage) => createAppError(message, 'permissionDenied');
+
 export const createResourceConflictError =
     (message: ErrorMessage) => createAppError(message, 'resourceConflict');
 

@@ -1,13 +1,15 @@
-import { Db, Collection, UpdateFilter } from "mongodb";
-import { AuthContext, Project, createPersistedModel } from "../models.js";
+import { Db, Collection } from "mongodb";
+import { AuthContext, Media, Project, createPersistedModel } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
-import { ITransactionService } from "./index.js";
+import { CreateProjectMediaUploadArgs, CreateTransferResult, ITransactionService, ITransferService } from "./index.js";
 import { IInviteService } from "./invite-service.js";
+import { IMediaService, MediaService } from "./media-service.js";
 
 const COLLECTION = 'projects';
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
+    transfers: ITransferService;
     invites: IInviteService;
 }
 
@@ -91,6 +93,33 @@ export class ProjectService {
         }
     }
 
+    async uploadMedia(id: string, args: CreateProjectMediaUploadArgs): Promise<UploadMediaResult> {
+        try {
+            const project = await this.getById(id);
+            const transfer = await this.config.transfers.createProjectMediaUpload(project, args);
+            const media = await (new MediaService(this.db, this.authContext, id)).uploadMedia(transfer);
+
+            return {
+                media,
+                transfer
+            };
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getMedia(id: string): Promise<Media[]> {
+        try {
+            await this.getById(id);
+            const media = await (new MediaService(this.db, this.authContext, id)).getProjectMedia();
+            return media;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     async inviteUsers(id: string, args: InviteUserArgs) {
         try {
             const project = await this.getById(id);
@@ -114,7 +143,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getById'|'updateProject'|'inviteUsers'>;
+export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getById'|'updateProject'|'uploadMedia'|'inviteUsers'>;
 
 export interface CreateProjectArgs {
     name: string;
@@ -128,4 +157,9 @@ export interface UpdateProjectArgs {
 export interface InviteUserArgs {
     users: { email: string }[];
     message?: string;
+}
+
+export interface UploadMediaResult {
+    media: Media[],
+    transfer: CreateTransferResult
 }
