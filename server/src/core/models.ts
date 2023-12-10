@@ -122,6 +122,9 @@ export interface TransferFile extends PersistedModel {
     size: number;
     provider: string;
     region: string;
+    // TODO: this should be required, but was introduced later
+    // we should update all existing transfer files with an account id
+    accountId?: string;
 }
 
 export interface Upload extends PersistedModel {

@@ -10,6 +10,7 @@ const COLLECTION = 'projects';
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
     transfers: ITransferService;
+    media: IMediaService;
     invites: IInviteService;
 }
 
@@ -97,7 +98,7 @@ export class ProjectService {
         try {
             const project = await this.getById(id);
             const transfer = await this.config.transfers.createProjectMediaUpload(project, args);
-            const media = await (new MediaService(this.db, this.authContext, id)).uploadMedia(transfer);
+            const media = await this.config.media.uploadMedia(transfer);
 
             return {
                 media,
@@ -112,7 +113,17 @@ export class ProjectService {
     async getMedia(id: string): Promise<Media[]> {
         try {
             await this.getById(id);
-            const media = await (new MediaService(this.db, this.authContext, id)).getProjectMedia();
+            const media = await this.config.media.getProjectMedia(id);
+            return media;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getMediumById(projectId: string, id: string): Promise<MediaWithFile> {
+        try {
+            const media = await this.config.media.getMediaById(projectId, id);
             return media;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -143,7 +154,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getById'|'updateProject'|'uploadMedia'|'inviteUsers'>;
+export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'inviteUsers'>;
 
 export interface CreateProjectArgs {
     name: string;

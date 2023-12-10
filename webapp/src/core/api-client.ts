@@ -1,4 +1,4 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media } from './types.js'
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -176,6 +176,14 @@ export class ApiClient {
         return this.post<Project>(`accounts/${accountId}/projects`, args);
     }
 
+    async uploadProjectMedia(accountId: string, projectId: string, args: CreateProjectMediaUploadArgs): Promise<UploadMediaResult> {
+        return this.post<UploadMediaResult>(`accounts/${accountId}/projects/${projectId}/upload`, args);
+    }
+
+    async getProjectMedia(accountId: string, projectId: string): Promise<Media[]> {
+        return this.get<Media[]>(`accounts/${accountId}/projects/${projectId}/media`);
+    }
+
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
         return this.makeRequest<T>(endpoint, 'GET', undefined, auth);
     }
@@ -288,12 +296,7 @@ export interface CreateTransferArgs {
     provider: string;
     region: string;
     files: CreateTransferFileArgs[];
-    meta?: {
-        ip?: string;
-        countryCode?: string;
-        // TODO: this should probably be retrieved from the headers
-        userAgent?: string;
-    }
+    meta?: CreateTransferMeta
 }
 
 export interface CreateTransferFileArgs {
@@ -350,4 +353,23 @@ export type TransactionStatus = 'pending' | 'success' | 'cancelled' | 'failed';
 
 export interface SubscriptionManagementResult {
     link: string;
+}
+
+export interface CreateProjectMediaUploadArgs {
+    provider: string;
+    region: string;
+    files: CreateTransferFileArgs[];
+    meta?: CreateTransferMeta;
+}
+
+interface CreateTransferMeta {
+    ip?: string;
+    countryCode?: string;
+    state?: string;
+    userAgent?: string;
+}
+
+export interface UploadMediaResult {
+    media: Media[],
+    transfer: CreateTransferResult
 }

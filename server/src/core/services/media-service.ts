@@ -1,22 +1,29 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Project, createPersistedModel, Media, MediaVersion } from "../models.js";
-import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
-import { CreateTransferFileResult, CreateTransferResult, ITransactionService } from "./index.js";
-import { IInviteService } from "./invite-service.js";
+import { AuthContext, createPersistedModel, Media, MediaVersion } from "../models.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
+import { CreateTransferFileResult, CreateTransferResult, DownloadTransferFileResult, ITransferService } from "./index.js";
 
 const COLLECTION = 'media';
+
+export interface MediaServiceConfig {
+    transfers: ITransferService
+}
 
 export class MediaService {
     private collection: Collection<Media>;
 
-    constructor(private db: Db, private authContext: AuthContext, private projectId: string) {
+    constructor(private db: Db, private authContext: AuthContext, private config: MediaServiceConfig) {
         this.collection = db.collection<Media>(COLLECTION);
     }
 
     async uploadMedia(transfer: CreateTransferResult): Promise<Media[]> {
+        if (!transfer.projectId) {
+            throw createInvalidAppStateError(`No project id for upload media transfer '${transfer._id}'`);
+        }
+
         const files = transfer.files;
         try {
-            const media = files.map(file => this.convertFileToMedia(file));
+            const media = files.map(file => this.convertFileToMedia(transfer.projectId!, file));
             await this.collection.insertMany(media);
             return media;
         } catch (e: any) {
@@ -25,9 +32,9 @@ export class MediaService {
         }
     }
 
-    async getProjectMedia(): Promise<Media[]> {
+    async getProjectMedia(projectId: string): Promise<Media[]> {
         try {
-            const media = await this.collection.find({ projectId: this.projectId }).toArray();
+            const media = await this.collection.find({ projectId: projectId }).toArray();
             return media;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -35,7 +42,29 @@ export class MediaService {
         }
     }
 
-    private convertFileToMedia(file: CreateTransferFileResult) {
+    async getMediaById(projectId: string, id: string): Promise<MediaWithFile> {
+        try {
+            const medium = await this.collection.findOne({ projectId: projectId, _id: id });
+            if (!medium) {
+                throw createResourceNotFoundError();
+            }
+
+            const version = medium.versions.find(v => v._id === medium.preferredVersionId);
+            if (!version) {
+                throw createInvalidAppStateError(`Could not find preferred verson '${medium.preferredVersionId}' for media '${medium._id}'`);
+            }
+
+            // find the file
+            const file = await this.config.transfers.getMediaFile(version.fileId);
+
+            return { ...medium, file }
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private convertFileToMedia(projectId: string, file: CreateTransferFileResult) {
         const initialVersion: MediaVersion = {
             ...createPersistedModel(this.authContext.user._id),
             fileId: file._id,
@@ -48,11 +77,15 @@ export class MediaService {
             preferredVersionId: initialVersion._id,
             versions: [initialVersion],
             name: initialVersion.name,
-            projectId: this.projectId
+            projectId: projectId
         }
 
         return media;
     }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'>;
+
+export interface MediaWithFile extends Media {
+    file: DownloadTransferFileResult
+}

@@ -99,3 +99,17 @@ export interface CreateProjectArgs {
     name: string;
     description: string;
 }
+
+export interface Media extends PersistedModel {
+    name: string;
+    description?: string;
+    projectId: string;
+    preferredVersionId: string;
+    versions: MediaVersion[];
+    // TODO: add file kind?
+}
+
+export interface MediaVersion extends PersistedModel {
+    name: string;
+    fileId: string;
+}

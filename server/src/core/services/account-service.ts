@@ -2,6 +2,7 @@ import { Db, Collection } from "mongodb";
 import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService, InviteService } from "./invite-service.js";
+import { MediaService } from "./media-service.js";
 
 const COLLECTION = 'accounts';
 
@@ -83,10 +84,14 @@ export class AccountService {
     }
 
     projects(authContext: AuthContext): IProjectService {
+        const transfers = this.transfers(authContext);
         return new ProjectService(this.db, authContext, {
             transactions: this.transactions(authContext),
             invites: this.config.invites,
-            transfers: this.transfers(authContext),
+            transfers,
+            media: new MediaService(this.db, authContext, {
+                transfers
+            })
         });
     }
 }

@@ -1,5 +1,5 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
-import { createAppError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
+import { createAppError, createInvalidAppStateError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
@@ -10,6 +10,7 @@ const DOWNLOADS_COLLECTION = "downloads";
 const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
 const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * DAYS_TO_MILLIS // 5 days
 const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
+const MEDIA_DOWNLOAD_URL_VALIDITY = 2 * DAYS_TO_MILLIS;
 
 
 export interface TransferServiceConfig {
@@ -177,7 +178,24 @@ export class TransferService {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
-        
+    }
+
+    async getMediaFile(fileId: string): Promise<DownloadTransferFileResult> {
+        try {
+            const file = await this.filesCollection.findOne({ _id: fileId, accountId: this.authContext.user.account._id });
+            if (!file) {
+                throw createResourceNotFoundError('media');
+            }
+
+            const provider = this.config.providerRegistry.getHandler(file.provider);
+            const downloadableFile = createMediaDownloadFile(provider, file);
+
+            return downloadableFile;
+
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
     
 }
@@ -283,7 +301,7 @@ export class TransferDownloadService {
     }
 }
 
-export type ITransferService = Pick<TransferService, 'create'| 'createProjectMediaUpload'|'finalize'|'getById'|'get'>;
+export type ITransferService = Pick<TransferService, 'create'| 'createProjectMediaUpload'|'finalize'|'getById'|'get'|'getMediaFile'>;
 export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDownload'|'updateDownloadRequest'>;
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
@@ -294,7 +312,8 @@ function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): T
         name: args.name,
         size: args.size,
         provider: transfer.provider,
-        region: transfer.region
+        region: transfer.region,
+        accountId: transfer.accountId
     };
 
     return file;
@@ -323,8 +342,34 @@ async function createDownloadFile(provider: IStorageHandler, transfer: Transfer,
         name: file.name,
         size: file.size,
         _createdAt: file._createdAt,
-        downloadUrl
+        downloadUrl,
+        accountId: file.accountId || transfer.accountId
     };
+}
+
+async function createMediaDownloadFile(provider: IStorageHandler, file: TransferFile): Promise<DownloadTransferFileResult> {
+    if (!file.accountId) {
+        throw createInvalidAppStateError(`Media file '${file._id}' is not tied to an account`);
+    }
+    // TODO: we should store the blobPath into the file itself to keep file resilient
+    // from design changes on where we store paths
+    const blobName = `${file.transferId}/${file._id}`;
+    const now = new Date().getTime();
+
+    const expiryDate = new Date(now + DAYS_TO_MILLIS);
+    const fileName = file.name.split('/').at(-1) || file._id;
+    const downloadUrl = await provider.getBlobDownloadUrl(file.region, file.accountId, blobName, expiryDate, fileName);
+
+    return {
+        _id: file._id,
+        transferId: file.transferId,
+        name: file.name,
+        size: file.size,
+        _createdAt: file._createdAt,
+        downloadUrl,
+        accountId: file.accountId
+    }
+
 }
 
 export interface CreateShareableTransferArgs {
@@ -399,6 +444,6 @@ export interface DownloadTransferResult extends Pick<Transfer, '_id'|'name'|'_cr
     downloadRequestId: string;
 }
 
-export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'> {
+export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> {
     downloadUrl: string;
 }
