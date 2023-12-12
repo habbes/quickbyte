@@ -37,9 +37,13 @@ export function humanizeSize(bytes: number): string {
     return `${tbs} TB`;
 }
 
-export function formatTimestampDuration(timestampMillis: number): string {
+/**
+ * Format the timestamp to a duration format mm:ss
+ * @param timestamp Timestamp in seconds
+ */
+export function formatTimestampDuration(timestamp: number): string {
     // Convert milliseconds to seconds
-    const seconds = Math.floor(timestampMillis / 1000);
+    const seconds = Math.floor(timestamp);
   
     // Calculate minutes and remaining seconds
     const minutes = Math.floor(seconds / 60);
@@ -49,7 +53,7 @@ export function formatTimestampDuration(timestampMillis: number): string {
     const formattedDuration = `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
   
     return formattedDuration;
-  }
+}
 
 export function pluralize(word: string, count: number, plural: string = '') {
     plural = plural || `${word}s`;
@@ -64,6 +68,15 @@ export function getFileExtension(fileName: string) {
 export function ensure<T>(obj?: T, message?: string): T {
     if (!obj) throw new Error(message || 'Expected object to be defined.');
     return obj;
+}
+
+/**
+ * Returns true if the value is neither undefined nor null.
+ * Notes: This also returns true when the value is 0 or an empty string.
+ * @param value 
+ */
+export function isDefined(value?: any): boolean {
+    return value !== undefined && value !== null;
 }
 
 export function getTransferDownloadUrl(id: string): string {

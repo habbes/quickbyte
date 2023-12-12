@@ -131,4 +131,8 @@ export interface Comment extends PersistedModel {
     mediaId: string;
     mediaVersionId: string;
     timestamp?: number;
+    author: {
+        _id: string;
+        name: string;
+    }
 }

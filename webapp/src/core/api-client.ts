@@ -1,4 +1,4 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media, MediaWithFile } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media, MediaWithFile, Comment } from './types.js'
 
 export interface ApiClientConfig {
     baseUrl: string;

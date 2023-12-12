@@ -221,6 +221,13 @@ export interface Comment extends PersistedModel {
     timestamp?: number;
 }
 
+export interface CommentWithAuthor extends Comment {
+    author: {
+        _id: string;
+        name: string;
+    }
+}
+
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
 
 export interface UserInvite extends PersistedModel {

@@ -3,30 +3,44 @@
     <div class="h-12 border-b border-b-[#120c11] flex flex-row items-center px-5" :style="headerClasses">top</div>
     <div class="flex-1 flex flex-row">
       <div class="w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col justify-end">
-        <div class="overflow-y-scroll flex flex-col justify-end" :style="commentsListClasses">
-          <div v-for="comment in comments" class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0">
+        <div class="overflow-y-scroll flex flex-col justify-end" :style="commentsListStyles">
+          <div v-for="comment in sortedComments" class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0">
             <div class="flex flex-row items-center justify-between mb-2">
               <div class="flex flex-row items-center gap-2">
-                <span class="text-sm text-white">{{ comment.commenter }}</span>
-                <span>{{ comment._createdAt.toLocaleDateString() }}</span>
+                <span class="text-sm text-white">{{ comment.author.name }}</span>
+                <span :title="`Posted on ${new Date(comment._createdAt).toLocaleString()} `">{{ new Date(comment._createdAt).toLocaleDateString() }}</span>
               </div>
               <span
+                v-if="comment.timestamp !== undefined"
                 @click="seekToComment(comment)"
+                title="Jump to this time in the video"
                 class="font-semibold text-blue-300 hover:cursor-pointer"
               >
                 {{ formatTimestampDuration(comment.timestamp) }}
               </span>
             </div>
             <div class="text-xs">
-              {{ comment.message }}
+              {{ comment.text }}
             </div>
           </div>
         </div>
-        <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2" :style="commentInputClasses">
-          <div class="flex-1">
+        <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2" :style="commentInputStyles">
+          <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
+            <div class="flex flex-row items-center justify-end">
+              <div class="flex flex-row items-center gap-1" title="Save comment at the current timestamp">
+                <ClockIcon class="h-5 w-5"/>
+                <span>{{ formatTimestampDuration(currentTimeStamp) }}</span>
+                <input
+                  v-model="includeTimestamp"
+                  type="checkbox"
+                  class="checkbox checkbox-xs checkbox-accent"
+                >
+              </div>
+            </div>
             <textarea
-              class="bg-[#604a59] rounded-md w-full h-full p-2 resize-none"
+              class="bg-[#604a59] border-0 hover:border-0 outline-none w-full flex-1 resize-none"
               placeholder="Type your comment here"
+              @focus="handleCommentInputFocus()"
               v-model="commentInputText"
             ></textarea>
           </div>
@@ -52,95 +66,76 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
-import { apiClient, getDeviceData, store } from "@/app-utils";
-import { formatTimestampDuration, type DownloadRequestResult, ensure, type MediaWithFile } from "@/core";
+import { apiClient, logger, showToast, store } from "@/app-utils";
+import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined } from "@/core";
+import { ClockIcon } from '@heroicons/vue/24/outline';
+
+// had difficulties getting the scrollbar on the comments panel to work
+// properly using overflow: auto css, so I resorted to hardcoding dimensions
+const headerSize = 48;
+const commentInputHeight = 200;
+const headerClasses = {
+  height: `${headerSize}px`
+};
+const commentInputStyles = {
+  height: `${commentInputHeight}px`
+};
+
+const commentsListStyles = {
+  height: `calc(100vh - ${headerSize + commentInputHeight}px)`
+};
+
 
 const videoPlayer = ref<HTMLVideoElement>();
 const route = useRoute();
 const error = ref<Error|undefined>();
 const media = ref<MediaWithFile>();
+const comments = ref<Comment[]>([]);
 const loading = ref(true);
 
 
-const currentTimeStamp = ref<number>();
+const currentTimeStamp = ref<number>(0);
+const includeTimestamp = ref<boolean>(true);
 const commentInputText = ref<string>();
 
-const headerSize = 48;
-const commentInputHeight = 200;
+// we display all the timestamped comments before
+// all non-timestamped comments
+// timestamped comments are display in chronological order
+// based on timestamps
+// then we display comments in chronological order
+// based on creation date
+const sortedComments = computed(() => {
+  const temp = [...comments.value];
+  temp.sort((a, b) => {
+    if (isDefined(a.timestamp) && !isDefined(b.timestamp)) {
+      return -1;
+    }
 
-const headerClasses = {
-  height: `${headerSize}px`
-};
-const commentInputClasses = {
-  height: `${commentInputHeight}px`
-};
+    if (isDefined(b.timestamp) && !isDefined(a.timestamp)) {
+      return 1;
+    }
 
-const commentsListClasses = {
-  height: `calc(100vh - ${headerSize + commentInputHeight}px)`
-};
+    const aDate = new Date(a._createdAt);
+    const bDate = new Date(b._createdAt);
+    const dateDiff =  aDate.getTime() - bDate.getTime();
 
+    if (isDefined(a.timestamp) && isDefined(b.timestamp)) {
+      const timestampDiff = a.timestamp! - b.timestamp!;
+      return timestampDiff === 0 ? dateDiff : timestampDiff;
+    }
 
-interface Comment {
-  commenter: string;
-  _createdAt: Date;
-  message: string;
-  hasAnnotations: boolean;
-  timestamp: number;
-}
-
-const comments = ref<Comment[]>([
-  {
-    commenter: 'Alice Johnson',
-    _createdAt: new Date('2023-01-01T08:00:00'),
-    message: 'This is the first comment.',
-    hasAnnotations: true,
-    timestamp: 30000, // Comment made at 30 seconds into the video
-  },
-  {
-    commenter: 'Bob Smith',
-    _createdAt: new Date('2023-02-05T14:30:00'),
-    message: 'Great post! Keep up the good work.',
-    hasAnnotations: false,
-    timestamp: 120000, // Comment made at 2 minutes into the video
-  },
-  {
-    commenter: 'Charlie Davis',
-    _createdAt: new Date('2023-03-10T10:45:00'),
-    message: 'I have a question about the topic discussed.',
-    hasAnnotations: true,
-    timestamp: 180000, // Comment made at 3 minutes into the video
-  },
-  {
-    commenter: 'David Wilson',
-    _createdAt: new Date('2023-04-15T18:20:00'),
-    message: 'Interesting perspective. Thanks for sharing.',
-    hasAnnotations: false,
-    timestamp: 240000, // Comment made at 4 minutes into the video
-  },
-  {
-    commenter: 'Eva Brown',
-    _createdAt: new Date('2023-05-20T12:15:00'),
-    message: 'I disagree with some points mentioned.',
-    hasAnnotations: true,
-    timestamp: 300000, // Comment made at 5 minutes into the video
-  },
-  {
-    commenter: 'Frank Miller',
-    _createdAt: new Date('2023-06-25T16:55:00'),
-    message: 'Looking forward to more content from you!',
-    hasAnnotations: false,
-    timestamp: 360000, // Comment made at 6 minutes into the video
-  }
-]);
+    return dateDiff;
+  });
+  console.log('sorted, temp');
+  return temp;
+});
 
 onMounted(async () => {
-
-  await getDeviceData();
-
   const user = ensure(store.userAccount.value);
 
   try {
     media.value = await apiClient.getProjectMediumById(user.account._id, route.params.projectId as string, route.params.mediaId as string);
+    comments.value = media.value.comments;
   }
   catch (e: any) {
     error.value = e;
@@ -152,28 +147,50 @@ onMounted(async () => {
 
 function seekToComment(comment: Comment) {
   if (!videoPlayer.value) return;
-  videoPlayer.value.currentTime = comment.timestamp / 1000;
+  if (comment.timestamp === null || comment.timestamp === undefined) {
+    return;
+  }
+
+  videoPlayer.value.currentTime = comment.timestamp;
 }
 
 function handleSeek() {
-  console.log('on seeked');
   if (!videoPlayer.value) return;
   currentTimeStamp.value = videoPlayer.value.currentTime;
-  console.log('currentTimeStamp', currentTimeStamp.value, videoPlayer.value.currentTime)
 }
 
-function sendComment() {
+function handleCommentInputFocus() {
+  if (!videoPlayer.value) return;
+  currentTimeStamp.value = videoPlayer.value.currentTime;
+  videoPlayer.value.pause();
+}
+
+async function sendComment() {
   if (!commentInputText.value) return;
+  if (!media.value) return;
+  const user = ensure(store.userAccount.value);
+  const projectId = ensure(route.params.projectId) as string;
+  const mediaId = ensure(route.params.mediaId) as string;
 
-  comments.value.push({
-    commenter: 'Habbes',
-    message: commentInputText.value,
-    hasAnnotations: false,
-    timestamp: (currentTimeStamp.value || 0) * 1000,
-    _createdAt: new Date()
-  });
-
-  commentInputText.value = '';
+  try {
+    const comment = await apiClient.createMediaComment(
+      user.account._id,
+      projectId,
+      mediaId,
+      {
+        text: commentInputText.value,
+        mediaVersionId: media.value?.preferredVersionId,
+        timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined
+      }
+    );
+    commentInputText.value = '';
+    comments.value.push(comment);
+  }
+  catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
+  
 }
 
 </script>

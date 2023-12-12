@@ -1,5 +1,5 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion } from "../models.js";
+import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, MediaVersion } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, DownloadTransferFileResult, ITransferService } from "./index.js";
 
@@ -16,7 +16,7 @@ export class CommentService {
         this.collection = db.collection<Comment>(COLLECTION);
     }
 
-    async createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<Comment> {
+    async createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<CommentWithAuthor> {
         const version = media.versions.find(v => v._id === args.mediaVersionId);
         if (!version) {
             throw createResourceNotFoundError(`The version '${args.mediaVersionId}' does not exist for the media '${media._id}'.`);
@@ -31,7 +31,7 @@ export class CommentService {
         });
     }
 
-    private async create(args: CreateCommentArgs): Promise<Comment> {
+    private async create(args: CreateCommentArgs): Promise<CommentWithAuthor> {
         try {
             const comment: Comment = {
                 ...createPersistedModel(this.authContext.user._id),
@@ -41,12 +41,18 @@ export class CommentService {
                 projectId: args.projectId
             };
 
-            if (args.timestamp) {
+            if (args.timestamp !== undefined && args.timestamp !== null) {
                 comment.timestamp = args.timestamp;
             }
 
             await this.collection.insertOne(comment);
-            return comment;
+            return {
+                ...comment,
+                author: {
+                    _id: this.authContext.user._id,
+                    name: this.authContext.user.name
+                }
+            };
             
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -54,10 +60,29 @@ export class CommentService {
         }
     }
 
-    async getMediaComments(mediaId: string): Promise<Comment[]> {
+    async getMediaComments(mediaId: string): Promise<CommentWithAuthor[]> {
         try {
-            const comments = await this.collection.find({ mediaId }).toArray();
-            return comments;
+            const result = await this.collection.aggregate<CommentWithAuthor>([
+                {
+                    $match: { mediaId: mediaId }
+                },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: '_createdBy._id',
+                        foreignField: '_id',
+                        as: 'author',
+                        pipeline: [{ $limit: 1 }]
+                    }
+                },
+                {
+                    $unwind: {
+                        path: '$author'
+                    }
+                }
+            ]).toArray();;
+            
+            return result;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
