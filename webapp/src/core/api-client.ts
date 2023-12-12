@@ -1,4 +1,4 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media, MediaWithFile } from './types.js'
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -182,6 +182,10 @@ export class ApiClient {
 
     async getProjectMedia(accountId: string, projectId: string): Promise<Media[]> {
         return this.get<Media[]>(`accounts/${accountId}/projects/${projectId}/media`);
+    }
+
+    async getProjectMediumById(accountId: string, projectId: string, mediaId: string): Promise<MediaWithFile> {
+        return this.get<MediaWithFile>(`accounts/${accountId}/projects/${projectId}/media/${mediaId}`);
     }
 
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {

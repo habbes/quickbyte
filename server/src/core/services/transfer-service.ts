@@ -182,6 +182,10 @@ export class TransferService {
 
     async getMediaFile(fileId: string): Promise<DownloadTransferFileResult> {
         try {
+            // accountId was added later to files, so some earlier files may not have an accountId.
+            // So we'd have to get the accountId from the transfer.
+            // However, when project media files feature was introduced, accountId was also added to files
+            // So all files that back project media must have an accountId
             const file = await this.filesCollection.findOne({ _id: fileId, accountId: this.authContext.user.account._id });
             if (!file) {
                 throw createResourceNotFoundError('media');

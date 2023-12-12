@@ -1,5 +1,5 @@
 <template>
-  <div v-if="file" class="flex flex-col fixed top-0 bottom-0 left-0 right-0 z-50 bg-[#261922]">
+  <div v-if="media" class="flex flex-col fixed top-0 bottom-0 left-0 right-0 z-50 bg-[#261922]">
     <div class="h-12 border-b border-b-[#120c11] flex flex-row items-center px-5" :style="headerClasses">top</div>
     <div class="flex-1 flex flex-row">
       <div class="w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col justify-end">
@@ -40,7 +40,7 @@
             <video
               ref="videoPlayer"
               class="h-full"
-              :src="file.downloadUrl"
+              :src="media.file.downloadUrl"
               controls
               @seeked="handleSeek()"
             ></video>
@@ -53,19 +53,15 @@
 import { computed, onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
 import { apiClient, getDeviceData, store } from "@/app-utils";
-import { formatTimestampDuration, type DownloadRequestResult } from "@/core";
+import { formatTimestampDuration, type DownloadRequestResult, ensure, type MediaWithFile } from "@/core";
 
 const videoPlayer = ref<HTMLVideoElement>();
 const route = useRoute();
-route.params.downloadId;
 const error = ref<Error|undefined>();
-const download = ref<DownloadRequestResult|undefined>();
+const media = ref<MediaWithFile>();
 const loading = ref(true);
-const zipFileName = ref<string>();
-const deviceData = store.deviceData;
-// keeps track of files that have been individually downloaded
-const files = computed(() => download.value?.files || []);
-const file = computed(() => files.value.length ? files.value[0] : undefined);
+
+
 const currentTimeStamp = ref<number>();
 const commentInputText = ref<string>();
 
@@ -138,17 +134,13 @@ const comments = ref<Comment[]>([
 ]);
 
 onMounted(async () => {
-  if (!route.params.downloadId || typeof route.params.downloadId !== 'string') {
-    error.value = new Error("Invalid download link");
-    return;
-  }
 
   await getDeviceData();
 
+  const user = ensure(store.userAccount.value);
+
   try {
-    download.value = await apiClient.getDownload(route.params.downloadId, deviceData.value || {});
-    download.value.files
-    zipFileName.value = `${download.value.name}.zip`;
+    media.value = await apiClient.getProjectMediumById(user.account._id, route.params.projectId as string, route.params.mediaId as string);
   }
   catch (e: any) {
     error.value = e;
@@ -183,4 +175,5 @@ function sendComment() {
 
   commentInputText.value = '';
 }
+
 </script>

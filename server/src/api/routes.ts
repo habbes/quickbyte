@@ -83,6 +83,12 @@ routes.get('/accounts/:accountId/projects/:projectId/media',
     wrapResponse(req =>
         req.services.accounts.projects(req.authContext).getMedia(req.params.projectId)));
 
+routes.get('/accounts/:accountId/projects/:projectId/media/:mediaId',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext).getMediumById(req.params.projectId, req.params.mediaId)));
+
 routes.get('/me', requireAuth(), wrapResponse(req =>
     Promise.resolve(req.authContext.user)));
 

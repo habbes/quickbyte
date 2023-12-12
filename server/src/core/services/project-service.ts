@@ -3,7 +3,7 @@ import { AuthContext, Media, Project, createPersistedModel } from "../models.js"
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
 import { CreateProjectMediaUploadArgs, CreateTransferResult, ITransactionService, ITransferService } from "./index.js";
 import { IInviteService } from "./invite-service.js";
-import { IMediaService, MediaService } from "./media-service.js";
+import { IMediaService, MediaService, MediaWithFile } from "./media-service.js";
 
 const COLLECTION = 'projects';
 
@@ -154,7 +154,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'inviteUsers'>;
+export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'>;
 
 export interface CreateProjectArgs {
     name: string;

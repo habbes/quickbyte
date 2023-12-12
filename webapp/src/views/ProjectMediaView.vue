@@ -6,7 +6,9 @@
       <button @click="openFilePicker()" class="btn btn-primary">Upload Files</button>
     </div>
     <div v-else v-for="medium in media" :key="medium._id">
-      {{ medium.name }}
+      <router-link :to="{ name: 'player', params: { projectId: medium.projectId, mediaId: medium._id } }">
+        {{ medium.name }}
+      </router-link>
     </div>
   </div>
 </template>

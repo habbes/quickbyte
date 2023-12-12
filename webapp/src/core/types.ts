@@ -109,6 +109,16 @@ export interface Media extends PersistedModel {
     // TODO: add file kind?
 }
 
+export interface MediaWithFile extends Media {
+    file: {
+        _id: string;
+        name: string;
+        downloadUrl: string;
+        provider: string;
+        region: string;
+    }
+}
+
 export interface MediaVersion extends PersistedModel {
     name: string;
     fileId: string;

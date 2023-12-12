@@ -70,7 +70,7 @@ const router = createRouter({
               ]
             },
             {
-              path: '/player/:downloadId',
+              path: 'projects/:projectId/player/:mediaId',
               name: 'player',
               component: PlayerView
             },
