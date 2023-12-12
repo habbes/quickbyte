@@ -3,6 +3,7 @@ import { Account, AuthContext, createAppError, createDbError, createPersistedMod
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService, InviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
+import { CommentService } from "./comment-service.js";
 
 const COLLECTION = 'accounts';
 
@@ -90,7 +91,8 @@ export class AccountService {
             invites: this.config.invites,
             transfers,
             media: new MediaService(this.db, authContext, {
-                transfers
+                transfers,
+                comments: new CommentService(this.db, authContext)
             })
         });
     }

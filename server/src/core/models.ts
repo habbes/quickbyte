@@ -218,12 +218,7 @@ export interface Comment extends PersistedModel {
     projectId: string;
     mediaId: string;
     mediaVersionId: string;
-    hasTimestamp: boolean;
-    timestampMicroseconds?: number;
-}
-
-export interface CommentRead extends PersistedModel {
-    readBy: Principal
+    timestamp?: number;
 }
 
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
@@ -256,4 +251,3 @@ export interface UserRole extends PersistedModel {
 }
 
 export type RoleType = 'reviewer';
-

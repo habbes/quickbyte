@@ -1,12 +1,14 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, createPersistedModel, Media, MediaVersion } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion } from "../models.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, DownloadTransferFileResult, ITransferService } from "./index.js";
+import { CreateMediaCommentArgs, ICommentService } from "./comment-service.js";
 
 const COLLECTION = 'media';
 
 export interface MediaServiceConfig {
-    transfers: ITransferService
+    transfers: ITransferService;
+    comments: ICommentService;
 }
 
 export class MediaService {
@@ -54,10 +56,28 @@ export class MediaService {
                 throw createInvalidAppStateError(`Could not find preferred verson '${medium.preferredVersionId}' for media '${medium._id}'`);
             }
 
-            // find the file
-            const file = await this.config.transfers.getMediaFile(version.fileId);
+            const [file, comments] = await Promise.all([
+                this.config.transfers.getMediaFile(version.fileId),
+                this.config.comments.getMediaComments(medium._id)
+            ]);
 
-            return { ...medium, file }
+            return { ...medium, file, comments }
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<Comment> {
+        try {
+            const medium = await this.collection.findOne({ projectId: projectId, _id: mediaId });
+            if (!medium) {
+                throw createNotFoundError('media');
+            }
+
+            const comment = await this.config.comments.createMediaComment(medium, args);
+
+            return comment;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -84,8 +104,9 @@ export class MediaService {
     }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'|'createMediaComment'>;
 
 export interface MediaWithFile extends Media {
-    file: DownloadTransferFileResult
+    file: DownloadTransferFileResult,
+    comments: Comment[]
 }

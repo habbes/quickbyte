@@ -116,10 +116,19 @@ export interface MediaWithFile extends Media {
         downloadUrl: string;
         provider: string;
         region: string;
-    }
+    },
+    comments: Comment[];
 }
 
 export interface MediaVersion extends PersistedModel {
     name: string;
     fileId: string;
+}
+
+export interface Comment extends PersistedModel {
+    text: string;
+    projectId: string;
+    mediaId: string;
+    mediaVersionId: string;
+    timestamp?: number;
 }

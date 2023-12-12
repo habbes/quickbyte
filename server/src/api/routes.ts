@@ -89,6 +89,13 @@ routes.get('/accounts/:accountId/projects/:projectId/media/:mediaId',
     wrapResponse(req =>
         req.services.accounts.projects(req.authContext).getMediumById(req.params.projectId, req.params.mediaId)));
 
+routes.post('/accounts/:accountId/projects/:projectId/media/:mediaId/comments',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext)
+            .createMediaComment(req.params.projectId, req.params.mediaId, req.body)));
+
 routes.get('/me', requireAuth(), wrapResponse(req =>
     Promise.resolve(req.authContext.user)));
 

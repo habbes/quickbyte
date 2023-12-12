@@ -1,9 +1,10 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Media, Project, createPersistedModel } from "../models.js";
+import { AuthContext, Comment, Media, Project, createPersistedModel } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
 import { CreateProjectMediaUploadArgs, CreateTransferResult, ITransactionService, ITransferService } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IMediaService, MediaService, MediaWithFile } from "./media-service.js";
+import { CreateMediaCommentArgs } from "./comment-service.js";
 
 const COLLECTION = 'projects';
 
@@ -131,6 +132,10 @@ export class ProjectService {
         }
     }
 
+    async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<Comment> {
+        return this.config.media.createMediaComment(projectId, mediaId, args);
+    }
+
     async inviteUsers(id: string, args: InviteUserArgs) {
         try {
             const project = await this.getById(id);
@@ -154,7 +159,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'>;
+export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'>;
 
 export interface CreateProjectArgs {
     name: string;

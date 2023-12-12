@@ -188,6 +188,10 @@ export class ApiClient {
         return this.get<MediaWithFile>(`accounts/${accountId}/projects/${projectId}/media/${mediaId}`);
     }
 
+    async createMediaComment(accountId: string, projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<Comment> {
+        return this.post<Comment>(`accounts/${accountId}/projects/${projectId}/media/${mediaId}/comments`, args);
+    }
+
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
         return this.makeRequest<T>(endpoint, 'GET', undefined, auth);
     }
@@ -376,4 +380,10 @@ interface CreateTransferMeta {
 export interface UploadMediaResult {
     media: Media[],
     transfer: CreateTransferResult
+}
+
+export interface CreateMediaCommentArgs {
+    mediaVersionId: string;
+    text: string;
+    timestamp?: number;
 }
