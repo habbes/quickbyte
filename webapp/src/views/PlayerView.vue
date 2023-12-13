@@ -1,29 +1,16 @@
 <template>
   <div v-if="media" class="flex flex-col fixed top-0 bottom-0 left-0 right-0 z-50 bg-[#261922]">
-    <div class="h-12 border-b border-b-[#120c11] flex flex-row items-center px-5" :style="headerClasses">top</div>
+    <div class="h-12 border-b border-b-[#120c11] flex flex-row items-center justify-between px-5" :style="headerClasses">
+      <div>
+        <XMarkIcon class="h-5 w-5 hover:text-white hover:cursor-pointer" @click="closePlayer()" />
+      </div>
+      <div class="text-white text-md">
+        {{ media.name }}
+      </div>
+      <div></div>
+    </div>
     <div class="flex-1 flex flex-row">
-      <div class="w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col justify-end">
-        <div class="overflow-y-scroll flex flex-col justify-end" :style="commentsListStyles">
-          <div v-for="comment in sortedComments" class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0">
-            <div class="flex flex-row items-center justify-between mb-2">
-              <div class="flex flex-row items-center gap-2">
-                <span class="text-sm text-white">{{ comment.author.name }}</span>
-                <span :title="`Posted on ${new Date(comment._createdAt).toLocaleString()} `">{{ new Date(comment._createdAt).toLocaleDateString() }}</span>
-              </div>
-              <span
-                v-if="comment.timestamp !== undefined"
-                @click="seekToComment(comment)"
-                title="Jump to this time in the video"
-                class="font-semibold text-blue-300 hover:cursor-pointer"
-              >
-                {{ formatTimestampDuration(comment.timestamp) }}
-              </span>
-            </div>
-            <div class="text-xs">
-              {{ comment.text }}
-            </div>
-          </div>
-        </div>
+      <div class="w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col-reverse justify-start">
         <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2" :style="commentInputStyles">
           <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
             <div class="flex flex-row items-center justify-end">
@@ -48,6 +35,29 @@
             <button class="btn btn-primary btn-xs" @click="sendComment()">Send</button>
           </div>
         </div>
+
+        <div class="overflow-y-auto flex flex-col justify-start" :style="commentsListStyles">
+          <div v-for="comment in sortedComments" class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0">
+            <div class="flex flex-row items-center justify-between mb-2">
+              <div class="flex flex-row items-center gap-2">
+                <span class="text-sm text-white">{{ comment.author.name }}</span>
+                <span :title="`Posted on ${new Date(comment._createdAt).toLocaleString()} `">{{ new Date(comment._createdAt).toLocaleDateString() }}</span>
+              </div>
+              <span
+                v-if="comment.timestamp !== undefined"
+                @click="seekToComment(comment)"
+                title="Jump to this time in the video"
+                class="font-semibold text-blue-300 hover:cursor-pointer"
+              >
+                {{ formatTimestampDuration(comment.timestamp) }}
+              </span>
+            </div>
+            <div class="text-xs">
+              {{ comment.text }}
+            </div>
+          </div>
+        </div>
+        
       </div>
       <div class="flex-1 p-5 flex items-stretch justify-center bg-[#24141f]">
           <div class="h-[90%]">
@@ -65,10 +75,10 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue"
-import { useRoute } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store } from "@/app-utils";
 import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined } from "@/core";
-import { ClockIcon } from '@heroicons/vue/24/outline';
+import { ClockIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
 // had difficulties getting the scrollbar on the comments panel to work
 // properly using overflow: auto css, so I resorted to hardcoding dimensions
@@ -88,6 +98,7 @@ const commentsListStyles = {
 
 const videoPlayer = ref<HTMLVideoElement>();
 const route = useRoute();
+const router = useRouter();
 const error = ref<Error|undefined>();
 const media = ref<MediaWithFile>();
 const comments = ref<Comment[]>([]);
@@ -163,6 +174,10 @@ function handleCommentInputFocus() {
   if (!videoPlayer.value) return;
   currentTimeStamp.value = videoPlayer.value.currentTime;
   videoPlayer.value.pause();
+}
+
+function closePlayer() {
+  router.push({ name: 'project-media', params: { projectId: route.params.projectId as string } })
 }
 
 async function sendComment() {
