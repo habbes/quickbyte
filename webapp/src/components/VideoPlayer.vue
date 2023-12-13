@@ -41,7 +41,7 @@
         <SpeakerXMarkIcon v-if="isMuted" class="h-5 w-5 cursor-pointer" @click="unmute()"/>
       </div>
       <div>
-        <input v-model="volume" type="range" min="0" max="1" step="0.01" class="range bg-white range-xs" /> 
+        <Slider :model-value="[volume]" @update:model-value="handleSliderUpdate($event)" :min="0" :max="1" :step="0.01" class=" w-20" />
       </div>
       <div>
         {{ formatTimestampDuration(playTime) }} / {{ formatTimestampDuration(duration) }}
@@ -53,6 +53,7 @@
 import { formatTimestampDuration, type Comment } from '@/core';
 import { ref, computed, watch } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/vue/24/solid';
+import Slider from '@/components/ui/Slider.vue';
 
 const player = ref<HTMLVideoElement>();
 const progressBar = ref<HTMLDivElement>();
@@ -79,6 +80,9 @@ watch([volume], (curr, prev) => {
   prevVolume.value = prev[0];
   if (volume.value == 0.0) {
     isMuted.value = true;
+  }
+  else if (isMuted.value) {
+    isMuted.value = false;
   }
 });
 
@@ -194,4 +198,8 @@ function getTimeFromPosition(seekPosition: number): number {
   return time;
 }
 
+function handleSliderUpdate(value: number[]|undefined) {
+  if (value === undefined) return;
+  volume.value = value[0];
+}
 </script>
