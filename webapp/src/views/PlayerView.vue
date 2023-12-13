@@ -10,7 +10,35 @@
       <div></div>
     </div>
     <div class="flex-1 flex flex-row">
-      <div class="w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col-reverse justify-start">
+      <div class="w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col">
+        
+
+        <div class="overflow-y-auto flex flex-col" :style="commentsListStyles">
+          <div v-for="comment in sortedComments"
+            :key="comment._id"
+            :id="getHtmlCommentId(comment)"
+            class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0"
+          >
+            <div class="flex flex-row items-center justify-between mb-2">
+              <div class="flex flex-row items-center gap-2">
+                <span class="text-sm text-white">{{ comment.author.name }}</span>
+                <span :title="`Posted on ${new Date(comment._createdAt).toLocaleString()} `">{{ new Date(comment._createdAt).toLocaleDateString() }}</span>
+              </div>
+              <span
+                v-if="comment.timestamp !== undefined"
+                @click="seekToComment(comment)"
+                title="Jump to this time in the video"
+                class="font-semibold text-blue-300 hover:cursor-pointer"
+              >
+                {{ formatTimestampDuration(comment.timestamp) }}
+              </span>
+            </div>
+            <div class="text-xs">
+              {{ comment.text }}
+            </div>
+          </div>
+        </div>
+
         <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2" :style="commentInputStyles">
           <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
             <div class="flex flex-row items-center justify-end">
@@ -35,28 +63,6 @@
             <button class="btn btn-primary btn-xs" @click="sendComment()">Send</button>
           </div>
         </div>
-
-        <div class="overflow-y-auto flex flex-col justify-start" :style="commentsListStyles">
-          <div v-for="comment in sortedComments" class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0">
-            <div class="flex flex-row items-center justify-between mb-2">
-              <div class="flex flex-row items-center gap-2">
-                <span class="text-sm text-white">{{ comment.author.name }}</span>
-                <span :title="`Posted on ${new Date(comment._createdAt).toLocaleString()} `">{{ new Date(comment._createdAt).toLocaleDateString() }}</span>
-              </div>
-              <span
-                v-if="comment.timestamp !== undefined"
-                @click="seekToComment(comment)"
-                title="Jump to this time in the video"
-                class="font-semibold text-blue-300 hover:cursor-pointer"
-              >
-                {{ formatTimestampDuration(comment.timestamp) }}
-              </span>
-            </div>
-            <div class="text-xs">
-              {{ comment.text }}
-            </div>
-          </div>
-        </div>
         
       </div>
       <div class="flex-1 p-5 flex items-stretch justify-center bg-[#24141f]">
@@ -74,7 +80,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue"
+import { computed, onMounted, ref, nextTick } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store } from "@/app-utils";
 import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined } from "@/core";
@@ -137,7 +143,7 @@ const sortedComments = computed(() => {
 
     return dateDiff;
   });
-  console.log('sorted, temp');
+
   return temp;
 });
 
@@ -180,6 +186,10 @@ function closePlayer() {
   router.push({ name: 'project-media', params: { projectId: route.params.projectId as string } })
 }
 
+function getHtmlCommentId(comment: Comment) {
+  return `comment_${comment._id}`;
+}
+
 async function sendComment() {
   if (!commentInputText.value) return;
   if (!media.value) return;
@@ -200,6 +210,10 @@ async function sendComment() {
     );
     commentInputText.value = '';
     comments.value.push(comment);
+    
+    // we wait for the next tick to ensure the new comment has been added to the DOM
+    // before we scroll into it
+    nextTick(() => document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView(false))
   }
   catch (e: any) {
     logger.error(e.message, e);
