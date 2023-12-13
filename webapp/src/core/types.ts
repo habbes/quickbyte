@@ -136,3 +136,7 @@ export interface Comment extends PersistedModel {
         name: string;
     }
 }
+
+export interface TimedComment extends Comment {
+    timestamp: number;
+}

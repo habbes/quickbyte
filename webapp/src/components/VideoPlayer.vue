@@ -29,31 +29,70 @@
       >
         {{ formatTimestampDuration(seekingHoverTime) }}
       </div>
-
+      <div
+        v-if="hoveredComment"
+        class="absolute bottom-[20px] bg-gray-800 rounded-md px-5 py-2 text-ellipsis text-xs max-w-[200px] h-12 overflow-hidden translate-x-[-50%]"
+        :style="{ left: `${getPositionFromTime(hoveredComment.timestamp)}px`}"
+      >
+        <div class="font-semibold text-gray-300">{{ hoveredComment.author.name }}</div>
+        <div class="truncate">{{ hoveredComment.text }}</div>
+      </div>
     </div>
-    <div class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center gap-2">
-      <div>
-        <PlayIcon v-if="!isPlaying" class="h-5 w-5 cursor-pointer" @click="play()"/>
-        <PauseIcon v-else class="h-5 w-5 cursor-pointer" @click="pause()"/>
+    <div class="bg-black border-t border-t-[#24141f] h-7 flex flex-row items-center relative">
+      <div
+        v-for="comment in comments"
+        :key="comment._id"
+        @click="handleCommentClick(comment)"
+        @mouseenter="handleCommentMouseEnter(comment)"
+        @mouseleave="handleCommentMouseLeave()"
+        class="h-3 w-3 rounded-full bg-blue-400 border-b border-blue-800 absolute cursor-pointer translate-x-[-50%]"
+        :class="{ 'ring-offset-1 ring-offset-white ring-1': comment._id === selectedCommentId}"
+        :style="{ left: `${getPositionFromTime(comment.timestamp)}px`}"
+      ></div>
+    </div>
+    <div class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
+      <div class="flex flex-row items-center gap-2">
+        <div>
+          <PlayIcon v-if="!isPlaying" class="h-5 w-5 cursor-pointer" @click="play()"/>
+          <PauseIcon v-else class="h-5 w-5 cursor-pointer" @click="pause()"/>
+        </div>
+        <div>
+          <SpeakerWaveIcon v-if="!isMuted" class="h-5 w-5 cursor-pointer" @click="mute()"/>
+          <SpeakerXMarkIcon v-if="isMuted" class="h-5 w-5 cursor-pointer" @click="unmute()"/>
+        </div>
+        <div>
+          <Slider :model-value="[volume]" @update:model-value="handleSliderUpdate($event)" :min="0" :max="1" :step="0.01" class=" w-20" />
+        </div>
       </div>
       <div>
-        <SpeakerWaveIcon v-if="!isMuted" class="h-5 w-5 cursor-pointer" @click="mute()"/>
-        <SpeakerXMarkIcon v-if="isMuted" class="h-5 w-5 cursor-pointer" @click="unmute()"/>
-      </div>
-      <div>
-        <Slider :model-value="[volume]" @update:model-value="handleSliderUpdate($event)" :min="0" :max="1" :step="0.01" class=" w-20" />
-      </div>
-      <div>
-        {{ formatTimestampDuration(playTime) }} / {{ formatTimestampDuration(duration) }}
+        <span class="text-gray-300">{{ formatTimestampDuration(playTime) }}</span> / {{ formatTimestampDuration(duration) }}
       </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { formatTimestampDuration, type Comment } from '@/core';
+import { formatTimestampDuration, type Comment, type TimedComment } from '@/core';
 import { ref, computed, watch } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
+
+const props = defineProps<{
+  src: string;
+  comments?: TimedComment[];
+  selectedCommentId?: string;
+}>();
+
+const emit = defineEmits<{
+  (e: 'seeked'): void;
+  (e: 'clickComment', comment: TimedComment): void;
+}>();
+
+defineExpose({
+  seek,
+  pause,
+  play,
+  getCurrentTime
+});
 
 const player = ref<HTMLVideoElement>();
 const progressBar = ref<HTMLDivElement>();
@@ -65,6 +104,9 @@ const playPercentage = computed(() => {
   const total = player.value.duration;
   return 100 * current/total;
 });
+
+const hoveredCommentId = ref<string>();
+const hoveredComment = computed(() => props.comments?.find(c => c._id === hoveredCommentId.value));
 // When the video player is mounted,
 // the duration is NaN
 // So we update the duration manually
@@ -92,21 +134,6 @@ const seekingHoverTime = computed<number|undefined>(() => {
   return getTimeFromPosition(seekingHoverPosition.value);
 });
 
-defineProps<{
-  src: string;
-  comments?: Comment[];
-}>();
-
-defineEmits<{
-  (e: 'seeked'): void;
-}>();
-
-defineExpose({
-  seek,
-  pause,
-  play,
-  getCurrentTime
-});
 
 function seek(to: number) {
   if (!player.value) return;
@@ -198,8 +225,30 @@ function getTimeFromPosition(seekPosition: number): number {
   return time;
 }
 
+function getPositionFromTime(timestamp: number): number {
+  if (!progressBar.value) return 0;
+  if (!player.value) return 0;
+  const duration = player.value.duration;
+  const width = progressBar.value.offsetWidth;
+  const x = (timestamp / duration) * width;
+  console.log('position', x, 'width', width, 'time', timestamp);
+  return x;
+}
+
 function handleSliderUpdate(value: number[]|undefined) {
   if (value === undefined) return;
   volume.value = value[0];
+}
+
+function handleCommentClick(comment: TimedComment) {
+  emit('clickComment', comment);
+}
+
+function handleCommentMouseEnter(comment: TimedComment) {
+  hoveredCommentId.value = comment._id;
+}
+
+function handleCommentMouseLeave() {
+  hoveredCommentId.value = undefined;
 }
 </script>

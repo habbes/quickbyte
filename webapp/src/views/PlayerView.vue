@@ -18,6 +18,7 @@
             :key="comment._id"
             :id="getHtmlCommentId(comment)"
             class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0"
+            :class="{ 'bg-[#120c11]': comment._id === selectedCommentId }"
           >
             <div class="flex flex-row items-center justify-between mb-2">
               <div class="flex flex-row items-center gap-2">
@@ -26,7 +27,7 @@
               </div>
               <span
                 v-if="comment.timestamp !== undefined"
-                @click="seekToComment(comment)"
+                @click="handleCommentClicked(comment)"
                 title="Jump to this time in the video"
                 class="font-semibold text-blue-300 hover:cursor-pointer"
               >
@@ -71,6 +72,9 @@
               ref="videoPlayer"
               :src="media.file.downloadUrl"
               @seeked="handleSeek()"
+              :comments="timedComments"
+              :selectedCommentId="selectedCommentId"
+              @clickComment="handleVideoCommentClicked($event)"
             />
           </div>
       </div>
@@ -81,7 +85,7 @@
 import { computed, onMounted, ref, nextTick } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store } from "@/app-utils";
-import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined } from "@/core";
+import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined, type TimedComment } from "@/core";
 import { ClockIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import VideoPlayer from "@/components/VideoPlayer.vue";
 
@@ -108,6 +112,7 @@ const error = ref<Error|undefined>();
 const media = ref<MediaWithFile>();
 const comments = ref<Comment[]>([]);
 const loading = ref(true);
+const selectedCommentId = ref<string>();
 
 
 const currentTimeStamp = ref<number>(0);
@@ -146,6 +151,8 @@ const sortedComments = computed(() => {
   return temp;
 });
 
+const timedComments = computed<TimedComment[]>(() => sortedComments.value.filter(c => isDefined(c.timestamp)) as TimedComment[]);
+
 onMounted(async () => {
   const user = ensure(store.userAccount.value);
 
@@ -170,6 +177,18 @@ function seekToComment(comment: Comment) {
   videoPlayer.value.seek(comment.timestamp);
 }
 
+function scrollToComment(comment: Comment) {
+  document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView(false);
+}
+
+function selectComment(comment: Comment) {
+  selectedCommentId.value = comment._id;
+}
+
+function unselectComment() {
+  selectedCommentId.value = undefined;
+}
+
 function handleSeek() {
   if (!videoPlayer.value) return;
   currentTimeStamp.value = videoPlayer.value.getCurrentTime();
@@ -179,6 +198,7 @@ function handleCommentInputFocus() {
   if (!videoPlayer.value) return;
   currentTimeStamp.value = videoPlayer.value.getCurrentTime();
   videoPlayer.value.pause();
+  unselectComment();
 }
 
 function closePlayer() {
@@ -187,6 +207,17 @@ function closePlayer() {
 
 function getHtmlCommentId(comment: Comment) {
   return `comment_${comment._id}`;
+}
+
+function handleCommentClicked(comment: Comment) {
+  seekToComment(comment);
+  selectComment(comment);
+}
+
+function handleVideoCommentClicked(comment: TimedComment) {
+  seekToComment(comment);
+  selectComment(comment);
+  scrollToComment(comment);
 }
 
 async function sendComment() {
@@ -212,13 +243,12 @@ async function sendComment() {
     
     // we wait for the next tick to ensure the new comment has been added to the DOM
     // before we scroll into it
-    nextTick(() => document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView(false))
+    nextTick(() => scrollToComment(comment));
   }
   catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
   }
-  
 }
 
 </script>
