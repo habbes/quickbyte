@@ -5,10 +5,28 @@
 
       <button @click="openFilePicker()" class="btn btn-primary">Upload Files</button>
     </div>
-    <div v-else v-for="medium in media" :key="medium._id">
-      <router-link :to="{ name: 'player', params: { projectId: medium.projectId, mediaId: medium._id } }">
-        {{ medium.name }}
-      </router-link>
+    <div
+      v-else
+      class="grid"
+      style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(288px,1fr))"
+    >
+      <div class="w-[288px] h-[288px] rounded-md border border-gray-600 flex items-center justify-center">
+        <ArrowUpOnSquareIcon @click="openFilePicker()" class="h-24 w-24 hover:text-white hover:cursor-pointer" />
+      </div>
+      <div
+        v-for="medium in media"
+        :key="medium._id"
+        class="bg-slate-500 w-[288px] rounded-md border border-gray-600"
+      >
+        <div class="h-[240px] bg-black flex items-center justify-center">
+          <PlayIcon class="h-24 w-24"/>
+        </div>
+        <div class="h-12 border-t border-gray-600 flex flex-row items-center p-2">
+          <router-link :to="{ name: 'player', params: { projectId: medium.projectId, mediaId: medium._id } }">
+            {{ medium.name }}
+          </router-link>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -17,6 +35,7 @@ import { onMounted, ref, watch } from 'vue';
 import { useRoute} from 'vue-router';
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, type Media } from '@/core';
+import { PlayIcon, ArrowUpOnSquareIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute();
 const loading = ref(false);

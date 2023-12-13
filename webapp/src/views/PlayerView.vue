@@ -67,13 +67,11 @@
       </div>
       <div class="flex-1 p-5 flex items-stretch justify-center bg-[#24141f]">
           <div class="h-[90%]">
-            <video
+            <VideoPlayer
               ref="videoPlayer"
-              class="h-full"
               :src="media.file.downloadUrl"
-              controls
               @seeked="handleSeek()"
-            ></video>
+            />
           </div>
       </div>
     </div>
@@ -85,6 +83,7 @@ import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store } from "@/app-utils";
 import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined } from "@/core";
 import { ClockIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import VideoPlayer from "@/components/VideoPlayer.vue";
 
 // had difficulties getting the scrollbar on the comments panel to work
 // properly using overflow: auto css, so I resorted to hardcoding dimensions
@@ -102,7 +101,7 @@ const commentsListStyles = {
 };
 
 
-const videoPlayer = ref<HTMLVideoElement>();
+const videoPlayer = ref<typeof VideoPlayer>();
 const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
@@ -168,17 +167,17 @@ function seekToComment(comment: Comment) {
     return;
   }
 
-  videoPlayer.value.currentTime = comment.timestamp;
+  videoPlayer.value.seek(comment.timestamp);
 }
 
 function handleSeek() {
   if (!videoPlayer.value) return;
-  currentTimeStamp.value = videoPlayer.value.currentTime;
+  currentTimeStamp.value = videoPlayer.value.getCurrentTime();
 }
 
 function handleCommentInputFocus() {
   if (!videoPlayer.value) return;
-  currentTimeStamp.value = videoPlayer.value.currentTime;
+  currentTimeStamp.value = videoPlayer.value.getCurrentTime();
   videoPlayer.value.pause();
 }
 
