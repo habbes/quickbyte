@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
-import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo } from '@/app-utils';
-import { ensure, ApiError, AzUploader, MultiFileUploader, type CreateTransferResult, type Media } from "@/core";
+import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo, taskManager } from '@/app-utils';
+import { ensure, ApiError, AzUploader, MultiFileUploader, type CreateTransferResult, type Media, type TransferTask, pluralize } from "@/core";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete' | 'error';
 
@@ -43,14 +43,12 @@ export function useFileTransfer() {
         downloadUrl
     };
 
-    const startTransfer = (args: StartFileTransferArgs) =>startFileTransferInternal(args, result);
+    const startTransfer = (args: StartFileTransferArgs) => startFileTransferInternal(args, result);
 
     return { ...result, startTransfer };
 }
 
 async function startFileTransferInternal(args: StartFileTransferArgs, result: StartTransferResultTrackers) {
-
-
     const { files, directories } = args;
     const { uploadProgress, uploadState, media, transfer, downloadUrl, error } = result;
     uploadProgress.value = 0;
@@ -60,6 +58,12 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
     const blockSize = 16 * 1024 * 1024; // 16MB
 
     const removeExitWarning = windowUnloadManager.warnUserOnExit();
+    const task: TransferTask = taskManager.createTask({
+        status: 'pending',
+        description: `Uploading ${files.length} ${pluralize('file', files.length)}`,
+        type: 'transfer'
+    });
+
     try {
         const user = ensure(store.userAccount.value, 'No active user found to execute media upload.');
         const provider = ensure(store.preferredProvider.value, 'Preferred provider not set for media upload.');
@@ -94,6 +98,9 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
             });
         }
 
+        task.transfer = transfer.value;
+        task.status = 'progress';
+
         const transferTracker = uploadRecoveryManager.createTransferTracker({
             name: transfer.value.name,
             id: transfer.value._id,
@@ -106,7 +113,8 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
         const uploader = new MultiFileUploader({
             files: transfer.value.files,
             onProgress: (progress) => {
-                uploadProgress.value = progress
+                uploadProgress.value = progress,
+                task.progress = 100 * progress / totalSize;
             },
             uploaderFactory: (file, onFileProgress, fileIndex) => {
                 if (!files) throw new Error("Excepted files.value to be set");
@@ -162,11 +170,14 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
             }
         }
 
+        task.status = 'complete';
         await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
     } catch (e: any) {
         logger.error(e.message, e);
         uploadState.value = 'initial';
         error.value = e
+        task.status = 'error';
+        task.error = e.message;
     }
     finally {
         removeExitWarning();

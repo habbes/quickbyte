@@ -17,7 +17,7 @@
     </div>
     <div v-else>
       <div v-for="project in projects">
-        <router-link :to="{ name: 'project', params: { projectId: project._id }}">{{ project.name }}</router-link>
+        <router-link :to="{ name: 'project-media', params: { projectId: project._id }}">{{ project.name }}</router-link>
       </div>
     </div>
   </div>

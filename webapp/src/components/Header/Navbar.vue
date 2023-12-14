@@ -46,6 +46,9 @@
                   activeClass="text-white"
                 >Transfers</router-link>
               </li>
+              <li v-if="user">
+                <TasksDropdown />
+              </li>
               <FeaturebaseChangelog />
               <li v-for="{ id, name, path } in navLinks" :key="id"
                 class="pb-3 border-b border-[#131319] lg:border-none lg:pb-0">
@@ -76,6 +79,7 @@ import { computed } from 'vue';
 import { useUser, auth } from '@/app-utils';
 import FeaturebaseChangelog from '@/components/FeaturebaseChangelog.vue';
 import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
+import TasksDropdown from '../TasksDropdown.vue';
 
 const user = useUser();
 

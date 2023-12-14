@@ -34,7 +34,7 @@
 import { onMounted, ref, watch } from 'vue';
 import { useRoute} from 'vue-router';
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
-import { ensure, type Media } from '@/core';
+import { ensure, pluralize, type Media } from '@/core';
 import { PlayIcon, ArrowUpOnSquareIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute();
@@ -66,7 +66,7 @@ onError((e) => {
 
 onFilesSelected(async (files, directories) => {
   // start transfer
-  showToast(`Uploading ${files.length} files...`, 'info');
+  showToast(`Uploading ${files.length} ${pluralize('file', files.length)}...`, 'info');
   await startTransfer({
     files: files,
     directories: directories,

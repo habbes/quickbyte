@@ -178,7 +178,11 @@ function seekToComment(comment: Comment) {
 }
 
 function scrollToComment(comment: Comment) {
-  document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView(false);
+  document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView({
+    block: 'end',
+    inline: 'nearest',
+    behavior: 'smooth'
+  });
 }
 
 function selectComment(comment: Comment) {
