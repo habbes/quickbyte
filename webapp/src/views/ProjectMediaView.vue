@@ -8,24 +8,17 @@
     <div
       v-else
       class="grid overflow-y-auto"
-      style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(288px,1fr))"
+      style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(250px,1fr))"
     >
-      <div class="w-[288px] h-[288px] rounded-md border border-gray-600 flex items-center justify-center">
+      <div class="w-full h-[288px] rounded-md border border-gray-600 flex items-center justify-center">
         <ArrowUpOnSquareIcon @click="openFilePicker()" class="h-24 w-24 hover:text-white hover:cursor-pointer" />
       </div>
       <div
         v-for="medium in media"
         :key="medium._id"
-        class="bg-slate-500 w-[288px] rounded-md border border-gray-600"
+        class="w-full h-[288px]"
       >
-        <div class="h-[240px] bg-black flex items-center justify-center">
-          <PlayIcon class="h-24 w-24"/>
-        </div>
-        <div class="h-12 border-t border-gray-600 flex flex-row items-center p-2">
-          <router-link :to="{ name: 'player', params: { projectId: medium.projectId, mediaId: medium._id } }">
-            {{ medium.name }}
-          </router-link>
-        </div>
+        <MediaCardItem :media="medium"/>
       </div>
     </div>
   </div>
@@ -36,6 +29,7 @@ import { useRoute} from 'vue-router';
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
 import { PlayIcon, ArrowUpOnSquareIcon } from '@heroicons/vue/24/outline'
+import MediaCardItem from '@/components/MediaCardItem.vue';
 
 const route = useRoute();
 const loading = ref(false);
