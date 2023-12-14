@@ -80,6 +80,8 @@ export interface Transfer extends PersistedModel {
     totalSize: number;
     numFiles: number;
     transferCompletedAt: string;
+    projectId?: string;
+    hidden?: boolean;
 }
 
 export type TransferStatus = 'pending' | 'progress' | 'completed';
@@ -116,6 +118,7 @@ export interface MediaWithFile extends Media {
         downloadUrl: string;
         provider: string;
         region: string;
+        size: number;
     },
     comments: Comment[];
 }

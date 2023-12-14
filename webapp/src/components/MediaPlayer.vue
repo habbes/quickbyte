@@ -1,6 +1,7 @@
 <template>
-  <div>
+  <div class="w-full">
     <video
+      v-if="mediaType === 'video'"
       ref="player"
       :src="src"
       controlslist="nodownload"
@@ -10,9 +11,22 @@
       @timeupdate="handleTimeUpdate()"
       @canplay="handleCanPlay()"
     ></video>
+    <div v-else class="bg-black p-10 flex items-center justify-center">
+      <MusicalNoteIcon class="h-24 w-24 text-white" />
+      <audio
+        ref="player"
+        :src="src"
+        controlslist="nodownload"
+        @seeked="$emit('seeked')"
+        @play="isPlaying = true"
+        @pause="isPlaying = false"
+        @timeupdate="handleTimeUpdate()"
+        @canplay="handleCanPlay()"
+      ></audio>
+    </div>
     <div
       ref="progressBar"
-      class="relative h-2 border-x-[0.5px] border-x-black cursor-pointer"
+      class="relative h-2 border-x-[0.5px] border-x-black cursor-pointer w-full"
       
       @mouseenter="handleProgressBarMouseEnter($event)"
       @mousemove="handleProgressBarMouseMove($event)"
@@ -73,13 +87,14 @@
 <script lang="ts" setup>
 import { formatTimestampDuration, type Comment, type TimedComment } from '@/core';
 import { ref, computed, watch } from 'vue';
-import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/vue/24/solid';
+import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
 
 const props = defineProps<{
   src: string;
   comments?: TimedComment[];
   selectedCommentId?: string;
+  mediaType: 'video'|'audio';
 }>();
 
 const emit = defineEmits<{

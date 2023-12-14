@@ -28,7 +28,7 @@ import { onMounted, ref, watch } from 'vue';
 import { useRoute} from 'vue-router';
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
-import { PlayIcon, ArrowUpOnSquareIcon } from '@heroicons/vue/24/outline'
+import { ArrowUpOnSquareIcon } from '@heroicons/vue/24/outline'
 import MediaCardItem from '@/components/MediaCardItem.vue';
 
 const route = useRoute();
@@ -36,7 +36,8 @@ const loading = ref(false);
 const {
   openFilePicker,
   onFilesSelected,
-  onError
+  onError,
+  reset
 } = useFilePicker();
 
 const media = ref<Media[]>([]);
@@ -60,7 +61,12 @@ onError((e) => {
 
 onFilesSelected(async (files, directories) => {
   // start transfer
+  // resetting the file picker to clear the file list,
+  // otherwise the same files will be re-uploaded on the next
+  // file selection as well
+  reset();
   showToast(`Uploading ${files.length} ${pluralize('file', files.length)}...`, 'info');
+
   await startTransfer({
     files: files,
     directories: directories,

@@ -30,7 +30,7 @@
                   :to="{ name: 'upload' }"
                   class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"
                   exactActiveClass="text-white"
-                >Upload</router-link>
+                >Quick Transfer</router-link>
               </li>
               <li v-if="user">
                 <router-link
@@ -49,7 +49,7 @@
               <li v-if="user">
                 <TasksDropdown />
               </li>
-              <FeaturebaseChangelog />
+              <!-- <FeaturebaseChangelog /> -->
               <li v-for="{ id, name, path } in navLinks" :key="id"
                 class="pb-3 border-b border-[#131319] lg:border-none lg:pb-0">
                 <router-link v-smooth-scroll :to="path"

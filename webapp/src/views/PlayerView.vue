@@ -7,7 +7,9 @@
       <div class="text-white text-md">
         {{ media.name }}
       </div>
-      <div></div>
+      <a class="flex items-center gap-2 hover:text-white" download :href="media.file.downloadUrl">
+        Download {{ humanizeSize(media.file.size) }} <ArrowDownCircleIcon class="h-4 w-4 inline" />
+      </a>
     </div>
     <div class="flex-1 flex flex-row">
       <div class="w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col">
@@ -67,15 +69,24 @@
         
       </div>
       <div class="flex-1 p-5 flex items-stretch justify-center bg-[#24141f]">
-          <div class="h-[90%]">
-            <VideoPlayer
+          <div class="h-[90%] w-full flex items-center">
+            <MediaPlayer
+              v-if="mediaType === 'video' || mediaType === 'audio'"
               ref="videoPlayer"
+              :mediaType="mediaType"
               :src="media.file.downloadUrl"
               @seeked="handleSeek()"
               :comments="timedComments"
               :selectedCommentId="selectedCommentId"
               @clickComment="handleVideoCommentClicked($event)"
             />
+            <ImageViewer
+              v-else-if="mediaType === 'image'"
+              :src="media.file.downloadUrl"
+            />
+            <div v-else class="w-full flex items-center justify-center">
+              Preview unsupported for this file type.
+            </div>
           </div>
       </div>
     </div>
@@ -85,9 +96,12 @@
 import { computed, onMounted, ref, nextTick } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store } from "@/app-utils";
-import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined, type TimedComment } from "@/core";
-import { ClockIcon, XMarkIcon } from '@heroicons/vue/24/outline';
-import VideoPlayer from "@/components/VideoPlayer.vue";
+import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined, type TimedComment, humanizeSize } from "@/core";
+import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
+// import VideoPlayer from "@/components/VideoPlayer.vue";
+import MediaPlayer from '@/components/MediaPlayer.vue';
+import ImageViewer from '@/components/ImageViewer.vue';
+import { getMediaType } from "@/core/media-types";
 
 // had difficulties getting the scrollbar on the comments panel to work
 // properly using overflow: auto css, so I resorted to hardcoding dimensions
@@ -105,7 +119,7 @@ const commentsListStyles = {
 };
 
 
-const videoPlayer = ref<typeof VideoPlayer>();
+const videoPlayer = ref<typeof MediaPlayer>();
 const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
@@ -113,6 +127,10 @@ const media = ref<MediaWithFile>();
 const comments = ref<Comment[]>([]);
 const loading = ref(true);
 const selectedCommentId = ref<string>();
+const mediaType = computed(() => {
+  if (!media.value) return 'unknown';
+  return getMediaType(media.value.file.name);
+});
 
 
 const currentTimeStamp = ref<number>(0);
