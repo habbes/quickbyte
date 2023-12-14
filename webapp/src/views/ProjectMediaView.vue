@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!loading">
+  <div v-if="!loading" class="">
     <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
       You have no media in this project. Upload some files using the button below.
 
@@ -7,7 +7,7 @@
     </div>
     <div
       v-else
-      class="grid"
+      class="grid overflow-y-auto"
       style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(288px,1fr))"
     >
       <div class="w-[288px] h-[288px] rounded-md border border-gray-600 flex items-center justify-center">

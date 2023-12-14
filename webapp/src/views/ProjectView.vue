@@ -1,16 +1,36 @@
 <template>
-  <div v-if="project" class="flex flex-col w-full">
-    <div class="text-white text-lg mb-5">{{ project.name }}</div>
-    <div class="mb-5 border-b border-[#2e2634] w-full shadow-sm">
-      <router-link
-        :to="{ name: 'project-media', params: { projectId: project._id }}"
-        class="hover:text-white py-3 px-4 inline-block"
-        activeClass="text-white border-b border-b-white"
-      >
-        Media
-      </router-link>
+  <div v-if="project" class="flex flex-col flex-1 w-full">
+    <div class="flex flex-row items-center justify-between px-5 border-b border-[#2e2634]" :style="{ height: `${headerHeight}px` }">
+      <div class="text-white text-lg flex items-center">{{ project.name }}</div>
+      <div class="shadow-sm h-full">
+        <router-link
+          :to="{ name: 'project-media', params: { projectId: project._id }}"
+          class="hover:text-white inline-flex h-full items-center px-4"
+          activeClass="text-white border-b-2 border-b-blue-300"
+        >
+          Media
+        </router-link>
+        <router-link
+          :to="{ name: 'project-media', params: { projectId: project._id }}"
+          class="hover:text-white py-3 px-4 inline-block"
+        >
+          Members
+        </router-link>
+        <router-link
+          :to="{ name: 'project-media', params: { projectId: project._id }}"
+          class="hover:text-white py-3 px-4 inline-block"
+        >
+          Tasks
+        </router-link>
+        <router-link
+          :to="{ name: 'project-media', params: { projectId: project._id }}"
+          class="hover:text-white py-3 px-4 inline-block"
+        >
+          Timeline
+        </router-link>
+      </div>
     </div>
-    <div>
+    <div class="flex-grow overflow-y-auto p-5" :style="{ height: contentHeight }">
       <router-view></router-view>
     </div>
   </div>
@@ -21,10 +41,13 @@ import { ensure, type Project } from '@/core';
 import { logger } from '@azure/storage-blob';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { layoutDimensions } from '@/styles/dimentions.js';
 
 const route = useRoute();
 const project = ref<Project>();
 const loading = ref(false);
+const headerHeight = 50;
+const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight + headerHeight }px)`;
 
 onMounted(async () => {
   const user = ensure(store.userAccount.value);

@@ -1,10 +1,10 @@
 <template>
-  <div class="flex flex-col w-full min-h-screen mx-auto max-w-7xl text-[#9499ae] text-sm">
+  <div class="flex flex-col fixed w-full min-h-screen text-[#9499ae] text-sm">
     <Navbar />
-    <div class="flex flex-1 p-5">
+    <div class="flex flex-1 bg-[#24141f]">
         <slot></slot>
     </div>
-    <FooterSection />
+    <!-- <FooterSection /> -->
   </div>
 </template>
 <script lang="ts" setup>
