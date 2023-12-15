@@ -6,7 +6,7 @@ type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete' | 'erro
 
 export function startFileTransfer(args: StartFileTransferArgs): StartTransferResultTrackers {
     const uploadProgress = ref(0);
-    const uploadState = ref<UploadState>('progress');
+    const uploadState = ref<UploadState>('initial');
     const transfer = ref<CreateTransferResult>();
     const media = ref<Media[]>();
     const error = ref<Error>();
@@ -28,7 +28,7 @@ export function startFileTransfer(args: StartFileTransferArgs): StartTransferRes
 
 export function useFileTransfer() {
     const uploadProgress = ref(0);
-    const uploadState = ref<UploadState>('progress');
+    const uploadState = ref<UploadState>('initial');
     const transfer = ref<CreateTransferResult>();
     const media = ref<Media[]>();
     const error = ref<Error>();

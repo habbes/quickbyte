@@ -43,8 +43,6 @@ const {
 const media = ref<Media[]>([]);
 const {
   media: newMedia,
-  transfer,
-  uploadState,
   startTransfer
 } = useFileTransfer();
 
