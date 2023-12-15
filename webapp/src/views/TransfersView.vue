@@ -1,10 +1,12 @@
 <template>
-  <div class="flex flex-1 flex-col items-stretch">
-    <div class="text-white text-2xl pt-2 pb-5">Transfers</div>
-    <div class="flex flex-1 flex-col items-stretch">
+  <div class="flex flex-1 flex-col items-stretch px-5 overflow-y-auto">
+    <div
+      class="flex flex-grow flex-col items-stretch overflow-y-auto"
+      :style="{ height: contentHeight }"
+    >
       <router-link v-for="transfer in transfers"
         :to="{ name: 'transfer', params: { transferId: transfer._id }}"
-        class="flex justify-between text-sm text-purple-200 first:border-t-[0.5px] border-[#131319] border-b-[0.5px]
+        class="flex justify-between text-sm text-purple-200 border-[#131319] border-b
         px-2 py-4 hover:cursor-pointer hover:text-purple-100"
       >
         <div class="hover:underline">
@@ -23,10 +25,12 @@ import { onMounted, ref } from 'vue';
 import { store, apiClient, showToast, logger } from '@/app-utils';
 import { ensure, humanizeSize, pluralize } from '@/core';
 import type { Transfer } from '@/core';
+import { layoutDimensions } from '@/styles/dimentions';
 
 console.log('transfers list view');
 const transfers = ref<Transfer[]>([]);
 const loading = ref(false);
+const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight}px)`;
 
 onMounted(async () => {
   const user = ensure(store.userAccount.value);
@@ -34,6 +38,7 @@ onMounted(async () => {
   try {
     const result = await apiClient.getTransfers(user.account._id);
     transfers.value = result.sort((t1, t2) => new Date(t2._createdAt).getTime() - new Date(t1._createdAt).getTime());
+    transfers.value = transfers.value.concat(transfers.value.map(t => ({ ...t, _id: `l${t._id}`})));
   }
   catch (e: any) {
     logger.error(e);
