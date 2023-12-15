@@ -75,8 +75,8 @@ async function createProject(event: Event) {
     });
 
     emit('createProject', project);
-    router.push({ name: 'project', params: { projectId: project._id }});
-    showToast('Project created successfully', 'success');
+    router.push({ name: 'project-media', params: { projectId: project._id }});
+    showToast(`The project '${project.name}' has been created`, 'info');
     close();
   } catch (e: any) {
     logger.error(e);

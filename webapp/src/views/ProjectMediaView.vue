@@ -10,13 +10,13 @@
       class="grid overflow-y-auto"
       style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(250px,1fr))"
     >
-      <div class="w-full h-[288px] rounded-md border border-gray-600 flex items-center justify-center">
+      <div class="w-full aspect-square rounded-md border border-gray-600 flex items-center justify-center">
         <ArrowUpOnSquareIcon @click="openFilePicker()" class="h-24 w-24 hover:text-white hover:cursor-pointer" />
       </div>
       <div
         v-for="medium in media"
         :key="medium._id"
-        class="w-full h-[288px]"
+        class="w-full aspect-square"
       >
         <MediaCardItem :media="medium"/>
       </div>

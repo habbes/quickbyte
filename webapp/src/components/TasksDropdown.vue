@@ -49,11 +49,6 @@ const tasks = taskManager.getTasks();
 const activeTasks = computed(() =>
   tasks.value.filter(task => task.status === 'pending' || task.status === 'progress'));
 
-
-function closeDropdown() {
-  dropdown.value?.removeAttribute('open');
-}
-
 function handleClickTask(task: Task) {
   if (task.type === 'transfer') {
     handleTransferClick(task);
