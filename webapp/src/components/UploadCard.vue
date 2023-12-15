@@ -1,5 +1,5 @@
 <template>
-  <div class="card w-96 bg-base-100 shadow-xl">
+  <div class="card w-96 bg-base-100 shadow-xl text-slate-600">
     <!-- initial state -->
     <div class="card-body" v-if="uploadState === 'initial' && !transferDetails">
       <h2 class="card-title">Transfer files</h2>
@@ -57,7 +57,7 @@
         </div>
       </div>
       <p class="flex justify-between content-center mt-2">
-        <span class="text-gray-400">{{ files?.length }} files - {{  humanizeSize(transferDetails.totalSize) }}</span>
+        <span class="text-gray-400">{{ files?.length }} {{ pluralize('file', files.length)}} - {{  humanizeSize(transferDetails.totalSize) }}</span>
         <AddFilesDropDown @addFiles="openFilePicker()" @addFolder="openDirectoryPicker()" />
       </p>
       <div class="card-actions justify-center mt-4">
@@ -102,7 +102,7 @@ import { useClipboard } from '@vueuse/core';
 import { ref, computed, watch } from "vue";
 import { PencilIcon, CheckIcon } from "@heroicons/vue/24/outline";
 import { useFilePicker, showToast, useFileTransfer } from '@/app-utils';
-import { humanizeSize } from "@/core";
+import { humanizeSize, pluralize } from "@/core";
 import Button from "@/components/Button.vue";
 import UploadListFileItem from './UploadListFileItem.vue';
 import UploadListFolderItem from './UploadListFolderItem.vue';

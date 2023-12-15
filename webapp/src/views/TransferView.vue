@@ -1,5 +1,5 @@
 <template>
-  <div v-if="transfer" class="flex flex-1 flex-col items-stretch text-purple-100" :style="{ height }">
+  <div v-if="transfer" class="flex flex-1 flex-col items-stretch text-[#d1bfcd]" :style="{ height }">
     <div class="text-white text-2xl p-5">{{ transfer.name }}</div>
     <div class="flex flex-col items-stretch p-5">
       <div>
@@ -17,7 +17,7 @@
       <div class="flex flex-1 flex-col items-stretch">
         <div v-for="file in transfer.files"
           :key="file._id"
-          class="flex justify-between text-sm text-purple-200 first:border-t border-[#131319] border-b
+          class="flex justify-between text-sm text-[#d1bfcd] first:border-t border-[#131319] border-b
           px-5 py-4 hover:cursor-pointer hover:text-purple-100"
         >
           <div>

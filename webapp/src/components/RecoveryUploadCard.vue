@@ -7,7 +7,7 @@
           and do not add files which were not part it.
         </div>
     </div>
-    <div class="card w-96 bg-base-100 shadow-xl">
+    <div class="card w-96 bg-base-100 shadow-xl text-slate-600">
       <!-- initial state -->
       <div class="card-body" v-if="uploadState === 'initial'">
         <div v-if="!filesMatch" class="font-bold text-sm">Select the following files and folders to resume transfer:</div>

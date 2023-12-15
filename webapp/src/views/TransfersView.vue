@@ -6,7 +6,7 @@
     >
       <router-link v-for="transfer in transfers"
         :to="{ name: 'transfer', params: { transferId: transfer._id }}"
-        class="flex justify-between text-sm text-purple-200 border-[#131319] border-b
+        class="flex justify-between text-sm text-[#d1bfcd] border-[#131319] border-b
         px-2 py-4 hover:cursor-pointer hover:text-purple-100"
       >
         <div class="hover:underline">
