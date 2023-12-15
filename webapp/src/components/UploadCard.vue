@@ -101,14 +101,12 @@
 import { useClipboard } from '@vueuse/core';
 import { ref, computed, watch } from "vue";
 import { PencilIcon, CheckIcon } from "@heroicons/vue/24/outline";
-import { useFilePicker, showToast, useFileTransfer, toasts } from '@/app-utils';
+import { useFilePicker, showToast, useFileTransfer } from '@/app-utils';
 import { humanizeSize } from "@/core";
 import Button from "@/components/Button.vue";
 import UploadListFileItem from './UploadListFileItem.vue';
 import UploadListFolderItem from './UploadListFolderItem.vue';
 import AddFilesDropDown from './AddFilesDropdown.vue';
-
-type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete';
 
 const {
   openDirectoryPicker,

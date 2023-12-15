@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
 import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo, taskManager } from '@/app-utils';
-import { ensure, ApiError, AzUploader, MultiFileUploader, type CreateTransferResult, type Media, type TransferTask, pluralize } from "@/core";
+import { ensure, ApiError, AzUploader, MultiFileUploader, type CreateTransferResult, type Media, type TransferTask, pluralize, type TrackedTransfer } from "@/core";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete' | 'error';
 
@@ -44,8 +44,17 @@ export function useFileTransfer() {
     };
 
     const startTransfer = (args: StartFileTransferArgs) => startFileTransferInternal(args, result);
+    const resumeTransfer = (args: ResumeFileTransferArgs) => resumeTransferInternal(args, result);
+    const reset = () => {
+        uploadProgress.value = 0;
+        uploadState.value = 'initial';
+        transfer.value = undefined;
+        media.value = undefined;
+        error.value = undefined;
+        downloadUrl.value = undefined;
+    }
 
-    return { ...result, startTransfer };
+    return { ...result, startTransfer, resumeTransfer, reset };
 }
 
 async function startFileTransferInternal(args: StartFileTransferArgs, result: StartTransferResultTrackers) {
@@ -113,7 +122,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
         const uploader = new MultiFileUploader({
             files: transfer.value.files,
             onProgress: (progress) => {
-                uploadProgress.value = progress,
+                uploadProgress.value = progress;
                 task.progress = 100 * progress / totalSize;
             },
             uploaderFactory: (file, onFileProgress, fileIndex) => {
@@ -184,6 +193,130 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
     }
 }
 
+async function resumeTransferInternal(args: ResumeFileTransferArgs, result: StartTransferResultTrackers) {
+    const {
+        recoveredUpload,
+        files
+    } = args;
+
+    if (!files.length) return;
+
+    const {
+        uploadProgress,
+        uploadState,
+        downloadUrl,
+        transfer
+    } = result;
+
+    uploadProgress.value = 0;
+    downloadUrl.value = undefined;
+    uploadState.value = 'progress';
+
+    const removeExitWarning = windowUnloadManager.warnUserOnExit();
+    const task: TransferTask = taskManager.createTask({
+        status: 'pending',
+        description: `Uploading ${files.length} ${pluralize('file', files.length)}`,
+        type: 'transfer'
+    });
+
+    try {
+        const started = new Date();
+        const blockSize = recoveredUpload.blockSize;
+
+        const user = ensure(store.userAccount.value, 'User account not set in store.');
+        ensure(store.preferredProvider.value, 'Preferred provider not set in store.');
+
+        transfer.value = await apiClient.getTransfer(user.account._id, recoveredUpload.id);
+
+        task.transfer = transfer.value;
+        task.status = 'progress';
+
+        const transferTracker = uploadRecoveryManager.recoverTransferTracker(recoveredUpload);
+
+        // init transferRecovery to fetch completed files
+        const recoveryResult = await transferTracker.initRecovery();
+
+        const uploader = new MultiFileUploader({
+            files: transfer.value.files,
+            completedFiles: recoveryResult.completedFiles,
+            onProgress: (progress) => {
+                uploadProgress.value = progress;
+                task.progress = 100 * progress / recoveredUpload.totalSize;
+            },
+            uploaderFactory: (file, onFileProgress, fileIndex) => {
+                if (!files) throw new Error("Excepted files.value to be set");
+                if (!transfer.value) throw new Error('Exepected transfer to be set');
+
+                const fileToTrack = ensure(
+                    transfer.value.files.find(f => f.name === files[fileIndex].path),
+                    `Cannot find file '${files[fileIndex].path}' in transfer package.`);
+
+                return new AzUploader({
+                    file: files[fileIndex].file,
+                    blockSize,
+                    uploadUrl: file.uploadUrl,
+                    completedBlocks: recoveryResult.inProgressFiles.get(fileToTrack.name)?.completedBlocks,
+                    tracker: transferTracker.recoverFileTracker({
+                        blockSize,
+                        id: fileToTrack._id,
+                        filename: fileToTrack.name,
+                        size: fileToTrack.size
+                    }),
+                    onProgress: onFileProgress,
+                    logger,
+                    concurrencyStrategy: transfer.value.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
+                })
+            }
+        });
+
+        await uploader.uploadFiles();
+
+        const stopped = new Date();
+        logger.log(`full upload operation took ${stopped.getTime() - started.getTime()}`);
+
+        let retry = true;
+        while (retry) {
+            try {
+                const download = await apiClient.finalizeTransfer(user.account._id, transfer.value._id, {
+                    recovered: true,
+                    duration: Date.now() - new Date(transfer.value._createdAt).getTime()
+                });
+                retry = false;
+                downloadUrl.value = `${location.origin}/d/${download._id}`;
+                uploadState.value = 'complete';
+                logger.log(`full operation + download link took ${(new Date()).getTime() - started.getTime()}`);
+            } catch (e) {
+                if (e instanceof ApiError) {
+                    // Do not retry on ApiError since it's not a network failure.
+                    // TODO: handle this error some other way, e.g. alert message
+                    retry = false;
+                    result.error.value = e;
+                    logger.error(e.message, e);
+                } else {
+                    logger.error('Error fetching download', e);
+                    retry = true;
+                }
+            }
+        }
+
+        task.status = 'complete';
+        await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
+        // TODO: We should monitor wether deleting the transfer from here will cause some error
+        // (since this component requires that transfer in the store)
+        // should we await the promise?
+        // Also, should the delete handler be triggered automatically by completeTransfer?
+        uploadRecoveryManager.deleteRecoveredTransfer(recoveredUpload.id);
+    } catch (e: any) {
+        logger.error(e.message, e);
+        uploadState.value = 'initial';
+        result.error.value = e
+        task.status = 'error';
+        task.error = e.message;
+    } finally {
+        removeExitWarning();
+    }
+}
+
 interface StartFileTransferBaseArgs {
     files: FilePickerEntry[],
     directories: DirectoryInfo[]
@@ -198,6 +331,11 @@ interface StartProjectMediaTransferArgs extends StartFileTransferBaseArgs {
 }
 
 export type StartFileTransferArgs = StartShareableFileTransferArgs | StartProjectMediaTransferArgs;
+
+export interface ResumeFileTransferArgs {
+    recoveredUpload: TrackedTransfer,
+    files: FilePickerEntry[]
+}
 
 interface StartTransferResultTrackers {
     uploadProgress: Ref<number>;
