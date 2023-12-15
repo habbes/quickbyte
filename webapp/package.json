@@ -58,9 +58,6 @@
     "vue-tsc": "^1.6.5",
     "vue3-smooth-scroll": "^0.8.1"
   },
-  "simple-git-hooks": {
-    "pre-commit": "pnpm lint-staged"
-  },
   "lint-staged": {
     "*": "eslint --fix"
   }
