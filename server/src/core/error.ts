@@ -76,7 +76,7 @@ export const createNotFoundError =
  * @param message 
  */
 export const createPermissionError =
-    (message: ErrorMessage) => createAppError(message, 'permissionDenied');
+    (message: ErrorMessage = 'Permission denied') => createAppError(message, 'permissionDenied');
 
 export const createResourceConflictError =
     (message: ErrorMessage) => createAppError(message, 'resourceConflict');

@@ -235,6 +235,7 @@ export interface UserInvite extends PersistedModel {
     name?: string;
     message?: string;
     resource: NamedResource;
+    role: RoleType;
     expiresAt: Date;
 }
 
@@ -257,4 +258,4 @@ export interface UserRole extends PersistedModel {
     resourceId: string;
 }
 
-export type RoleType = 'reviewer';
+export type RoleType = 'reviewer'|'editor'|'admin';

@@ -8,6 +8,7 @@ import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser, UserR
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
+import { IAuthorizationHandler } from "./authorization-handler.js";
 
 // We use AAD on-behalf-of flow for authentication:
 // https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
@@ -178,11 +179,9 @@ export class AuthService {
                 user = newUser;
             }
 
-            // TODO: should we embed roles in the user record? How do we ensure we don't store "duplicate" roles?
-            await this.setRole(user._id, invite.resource.type, invite.resource.id, 'reviewer', invite._createdBy);
+            await this.args.access.assignRole(invite._createdBy, user._id, invite.resource.type, invite.resource.id, invite.role)
 
             // TODO: send email notifications
-            // TODO: add roles field to user object
             return user;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -359,6 +358,7 @@ export interface AuthServiceArgs {
     adminAlerts: IAlertService;
     invites: IInviteService;
     webappBaseUrl: string;
+    access: IAuthorizationHandler;
 }
 
 interface AuthConfig {

@@ -1,10 +1,11 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, Media, Project, createPersistedModel } from "../models.js";
+import { AuthContext, Comment, Media, Project, RoleType, createPersistedModel } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
 import { CreateProjectMediaUploadArgs, CreateTransferResult, ITransactionService, ITransferService } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IMediaService, MediaService, MediaWithFile } from "./media-service.js";
 import { CreateMediaCommentArgs } from "./comment-service.js";
+import { IAuthorizationHandler } from "./authorization-handler.js";
 
 const COLLECTION = 'projects';
 
@@ -13,6 +14,7 @@ export interface ProjectServiceConfig {
     transfers: ITransferService;
     media: IMediaService;
     invites: IInviteService;
+    access: IAuthorizationHandler;
 }
 
 export class ProjectService {
@@ -98,6 +100,7 @@ export class ProjectService {
     async uploadMedia(id: string, args: CreateProjectMediaUploadArgs): Promise<UploadMediaResult> {
         try {
             const project = await this.getById(id);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'editor']);
             const transfer = await this.config.transfers.createProjectMediaUpload(project, args);
             const media = await this.config.media.uploadMedia(transfer);
 
@@ -147,7 +150,8 @@ export class ProjectService {
                     id: project._id,
                     name: project.name
                 },
-                invitor: this.authContext.user
+                invitor: this.authContext.user,
+                role: args.role
             }));
 
             await Promise.all(invites);
@@ -173,6 +177,7 @@ export interface UpdateProjectArgs {
 export interface InviteUserArgs {
     users: { email: string }[];
     message?: string;
+    role: RoleType;
 }
 
 export interface UploadMediaResult {

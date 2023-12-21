@@ -1,5 +1,5 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
-import { AuthContext, ResourceReference, ResourceType, NamedResource, UserInvite, createPersistedModel } from "../models.js";
+import { AuthContext, ResourceReference, ResourceType, NamedResource, UserInvite, createPersistedModel, RoleType } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
 import { EmailHandler, createGenericInviteEmail, createProjectInviteEmail } from "./index.js";
 import { User } from "@sentry/node";
@@ -34,6 +34,7 @@ export class InviteService {
                     name: args.name,
                     type: args.resource.type
                 },
+                role: args.role,
                 expiresAt
             };
 
@@ -88,4 +89,5 @@ export interface CreateInviteArgs {
     message?: string;
     resource: NamedResource;
     invitor: User;
+    role: RoleType;
 }
