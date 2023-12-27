@@ -96,6 +96,13 @@ routes.post('/accounts/:accountId/projects/:projectId/media/:mediaId/comments',
         req.services.accounts.projects(req.authContext)
             .createMediaComment(req.params.projectId, req.params.mediaId, req.body)));
 
+routes.post('/accounts/:accountId/projects/:projectId/invite',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext)
+            .inviteUsers(req.params.projectId, req.body)));
+
 routes.get('/me', requireAuth(), wrapResponse(req =>
     Promise.resolve(req.authContext.user)));
 

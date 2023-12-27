@@ -1,4 +1,4 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media, MediaWithFile, Comment } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media, MediaWithFile, Comment, RoleType } from './types.js'
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -190,6 +190,10 @@ export class ApiClient {
 
     async createMediaComment(accountId: string, projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<Comment> {
         return this.post<Comment>(`accounts/${accountId}/projects/${projectId}/media/${mediaId}/comments`, args);
+    }
+
+    async inviteUsersToProject(accountId: string, projectId: string, args: InviteUserArgs): Promise<void> {
+        return this.post(`accounts/${accountId}/projects/${projectId}/invite`, args);
     }
 
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
@@ -386,4 +390,10 @@ export interface CreateMediaCommentArgs {
     mediaVersionId: string;
     text: string;
     timestamp?: number;
+}
+
+export interface InviteUserArgs {
+    users: { email: string }[];
+    message?: string;
+    role: RoleType;
 }

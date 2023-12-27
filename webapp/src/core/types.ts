@@ -143,3 +143,5 @@ export interface Comment extends PersistedModel {
 export interface TimedComment extends Comment {
     timestamp: number;
 }
+
+export type RoleType = 'reviewer'|'editor'|'admin';

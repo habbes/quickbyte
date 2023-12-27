@@ -8,7 +8,7 @@ import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser, UserR
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
-import { IAuthorizationHandler } from "./authorization-handler.js";
+import { IAccessHandler } from "./access-handler.js";
 
 // We use AAD on-behalf-of flow for authentication:
 // https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
@@ -189,91 +189,6 @@ export class AuthService {
         }
     }
 
-    private async setRole(userId: string, resourceType: ResourceType, resourceId: string, role: RoleType, setBy: Principal): Promise<UserRole> {
-        try {
-            
-            const existingRole = await this.rolesCollection.findOne({
-                userId,
-                resourceType,
-                resourceId,
-            });
-
-            if (existingRole) {
-                const update = await this.rolesCollection.findOneAndUpdate({ _id: existingRole._id }, {
-                    $set: {
-                        updatedAt: new Date(),
-                        updatedBy: setBy,
-                        role: role
-                    }
-                }, {
-                    returnDocument: 'after'
-                });
-
-                if (!update.value) {
-                    throw createAppError(`Failed to update role: '${existingRole._id}': ${update.lastErrorObject}`);
-                }
-
-                return update.value;
-            } else {
-                const newRole: UserRole = {
-                    ...createPersistedModel(setBy),
-                    userId,
-                    resourceType,
-                    resourceId,
-                    role
-                };
-                
-                await this.rolesCollection.insertOne(newRole);
-
-                return newRole;
-            }
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
-    private async getUserByToken_Broken(token: string): Promise<any> {
-        
-        // on-behalf-of request
-        console.log('token', token);
-        try {
-            const oboRequest = {
-                oboAssertion: token,
-                scopes: ["user.read"]
-            };
-
-            // TODO: this method throws the following error
-            // not sure why
-            // AADSTS500208: The domain is not a valid login domain for the account type.
-            const oboToken = await this.msalClient.acquireTokenOnBehalfOf(oboRequest);
-            console.log('OBO token', oboToken);
-            const url = "https://graph.microsoft.com/v1.0/me";
-            const result = await axios.get(url, {
-                headers: {
-                    'Authorization': `Bearer ${oboToken}`
-                }
-            });
-
-            return result.data;
-        } catch (e: any) {
-            console.log('e', e)
-            if (e.response?.status && e.response.status == 401) {
-                if (e.response?.data?.error?.message) {
-                    throw createAuthError(e.response.data.error.message);
-                }
-
-                throw createAuthError(e.message);
-            }
-
-            if (e.response?.data?.error?.message) {
-                throw createAppError(e.response.data.error.message);
-            }
-
-            throw createAppError(e.message);
-        }
-    }
-
     private async getOrCreateUser(data: jwt.JwtPayload): Promise<FullUser> {
         const email: string = getEmailFromJwt(data);
         const aadId: string = data.oid;
@@ -358,7 +273,7 @@ export interface AuthServiceArgs {
     adminAlerts: IAlertService;
     invites: IInviteService;
     webappBaseUrl: string;
-    access: IAuthorizationHandler;
+    access: IAccessHandler;
 }
 
 interface AuthConfig {

@@ -4,6 +4,7 @@ import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService, InviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
 import { CommentService } from "./comment-service.js";
+import { IAccessHandler } from "./access-handler.js";
 
 const COLLECTION = 'accounts';
 
@@ -14,6 +15,7 @@ export interface AccountServiceConfig {
     emailHandler: EmailHandler;
     webappBaseUrl: string;
     invites: IInviteService;
+    access: IAccessHandler;
 }
 
 export class AccountService {
@@ -90,6 +92,7 @@ export class AccountService {
             transactions: this.transactions(authContext),
             invites: this.config.invites,
             transfers,
+            access: this.config.access,
             media: new MediaService(this.db, authContext, {
                 transfers,
                 comments: new CommentService(this.db, authContext)

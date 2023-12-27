@@ -1,5 +1,5 @@
 import { Db, Collection, Filter } from "mongodb";
-import { UserRole, ResourceType, RoleType, Principal, AuthContext, createPersistedModel } from "../models.js";
+import { UserRole, ResourceType, RoleType, Principal, AuthContext, createPersistedModel, Project } from "../models.js";
 import { createAppError, createPermissionError, rethrowIfAppError} from "../error.js";
 
 const COLLECTION = 'roles';
@@ -16,7 +16,7 @@ interface CreatedResource {
 
 type AuthorizableResource = OwnedResource | CreatedResource;
 
-export class AuthorizationHandler {
+export class AccessHandler {
     private collection: Collection<UserRole>;
 
     constructor(private db: Db) {
@@ -30,7 +30,7 @@ export class AuthorizationHandler {
     public async assignRole(assignedBy: Principal, userId: string, resourceType: ResourceType, resourceId: string, role: RoleType) {
         try {
             
-            const existingRole = await this.rolesCollection.findOne({
+            const existingRole = await this.collection.findOne({
                 userId,
                 resourceType,
                 resourceId,
@@ -79,6 +79,7 @@ export class AuthorizationHandler {
 
         return resource._createdBy._id === userId;
     }
+    
 
     public async requireRoleOrOwner<T extends AuthorizableResource>(userId: string, resourceType: ResourceType, resource: T, allowedRoles: RoleType[]) {
         if (this.isOwner(userId, resource)) {
@@ -112,4 +113,4 @@ export class AuthorizationHandler {
     }
 }
 
-export type IAuthorizationHandler = Pick<AuthorizationHandler, 'isOwner'|'requireRoleOrOwner'|'requireUserRole'|'assignRole'>;
+export type IAccessHandler = Pick<AccessHandler, 'isOwner'|'requireRoleOrOwner'|'requireUserRole'|'assignRole'>;

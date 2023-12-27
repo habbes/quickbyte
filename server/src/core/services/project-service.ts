@@ -5,7 +5,7 @@ import { CreateProjectMediaUploadArgs, CreateTransferResult, ITransactionService
 import { IInviteService } from "./invite-service.js";
 import { IMediaService, MediaService, MediaWithFile } from "./media-service.js";
 import { CreateMediaCommentArgs } from "./comment-service.js";
-import { IAuthorizationHandler } from "./authorization-handler.js";
+import { IAccessHandler } from "./access-handler.js";
 
 const COLLECTION = 'projects';
 
@@ -14,7 +14,7 @@ export interface ProjectServiceConfig {
     transfers: ITransferService;
     media: IMediaService;
     invites: IInviteService;
-    access: IAuthorizationHandler;
+    access: IAccessHandler;
 }
 
 export class ProjectService {

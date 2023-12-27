@@ -1,8 +1,7 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
-import { AuthContext, ResourceReference, ResourceType, NamedResource, UserInvite, createPersistedModel, RoleType } from "../models.js";
+import { NamedResource, UserInvite, createPersistedModel, RoleType, User } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
 import { EmailHandler, createGenericInviteEmail, createProjectInviteEmail } from "./index.js";
-import { User } from "@sentry/node";
 
 const COLLECTION = 'invites';
 const DEFAULT_VALIDITY_MILLIS = 2 * 24 * 60 * 60 * 1000; // 2 days
@@ -31,7 +30,7 @@ export class InviteService {
                 message: args.message,
                 resource: {
                     id: args.resource.id,
-                    name: args.name,
+                    name: args.resource.name,
                     type: args.resource.type
                 },
                 role: args.role,
@@ -40,7 +39,7 @@ export class InviteService {
 
             const message = args.resource.type === 'project' ?
                 createProjectInviteEmail(args.invitor.name, invite, this.config.webappBaseUrl) :
-                createGenericInviteEmail(args.invitor.user.name, invite._id, args.name || '', this.config.webappBaseUrl);
+                createGenericInviteEmail(args.invitor.name, invite._id, args.name || '', this.config.webappBaseUrl);
             
             const subject = args.resource.type === 'project' ?
                 `Quickbyte: ${args.invitor.name} invited you to project ${invite.resource.name}` :

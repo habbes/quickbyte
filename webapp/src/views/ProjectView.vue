@@ -6,13 +6,14 @@
         <router-link
           :to="{ name: 'project-media', params: { projectId: project._id }}"
           class="hover:text-white inline-flex h-full items-center px-4"
-          activeClass="text-white border-b-2 border-b-blue-300"
+          exactActiveClass="text-white border-b-2 border-b-blue-300"
         >
           Media
         </router-link>
         <router-link
-          :to="{ name: 'project-media', params: { projectId: project._id }}"
-          class="hover:text-white py-3 px-4 inline-block"
+          :to="{ name: 'project-members', params: { projectId: project._id }}"
+          class="hover:text-white inline-flex h-full items-center px-4"
+          activeClass="text-white border-b-2 border-b-blue-300"
         >
           Members
         </router-link>
