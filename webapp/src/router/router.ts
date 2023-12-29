@@ -14,6 +14,7 @@ import ProjectsView from '@/views/ProjectsView.vue';
 import ProjectView from '@/views/ProjectView.vue';
 import ProjectMediaView from '@/views/ProjectMediaView.vue';
 import ProjectMembersView from '@/views/ProjectMembersView.vue';
+import InviteView from '@/views/InviteView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -100,6 +101,11 @@ const router = createRouter({
       path: '/d/:downloadId',
       name: 'download',
       component: DownloadView
+    },
+    {
+      path: '/i/:inviteId',
+      name: 'invite',
+      component: InviteView
     }
   ]
 })

@@ -65,11 +65,10 @@ import AOS from 'aos';
 import Toast from '@/components/Toast.vue';
 
 const user = useUser();
-initAuth();
-const userAccount = store.userAccount;
 
-onMounted(() => {
-  AOS.init()
+onMounted(async () => {
+  AOS.init();
+  await initAuth();
 });
 
 watch(user, async () => {
