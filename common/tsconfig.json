@@ -5,17 +5,13 @@
       "outDir": "dist",
       "sourceMap": true,
       "inlineSources": true,
+      "declaration": true,
+      "composite": true,
 
       // Set `sourceRoot` to  "/" to strip the build path prefix
       // from generated source code references.
       // This improves issue grouping in Sentry.
-      // Set `sourceRoot` to  "/" to strip the build path prefix
-      // from generated source code references.
-      // This improves issue grouping in Sentry.
-      "sourceRoot": "/",
-      "paths": {
-        "@quickbyte/common": ["../common/src/*"]
-      }
+      "sourceRoot": "/"
     },
     "include": ["src/**/*"],
     "exclude": ["**/*.spec.ts"]

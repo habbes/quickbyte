@@ -231,6 +231,20 @@ The server runs on [Railway](https://railway.app). In prod the DB runs in MongoD
 
 The web app runs on [Vercel](https://vercel.com).
 
+# Monorepo
+
+The project is setup as a monorepo using [`npm workspaces`](https://docs.npmjs.com/cli/v10/using-npm/workspaces). The workspace configuration is contained in the root [`package.json`](../package.json) file. We have the following packages:
+
+- `common`: typescript package that contains share types and utilities, used by both the server and web client code.
+- `server`: the server code
+- `webapp`: the web client code
+
+The server and client `tsconfig.json` configurations use the `@quickbyte/common` alias to import code from the shared package. i.e:
+
+```ts
+import { ... } from '@quickbyte/common';
+```
+
 
 # Sentry Config
 
