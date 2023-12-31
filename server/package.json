@@ -36,6 +36,7 @@
     "@azure/storage-blob": "^12.14.0",
     "@sentry/node": "^7.70.0",
     "@sentry/profiling-node": "^1.2.1",
+    "@trpc/server": "^10.45.0",
     "africastalking": "^0.6.2",
     "axios": "^1.5.0",
     "cors": "^2.8.5",

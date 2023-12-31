@@ -15,6 +15,8 @@ export function createServer(config: AppConfig) {
                 new Sentry.Integrations.Http({ tracing: true }),
                 // enable Express.js middleware tracing
                 new Sentry.Integrations.Express({ app: server }),
+                // this suddenly causes a TS error
+                // @ts-ignore
                 new ProfilingIntegration(),
             ],
             // Performance Monitoring

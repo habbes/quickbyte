@@ -1,7 +1,4 @@
 import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media, MediaWithFile, Comment, RoleType } from './types.js'
-import { someFun } from "@quickbyte/common";
-
-console.log('test import', someFun({ model: 3}));
 
 export interface ApiClientConfig {
     baseUrl: string;

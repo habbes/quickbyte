@@ -144,6 +144,12 @@ export class AuthService {
         return userWithAccount ;
     }
 
+    async verifyTokenAndGetUser(token: string): Promise<UserWithAccount> {
+        await this.verifyToken(token);
+        const user = await this.getUserByToken(token);
+        return user;
+    }
+
     async getUserById(id: string): Promise<UserWithAccount> {
         try {
             const user = await this.usersCollection.findOne({ _id: id });
@@ -244,7 +250,7 @@ export class AuthService {
    
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' |'getUserById'|'acceptUserInvite'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken'|'verifyTokenAndGetUser'|'getUserById'|'acceptUserInvite'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {
