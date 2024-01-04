@@ -1,5 +1,5 @@
 {
-  "name": "quickbyte-webapp",
+  "name": "@quickbyte/webapp",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -21,6 +21,8 @@
     "@paystack/inline-js": "^2.13.0",
     "@sentry/vite-plugin": "^2.4.0",
     "@sentry/vue": "^7.60.0",
+    "@trpc/client": "^10.45.0",
+    "@trpc/server": "^10.45.0",
     "@vueuse/core": "^10.2.0",
     "idb": "^7.1.1",
     "jszip": "^3.10.1",

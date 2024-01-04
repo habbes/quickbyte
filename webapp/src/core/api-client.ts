@@ -6,6 +6,7 @@ export interface ApiClientConfig {
 }
 
 export class ApiClient {
+
     constructor(private config: ApiClientConfig) {
     }
     

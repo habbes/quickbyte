@@ -1,9 +1,28 @@
-export interface SomeModel {
-    model: number;
+import { z } from "zod";
+
+export const CreateTransferMetaSchema = z.object({
+    name: z.string(),
+    provider: z.string(),
+    region: z.string(),
+    
+});
+
+export interface CreateShareableTransferArgs {
+    name: string;
+    provider: string;
+    region: string;
+    files: CreateTransferFileArgs[];
+    meta?: CreateTransferMeta;
 }
 
-// TODO: dummy function to test that importing from
-// common package works. Will delete after ensuring monorepo is setup correctly.
-export function someFun(a: SomeModel): number {
-    return a.model * 2;
+export interface CreateTransferFileArgs {
+    name: string;
+    size: number;
+}
+
+interface CreateTransferMeta {
+    ip?: string;
+    countryCode?: string;
+    state?: string;
+    userAgent?: string;
 }

@@ -9,13 +9,22 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 
 export const protectedProcedure = t.procedure.use(async function requireAuth({ ctx, next }) {
-    if (!ctx.user) {
+    if (!ctx.auth) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid token. Please sign in and try again.' });
+    }
+
+    const user = ctx.auth.user;
+    // this additional check is to get Typescript
+    // to infer the user will never be undefined passed this point
+    // so protectedProcedures are guaranteed to have a defined user
+    // at compile time.
+    if (!user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid token. Please sign in and try again.' });
     }
 
     return next({
         ctx: {
-            user: ctx.user,
+            auth: { user },
             app: ctx.app
         }
     });
@@ -39,7 +48,7 @@ export function createContextFactory(app: AppServices) {
 
         return {
             app,
-            user
+            auth: { user }
         }
     }
 }

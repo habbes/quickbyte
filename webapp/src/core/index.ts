@@ -10,4 +10,4 @@ export * from './logger';
 export * from './downloader';
 export * from './error';
 export * from './task-manager';
-
+export * from './trpc-client.js';

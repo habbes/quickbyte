@@ -1,17 +1,19 @@
 import { ref } from 'vue';
 import type { StorageProvider, UserAccount, PreferredProviderRegionResult, TrackedTransfer, Subscription } from '@/core';
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
-import { apiClient } from './api';
+import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 
-const userAccount = ref<UserAccount|undefined>();
+type QueryValue<T extends (...args: any) => any> = Awaited<ReturnType<T>>;
+const userAccount = ref<QueryValue<typeof trpcClient.getCurrentUserData.query>|undefined>();
 const providers = ref<StorageProvider[]>([]);
 const preferredProvider = ref<PreferredProviderRegionResult>();
 const recoveredTransfers = ref<TrackedTransfer[]>([]);
 const deviceData = ref<DeviceData>();
 
 export async function initUserData() {
-    userAccount.value = await apiClient.getAccount();
+    const user = await trpcClient.getCurrentUserData.query();
+    userAccount.value = user;
     providers.value = await apiClient.getProviders();
     preferredProvider.value = {
         provider: providers.value[0].name,
