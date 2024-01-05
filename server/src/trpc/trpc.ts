@@ -1,8 +1,11 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import { AppServices } from "../core/index.js";
+import superjson from "superjson";
 
-const t = initTRPC.context<TrpcContext>().create();
+const t = initTRPC.context<TrpcContext>().create({
+    transformer: superjson
+});
 
 export const router = t.router;
 

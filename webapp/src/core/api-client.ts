@@ -1,4 +1,5 @@
 import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media, MediaWithFile, Comment, RoleType } from './types.js'
+import { type SubscriptionAndPlan } from "@quickbyte/common";
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -355,7 +356,7 @@ export interface VerifyTransansactionResult {
     status: TransactionStatus;
     error?: string;
     failureReason?: 'error'|'amountMismatch'|'other';
-    subscription: Subscription,
+    subscription: SubscriptionAndPlan,
     plan: {
         name: string;
         displayName: string;

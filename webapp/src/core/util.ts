@@ -1,7 +1,6 @@
 // import { RegionInfo } from './types.js';
 
 import { RestError } from "@azure/storage-blob";
-import { json } from "stream/consumers";
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = 1024 * 1024;

@@ -1,11 +1,11 @@
 import { ref } from 'vue';
-import type { StorageProvider, UserAccount, PreferredProviderRegionResult, TrackedTransfer, Subscription } from '@/core';
+import type { BasicUserData, SubscriptionAndPlan } from "@quickbyte/common";
+import type { StorageProvider, PreferredProviderRegionResult, TrackedTransfer } from '@/core';
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
 import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 
-type QueryValue<T extends (...args: any) => any> = Awaited<ReturnType<T>>;
-const userAccount = ref<QueryValue<typeof trpcClient.getCurrentUserData.query>|undefined>();
+const userAccount = ref<BasicUserData>();
 const providers = ref<StorageProvider[]>([]);
 const preferredProvider = ref<PreferredProviderRegionResult>();
 const recoveredTransfers = ref<TrackedTransfer[]>([]);
@@ -13,6 +13,7 @@ const deviceData = ref<DeviceData>();
 
 export async function initUserData() {
     const user = await trpcClient.getCurrentUserData.query();
+    console.log('user', user);
     userAccount.value = user;
     providers.value = await apiClient.getProviders();
     preferredProvider.value = {
@@ -50,7 +51,7 @@ export async function clearData() {
     await uploadRecoveryManager.clearRecoveredTransfers();
 }
 
-export function tryUpdateAccountSubscription(subscription: Subscription) {
+export function tryUpdateAccountSubscription(subscription: SubscriptionAndPlan) {
     if (store.userAccount.value
         && subscription
         && subscription.status === 'active'
