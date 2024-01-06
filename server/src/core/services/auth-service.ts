@@ -1,6 +1,5 @@
 import { Db, Collection, } from "mongodb";
 import msal, { ConfidentialClientApplication, ICachePlugin } from "@azure/msal-node";
-import axios from "axios";
 import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";

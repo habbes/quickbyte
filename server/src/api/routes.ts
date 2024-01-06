@@ -57,7 +57,7 @@ routes.get('/accounts/:accountId/projects',
     requireAuth(),
     requireAccountOwner(),
     wrapResponse(req =>
-        req.services.accounts.projects(req.authContext).get()));
+        req.services.accounts.projects(req.authContext).getByAccount(req.params.accountId)));
 
 routes.get('/accounts/:accountId/projects/:projectId',
     requireAuth(),

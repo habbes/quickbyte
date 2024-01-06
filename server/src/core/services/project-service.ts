@@ -64,9 +64,9 @@ export class ProjectService {
         }
     }
 
-    async get(): Promise<Project[]> {
+    async getByAccount(accountId: string): Promise<Project[]> {
         try {
-            const projects = await this.collection.find().toArray();
+            const projects = await this.collection.find({ accountId }).toArray();
             return projects;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -163,7 +163,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'get'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'>;
+export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'>;
 
 export interface CreateProjectArgs {
     name: string;

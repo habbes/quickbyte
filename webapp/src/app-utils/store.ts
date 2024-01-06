@@ -1,20 +1,20 @@
 import { ref } from 'vue';
-import type { BasicUserData, SubscriptionAndPlan } from "@quickbyte/common";
+import type { BasicUserData, UserWithAccount, SubscriptionAndPlan } from "@quickbyte/common";
 import type { StorageProvider, PreferredProviderRegionResult, TrackedTransfer } from '@/core';
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
 import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 
-const userAccount = ref<BasicUserData>();
+const userAccount = ref<UserWithAccount>();
 const providers = ref<StorageProvider[]>([]);
 const preferredProvider = ref<PreferredProviderRegionResult>();
 const recoveredTransfers = ref<TrackedTransfer[]>([]);
 const deviceData = ref<DeviceData>();
 
 export async function initUserData() {
-    const user = await trpcClient.getCurrentUserData.query();
-    console.log('user', user);
-    userAccount.value = user;
+    const data = await trpcClient.getCurrentUserData.query();
+    console.log('user', data);
+    userAccount.value = data.user;
     providers.value = await apiClient.getProviders();
     preferredProvider.value = {
         provider: providers.value[0].name,

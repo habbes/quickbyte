@@ -1,4 +1,4 @@
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { MongoClient } from "mongodb";
 import { AppConfig } from "./config.js";
 import { createAppError } from "./error.js";
 import {
@@ -28,9 +28,10 @@ import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
 import { AtSmsHandler } from "./services/sms/at-sms-handler.js";
 import { InviteService } from "./services/invite-service.js";
 import { AccessHandler } from "./services/access-handler.js";
+import { Database } from "./db.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
-    const db = await getDbConnection(config);
+    const db = new Database(await getDbConnection(config));
 
     const azureStorageHandler = new AzureStorageHandler({
         tenantId: config.azTenantId,
@@ -68,7 +69,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
             sender: config.atSender
         });
     
-    const accessHandler = new AccessHandler(db);
+    const accessHandler = new AccessHandler(db.db);
     
     const adminAlerts = new AdminAlertsService({
         smsHandler: smsHandler,
@@ -92,7 +93,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const paymentHandlers = new PaymentHandlerProvider();
     paymentHandlers.register(paystackHandler);
 
-    const invites = new InviteService(db, {
+    const invites = new InviteService(db.db, {
         emails: emailHandler,
         webappBaseUrl: config.webappBaseUrl
     });
@@ -107,7 +108,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         access: accessHandler
     });
 
-    const auth = new AuthService(db, {
+    const auth = new AuthService(db.db, {
         aadClientId: config.aadClientId,
         aadClientSecret: config.aadClientSecret,
         aadTenantId: config.aadTenantId,
@@ -119,9 +120,9 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         access: accessHandler
     });
 
-    const downloads = new TransferDownloadService(db, storageProvider);
+    const downloads = new TransferDownloadService(db.db, storageProvider);
 
-    const transactions = new UnauthenticatedTransactionService(db, {
+    const transactions = new UnauthenticatedTransactionService(db.db, {
         paymentHandlers: paymentHandlers,
         plans: plans
     });

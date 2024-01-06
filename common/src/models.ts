@@ -244,4 +244,10 @@ export interface UserRole extends PersistedModel {
 
 export type RoleType = 'reviewer'|'editor'|'admin';
 
-export type BasicUserData = UserWithAccount;
+export interface BasicUserData {
+    user: UserWithAccount;
+    accounts: AccountWithSubscription[];
+    projects: Project[];
+    defaultProjectId?: string;
+    defaultAccountId: string;
+}
