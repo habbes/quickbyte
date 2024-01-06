@@ -18,6 +18,7 @@ export function formatTrpcError(error: TRPCError, shape: DefaultErrorShape) {
     const convertedError = error.cause instanceof AppError ? convertAppError(error.cause) : error;
     return {
         ...shape,
+        message: convertedError.message,
         data: {
             ...shape.data,
             code: convertedError.code,

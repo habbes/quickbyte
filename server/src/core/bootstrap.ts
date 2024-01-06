@@ -69,7 +69,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
             sender: config.atSender
         });
     
-    const accessHandler = new AccessHandler(db.db);
+    const accessHandler = new AccessHandler(db);
     
     const adminAlerts = new AdminAlertsService({
         smsHandler: smsHandler,
@@ -108,7 +108,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         access: accessHandler
     });
 
-    const auth = new AuthService(db.db, {
+    const auth = new AuthService(db, {
         aadClientId: config.aadClientId,
         aadClientSecret: config.aadClientSecret,
         aadTenantId: config.aadTenantId,

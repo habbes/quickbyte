@@ -100,3 +100,23 @@ Click the following link to accept the invite and view the project: <a href="${i
 `;
     return message;
 }
+
+export function createDeclineProjectInviteEmail(invitedBy: string, invite: UserInvite) {
+    const inviteeName = invite.name ? `${invite.name} (${invite.email})` : invite.email;
+    const message =`
+Hello ${invitedBy},
+
+${inviteeName} has declined your request to join the project <b>${invite.resource.name}</b>.
+`;
+    return message;
+}
+
+export function createDeclineGenericInviteEmail(invitedBy: string, invite: UserInvite) {
+    const inviteeName = invite.name ? `${invite.name} (${invite.email})` : invite.email;
+    const message =`
+Hello ${invitedBy},
+
+${inviteeName} has declined your request to join <b>${invite.resource.name}</b>.
+`;
+    return message;
+}

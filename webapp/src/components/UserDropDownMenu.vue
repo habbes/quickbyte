@@ -9,6 +9,9 @@
       </div>
     </summary>
     <ul class="p-2 shadow menu dropdown-content z-[1] bg-base-100 rounded-box w-52">
+      <li class="px-2 py-3 border-b border-b-gray-100">
+        {{ user.email }}
+      </li>
       <li @click="closeDropdown()">
         <router-link :to="{ name: 'billing' }">
           <CreditCardIcon class="w-6 h-6" />

@@ -1,7 +1,7 @@
 import { Collection } from "mongodb";
 import { NamedResource, UserInviteWithSender, UserInvite, createPersistedModel, RoleType, User } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
-import { EmailHandler, createGenericInviteEmail, createProjectInviteEmail } from "./index.js";
+import { EmailHandler, createDeclineGenericInviteEmail, createDeclineProjectInviteEmail, createGenericInviteEmail, createProjectInviteEmail } from "./index.js";
 import { Database } from "../db.js";
 
 const DEFAULT_VALIDITY_MILLIS = 2 * 24 * 60 * 60 * 1000; // 2 days
@@ -68,10 +68,63 @@ export class InviteService {
             });
 
             if (!invite) {
-                throw createResourceNotFoundError();
+                throw createResourceNotFoundError('The invite does not exist.');
             }
 
             return invite;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async declineInvite(id: string, email: string): Promise<void> {
+        try {
+            const [invite] = await this.collection.aggregate<UserInvite & { sender: User }>([
+                {
+                    $match: {
+                        _id: id,
+                        email: email,
+                        expiresAt: { $gt: new Date() }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: this.db.users().collectionName,
+                        foreignField: '_id',
+                        localField: '_createdBy._id',
+                        as: 'sender'
+                    }
+                },
+                {
+                    $unwind: { path: '$sender' }
+                }
+            ]).toArray();
+
+            if (!invite) {
+                throw createResourceNotFoundError('The invite does not exist.');
+            }
+
+            await this.collection.deleteOne({ _id: invite._id });
+
+            const subject = invite.name ?
+                `${invite.name} has declined your invitation to collaborate.`:
+                `A request for collaboration has been declined.`
+            
+            const message = invite.resource.type === 'project'?
+                createDeclineProjectInviteEmail(invite.sender.name, invite) :
+                createDeclineGenericInviteEmail(invite.sender.name, invite);
+
+            await this.config.emails.sendEmail({
+                to: {
+                    name: invite.sender.name,
+                    email: invite.sender.email,
+                },
+                subject,
+                message
+            });
+            
         }
         catch (e: any) {
             rethrowIfAppError(e);
@@ -127,7 +180,7 @@ export class InviteService {
     }
 }
 
-export type IInviteService = Pick<InviteService, 'createInvite'|'verifyInvite'|'getByRecipientEmail'>;
+export type IInviteService = Pick<InviteService, 'createInvite'|'declineInvite'|'verifyInvite'|'getByRecipientEmail'>;
 
 export interface CreateInviteArgs {
     email: string;

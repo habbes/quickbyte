@@ -8,6 +8,7 @@ import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IAccessHandler } from "./access-handler.js";
+import { Database } from "../db.js";
 
 // We use AAD on-behalf-of flow for authentication:
 // https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
@@ -38,22 +39,17 @@ class MemoryCachePlugin implements ICachePlugin {
 
         return Promise.resolve();
     }
-
 }
 
 const tokenCachePlugin = new MemoryCachePlugin();
-
-const COLLECTION = "users";
-const ROLES_COLLECTION = "users_roles";
 
 export class AuthService {
     private authConfig: AuthConfig;
     private jwksClient: JwksClient;
     private msalClient: ConfidentialClientApplication;
     private usersCollection: Collection<User>;
-    private rolesCollection: Collection<UserRole>;
 
-    constructor(private db: Db, private args: AuthServiceArgs) {
+    constructor(private db: Database, private args: AuthServiceArgs) {
         this.authConfig = {
             authOptions: {
                 clientId: this.args.aadClientId,
@@ -82,8 +78,7 @@ export class AuthService {
             cache: { cachePlugin: tokenCachePlugin }
         });
 
-        this.usersCollection = this.db.collection<User>(COLLECTION);
-        this.rolesCollection = this.db.collection<UserRole>(ROLES_COLLECTION);
+        this.usersCollection = this.db.users();
     }
 
     /**
@@ -194,6 +189,15 @@ export class AuthService {
         }
     }
 
+    async declineUserInvite(id: string, email: string): Promise<void> {
+        try {
+            await this.args.invites.declineInvite(id, email);
+        } catch(e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     private async getOrCreateUser(data: jwt.JwtPayload): Promise<FullUser> {
         const email: string = getEmailFromJwt(data);
         const aadId: string = data.oid;
@@ -249,7 +253,7 @@ export class AuthService {
    
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken'|'verifyTokenAndGetUser'|'getUserById'|'acceptUserInvite'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken'|'verifyTokenAndGetUser'|'getUserById'|'acceptUserInvite'|'declineUserInvite'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {

@@ -1,5 +1,11 @@
 import { ref } from 'vue';
-import type { BasicUserData, UserWithAccount, SubscriptionAndPlan } from "@quickbyte/common";
+import type { 
+    UserWithAccount,
+    SubscriptionAndPlan,
+    UserInviteWithSender,
+    WithRole,
+    Project
+} from "@quickbyte/common";
 import type { StorageProvider, PreferredProviderRegionResult, TrackedTransfer } from '@/core';
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
 import { apiClient, trpcClient } from './api';
@@ -10,11 +16,15 @@ const providers = ref<StorageProvider[]>([]);
 const preferredProvider = ref<PreferredProviderRegionResult>();
 const recoveredTransfers = ref<TrackedTransfer[]>([]);
 const deviceData = ref<DeviceData>();
+const invites = ref<UserInviteWithSender[]>([]);
+const projects = ref<WithRole<Project>[]>([]);
 
 export async function initUserData() {
     const data = await trpcClient.getCurrentUserData.query();
-    console.log('user', data);
+    console.log('data', data);
     userAccount.value = data.user;
+    invites.value = data.invites;
+    projects.value = data.projects;
     providers.value = await apiClient.getProviders();
     preferredProvider.value = {
         provider: providers.value[0].name,
@@ -60,6 +70,13 @@ export function tryUpdateAccountSubscription(subscription: SubscriptionAndPlan) 
     }
 }
 
+function removeInvite(inviteId) {
+    const index = invites.value.findIndex(i => i._id === inviteId);
+    if (index > -1) {
+        invites.value.splice(index, 1);
+    }
+}
+
 interface DeviceData {
     ip: string;
     countryCode: string;
@@ -71,5 +88,7 @@ export const store = {
     providers,
     preferredProvider,
     recoveredTransfers,
-    deviceData
+    deviceData,
+    invites,
+    removeInvite
 };

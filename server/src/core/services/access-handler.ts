@@ -1,8 +1,7 @@
-import { Db, Collection, Filter } from "mongodb";
+import { Collection, Filter } from "mongodb";
 import { UserRole, ResourceType, RoleType, Principal, AuthContext, createPersistedModel, Project } from "../models.js";
 import { createAppError, createPermissionError, rethrowIfAppError} from "../error.js";
-
-const COLLECTION = 'roles';
+import { Database } from "../db.js";
 
 interface OwnedResource {
     _id: string;
@@ -19,8 +18,8 @@ type AuthorizableResource = OwnedResource | CreatedResource;
 export class AccessHandler {
     private collection: Collection<UserRole>;
 
-    constructor(private db: Db) {
-        this.collection = db.collection<UserRole>(COLLECTION);
+    constructor(private db: Database) {
+        this.collection = db.roles();
     }
 
     public async verifyCanListProjectMedia(userId: string, projectId: string): Promise<void> {

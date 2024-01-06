@@ -164,7 +164,7 @@ export class AccountService {
                 accounts,
                 projects,
                 defaultAccountId: authContext.user.account._id,
-                defaultProjectId: projects[0]._id,
+                defaultProjectId: projects[0]?._id,
                 invites
             }
         }

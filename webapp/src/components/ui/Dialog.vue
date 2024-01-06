@@ -1,5 +1,5 @@
 <template>
-  <dialog ref="dialog" class="modal">
+  <dialog ref="dialog" class="modal text-black">
     <div class="modal-box">
       <div class="flex flex-row justify-between">
         <h3 class="font-bold text-lg mb-2">{{ title }}</h3>
