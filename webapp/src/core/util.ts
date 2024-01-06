@@ -1,7 +1,6 @@
 // import { RegionInfo } from './types.js';
 
 import { RestError } from "@azure/storage-blob";
-import { json } from "stream/consumers";
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = 1024 * 1024;
@@ -37,6 +36,24 @@ export function humanizeSize(bytes: number): string {
     return `${tbs} TB`;
 }
 
+/**
+ * Format the timestamp to a duration format mm:ss
+ * @param timestamp Timestamp in seconds
+ */
+export function formatTimestampDuration(timestamp: number): string {
+    // Convert milliseconds to seconds
+    const seconds = Math.floor(timestamp);
+  
+    // Calculate minutes and remaining seconds
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+  
+    // Format the duration as MM:SS
+    const formattedDuration = `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+  
+    return formattedDuration;
+}
+
 export function pluralize(word: string, count: number, plural: string = '') {
     plural = plural || `${word}s`;
     // TODO handle special cases (e.g. directory -> directories)
@@ -50,6 +67,15 @@ export function getFileExtension(fileName: string) {
 export function ensure<T>(obj?: T, message?: string): T {
     if (!obj) throw new Error(message || 'Expected object to be defined.');
     return obj;
+}
+
+/**
+ * Returns true if the value is neither undefined nor null.
+ * Notes: This also returns true when the value is 0 or an empty string.
+ * @param value 
+ */
+export function isDefined(value?: any): boolean {
+    return value !== undefined && value !== null;
 }
 
 export function getTransferDownloadUrl(id: string): string {
@@ -206,9 +232,6 @@ export async function getIpLocation(): Promise<{ ip: string, countryCode: string
         countryCode: json.country
     };
 }
-
-
-
 
 interface RegionPingResult {
     region: string,

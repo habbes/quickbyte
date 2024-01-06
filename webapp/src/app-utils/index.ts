@@ -7,4 +7,5 @@ export * from './logger.js';
 export * from './file-picker.js';
 export * from './downloader-provider.js';
 export * from './unload-manager.js';
-
+export * from './transfer.js';
+export * from './task-manager.js';

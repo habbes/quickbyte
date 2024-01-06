@@ -1,5 +1,5 @@
 <template>
-  <header class="sticky inset-0 top-0 z-50 w-full ">
+  <header class="sticky inset-0 top-0 z-50 w-full" :style="{ height: `${layoutDimensions.landingNavBarHeight}px` }">
     <nav class="border-b px-6 border-[#131319] backdrop-blur-[12px] ">
       <div class="relative flex flex-wrap items-center justify-between gap-6 py-4 md:gap-0">
         <input id="toggle_nav" aria-hidden="true" type="checkbox" name="toggle_nav" class="hidden peer">
@@ -30,7 +30,14 @@
                   :to="{ name: 'upload' }"
                   class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"
                   exactActiveClass="text-white"
-                >Upload</router-link>
+                >Quick Transfer</router-link>
+              </li>
+              <li v-if="user">
+                <router-link
+                  :to="{ name: 'projects' }"
+                  class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"
+                  activeClass="text-white"
+                >Projects</router-link>
               </li>
               <li v-if="user">
                 <router-link
@@ -39,7 +46,10 @@
                   activeClass="text-white"
                 >Transfers</router-link>
               </li>
-              <FeaturebaseChangelog />
+              <li v-if="user">
+                <TasksDropdown />
+              </li>
+              <!-- <FeaturebaseChangelog /> -->
               <li v-for="{ id, name, path } in navLinks" :key="id"
                 class="pb-3 border-b border-[#131319] lg:border-none lg:pb-0">
                 <router-link v-smooth-scroll :to="path"
@@ -69,6 +79,8 @@ import { computed } from 'vue';
 import { useUser, auth } from '@/app-utils';
 import FeaturebaseChangelog from '@/components/FeaturebaseChangelog.vue';
 import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
+import TasksDropdown from '../TasksDropdown.vue';
+import { layoutDimensions } from '@/styles/dimentions.js';
 
 const user = useUser();
 

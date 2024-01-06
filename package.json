@@ -1,0 +1,10 @@
+{
+  "name": "quickbyte",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "common",
+    "server",
+    "webapp"
+  ]
+}

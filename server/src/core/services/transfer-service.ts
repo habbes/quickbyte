@@ -1,6 +1,6 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
-import { createAppError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
-import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest } from '../models.js';
+import { createAppError, createInvalidAppStateError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
+import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 
@@ -10,6 +10,7 @@ const DOWNLOADS_COLLECTION = "downloads";
 const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
 const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * DAYS_TO_MILLIS // 5 days
 const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
+const MEDIA_DOWNLOAD_URL_VALIDITY = 2 * DAYS_TO_MILLIS;
 
 
 export interface TransferServiceConfig {
@@ -26,7 +27,36 @@ export class TransferService {
         this.filesCollection = this.db.collection(FILES_COLLECTION);
     }
 
-    async create(args: CreateTransferArgs): Promise<CreateTransferResult> {
+    create(args: CreateShareableTransferArgs): Promise<CreateTransferResult> {
+        return this.createInternal(args);
+    }
+
+    async createProjectMediaUpload(project: Project, args: CreateProjectMediaUploadArgs): Promise<CreateTransferResult> {
+        try {
+            if (project.accountId !== this.authContext.user.account._id) {
+                // it's possible that the project belongs to a different account that the user has logged in if the user
+                // has been invited to projects owned by a different account.
+                // In that case we should make sure that the user's current account matches that of the project.
+                // TODO: may have to revisit this when we actually add support for multiple accounts, teams and invites
+                throw createResourceNotFoundError(`The target project '${project.name}' not found in the current active account.`);
+            }
+
+            const transfer = await this.createInternal({
+                ...args,
+                name: `Media upload for ${project.name} - (${new Date().toDateString()})`,
+                projectId: project._id,
+                hidden: true
+            });
+
+            return transfer;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async createInternal(args: CreateTransferArgs): Promise<CreateTransferResult> {
         try {
 
             const sub = await this.config.transactions.tryGetActiveSubscription();
@@ -51,6 +81,8 @@ export class TransferService {
                 provider: provider.name(),
                 region: args.region,
                 accountId: this.authContext.user.account._id,
+                hidden: args.hidden,
+                projectId: args.projectId,
                 status: 'progress',
                 expiresAt: new Date(Date.now() + validityInMillis),
                 numFiles: args.files.length,
@@ -107,7 +139,10 @@ export class TransferService {
 
     async get(): Promise<Transfer[]> {
         try {
-            const transfers = await this.collection.find({ accountId: this.authContext.user.account._id }).toArray();
+            const transfers = await this.collection.find({
+                accountId: this.authContext.user.account._id,
+                hidden: { $ne: true }
+            }).toArray();
             return transfers;
         }
         catch (e: any) {
@@ -143,7 +178,28 @@ export class TransferService {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
-        
+    }
+
+    async getMediaFile(fileId: string): Promise<DownloadTransferFileResult> {
+        try {
+            // accountId was added later to files, so some earlier files may not have an accountId.
+            // So we'd have to get the accountId from the transfer.
+            // However, when project media files feature was introduced, accountId was also added to files
+            // So all files that back project media must have an accountId
+            const file = await this.filesCollection.findOne({ _id: fileId, accountId: this.authContext.user.account._id });
+            if (!file) {
+                throw createResourceNotFoundError('media');
+            }
+
+            const provider = this.config.providerRegistry.getHandler(file.provider);
+            const downloadableFile = createMediaDownloadFile(provider, file);
+
+            return downloadableFile;
+
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
     
 }
@@ -249,7 +305,7 @@ export class TransferDownloadService {
     }
 }
 
-export type ITransferService = Pick<TransferService, 'create'|'finalize'|'getById'|'get'>;
+export type ITransferService = Pick<TransferService, 'create'| 'createProjectMediaUpload'|'finalize'|'getById'|'get'|'getMediaFile'>;
 export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDownload'|'updateDownloadRequest'>;
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
@@ -260,7 +316,8 @@ function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): T
         name: args.name,
         size: args.size,
         provider: transfer.provider,
-        region: transfer.region
+        region: transfer.region,
+        accountId: transfer.accountId
     };
 
     return file;
@@ -289,21 +346,61 @@ async function createDownloadFile(provider: IStorageHandler, transfer: Transfer,
         name: file.name,
         size: file.size,
         _createdAt: file._createdAt,
-        downloadUrl
+        downloadUrl,
+        accountId: file.accountId || transfer.accountId
     };
 }
 
-export interface CreateTransferArgs {
+async function createMediaDownloadFile(provider: IStorageHandler, file: TransferFile): Promise<DownloadTransferFileResult> {
+    if (!file.accountId) {
+        throw createInvalidAppStateError(`Media file '${file._id}' is not tied to an account`);
+    }
+    // TODO: we should store the blobPath into the file itself to keep file resilient
+    // from design changes on where we store paths
+    const blobName = `${file.transferId}/${file._id}`;
+    const now = new Date().getTime();
+
+    const expiryDate = new Date(now + DAYS_TO_MILLIS);
+    const fileName = file.name.split('/').at(-1) || file._id;
+    const downloadUrl = await provider.getBlobDownloadUrl(file.region, file.accountId, blobName, expiryDate, fileName);
+
+    return {
+        _id: file._id,
+        transferId: file.transferId,
+        name: file.name,
+        size: file.size,
+        _createdAt: file._createdAt,
+        downloadUrl,
+        accountId: file.accountId
+    }
+
+}
+
+export interface CreateShareableTransferArgs {
     name: string;
     provider: string;
     region: string;
     files: CreateTransferFileArgs[];
-    meta?: {
-        ip?: string;
-        countryCode?: string;
-        state?: string;
-        userAgent?: string;
-    }
+    meta?: CreateTransferMeta;
+}
+
+export interface CreateProjectMediaUploadArgs {
+    provider: string;
+    region: string;
+    files: CreateTransferFileArgs[];
+    meta?: CreateTransferMeta;
+}
+
+interface CreateTransferMeta {
+    ip?: string;
+    countryCode?: string;
+    state?: string;
+    userAgent?: string;
+}
+
+export interface CreateTransferArgs extends CreateShareableTransferArgs {
+    hidden?: boolean;
+    projectId?: string;
 }
 
 export interface CreateTransferFileArgs {
@@ -351,6 +448,6 @@ export interface DownloadTransferResult extends Pick<Transfer, '_id'|'name'|'_cr
     downloadRequestId: string;
 }
 
-export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'> {
+export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> {
     downloadUrl: string;
 }

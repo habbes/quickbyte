@@ -52,6 +52,57 @@ routes.get('/accounts/:accountId/transfers',
     wrapResponse(req =>
         req.services.accounts.transfers(req.authContext).get()));
 
+
+routes.get('/accounts/:accountId/projects',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext).getByAccount(req.params.accountId)));
+
+routes.get('/accounts/:accountId/projects/:projectId',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext).getById(req.params.projectId)));
+
+routes.post('/accounts/:accountId/projects',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext).createProject(req.body)));
+
+routes.post('/accounts/:accountId/projects/:projectId/upload',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext).uploadMedia(req.params.projectId, req.body)));
+
+routes.get('/accounts/:accountId/projects/:projectId/media',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext).getMedia(req.params.projectId)));
+
+routes.get('/accounts/:accountId/projects/:projectId/media/:mediaId',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext).getMediumById(req.params.projectId, req.params.mediaId)));
+
+routes.post('/accounts/:accountId/projects/:projectId/media/:mediaId/comments',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext)
+            .createMediaComment(req.params.projectId, req.params.mediaId, req.body)));
+
+routes.post('/accounts/:accountId/projects/:projectId/invite',
+    requireAuth(),
+    requireAccountOwner(),
+    wrapResponse(req =>
+        req.services.accounts.projects(req.authContext)
+            .inviteUsers(req.params.projectId, req.body)));
+
 routes.get('/me', requireAuth(), wrapResponse(req =>
     Promise.resolve(req.authContext.user)));
 
@@ -63,6 +114,3 @@ routes.patch('/downloads/:transferId/requests/:requestId', wrapResponse(req =>
 
 routes.get('/providers', wrapResponse(req =>
     Promise.resolve(req.services.storageProvider.getHandlerInfos())));
-
-
-

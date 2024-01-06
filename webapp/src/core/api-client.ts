@@ -1,4 +1,5 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media, MediaWithFile, Comment, RoleType } from './types.js'
+import { type SubscriptionAndPlan } from "@quickbyte/common";
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -6,6 +7,7 @@ export interface ApiClientConfig {
 }
 
 export class ApiClient {
+
     constructor(private config: ApiClientConfig) {
     }
     
@@ -164,6 +166,38 @@ export class ApiClient {
         return result;
     }
 
+    async getProjects(accountId: string): Promise<Project[]> {
+        return this.get<Project[]>(`accounts/${accountId}/projects`);
+    }
+
+    async getProject(accountId: string, projectId: string): Promise<Project> {
+        return this.get<Project>(`accounts/${accountId}/projects/${projectId}`);
+    }
+
+    async createProject(accountId: string, args: CreateProjectArgs):  Promise<Project> {
+        return this.post<Project>(`accounts/${accountId}/projects`, args);
+    }
+
+    async uploadProjectMedia(accountId: string, projectId: string, args: CreateProjectMediaUploadArgs): Promise<UploadMediaResult> {
+        return this.post<UploadMediaResult>(`accounts/${accountId}/projects/${projectId}/upload`, args);
+    }
+
+    async getProjectMedia(accountId: string, projectId: string): Promise<Media[]> {
+        return this.get<Media[]>(`accounts/${accountId}/projects/${projectId}/media`);
+    }
+
+    async getProjectMediumById(accountId: string, projectId: string, mediaId: string): Promise<MediaWithFile> {
+        return this.get<MediaWithFile>(`accounts/${accountId}/projects/${projectId}/media/${mediaId}`);
+    }
+
+    async createMediaComment(accountId: string, projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<Comment> {
+        return this.post<Comment>(`accounts/${accountId}/projects/${projectId}/media/${mediaId}/comments`, args);
+    }
+
+    async inviteUsersToProject(accountId: string, projectId: string, args: InviteUserArgs): Promise<void> {
+        return this.post(`accounts/${accountId}/projects/${projectId}/invite`, args);
+    }
+
     private get<T>(endpoint: string, auth: boolean = true): Promise<T> {
         return this.makeRequest<T>(endpoint, 'GET', undefined, auth);
     }
@@ -276,12 +310,7 @@ export interface CreateTransferArgs {
     provider: string;
     region: string;
     files: CreateTransferFileArgs[];
-    meta?: {
-        ip?: string;
-        countryCode?: string;
-        // TODO: this should probably be retrieved from the headers
-        userAgent?: string;
-    }
+    meta?: CreateTransferMeta
 }
 
 export interface CreateTransferFileArgs {
@@ -327,7 +356,7 @@ export interface VerifyTransansactionResult {
     status: TransactionStatus;
     error?: string;
     failureReason?: 'error'|'amountMismatch'|'other';
-    subscription: Subscription,
+    subscription: SubscriptionAndPlan,
     plan: {
         name: string;
         displayName: string;
@@ -338,4 +367,35 @@ export type TransactionStatus = 'pending' | 'success' | 'cancelled' | 'failed';
 
 export interface SubscriptionManagementResult {
     link: string;
+}
+
+export interface CreateProjectMediaUploadArgs {
+    provider: string;
+    region: string;
+    files: CreateTransferFileArgs[];
+    meta?: CreateTransferMeta;
+}
+
+interface CreateTransferMeta {
+    ip?: string;
+    countryCode?: string;
+    state?: string;
+    userAgent?: string;
+}
+
+export interface UploadMediaResult {
+    media: Media[],
+    transfer: CreateTransferResult
+}
+
+export interface CreateMediaCommentArgs {
+    mediaVersionId: string;
+    text: string;
+    timestamp?: number;
+}
+
+export interface InviteUserArgs {
+    users: { email: string }[];
+    message?: string;
+    role: RoleType;
 }

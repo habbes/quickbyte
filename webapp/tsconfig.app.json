@@ -6,7 +6,9 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@quickbyte/common/*": ["../common/src/*"],
+      "@quickbyte/server/*": ["../server/src/*"]
     }
   }
 }

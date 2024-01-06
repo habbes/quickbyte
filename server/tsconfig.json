@@ -2,17 +2,22 @@
     "extends": "@tsconfig/node20/tsconfig.json",
     "compilerOptions": {
       "module": "NodeNext",
+      "baseUrl": ".",
       "outDir": "dist",
       "sourceMap": true,
+      // needed for downstream packages to be able to import
+      // types from this package
+      "declaration": true,
       "inlineSources": true,
+      "declarationMap": true,
 
       // Set `sourceRoot` to  "/" to strip the build path prefix
       // from generated source code references.
       // This improves issue grouping in Sentry.
-      // Set `sourceRoot` to  "/" to strip the build path prefix
-      // from generated source code references.
-      // This improves issue grouping in Sentry.
-      "sourceRoot": "/"
+      "sourceRoot": "/",
+      "paths": {
+        "@quickbyte/common": ["../common/src/*"]
+      }
     },
     "include": ["src/**/*"],
     "exclude": ["**/*.spec.ts"]

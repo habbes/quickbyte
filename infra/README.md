@@ -208,6 +208,14 @@ I used the Quickstart guide from the portal for the initial setup, which setup a
 I configured an email+password sign-in flow and also added `Display Name` as an extra field collected during sign up. This field's label
 should be changed to `Name` in the user flow's page layout customization options.
 
+I added the `login_hint` optional claim to the ID token configuration. I used to this feature to be able to logout the user without
+having the app ask the user to select the account they want to logout from. To add the `login_hint` option claim,
+open the App registration in the Entra portal, then **Manage** -> **Token Configuration** -> **Optional Claims** -> **Add optional claim** then select `login_hint`. See:
+- https://learn.microsoft.com/en-gb/entra/identity-platform/optional-claims#v10-and-v20-optional-claims-set
+- https://learn.microsoft.com/en-us/entra/identity-platform/optional-claims-reference
+- https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/logout.md
+
+
 I configured Google Sign-In federation using this guide: 
 https://learn.microsoft.com/en-us/azure/active-directory/external-identities/customers/how-to-google-federation-customers
 
@@ -222,6 +230,20 @@ The server runs on [Railway](https://railway.app). In prod the DB runs in MongoD
 # Client
 
 The web app runs on [Vercel](https://vercel.com).
+
+# Monorepo
+
+The project is setup as a monorepo using [`npm workspaces`](https://docs.npmjs.com/cli/v10/using-npm/workspaces). The workspace configuration is contained in the root [`package.json`](../package.json) file. We have the following packages:
+
+- `common`: typescript package that contains share types and utilities, used by both the server and web client code.
+- `server`: the server code
+- `webapp`: the web client code
+
+The server and client `tsconfig.json` configurations use the `@quickbyte/common` alias to import code from the shared package. i.e:
+
+```ts
+import { ... } from '@quickbyte/common';
+```
 
 
 # Sentry Config

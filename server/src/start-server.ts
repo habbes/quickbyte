@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { error404handler, errorHandler, injectServices } from './api/middleware.js';
 import { mountApi, } from './api/index.js';
+import { mountTrpc } from './trpc/index.js';
 import { mountWebHooks } from './webhooks/index.js';
 import { bootstrapApp, getAppConfigFromEnv } from './core/index.js';
 import { createServer } from './server/index.js';
@@ -20,6 +21,7 @@ async function startServer() {
         server.use(cors());
         server.use(injectServices(appServices));
         mountApi(server, "/api", appServices);
+        mountTrpc(server, "/trpc", appServices);
         mountWebHooks(server, "/webhooks", appServices, config);
         server.use(errorHandler(appServices.alerts));
         server.use(error404handler('Resource does not exist or you do not have sufficient permissions.'));

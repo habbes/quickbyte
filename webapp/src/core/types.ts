@@ -80,6 +80,8 @@ export interface Transfer extends PersistedModel {
     totalSize: number;
     numFiles: number;
     transferCompletedAt: string;
+    projectId?: string;
+    hidden?: boolean;
 }
 
 export type TransferStatus = 'pending' | 'progress' | 'completed';
@@ -89,3 +91,57 @@ export interface TransferFile extends PersistedModel {
     name: string;
     size: number;
 }
+
+export interface Project extends PersistedModel {
+    name: string;
+    description: string;
+}
+
+export interface CreateProjectArgs {
+    name: string;
+    description: string;
+}
+
+export interface Media extends PersistedModel {
+    name: string;
+    description?: string;
+    projectId: string;
+    preferredVersionId: string;
+    versions: MediaVersion[];
+    // TODO: add file kind?
+}
+
+export interface MediaWithFile extends Media {
+    file: {
+        _id: string;
+        name: string;
+        downloadUrl: string;
+        provider: string;
+        region: string;
+        size: number;
+    },
+    comments: Comment[];
+}
+
+export interface MediaVersion extends PersistedModel {
+    name: string;
+    fileId: string;
+}
+
+export interface Comment extends PersistedModel {
+    text: string;
+    projectId: string;
+    mediaId: string;
+    mediaVersionId: string;
+    timestamp?: number;
+    author: {
+        _id: string;
+        name: string;
+    }
+}
+
+export interface TimedComment extends Comment {
+    timestamp: number;
+}
+
+export type RoleType = 'reviewer'|'editor'|'admin';

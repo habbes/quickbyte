@@ -1,7 +1,7 @@
 <template>
-  <div v-if="transfer" class="flex flex-1 flex-col items-stretch text-purple-100">
-    <div class="text-white text-2xl pt-2 pb-5">{{ transfer.name }}</div>
-    <div class="flex flex-col items-stretch">
+  <div v-if="transfer" class="flex flex-1 flex-col items-stretch text-[#d1bfcd]" :style="{ height }">
+    <div class="text-white text-2xl p-5">{{ transfer.name }}</div>
+    <div class="flex flex-col items-stretch p-5">
       <div>
         {{ transfer.numFiles }} {{ pluralize('file', transfer.numFiles) }} - {{ humanizeSize(transfer.totalSize) }}
       </div>
@@ -13,12 +13,12 @@
         <span @click="copyDownloadUrl" class="text-primary-content hover:underline hover:cursor-pointer">Copy link</span>
       </div>
     </div>
-    <div class="flex-1 pt-5">
+    <div class="flex-1 pt-5 overflow-y-auto">
       <div class="flex flex-1 flex-col items-stretch">
         <div v-for="file in transfer.files"
           :key="file._id"
-          class="flex justify-between text-sm text-purple-200 first:border-t-[0.5px] border-[#131319] border-b-[0.5px]
-          px-2 py-4 hover:cursor-pointer hover:text-purple-100"
+          class="flex justify-between text-sm text-[#d1bfcd] first:border-t border-[#131319] border-b
+          px-5 py-4 hover:cursor-pointer hover:text-purple-100"
         >
           <div>
             {{ file.name }}
@@ -39,16 +39,14 @@ import { useClipboard } from '@vueuse/core';
 import { store, apiClient, showToast, logger } from '@/app-utils';
 import { ensure, getFileExtension, getTransferDownloadUrl, humanizeSize, pluralize } from '@/core';
 import type { GetTransferResult } from '@/core';
-import FileListItem from '@/components/FileListItem.vue';
+import { layoutDimensions } from '@/styles/dimentions';
 
-
-console.log('transfer view');
 const { copy } = useClipboard();
 const transfer = ref<GetTransferResult>();
 const loading = ref(false);
 const route = useRoute();
-console.log('route', route);
 const downloadUrl = computed(() => transfer.value ? getTransferDownloadUrl(transfer.value._id) : '');
+const height = `calc(100vh - ${layoutDimensions.navBarHeight}px)`;
 
 onMounted(async () => {
   const transferId = route.params.transferId as string;
@@ -86,9 +84,7 @@ async function initTransfer(transferId: string) {
   loading.value = true;
   
   try {
-    console.log('fetching transfer', transferId);
     transfer.value = await apiClient.getTransfer(user.account._id, transferId);
-    console.log('fetched transfer', transfer.value);
   }
   catch (e: any) {
     logger.error(e);

@@ -1,12 +1,15 @@
-import { Db, Collection, } from "mongodb";
+import { Collection, } from "mongodb";
 import msal, { ConfidentialClientApplication, ICachePlugin } from "@azure/msal-node";
-import axios from "axios";
 import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
-import { createAppError, createAuthError, createDbError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
-import { createPersistedModel, User, UserWithAccount } from "../models.js";
+import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
+import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
+import { AcceptInviteArgs, Resource } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
-import { EmailHandler, IAlertService, createWelcomeEmail } from "./index.js";
+import { EmailHandler, IAlertService, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
+import { IInviteService } from "./invite-service.js";
+import { IAccessHandler } from "./access-handler.js";
+import { Database } from "../db.js";
 
 // We use AAD on-behalf-of flow for authentication:
 // https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
@@ -37,12 +40,9 @@ class MemoryCachePlugin implements ICachePlugin {
 
         return Promise.resolve();
     }
-
 }
 
 const tokenCachePlugin = new MemoryCachePlugin();
-
-const COLLECTION = "users";
 
 export class AuthService {
     private authConfig: AuthConfig;
@@ -50,7 +50,7 @@ export class AuthService {
     private msalClient: ConfidentialClientApplication;
     private usersCollection: Collection<User>;
 
-    constructor(private db: Db, private args: AuthServiceArgs) {
+    constructor(private db: Database, private args: AuthServiceArgs) {
         this.authConfig = {
             authOptions: {
                 clientId: this.args.aadClientId,
@@ -79,7 +79,7 @@ export class AuthService {
             cache: { cachePlugin: tokenCachePlugin }
         });
 
-        this.usersCollection = this.db.collection<User>(COLLECTION);
+        this.usersCollection = this.db.users();
     }
 
     /**
@@ -139,10 +139,16 @@ export class AuthService {
         return userWithAccount ;
     }
 
+    async verifyTokenAndGetUser(token: string): Promise<UserWithAccount> {
+        await this.verifyToken(token);
+        const user = await this.getUserByToken(token);
+        return user;
+    }
+
     async getUserById(id: string): Promise<UserWithAccount> {
         try {
             const user = await this.usersCollection.findOne({ _id: id });
-            if (!user) {
+            if (!user || user.isGuest) {
                 throw createResourceNotFoundError('User not found.');
             }
 
@@ -154,56 +160,81 @@ export class AuthService {
         }
     }
 
-    private async getUserByToken_Broken(token: string): Promise<any> {
-        
-        // on-behalf-of request
-        console.log('token', token);
+    async acceptUserInvite(args: AcceptInviteArgs): Promise<Resource>  {
         try {
-            const oboRequest = {
-                oboAssertion: token,
-                scopes: ["user.read"]
-            };
+            const invite = await this.args.invites.verifyInvite(args.id, args.email);
+            // check if user already exists
+            let user = await this.usersCollection.findOne({ email: args.email })
+    
+            if (!user) {
+                // user does not exist, let's create a guest user
+                const newUser: GuestUser = {
+                    ...createPersistedModel({ _id: 'system', type: 'system' }),
+                    email: args.email,
+                    name: args.name,
+                    invitedBy: invite._createdBy,
+                    isGuest: true
+                };
 
-            // TODO: this method throws the following error
-            // not sure why
-            // AADSTS500208: The domain is not a valid login domain for the account type.
-            const oboToken = await this.msalClient.acquireTokenOnBehalfOf(oboRequest);
-            console.log('OBO token', oboToken);
-            const url = "https://graph.microsoft.com/v1.0/me";
-            const result = await axios.get(url, {
-                headers: {
-                    'Authorization': `Bearer ${oboToken}`
+                await this.usersCollection.insertOne(newUser);
+                user = newUser;
+            }
+
+            const role = await this.args.access.assignRole(invite._createdBy, user._id, invite.resource.type, invite.resource.id, invite.role);
+            await this.args.invites.deleteInvite(invite._id);
+
+            const resource: Resource = invite.resource;
+            if (invite.resource.type === 'project') {
+                const project = await this.db.projects().findOne({ _id: invite.resource.id });
+                if (project) {
+                    resource.object = { ...project, role: role.role }
                 }
+            }
+
+
+            const invitor = await this.usersCollection.findOne({ _id: invite._createdBy._id });
+            if (!invitor) {
+                throw createInvalidAppStateError(`Expected invitor creator '${invite._createdBy._id}' to exist but was not found`);
+            }
+
+            await this.args.email.sendEmail({
+                to: {
+                    name: invitor.name,
+                    email: invitor.email
+                },
+                subject: `${user.name} accepted your invitation to join ${invite.resource.name}`,
+                message: createInviteAcceptedEmail(invitor.name, user.name, invite)
             });
 
-            return result.data;
+            return resource;
         } catch (e: any) {
-            console.log('e', e)
-            if (e.response?.status && e.response.status == 401) {
-                if (e.response?.data?.error?.message) {
-                    throw createAuthError(e.response.data.error.message);
-                }
-
-                throw createAuthError(e.message);
-            }
-
-            if (e.response?.data?.error?.message) {
-                throw createAppError(e.response.data.error.message);
-            }
-
-            throw createAppError(e.message);
+            rethrowIfAppError(e);
+            throw createAppError(e);
         }
     }
 
-    private async getOrCreateUser(data: jwt.JwtPayload) {
+    async declineUserInvite(id: string, email: string): Promise<void> {
+        try {
+            await this.args.invites.declineInvite(id, email);
+        } catch(e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async getOrCreateUser(data: jwt.JwtPayload): Promise<FullUser> {
         const email: string = getEmailFromJwt(data);
         const aadId: string = data.oid;
         const name: string = data.name;
 
         try {
             const existingUser = await this.usersCollection.findOne({ email: email, aadId: aadId });
-            if (existingUser) {
+            if (existingUser && !existingUser.isGuest) {
                 return existingUser;
+            }
+
+            if (existingUser && existingUser.isGuest) {
+                throw createAppError('Upgrading guest to full user not yet supported.');
             }
 
             const newUser: User = {
@@ -221,7 +252,7 @@ export class AuthService {
             this.args.email.sendEmail({
                 to: { email: newUser.email, name: newUser.name },
                 subject: 'Welcome to Quickbyte!',
-                message: createWelcomeEmail(newUser.name)
+                message: createWelcomeEmail(newUser.name, this.args.webappBaseUrl)
             }).catch(e => {
                 console.error(`Error sending welcome email`, e);
             });
@@ -246,7 +277,7 @@ export class AuthService {
    
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' |'getUserById'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken'|'verifyTokenAndGetUser'|'getUserById'|'acceptUserInvite'|'declineUserInvite'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {
@@ -273,6 +304,9 @@ export interface AuthServiceArgs {
     accounts: IAccountService;
     email: EmailHandler;
     adminAlerts: IAlertService;
+    invites: IInviteService;
+    webappBaseUrl: string;
+    access: IAccessHandler;
 }
 
 interface AuthConfig {

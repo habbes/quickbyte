@@ -1,11 +1,17 @@
 import { ref, computed } from 'vue';
 import { useFileDialog } from '@vueuse/core';
 
+type FilesSelectedHandler = (files: FilePickerEntry[], directories: DirectoryInfo[]) => unknown;
+
 export function useFilePicker() {
     const files = ref<Map<string, FilePickerEntry>>(new Map());
     const directories = ref<Map<string, DirectoryInfo>>(new Map());
     const fileDialog = useFileDialog({ multiple: true });
     let errorHandler: ((e: Error) => unknown) | undefined = undefined;
+    // handler called when files have been selected and the picker closed
+    // this is useful when the caller isn't interested in the individual file changes within the list
+    // but wants to react immediately when a set of files have been selected by the picker
+    let filesSelectedHandler: FilesSelectedHandler | undefined = undefined;
 
     const raiseDuplicateError = () => {
         if (errorHandler) {
@@ -30,6 +36,9 @@ export function useFilePicker() {
         if (duplicatesFound) {
             raiseDuplicateError();
         }
+
+        // TODO: should we trigger file selection handler even after error was raised
+        filesSelectedHandler && filesSelectedHandler(Array.from(files.value.values()), Array.from(directories.value.values()));
     });
     const directoryPickerSupported = isDirectoryPickerSupported();
     const openDirectoryPicker = () => {
@@ -44,6 +53,8 @@ export function useFilePicker() {
             for (const file of dirFiles.files) {
                 files.value.set(file.path, file);
             }
+
+            filesSelectedHandler && filesSelectedHandler(Array.from(files.value.values()), Array.from(directories.value.values()));
         })
         .catch(e => {
             if (e.name === 'AbortError') {
@@ -62,7 +73,11 @@ export function useFilePicker() {
 
     const onError = (fn: (e: Error) => unknown) => {
         errorHandler = fn;
-    }
+    };
+
+    const onFilesSelected = (handler: FilesSelectedHandler) => {
+        filesSelectedHandler = handler;
+    };
 
     const getFileByPath = (path: string) => files.value.get(path);
     const getDirectoryByName = (name: string) => directories.value.get(name);
@@ -94,6 +109,12 @@ export function useFilePicker() {
         getDirectoryByName,
         removeFile,
         removeDirectory,
+        /**
+         * Set handler to be called when the user has
+         * finished selecting files or folders in the picker.
+         * @param handler 
+         */
+        onFilesSelected,
         directoryPickerSupported
     }
 }
@@ -147,7 +168,7 @@ async function getFiles(dir: FileSystemDirectoryHandle, path: string = dir.name)
     ]
 }
 
-interface DirectoryInfo {
+export interface DirectoryInfo {
     name: string;
     totalFiles: number;
     totalSize: number;

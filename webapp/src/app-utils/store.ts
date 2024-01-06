@@ -1,17 +1,30 @@
 import { ref } from 'vue';
-import type { StorageProvider, UserAccount, PreferredProviderRegionResult, TrackedTransfer, Subscription } from '@/core';
+import type { 
+    UserWithAccount,
+    SubscriptionAndPlan,
+    UserInviteWithSender,
+    WithRole,
+    Project
+} from "@quickbyte/common";
+import type { StorageProvider, PreferredProviderRegionResult, TrackedTransfer } from '@/core';
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
-import { apiClient } from './api';
+import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 
-const userAccount = ref<UserAccount|undefined>();
+const userAccount = ref<UserWithAccount>();
 const providers = ref<StorageProvider[]>([]);
 const preferredProvider = ref<PreferredProviderRegionResult>();
 const recoveredTransfers = ref<TrackedTransfer[]>([]);
 const deviceData = ref<DeviceData>();
+const invites = ref<UserInviteWithSender[]>([]);
+const projects = ref<WithRole<Project>[]>([]);
 
 export async function initUserData() {
-    userAccount.value = await apiClient.getAccount();
+    const data = await trpcClient.getCurrentUserData.query();
+    console.log('data', data);
+    userAccount.value = data.user;
+    invites.value = data.invites;
+    projects.value = data.projects;
     providers.value = await apiClient.getProviders();
     preferredProvider.value = {
         provider: providers.value[0].name,
@@ -48,12 +61,31 @@ export async function clearData() {
     await uploadRecoveryManager.clearRecoveredTransfers();
 }
 
-export function tryUpdateAccountSubscription(subscription: Subscription) {
+export function tryUpdateAccountSubscription(subscription: SubscriptionAndPlan) {
     if (store.userAccount.value
         && subscription
         && subscription.status === 'active'
     ) {
         store.userAccount.value.account.subscription = subscription;
+    }
+}
+
+function removeInvite(inviteId: string) {
+    const index = invites.value.findIndex(i => i._id === inviteId);
+    if (index > -1) {
+        invites.value.splice(index, 1);
+    }
+}
+
+function addProject(project: WithRole<Project>) {
+    const index = projects.value.findIndex(p => p._id === project._id);
+    if (index > -1) {
+        // update existing project
+        projects.value[index] = project;
+        // force update detection
+        projects.value = projects.value;
+    } else {
+        projects.value.push(project);
     }
 }
 
@@ -68,5 +100,9 @@ export const store = {
     providers,
     preferredProvider,
     recoveredTransfers,
-    deviceData
+    deviceData,
+    invites,
+    projects,
+    removeInvite,
+    addProject
 };

@@ -58,20 +58,17 @@ onErrorCaptured((error: Error) => {
 </template>
 
 <script setup lang='ts'>
-import { onMounted, watch, onErrorCaptured } from 'vue';
+import { onMounted, watch } from 'vue';
 import { useUser, initAuth, initUserData, logger, store, showToast } from "@/app-utils";
 // AOS stands for Animate On Scroll, is a library that adds cool animations to elements as you scroll down a webpage.
 import AOS from 'aos';
-import Navbar from '@/components/Header/Navbar.vue';
-import FooterSection from '@/components/Sections/FooterSection.vue';
 import Toast from '@/components/Toast.vue';
 
 const user = useUser();
-initAuth();
-const userAccount = store.userAccount;
 
-onMounted(() => {
-  AOS.init()
+onMounted(async () => {
+  AOS.init();
+  await initAuth();
 });
 
 watch(user, async () => {

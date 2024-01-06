@@ -10,6 +10,11 @@ import PlayerView from '@/views/PlayerView.vue';
 import TransfersView from '@/views/TransfersView.vue';
 import TransferView from '@/views/TransferView.vue';
 import AppView from '@/views/AppView.vue';
+import ProjectsView from '@/views/ProjectsView.vue';
+import ProjectView from '@/views/ProjectView.vue';
+import ProjectMediaView from '@/views/ProjectMediaView.vue';
+import ProjectMembersView from '@/views/ProjectMembersView.vue';
+import InviteView from '@/views/InviteView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,6 +55,33 @@ const router = createRouter({
               component: TransferView
             },
             {
+              path: 'projects',
+              name: 'projects',
+              component: ProjectsView
+            },
+            {
+              path: 'projects/:projectId',
+              name: 'project',
+              component: ProjectView,
+              children: [
+                {
+                  path: '',
+                  name: 'project-media',
+                  component: ProjectMediaView
+                },
+                {
+                  path: 'members',
+                  name: 'project-members',
+                  component: ProjectMembersView
+                }
+              ]
+            },
+            {
+              path: 'projects/:projectId/player/:mediaId',
+              name: 'player',
+              component: PlayerView
+            },
+            {
               path: 'settings',
               name: 'settings',
               component: SettingsView,
@@ -71,9 +103,9 @@ const router = createRouter({
       component: DownloadView
     },
     {
-      path: '/player/:downloadId',
-      name: 'player',
-      component: PlayerView
+      path: '/i/:inviteId',
+      name: 'invite',
+      component: InviteView
     }
   ]
 })
