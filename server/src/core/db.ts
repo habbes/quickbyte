@@ -1,5 +1,5 @@
 import { Db, Collection } from 'mongodb';
-import { Account, Project, User, UserRole } from './models.js';
+import { Account, Project, User, UserInvite, UserRole } from './models.js';
 
 
 export class Database {
@@ -13,4 +13,6 @@ export class Database {
     accounts = () => this.db.collection<Account>('accounts');
 
     projects = () => this.db.collection<Project>('projects');
+
+    invites = () => this.db.collection<UserInvite>('invites');
 }

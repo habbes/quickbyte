@@ -223,6 +223,13 @@ export interface UserInvite extends PersistedModel {
     expiresAt: Date;
 }
 
+export type UserInviteWithSender = Omit<UserInvite, '_createdBy'> & {
+    sender: {
+        name: string;
+        email: string;
+    }
+}
+
 export interface ResourceReference {
     type: ResourceType;
     id: string;
@@ -242,12 +249,15 @@ export interface UserRole extends PersistedModel {
     resourceId: string;
 }
 
-export type RoleType = 'reviewer'|'editor'|'admin';
+export type RoleType = 'reviewer'|'editor'|'admin'|'owner';
+
+export type WithRole<T> = T & { role: RoleType };
 
 export interface BasicUserData {
     user: UserWithAccount;
     accounts: AccountWithSubscription[];
-    projects: Project[];
+    projects: WithRole<Project>[];
+    invites: UserInviteWithSender[];
     defaultProjectId?: string;
     defaultAccountId: string;
 }

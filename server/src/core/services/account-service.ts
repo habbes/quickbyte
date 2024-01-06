@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService, InviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
@@ -101,8 +101,11 @@ export class AccountService {
 
     async getUserData(authContext: AuthContext): Promise<BasicUserData> {
         try {
-            const ownedProjectsTask = this.db.projects().find({ '_createdBy._id': authContext.user._id }).toArray();
-            const otherProjectsTask = this.db.roles().aggregate<Project>([
+            const ownedProjectsTask = this.db.projects().aggregate<WithRole<Project>>([
+                { $match: { '_createdBy._id': authContext.user._id } },
+                { $addFields: { role: 'owner'} }
+            ]).toArray();
+            const otherProjectsTask = this.db.roles().aggregate<WithRole<Project>>([
                 {
                     $match: {
                         userId: authContext.user._id,
@@ -152,6 +155,7 @@ export class AccountService {
             const accountIds = new Set<string>();
             accountIds.add(authContext.user.account._id);
             projects.forEach(p => accountIds.add(p.accountId));
+            const invites = await this.config.invites.getByRecipientEmail(authContext.user.email);
 
             const accounts = await this.db.accounts().find({ _id: { $in: Array.from(accountIds) }}).toArray();
 
@@ -160,7 +164,8 @@ export class AccountService {
                 accounts,
                 projects,
                 defaultAccountId: authContext.user.account._id,
-                defaultProjectId: projects[0]._id
+                defaultProjectId: projects[0]._id,
+                invites
             }
         }
         catch (e: any) {

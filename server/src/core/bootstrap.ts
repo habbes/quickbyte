@@ -93,7 +93,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const paymentHandlers = new PaymentHandlerProvider();
     paymentHandlers.register(paystackHandler);
 
-    const invites = new InviteService(db.db, {
+    const invites = new InviteService(db, {
         emails: emailHandler,
         webappBaseUrl: config.webappBaseUrl
     });
