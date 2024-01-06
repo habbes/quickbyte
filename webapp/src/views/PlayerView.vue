@@ -91,6 +91,9 @@
       </div>
     </div>
   </div>
+  <div v-else-if="error" class="w-full flex justify-center items-center text-lg text-red-300">
+    Error: {{ error.message }}
+  </div>
 </template>
 <script setup lang="ts">
 import { computed, onMounted, ref, nextTick } from "vue"
