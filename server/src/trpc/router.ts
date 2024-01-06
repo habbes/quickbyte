@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs } from '@quickbyte/common';
 
 export const appRouter = router({
     getCurrentUserData: protectedProcedure.query(({ ctx }) =>
@@ -8,7 +8,13 @@ export const appRouter = router({
     declineInvite: publicProcedure
     .input(DeclineInviteArgs)
     .mutation(({ input, ctx }) =>
-        ctx.app.auth.declineUserInvite(input.id, input.email))
+        ctx.app.auth.declineUserInvite(input.id, input.email)),
+    
+    acceptInvite: publicProcedure
+    .input(AcceptInviteArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.auth.acceptUserInvite(input))
+    
 });
 
 export type AppRouter = typeof appRouter;

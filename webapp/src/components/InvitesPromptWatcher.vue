@@ -18,7 +18,10 @@
           invited you.
         </div>
         <div class="flex justify-end gap-2">
-          <button class="btn btn-primary btn-sm">Accept</button>
+          <button
+            @click="acceptInvite(invite._id)"
+            class="btn btn-primary btn-sm"
+          >Accept</button>
           <button
             @click="declineInvite(invite._id)"
             class="btn btn-default btn-sm"
@@ -67,6 +70,22 @@ async function declineInvite(id: string) {
     dialog.value?.close();
   }
   catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
+}
+
+async function acceptInvite(id: string) {
+  const user = ensure(store.userAccount.value);
+  try {
+    const resource = await trpcClient.acceptInvite.mutate({ id , email: user.email, name: user.name });
+    store.removeInvite(id);
+    if (resource.type === 'project' && resource.object) {
+      store.addProject(resource.object);
+    }
+
+    dialog.value?.close();
+  } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
   }

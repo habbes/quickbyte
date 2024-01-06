@@ -47,14 +47,15 @@
 </template>
 <script lang="ts" setup>
 import { apiClient, store, showToast } from '@/app-utils';
-import { ensure, type Project } from '@/core';
+import { ensure } from '@/core';
 import { logger } from '@azure/storage-blob';
 import { ref, onMounted } from 'vue';
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue';
 import { layoutDimensions } from '@/styles/dimentions';
 import { PlusIcon } from '@heroicons/vue/24/solid';
+import type { WithRole, Project } from "@quickbyte/common";
 
-const projects = ref<Project[]>([]);
+const projects = ref<WithRole<Project>[]>([]);
 const loading = ref(false);
 const createProjectDialog = ref<typeof CreateProjectDialog>();
 
@@ -65,7 +66,7 @@ onMounted(async () => {
   const user = ensure(store.userAccount.value);
   try {
     loading.value = true;
-    projects.value = await apiClient.getProjects(user.account._id);
+    projects.value = store.projects.value;
   } catch (e: any) {
     logger.error(e);
     showToast(e.message, 'error');

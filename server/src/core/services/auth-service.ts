@@ -1,11 +1,12 @@
-import { Db, Collection, } from "mongodb";
+import { Collection, } from "mongodb";
 import msal, { ConfidentialClientApplication, ICachePlugin } from "@azure/msal-node";
 import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
-import { createAppError, createAuthError, createDbError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
-import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser, UserRole, ResourceType, Principal, RoleType } from "../models.js";
+import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
+import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
+import { AcceptInviteArgs, Resource } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
-import { EmailHandler, IAlertService, createWelcomeEmail } from "./index.js";
+import { EmailHandler, IAlertService, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
@@ -159,11 +160,11 @@ export class AuthService {
         }
     }
 
-    async acceptUserInvite(id: string, args: AcceptInviteArgs): Promise<User>  {
+    async acceptUserInvite(args: AcceptInviteArgs): Promise<Resource>  {
         try {
-            const invite = await this.args.invites.verifyInvite(id, args.email);
+            const invite = await this.args.invites.verifyInvite(args.id, args.email);
             // check if user already exists
-            let user = await this.usersCollection.findOne({ email: args.email });
+            let user = await this.usersCollection.findOne({ email: args.email })
     
             if (!user) {
                 // user does not exist, let's create a guest user
@@ -179,10 +180,33 @@ export class AuthService {
                 user = newUser;
             }
 
-            await this.args.access.assignRole(invite._createdBy, user._id, invite.resource.type, invite.resource.id, invite.role)
+            const role = await this.args.access.assignRole(invite._createdBy, user._id, invite.resource.type, invite.resource.id, invite.role);
+            await this.args.invites.deleteInvite(invite._id);
 
-            // TODO: send email notifications
-            return user;
+            const resource: Resource = invite.resource;
+            if (invite.resource.type === 'project') {
+                const project = await this.db.projects().findOne({ _id: invite.resource.id });
+                if (project) {
+                    resource.object = { ...project, role: role.role }
+                }
+            }
+
+
+            const invitor = await this.usersCollection.findOne({ _id: invite._createdBy._id });
+            if (!invitor) {
+                throw createInvalidAppStateError(`Expected invitor creator '${invite._createdBy._id}' to exist but was not found`);
+            }
+
+            await this.args.email.sendEmail({
+                to: {
+                    name: invitor.name,
+                    email: invitor.email
+                },
+                subject: `${user.name} accepted your invitation to join ${invite.resource.name}`,
+                message: createInviteAcceptedEmail(invitor.name, user.name, invite)
+            });
+
+            return resource;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -293,9 +317,4 @@ interface AuthConfig {
     },
     webApiScope: string;
     discoveryKeysEndpoint: string;
-}
-
-export interface AcceptInviteArgs {
-    name: string;
-    email: string;
 }

@@ -132,6 +132,15 @@ export class InviteService {
         }
     }
 
+    async deleteInvite(id: string): Promise<void> {
+        try {
+            await this.collection.deleteOne({ _id: id });
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     async getByRecipientEmail(email: string): Promise<UserInviteWithSender[]> {
         try {
             const invites = await this.collection.aggregate<UserInviteWithSender>([
@@ -180,7 +189,7 @@ export class InviteService {
     }
 }
 
-export type IInviteService = Pick<InviteService, 'createInvite'|'declineInvite'|'verifyInvite'|'getByRecipientEmail'>;
+export type IInviteService = Pick<InviteService, 'deleteInvite'|'createInvite'|'declineInvite'|'verifyInvite'|'getByRecipientEmail'>;
 
 export interface CreateInviteArgs {
     email: string;

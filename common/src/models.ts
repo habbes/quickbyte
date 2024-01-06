@@ -239,6 +239,14 @@ export interface NamedResource extends ResourceReference {
     name?: string;
 }
 
+export interface ProjectResource extends ResourceReference {
+    type: 'project',
+    object: WithRole<Project>
+}
+
+// this will be a union of all supported resource types
+export type Resource = ProjectResource;
+
 export type ResourceType = 'project';
 export type InviteResourceAccess = 'review';
 

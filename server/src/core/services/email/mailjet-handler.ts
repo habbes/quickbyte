@@ -47,7 +47,7 @@ export class MailjetEmailHandler implements EmailHandler {
                             Email: args.to.email,
                             Name: args.to.name
                         }],
-                        Subject: args.subject,
+                        Subject: `[Quickbyte]: ${args.subject}`,
                         HTMLPart: args.message,
                         TextPart: removeHtmlTags(args.message)
                     }

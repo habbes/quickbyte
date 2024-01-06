@@ -105,8 +105,8 @@ export function createDeclineProjectInviteEmail(invitedBy: string, invite: UserI
     const inviteeName = invite.name ? `${invite.name} (${invite.email})` : invite.email;
     const message =`
 Hello ${invitedBy},
-
-${inviteeName} has declined your request to join the project <b>${invite.resource.name}</b>.
+<br>
+${inviteeName} has declined your request to join the project <b>${invite.resource.name}</b> on Quickbyte.
 `;
     return message;
 }
@@ -116,7 +116,23 @@ export function createDeclineGenericInviteEmail(invitedBy: string, invite: UserI
     const message =`
 Hello ${invitedBy},
 
-${inviteeName} has declined your request to join <b>${invite.resource.name}</b>.
+${inviteeName} has declined your request to join <b>${invite.resource.name}</b> on Quickbyte.
 `;
     return message;
+}
+
+export function createInviteAcceptedEmail(invitorName: string, inviteeName: string, invite: UserInvite) {
+    if (invite.resource.type === 'project') {
+    return `
+Hello ${invitorName},
+<br>
+${inviteeName} has accepted your invitation to collaborate on project <b>${invite.resource.name}</b> on Quickbyte.
+`;
+    }
+
+    return `
+Hello ${invitorName},
+<br>
+${inviteeName} (${invite.email}) has accepted your invitation on <b>Quickbyte</b>.
+`;
 }

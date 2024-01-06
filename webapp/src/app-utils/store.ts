@@ -70,10 +70,22 @@ export function tryUpdateAccountSubscription(subscription: SubscriptionAndPlan) 
     }
 }
 
-function removeInvite(inviteId) {
+function removeInvite(inviteId: string) {
     const index = invites.value.findIndex(i => i._id === inviteId);
     if (index > -1) {
         invites.value.splice(index, 1);
+    }
+}
+
+function addProject(project: WithRole<Project>) {
+    const index = projects.value.findIndex(p => p._id === project._id);
+    if (index > -1) {
+        // update existing project
+        projects.value[index] = project;
+        // force update detection
+        projects.value = projects.value;
+    } else {
+        projects.value.push(project);
     }
 }
 
@@ -90,5 +102,7 @@ export const store = {
     recoveredTransfers,
     deviceData,
     invites,
-    removeInvite
+    projects,
+    removeInvite,
+    addProject
 };
