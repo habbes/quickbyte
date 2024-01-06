@@ -104,7 +104,7 @@ export class AccessHandler {
                 query.role = { $in: allowedRoles }
             };
     
-            const record = await this.collection.findOne({ userId, resourceType, resourceId });
+            const record = await this.collection.findOne(query);
             return record;
         } catch (e: any) {
             throw createAppError(e);

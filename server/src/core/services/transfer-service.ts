@@ -1,5 +1,5 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
-import { createAppError, createInvalidAppStateError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
@@ -182,13 +182,9 @@ export class TransferService {
 
     async getMediaFile(fileId: string): Promise<DownloadTransferFileResult> {
         try {
-            // accountId was added later to files, so some earlier files may not have an accountId.
-            // So we'd have to get the accountId from the transfer.
-            // However, when project media files feature was introduced, accountId was also added to files
-            // So all files that back project media must have an accountId
-            const file = await this.filesCollection.findOne({ _id: fileId, accountId: this.authContext.user.account._id });
+            const file = await this.filesCollection.findOne({ _id: fileId });
             if (!file) {
-                throw createResourceNotFoundError('media');
+                throw createNotFoundError('media');
             }
 
             const provider = this.config.providerRegistry.getHandler(file.provider);

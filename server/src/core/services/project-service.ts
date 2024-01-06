@@ -6,8 +6,7 @@ import { IInviteService } from "./invite-service.js";
 import { IMediaService, MediaService, MediaWithFile } from "./media-service.js";
 import { CreateMediaCommentArgs } from "./comment-service.js";
 import { IAccessHandler } from "./access-handler.js";
-
-const COLLECTION = 'projects';
+import { Database } from "../db.js";
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
@@ -20,8 +19,8 @@ export interface ProjectServiceConfig {
 export class ProjectService {
     private collection: Collection<Project>;
 
-    constructor(private db: Db, private authContext: AuthContext, private config: ProjectServiceConfig ) {
-        this.collection = db.collection(COLLECTION);
+    constructor(private db: Database, private authContext: AuthContext, private config: ProjectServiceConfig ) {
+        this.collection = db.projects();
     }
 
     async createProject(args: CreateProjectArgs): Promise<Project> {
@@ -50,20 +49,6 @@ export class ProjectService {
         }
     }
 
-    async getById(id: string): Promise<Project> {
-        try {
-            const project = await this.collection.findOne({ _id: id });
-            if (!project) {
-                throw createResourceNotFoundError();
-            }
-
-            return project;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
     async getByAccount(accountId: string): Promise<Project[]> {
         try {
             const projects = await this.collection.find({ accountId }).toArray();
@@ -74,8 +59,16 @@ export class ProjectService {
         }
     }
 
+    async getById(id: string): Promise<Project> {
+        const project = await this.getByIdInternal(id);
+        await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
+        return project;
+    }
+
     async updateProject(id: string, args: UpdateProjectArgs) {
         try {
+            const project = await this.getByIdInternal(id);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'editor']);
             const update = await this.collection.findOneAndUpdate({
                 _id: id
             }, {
@@ -99,7 +92,7 @@ export class ProjectService {
 
     async uploadMedia(id: string, args: CreateProjectMediaUploadArgs): Promise<UploadMediaResult> {
         try {
-            const project = await this.getById(id);
+            const project = await this.getByIdInternal(id);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'editor']);
             const transfer = await this.config.transfers.createProjectMediaUpload(project, args);
             const media = await this.config.media.uploadMedia(transfer);
@@ -116,7 +109,9 @@ export class ProjectService {
 
     async getMedia(id: string): Promise<Media[]> {
         try {
-            await this.getById(id);
+            const project = await this.getByIdInternal(id);
+            // TODO should a reviewer have access to all project media or just select files?
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
             const media = await this.config.media.getProjectMedia(id);
             return media;
         } catch (e: any) {
@@ -127,6 +122,8 @@ export class ProjectService {
 
     async getMediumById(projectId: string, id: string): Promise<MediaWithFile> {
         try {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
             const media = await this.config.media.getMediaById(projectId, id);
             return media;
         } catch (e: any) {
@@ -136,12 +133,20 @@ export class ProjectService {
     }
 
     async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<Comment> {
-        return this.config.media.createMediaComment(projectId, mediaId, args);
+        try {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
+            return this.config.media.createMediaComment(projectId, mediaId, args);
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 
     async inviteUsers(id: string, args: InviteUserArgs) {
         try {
-            const project = await this.getById(id);
+            const project = await this.getByIdInternal(id);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
             
             const invites = args.users.map(user => this.config.invites.createInvite({
                 email: user.email,
@@ -156,6 +161,20 @@ export class ProjectService {
 
             await Promise.all(invites);
 
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async getByIdInternal(id: string): Promise<Project> {
+        try {
+            const project = await this.collection.findOne({ _id: id });
+            if (!project) {
+                throw createResourceNotFoundError();
+            }
+
+            return project;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
