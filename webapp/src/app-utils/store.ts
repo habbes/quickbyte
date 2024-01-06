@@ -1,10 +1,11 @@
-import { ref } from 'vue';
-import type { 
-    UserWithAccount,
-    SubscriptionAndPlan,
-    UserInviteWithSender,
-    WithRole,
-    Project
+import { computed, ref } from 'vue';
+import { 
+    type UserWithAccount,
+    type SubscriptionAndPlan,
+    type UserInviteWithSender,
+    type WithRole,
+    type Project,
+    type AccountWithSubscription
 } from "@quickbyte/common";
 import type { StorageProvider, PreferredProviderRegionResult, TrackedTransfer } from '@/core';
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
@@ -18,6 +19,9 @@ const recoveredTransfers = ref<TrackedTransfer[]>([]);
 const deviceData = ref<DeviceData>();
 const invites = ref<UserInviteWithSender[]>([]);
 const projects = ref<WithRole<Project>[]>([]);
+const accounts = ref<AccountWithSubscription[]>([]);
+const currentAccountId = ref<string>();
+const currentAccount = computed(() => accounts.value.find(a => a._id === currentAccountId.value));
 
 export async function initUserData() {
     const data = await trpcClient.getCurrentUserData.query();
@@ -25,6 +29,8 @@ export async function initUserData() {
     userAccount.value = data.user;
     invites.value = data.invites;
     projects.value = data.projects;
+    accounts.value = data.accounts;
+    currentAccountId.value = data.defaultAccountId;
     providers.value = await apiClient.getProviders();
     preferredProvider.value = {
         provider: providers.value[0].name,
@@ -89,6 +95,10 @@ function addProject(project: WithRole<Project>) {
     }
 }
 
+function setCurrentAccount(id: string) {
+    currentAccountId.value = id;
+}
+
 interface DeviceData {
     ip: string;
     countryCode: string;
@@ -103,6 +113,9 @@ export const store = {
     deviceData,
     invites,
     projects,
+    accounts,
+    currentAccount,
     removeInvite,
-    addProject
+    addProject,
+    setCurrentAccount
 };

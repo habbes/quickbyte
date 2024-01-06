@@ -1,11 +1,11 @@
 import { Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService, InviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
 import { CommentService } from "./comment-service.js";
 import { IAccessHandler } from "./access-handler.js";
-import { Database } from "../db.js";
+import { Database, DbAccount } from "../db.js";
 
 export interface AccountServiceConfig {
     storageHandlers: IStorageHandlerProvider;
@@ -18,7 +18,7 @@ export interface AccountServiceConfig {
 }
 
 export class AccountService {
-    private collection: Collection<Account>;
+    private collection: Collection<DbAccount>;
 
     constructor(private db: Database, private config: AccountServiceConfig) {
         this.collection = this.db.accounts();
@@ -31,12 +31,44 @@ export class AccountService {
         };
 
         try {
-            const account = await this.collection.findOne({ owner });
+            const [account] = await this.collection.aggregate<Account>([
+                {
+                    $match: { owner }
+                },
+                {
+                    $lookup: {
+                        from: this.db.users().collectionName,
+                        foreignField: '_id',
+                        localField: 'owner._id',
+                        pipeline: [
+                            {
+                                $project: { name: 1 }
+                            }
+                        ],
+                        as: 'user'
+                    }
+                },
+                {
+                    $unwind: {
+                        path: '$user'
+                    }
+                },
+                {
+                    $addFields: {
+                        name: { $concat: ['$user.name', "'s Account"]}
+                    }
+                },
+                {
+                    $project: {
+                        user: 0
+                    }
+                }
+            ]).toArray();
             if (account) {
                 return account;
             };
 
-            const newAccount: Account = {
+            const newAccount: DbAccount = {
                 ...createPersistedModel(ownerId),
                 owner: {
                     type: 'user',
@@ -45,7 +77,13 @@ export class AccountService {
             };
 
             await this.collection.insertOne(newAccount);
-            return newAccount;
+            // TODO: we should remove this once we add account to owners
+            const user = await this.db.users().findOne({ _id: owner._id });
+            if (!user) {
+                throw createInvalidAppStateError(`Expected owner '${owner._id}' for new account '${newAccount._id}' to exist.`)
+            }
+
+            return { ...newAccount, name: `${user.name}'s Account` };
         } catch (e: any) {
             rethrowIfAppError(e);
             if (isMongoDuplicateKeyError(e)) {
@@ -58,7 +96,8 @@ export class AccountService {
 
     async getById(id: string): Promise<Account> {
         try {
-            const account = await this.collection.findOne({ _id: id });
+            const [account] = await this.tryGetByIdsInternal([id]);
+
             if (!account) {
                 throw createResourceNotFoundError('Account not found.');
             }
@@ -66,6 +105,49 @@ export class AccountService {
             return account;
         }
         catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async tryGetByIdsInternal(ids: string[]): Promise<Account[]> {
+        try {
+            const accounts = await this.collection.aggregate<Account>([
+                {
+                    $match: { _id: { $in: ids } }
+                },
+                {
+                    $lookup: {
+                        from: this.db.users().collectionName,
+                        foreignField: '_id',
+                        localField: 'owner._id',
+                        pipeline: [
+                            {
+                                $project: { name: 1 }
+                            }
+                        ],
+                        as: 'user'
+                    }
+                },
+                {
+                    $unwind: {
+                        path: '$user'
+                    }
+                },
+                {
+                    $addFields: {
+                        name: { $concat: ['$user.name', "'s Account"]}
+                    }
+                },
+                {
+                    $project: {
+                        user: 0
+                    }
+                }
+            ]).toArray();
+
+            return accounts;
+        } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
@@ -157,7 +239,7 @@ export class AccountService {
             projects.forEach(p => accountIds.add(p.accountId));
             const invites = await this.config.invites.getByRecipientEmail(authContext.user.email);
 
-            const accounts = await this.db.accounts().find({ _id: { $in: Array.from(accountIds) }}).toArray();
+            const accounts = await this.tryGetByIdsInternal(Array.from(accountIds));
 
             return {
                 user: authContext.user,
