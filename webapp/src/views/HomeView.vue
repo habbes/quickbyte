@@ -7,5 +7,5 @@
 import { store } from '@/app-utils'
 import WelcomeView from "./WelcomeView.vue";
 
-const userAccount = store.userAccount;
+const userAccount = store.user;
 </script>

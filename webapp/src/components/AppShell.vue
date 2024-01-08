@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col fixed w-full min-h-screen text-[#9499ae] text-sm">
-    <Navbar />
+    <AppNavBar />
     <div class="flex flex-1 bg-[#24141f]">
         <slot></slot>
     </div>
@@ -8,6 +8,6 @@
   </div>
 </template>
 <script lang="ts" setup>
-import Navbar from '@/components/Header/Navbar.vue';
+import AppNavBar from '@/components/AppNavBar.vue';
 import FooterSection from '@/components/Sections/FooterSection.vue';
 </script>

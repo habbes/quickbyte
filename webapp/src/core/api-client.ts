@@ -1,5 +1,5 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, Project, CreateProjectArgs, Media, MediaWithFile, Comment, RoleType } from './types.js'
-import { type SubscriptionAndPlan } from "@quickbyte/common";
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, CreateProjectArgs, Media, MediaWithFile, Comment, RoleType } from './types.js'
+import { type SubscriptionAndPlan, type WithRole, type Project } from "@quickbyte/common";
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -174,8 +174,8 @@ export class ApiClient {
         return this.get<Project>(`accounts/${accountId}/projects/${projectId}`);
     }
 
-    async createProject(accountId: string, args: CreateProjectArgs):  Promise<Project> {
-        return this.post<Project>(`accounts/${accountId}/projects`, args);
+    async createProject(accountId: string, args: CreateProjectArgs):  Promise<WithRole<Project>> {
+        return this.post<WithRole<Project>>(`accounts/${accountId}/projects`, args);
     }
 
     async uploadProjectMedia(accountId: string, projectId: string, args: CreateProjectMediaUploadArgs): Promise<UploadMediaResult> {

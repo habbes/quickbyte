@@ -46,34 +46,18 @@
   <CreateProjectDialog ref="createProjectDialog" />
 </template>
 <script lang="ts" setup>
-import { apiClient, store, showToast } from '@/app-utils';
-import { ensure } from '@/core';
-import { logger } from '@azure/storage-blob';
-import { ref, onMounted } from 'vue';
+import { store } from '@/app-utils';
+import { ref } from 'vue';
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue';
 import { layoutDimensions } from '@/styles/dimentions';
 import { PlusIcon } from '@heroicons/vue/24/solid';
-import type { WithRole, Project } from "@quickbyte/common";
 
-const projects = ref<WithRole<Project>[]>([]);
+const projects = store.currentProjects;
 const loading = ref(false);
 const createProjectDialog = ref<typeof CreateProjectDialog>();
 
 const headerHeight = 50;
 const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight + headerHeight}px)`;
-
-onMounted(async () => {
-  const user = ensure(store.userAccount.value);
-  try {
-    loading.value = true;
-    projects.value = store.projects.value;
-  } catch (e: any) {
-    logger.error(e);
-    showToast(e.message, 'error');
-  } finally {
-    loading.value = false;
-  }
-});
 
 function createProject() {
   createProjectDialog.value?.open();

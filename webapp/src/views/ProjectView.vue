@@ -51,7 +51,7 @@ const headerHeight = 50;
 const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight + headerHeight }px)`;
 
 onMounted(async () => {
-  const user = ensure(store.userAccount.value);
+  const account = ensure(store.currentAccount.value);
   const id = ensure(route.params.projectId) as string;
   loading.value = true;
 
@@ -59,7 +59,7 @@ onMounted(async () => {
     // TODO: should be able to fetch project without using account id
     // The project might belong to a different account than the current user
     // Or the current user could be a guest without an account
-    project.value = await apiClient.getProject(user.account._id, id);
+    project.value = await apiClient.getProject(account._id, id);
   } catch (e: any) {
     logger.error(e);
     showToast(e.message, 'error');

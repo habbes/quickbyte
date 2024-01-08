@@ -74,13 +74,13 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
     });
 
     try {
-        const user = ensure(store.userAccount.value, 'No active user found to execute media upload.');
+        const account = ensure(store.currentAccount.value, 'No active account found to execute media upload.');
         const provider = ensure(store.preferredProvider.value, 'Preferred provider not set for media upload.');
 
         const totalSize = files.reduce((sizeSoFar, f) => sizeSoFar + f.file.size, 0);
 
         if ('projectId' in args) {
-            const uploadResult = await apiClient.uploadProjectMedia(user.account._id, args.projectId, {
+            const uploadResult = await apiClient.uploadProjectMedia(account._id, args.projectId, {
                 provider: provider.provider,
                 region: provider.bestRegions[0],
                 files: files.map(f => ({ name: f.path, size: f.file.size })),
@@ -94,7 +94,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
             transfer.value = uploadResult.transfer;
             media.value = uploadResult.media;
         } else {
-            transfer.value = await apiClient.createTransfer(user.account._id, {
+            transfer.value = await apiClient.createTransfer(account._id, {
                 name: args.name,
                 provider: provider.provider,
                 region: provider.bestRegions[0],
@@ -157,7 +157,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
         let retry = true;
         while (retry) {
             try {
-                const download = await apiClient.finalizeTransfer(user.account._id, transfer.value._id, {
+                const download = await apiClient.finalizeTransfer(account._id, transfer.value._id, {
                     duration: stopped.getTime() - started.getTime(),
                     recovered: false
                 });
@@ -223,10 +223,10 @@ async function resumeTransferInternal(args: ResumeFileTransferArgs, result: Star
         const started = new Date();
         const blockSize = recoveredUpload.blockSize;
 
-        const user = ensure(store.userAccount.value, 'User account not set in store.');
+        const account = ensure(store.currentAccount.value, 'Current account not set in store.');
         ensure(store.preferredProvider.value, 'Preferred provider not set in store.');
 
-        transfer.value = await apiClient.getTransfer(user.account._id, recoveredUpload.id);
+        transfer.value = await apiClient.getTransfer(account._id, recoveredUpload.id);
 
         task.transfer = transfer.value;
         task.status = 'progress';
@@ -277,7 +277,7 @@ async function resumeTransferInternal(args: ResumeFileTransferArgs, result: Star
         let retry = true;
         while (retry) {
             try {
-                const download = await apiClient.finalizeTransfer(user.account._id, transfer.value._id, {
+                const download = await apiClient.finalizeTransfer(account._id, transfer.value._id, {
                     recovered: true,
                     duration: Date.now() - new Date(transfer.value._createdAt).getTime()
                 });

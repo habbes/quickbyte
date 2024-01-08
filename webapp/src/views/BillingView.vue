@@ -78,8 +78,8 @@ import { ensure, humanizeSize } from '@/core';
 import Button from '@/components/Button.vue';
 import { ref } from 'vue';
 
-const user = ensure(store.userAccount.value);
-const subscription = user.account.subscription;
+const account = ensure(store.currentAccount.value);
+const subscription = account.subscription;
 const loading = ref(false);
 
 async function getManagementUrl() {
@@ -89,7 +89,7 @@ async function getManagementUrl() {
     }
 
     loading.value = true;
-    const result = await apiClient.getSubscriptionManagementUrl(user.account._id, subscription._id);
+    const result = await apiClient.getSubscriptionManagementUrl(account._id, subscription._id);
     window.open(result.link, '_blank');
   } catch (e: any) {
     showToast(e.message, 'error');

@@ -40,7 +40,7 @@ async function fetchTransaction() {
     const id = Array.isArray(route.params.transactionId) ? route.params.transctionId[0] : route.params.transactionId;
     ensure(id);
     loading.value = true;
-    const account = ensure(store.userAccount.value?.account);
+    const account = ensure(store.currentAccount.value);
     
     transaction.value = await apiClient.getTransaction(account._id, id);
     tryUpdateAccountSubscription(transaction.value.subscription);

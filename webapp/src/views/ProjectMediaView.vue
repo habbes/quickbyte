@@ -74,11 +74,11 @@ onFilesSelected(async (files, directories) => {
 
 onMounted(async () => {
   const projectId = ensure(route.params.projectId) as string;
-  const user = ensure(store.userAccount.value);
+  const account = ensure(store.currentAccount.value);
   loading.value = true;
 
   try {
-    media.value = await apiClient.getProjectMedia(user.account._id, projectId);
+    media.value = await apiClient.getProjectMedia(account._id, projectId);
   } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');

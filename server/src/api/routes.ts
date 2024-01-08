@@ -61,7 +61,6 @@ routes.get('/accounts/:accountId/projects',
 
 routes.get('/accounts/:accountId/projects/:projectId',
     requireAuth(),
-    requireAccountOwner(),
     wrapResponse(req =>
         req.services.accounts.projects(req.authContext).getById(req.params.projectId)));
 
@@ -79,7 +78,6 @@ routes.post('/accounts/:accountId/projects/:projectId/upload',
 
 routes.get('/accounts/:accountId/projects/:projectId/media',
     requireAuth(),
-    requireAccountOwner(),
     wrapResponse(req =>
         req.services.accounts.projects(req.authContext).getMedia(req.params.projectId)));
 

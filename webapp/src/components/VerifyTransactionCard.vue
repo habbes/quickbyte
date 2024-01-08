@@ -123,7 +123,7 @@ const props = defineProps<{
   transaction: VerifyTransansactionResult
 }>();
 
-const user = ensure(store.userAccount.value);
+const account = ensure(store.currentAccount.value);
 
 const currentTransaction = ref(props.transaction);
 const loading = ref(false);
@@ -135,7 +135,7 @@ const homeRoute = { name: 'upload' };
 async function verifyTransaction() {
   try {
     loading.value = true;
-    currentTransaction.value = await apiClient.getTransaction(user.account._id, currentTransaction.value._id);
+    currentTransaction.value = await apiClient.getTransaction(account._id, currentTransaction.value._id);
 
     tryUpdateAccountSubscription(currentTransaction.value.subscription);
   }

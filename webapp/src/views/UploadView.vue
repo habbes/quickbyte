@@ -28,13 +28,14 @@ type State = 'newUpload' | 'recoveryFlow' | 'recoveryUpload';
 
 const router = useRouter();
 
-onMounted(() => {
-  if (!store.userAccount.value?.account.subscription) {
+onMounted(() => { 
+  const account = store.currentAccount.value;
+  if (!account?.subscription) {
     router.push({ name: 'pay' });
   }
 
-  if (store.userAccount.value?.account.subscription) {
-    const subscription = store.userAccount.value.account.subscription;
+  if (account?.subscription) {
+    const subscription = account.subscription;
     if (subscription.status === 'inactive') {
       router.push({ name: 'pay' });
     }

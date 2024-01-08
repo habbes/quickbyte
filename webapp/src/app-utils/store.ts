@@ -1,30 +1,43 @@
-import { ref } from 'vue';
-import type { 
-    UserWithAccount,
-    SubscriptionAndPlan,
-    UserInviteWithSender,
-    WithRole,
-    Project
+import { computed, ref } from 'vue';
+import { 
+    type User,
+    type SubscriptionAndPlan,
+    type UserInviteWithSender,
+    type WithRole,
+    type Project,
+    type AccountWithSubscription
 } from "@quickbyte/common";
 import type { StorageProvider, PreferredProviderRegionResult, TrackedTransfer } from '@/core';
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
 import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 
-const userAccount = ref<UserWithAccount>();
+// while the user we get from the server actually has account and subscription info of
+// the user's personal account, here I opted to user the basic User type instead of the
+// complete UserWithAccount to avoid accidentally using the user's personal account
+// instead of the currently selected account (store.currentAccount) when I
+// added support for multiple accounts.
+// Consider using the full account if we need to specifically access the user's personal account
+const user = ref<User>();
 const providers = ref<StorageProvider[]>([]);
 const preferredProvider = ref<PreferredProviderRegionResult>();
 const recoveredTransfers = ref<TrackedTransfer[]>([]);
 const deviceData = ref<DeviceData>();
 const invites = ref<UserInviteWithSender[]>([]);
 const projects = ref<WithRole<Project>[]>([]);
+const accounts = ref<AccountWithSubscription[]>([]);
+const currentAccountId = ref<string>();
+const currentAccount = computed(() => accounts.value.find(a => a._id === currentAccountId.value));
+const currentProjects = computed(() => projects.value.filter(p => p.accountId === currentAccount.value?._id));
 
 export async function initUserData() {
     const data = await trpcClient.getCurrentUserData.query();
     console.log('data', data);
-    userAccount.value = data.user;
+    user.value = data.user;
     invites.value = data.invites;
     projects.value = data.projects;
+    accounts.value = data.accounts;
+    currentAccountId.value = data.defaultAccountId;
     providers.value = await apiClient.getProviders();
     preferredProvider.value = {
         provider: providers.value[0].name,
@@ -54,7 +67,7 @@ export async function getDeviceData() {
 }
 
 export async function clearData() {
-    userAccount.value = undefined;
+    user.value = undefined;
     providers.value = [];
     preferredProvider.value = undefined;
     clearPrefs();
@@ -62,11 +75,11 @@ export async function clearData() {
 }
 
 export function tryUpdateAccountSubscription(subscription: SubscriptionAndPlan) {
-    if (store.userAccount.value
+    if (store.currentAccount.value
         && subscription
         && subscription.status === 'active'
     ) {
-        store.userAccount.value.account.subscription = subscription;
+        store.currentAccount.value.subscription = subscription;
     }
 }
 
@@ -89,6 +102,10 @@ function addProject(project: WithRole<Project>) {
     }
 }
 
+function setCurrentAccount(id: string) {
+    currentAccountId.value = id;
+}
+
 interface DeviceData {
     ip: string;
     countryCode: string;
@@ -96,13 +113,17 @@ interface DeviceData {
 }
 
 export const store = {
-    userAccount,
+    user: user,
     providers,
     preferredProvider,
     recoveredTransfers,
     deviceData,
     invites,
     projects,
+    currentProjects,
+    accounts,
+    currentAccount,
     removeInvite,
-    addProject
+    addProject,
+    setCurrentAccount
 };
