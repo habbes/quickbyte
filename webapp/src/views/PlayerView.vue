@@ -175,10 +175,10 @@ const sortedComments = computed(() => {
 const timedComments = computed<TimedComment[]>(() => sortedComments.value.filter(c => isDefined(c.timestamp)) as TimedComment[]);
 
 onMounted(async () => {
-  const user = ensure(store.userAccount.value);
+  const account = ensure(store.currentAccount.value);
 
   try {
-    media.value = await apiClient.getProjectMediumById(user.account._id, route.params.projectId as string, route.params.mediaId as string);
+    media.value = await apiClient.getProjectMediumById(account._id, route.params.projectId as string, route.params.mediaId as string);
     comments.value = media.value.comments;
   }
   catch (e: any) {
@@ -248,13 +248,13 @@ function handleVideoCommentClicked(comment: TimedComment) {
 async function sendComment() {
   if (!commentInputText.value) return;
   if (!media.value) return;
-  const user = ensure(store.userAccount.value);
+  const account = ensure(store.currentAccount.value);
   const projectId = ensure(route.params.projectId) as string;
   const mediaId = ensure(route.params.mediaId) as string;
 
   try {
     const comment = await apiClient.createMediaComment(
-      user.account._id,
+      account._id,
       projectId,
       mediaId,
       {

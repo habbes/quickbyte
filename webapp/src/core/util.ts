@@ -60,6 +60,10 @@ export function pluralize(word: string, count: number, plural: string = '') {
     return count == 1 ? word : plural;
 }
 
+export function figureWithUnit(count: number, unit: string, plural: string = '') {
+    return `${count} ${pluralize(unit, count, plural)}`;
+}
+
 export function getFileExtension(fileName: string) {
     return fileName.split('.').at(-1);
 }

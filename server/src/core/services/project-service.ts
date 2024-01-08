@@ -1,5 +1,5 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, Media, Project, RoleType, createPersistedModel } from "../models.js";
+import { AuthContext, Comment, Media, Project, RoleType, WithRole, createPersistedModel } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
 import { CreateProjectMediaUploadArgs, CreateTransferResult, ITransactionService, ITransferService } from "./index.js";
 import { IInviteService } from "./invite-service.js";
@@ -23,7 +23,7 @@ export class ProjectService {
         this.collection = db.projects();
     }
 
-    async createProject(args: CreateProjectArgs): Promise<Project> {
+    async createProject(args: CreateProjectArgs): Promise<WithRole<Project>> {
         try {
             const sub = await this.config.transactions.tryGetActiveSubscription();
             if (!sub) {
@@ -41,7 +41,7 @@ export class ProjectService {
 
             await this.collection.insertOne(project);
 
-            return project;
+            return { ...project, role: 'owner' };
         }
         catch (e: any) {
             rethrowIfAppError(e);

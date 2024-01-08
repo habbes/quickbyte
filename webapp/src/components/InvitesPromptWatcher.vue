@@ -61,7 +61,7 @@ watch(store.invites, (invites, prev) => {
 });
 
 async function declineInvite(id: string) {
-  const user = ensure(store.userAccount.value);
+  const user = ensure(store.user.value);
   try {
     // optimisitically remove the invite
     store.removeInvite(id);
@@ -76,7 +76,7 @@ async function declineInvite(id: string) {
 }
 
 async function acceptInvite(id: string) {
-  const user = ensure(store.userAccount.value);
+  const user = ensure(store.user.value);
   try {
     const resource = await trpcClient.acceptInvite.mutate({ id , email: user.email, name: user.name });
     store.removeInvite(id);

@@ -80,11 +80,11 @@ onBeforeRouteUpdate(async (from, to) => {
 });
 
 async function initTransfer(transferId: string) {
-  const user = ensure(store.userAccount.value);
+  const account = ensure(store.currentAccount.value);
   loading.value = true;
   
   try {
-    transfer.value = await apiClient.getTransfer(user.account._id, transferId);
+    transfer.value = await apiClient.getTransfer(account._id, transferId);
   }
   catch (e: any) {
     logger.error(e);

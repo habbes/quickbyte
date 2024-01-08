@@ -61,7 +61,7 @@ function close() {
 
 async function createProject(event: Event) {
   event.preventDefault(); // prevent closing the model
-  const user = ensure(store.userAccount.value);
+  const account = ensure(store.currentAccount.value);
   if (!name.value) {
     nameError.value = 'Project name is required';
     return;
@@ -69,10 +69,12 @@ async function createProject(event: Event) {
 
   try {
     loading.value = true;
-    const project = await apiClient.createProject(user.account._id, {
+    const project = await apiClient.createProject(account._id, {
       name: name.value,
       description: description.value
     });
+
+    store.addProject(project);
 
     emit('createProject', project);
     router.push({ name: 'project-media', params: { projectId: project._id }});

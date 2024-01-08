@@ -25,10 +25,11 @@ const emit = defineEmits<{
 const loading = ref(false);
 
 async function pay() {
-  const user = ensure(store.userAccount.value);
+  const account = ensure(store.currentAccount.value);
+  const user = ensure(store.user.value);
   try {
     loading.value = true;
-    const result = await apiClient.initiateSubscription(user.account._id, { plan: props.planName });
+    const result = await apiClient.initiateSubscription(account._id, { plan: props.planName });
 
     const paystackTx = PaystackPop.setup({
       key: result.transaction.metadata.key,
@@ -40,7 +41,7 @@ async function pay() {
       callback: async (response) => {
         try {
           loading.value = true;
-          const verifiedTx = await apiClient.getTransaction(user.account._id, result.transaction._id);
+          const verifiedTx = await apiClient.getTransaction(account._id, result.transaction._id);
           emit('transaction', verifiedTx);
         } catch (e: any) {
           showToast(e.message, 'error');
@@ -50,7 +51,7 @@ async function pay() {
       },
       onClose: async () => {
         try {
-          const cancelledTx = await apiClient.cancelTransaction(user.account._id, result.transaction._id);
+          const cancelledTx = await apiClient.cancelTransaction(account._id, result.transaction._id);
           showToast('Transaction cancelled.', 'info');
         } catch (e: any) {
           showToast(e.message, 'error');

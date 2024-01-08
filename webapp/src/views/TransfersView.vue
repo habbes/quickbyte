@@ -21,7 +21,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { store, apiClient, showToast, logger } from '@/app-utils';
 import { ensure, humanizeSize, pluralize } from '@/core';
 import type { Transfer } from '@/core';
@@ -33,10 +33,20 @@ const loading = ref(false);
 const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight}px)`;
 
 onMounted(async () => {
-  const user = ensure(store.userAccount.value);
+  await fetchTransfers();
+});
+
+watch(store.currentAccount, async () => {
+  await fetchTransfers();
+})
+
+async function fetchTransfers() {
+  const account = ensure(store.currentAccount.value);
   loading.value = true;
   try {
-    const result = await apiClient.getTransfers(user.account._id);
+    // we fetch the transfers in the user's personal account
+    // regardless of which account is currently selected.
+    const result = await apiClient.getTransfers(account._id);
     transfers.value = result.sort((t1, t2) => new Date(t2._createdAt).getTime() - new Date(t1._createdAt).getTime());
     transfers.value = transfers.value.concat(transfers.value.map(t => ({ ...t, _id: `l${t._id}`})));
   }
@@ -47,5 +57,5 @@ onMounted(async () => {
   finally {
     loading.value = false;
   }
-});
+}
 </script>

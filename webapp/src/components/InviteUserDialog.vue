@@ -24,7 +24,7 @@ const emailInput = ref<HTMLInputElement>();
 const email = ref<string>();
 const emailError = ref<string>();
 
-const user = ensure(store.userAccount.value);
+const account = ensure(store.currentAccount.value);
 
 const props = defineProps<{
   projectId: string;
@@ -62,7 +62,7 @@ async function inviteUser() {
   }
 
   try {
-    await apiClient.inviteUsersToProject(user.account._id, props.projectId, args);
+    await apiClient.inviteUsersToProject(account._id, props.projectId, args);
     emit('invite', [{ email: email.value }]);
     close();
     showToast('Sent invitations to users.', 'info');
