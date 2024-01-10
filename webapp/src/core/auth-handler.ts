@@ -121,14 +121,14 @@ export class AuthHandler {
         // to removing data from local storage manually
         // since the MSAL client does not expose
         // an API for clearing the local cache.
-        // localStorage.clear();
+        localStorage.clear();
 
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && (key.includes('msal') || key.includes('ciamlogin') || key.includes('server-telemetry'))) {
-                localStorage.removeItem(key);
-            }
-        }
+        // for (let i = 0; i < localStorage.length; i++) {
+        //     const key = localStorage.key(i);
+        //     if (key && (key.includes('msal') || key.includes('ciamlogin') || key.includes('server-telemetry'))) {
+        //         localStorage.removeItem(key);
+        //     }
+        // }
     }
 }
 

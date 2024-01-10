@@ -14,8 +14,14 @@ export class Database {
 
     projects = () => this.db.collection<Project>('projects');
 
-    invites = () => this.db.collection<UserInvite>('invites');
+    invites = () => this.db.collection<DbUserInvite>('invites');
 }
 
 // TODO: this is temporary, until we add names to accounts
 export type DbAccount = Omit<Account, 'name'>;
+
+
+// secret code is not exposed to API but send to
+// the invite recipient by email and used to authenticate
+// the invite
+export type DbUserInvite = UserInvite & { secret: string };

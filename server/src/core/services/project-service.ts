@@ -143,7 +143,7 @@ export class ProjectService {
         }
     }
 
-    async inviteUsers(id: string, args: InviteUserArgs) {
+    async inviteUsers(id: string, args: InviteUserArgs): Promise<void> {
         try {
             const project = await this.getByIdInternal(id);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
@@ -159,6 +159,7 @@ export class ProjectService {
                 role: args.role
             }));
 
+            // we don't send the invite details back to the user
             await Promise.all(invites);
 
         } catch (e: any) {

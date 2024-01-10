@@ -2,7 +2,8 @@ import { Collection } from "mongodb";
 import { NamedResource, UserInviteWithSender, UserInvite, createPersistedModel, RoleType, User } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
 import { EmailHandler, createDeclineGenericInviteEmail, createDeclineProjectInviteEmail, createGenericInviteEmail, createProjectInviteEmail } from "./index.js";
-import { Database } from "../db.js";
+import { Database, DbUserInvite } from "../db.js";
+import { generateId } from "../utils.js";
 
 const DEFAULT_VALIDITY_MILLIS = 2 * 24 * 60 * 60 * 1000; // 2 days
 
@@ -11,19 +12,24 @@ export interface InviteServiceConfig {
     webappBaseUrl: string;
 };
 
+function getSafeInvite(dbInvite: DbUserInvite): UserInvite {
+    const { secret, ...invite } = dbInvite;
+    return invite;
+}
+
 export class InviteService {
-    private collection: Collection<UserInvite>;
+    private collection: Collection<DbUserInvite>;
 
     constructor(private db: Database, private config: InviteServiceConfig) {
         this.collection = db.invites();
     }
 
-    async createInvite(args: CreateInviteArgs) {
+    async createInvite(args: CreateInviteArgs): Promise<void> {
         try {
             // TODO: handle if inviting existing user (whether full or guest)
             const now = Date.now();
             const expiresAt = new Date(now + DEFAULT_VALIDITY_MILLIS);
-            const invite: UserInvite = {
+            const dbInvite: DbUserInvite = {
                 ...createPersistedModel(args.invitor._id),
                 name: args.name,
                 email: args.email,
@@ -34,15 +40,18 @@ export class InviteService {
                     type: args.resource.type
                 },
                 role: args.role,
-                expiresAt
+                expiresAt,
+                secret: generateId()
             };
 
+            const publicInvite = getSafeInvite(dbInvite);
+
             const message = args.resource.type === 'project' ?
-                createProjectInviteEmail(args.invitor.name, invite, this.config.webappBaseUrl) :
-                createGenericInviteEmail(args.invitor.name, invite._id, args.name || '', this.config.webappBaseUrl);
+                createProjectInviteEmail(args.invitor.name, publicInvite, dbInvite.secret, this.config.webappBaseUrl) :
+                createGenericInviteEmail(args.invitor.name, dbInvite.secret, args.name || '', this.config.webappBaseUrl);
             
             const subject = args.resource.type === 'project' ?
-                `Quickbyte: ${args.invitor.name} invited you to project ${invite.resource.name}` :
+                `Quickbyte: ${args.invitor.name} invited you to project ${publicInvite.resource.name}` :
                 `${args.invitor.name} invited you to collaborate on Quickbyte`;
 
             await this.config.emails.sendEmail({
@@ -51,7 +60,7 @@ export class InviteService {
                 subject: subject
             });
 
-            await this.collection.insertOne(invite);
+            await this.collection.insertOne(dbInvite);
         }
         catch (e: any) {
             rethrowIfAppError(e);
@@ -59,11 +68,10 @@ export class InviteService {
         }
     }
 
-    async verifyInvite(id: string, email: string): Promise<UserInvite> {
+    async verifyInvite(code: string): Promise<UserInvite> {
         try {
             const invite = await this.collection.findOne({
-                _id: id,
-                email: email,
+                secret: code,
                 expiresAt: { $gt: new Date() }
             });
 

@@ -129,14 +129,14 @@ export class AuthService {
         const user = await this.getOrCreateUser(parsed.payload);
         const account = await this.args.accounts.getOrCreateByOwner(user._id);
 
-        const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account`} }
+        const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account` } }
 
         const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription();
         if (sub) {
             userWithAccount.account.subscription = sub;
         }
 
-        return userWithAccount ;
+        return userWithAccount;
     }
 
     async verifyTokenAndGetUser(token: string): Promise<UserWithAccount> {
@@ -153,19 +153,19 @@ export class AuthService {
             }
 
             const account = await this.args.accounts.getOrCreateByOwner(user._id);
-            return { ...user, account};
+            return { ...user, account };
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
     }
 
-    async acceptUserInvite(args: AcceptInviteArgs): Promise<Resource>  {
+    async acceptUserInvite(args: AcceptInviteArgs): Promise<Resource> {
         try {
-            const invite = await this.args.invites.verifyInvite(args.id, args.email);
+            const invite = await this.args.invites.verifyInvite(args.id);
             // check if user already exists
             let user = await this.usersCollection.findOne({ email: args.email })
-    
+
             if (!user) {
                 // user does not exist, let's create a guest user
                 const newUser: GuestUser = {
@@ -213,10 +213,15 @@ export class AuthService {
         }
     }
 
+    async verifyInvite(inviteCode: string) {
+        const invite = await this.args.invites.verifyInvite(inviteCode);
+        return invite;
+    }
+
     async declineUserInvite(id: string, email: string): Promise<void> {
         try {
             await this.args.invites.declineInvite(id, email);
-        } catch(e: any) {
+        } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
@@ -246,7 +251,7 @@ export class AuthService {
 
             await this.usersCollection.insertOne(newUser);
             await this.args.accounts.getOrCreateByOwner(newUser._id);
-            
+
             // we don't want to fail operation due to an email failure
             // so we don't await it
             this.args.email.sendEmail({
@@ -274,10 +279,10 @@ export class AuthService {
             throw createDbError(e);
         }
     }
-   
+
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken'|'verifyTokenAndGetUser'|'getUserById'|'acceptUserInvite'|'declineUserInvite'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' | 'verifyTokenAndGetUser' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {
