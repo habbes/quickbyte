@@ -2,7 +2,7 @@ import { randomBytes } from 'crypto';
 import { FileKind } from './models.js';
 
 export function generateId() {
-    return randomBytes(16).toString('hex');
+    return randomBytes(16).toString('base64url');
 }
 
 export function fileNameToFileKind(filename: string): FileKind {
