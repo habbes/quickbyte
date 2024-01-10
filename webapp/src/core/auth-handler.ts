@@ -50,7 +50,7 @@ export class AuthHandler {
         const account = this.authClient.getAccountByUsername(currentUser?.email || "");
         const logoutRequest = {
             account: account,
-            // postLogoutRedirectUri: '/signout', // remove this line if you would like navigate to index page after logout.
+            postLogoutRedirectUri: '/', // remove this line if you would like navigate to index page after logout.
         };
 
         const result = this.config.onSignOut && this.config.onSignOut();
