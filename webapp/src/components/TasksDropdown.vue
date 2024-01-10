@@ -5,7 +5,7 @@
         <span v-if="activeTasks.length" class="indicator-item badge badge-secondary">
           {{ activeTasks.length }}
         </span>
-        <InboxIcon class="h-5 w-5" />
+        <BellIcon class="h-5 w-5" />
       </div>
     </div>
     <ul v-if="tasks.length" tabindex="0"
@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { taskManager } from "@/app-utils";
-import { InboxIcon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { BellIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 import type { Task, TransferTask } from "@/core";
 import { useRouter } from "vue-router";
 

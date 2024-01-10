@@ -1,11 +1,17 @@
 <template>
   <div>
-    <button
-      @click="inviteUsers()"
-      class="btn btn-primary btn-sm mb-5"
+    <RequireRole
+      v-if="project"
+      :accepted="['owner', 'admin']"
+      :current="project.role"
     >
-      + Add people
-    </button>
+      <button
+        @click="inviteUsers()"
+        class="btn btn-primary btn-sm mb-5"
+      >
+        + Add people
+      </button>
+    </RequireRole>
     <Table>
       <TableHeader>
         <TableHead>Name</TableHead>
@@ -29,7 +35,7 @@
   />
 </template>
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import {
   Table,
@@ -40,11 +46,16 @@ import {
   TableCell
 } from '@/components/ui/table/index.js';
 import InviteUserDialog from '@/components/InviteUserDialog.vue';
+import RequireRole from '@/components/RequireRole.vue';
 import { ensure } from '@/core';
+import { store } from '@/app-utils';
 
 const inviteUsersDialog = ref<typeof InviteUserDialog>();
 const projectId = ref<string>();
 const route = useRoute();
+const project = computed(() => {
+  return store.projects.value.find(p => p._id === projectId.value);
+});
 
 onMounted(async () => {
   projectId.value = ensure(route.params.projectId) as string;
