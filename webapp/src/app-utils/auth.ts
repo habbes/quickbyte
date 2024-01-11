@@ -71,7 +71,7 @@ export const auth = new AuthHandler({
 });
 
 export function initAuth(): Promise<void> {
-    auth.selectAccount();
+    // auth.selectAccount(); // handleRedirect() already calls init auth
     return auth.handleRedirect();
 }
 
