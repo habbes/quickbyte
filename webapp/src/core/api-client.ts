@@ -3,7 +3,7 @@ import { type SubscriptionAndPlan, type WithRole, type Project } from "@quickbyt
 
 export interface ApiClientConfig {
     baseUrl: string;
-    getToken: () => Promise<string>;
+    getToken: () => Promise<string|undefined>;
 }
 
 export class ApiClient {

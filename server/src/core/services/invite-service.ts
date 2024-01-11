@@ -68,12 +68,42 @@ export class InviteService {
         }
     }
 
-    async verifyInvite(code: string): Promise<UserInvite> {
+    async verifyInvite(code: string): Promise<UserInviteWithSender> {
         try {
-            const invite = await this.collection.findOne({
-                secret: code,
-                expiresAt: { $gt: new Date() }
-            });
+            const [invite] = await this.collection.aggregate<UserInviteWithSender>([
+                {
+                    $match: {
+                        secret: code,
+                        expiresAt: { $gt: new Date() }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: this.db.users().collectionName,
+                        foreignField: '_id',
+                        localField: '_createdBy._id',
+                        as: 'sender',
+                        pipeline: [{
+                            $project: {
+                                _id: 0,
+                                name: 1,
+                                email: 1
+                            }
+                        }]
+                    }
+                },
+                {
+                    $unwind: {
+                        path: '$sender'
+                    }
+                },
+                {
+                    $project: {
+                        _createdBy: 0,
+                        secret: 0
+                    }
+                }
+            ]).toArray();
 
             if (!invite) {
                 throw createResourceNotFoundError('The invite does not exist.');

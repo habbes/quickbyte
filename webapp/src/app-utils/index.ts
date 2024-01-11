@@ -9,3 +9,4 @@ export * from './downloader-provider.js';
 export * from './unload-manager.js';
 export * from './transfer.js';
 export * from './task-manager.js';
+export * from './invites.js';

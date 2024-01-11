@@ -61,10 +61,12 @@ export class AuthHandler {
         await this.authClient.logoutRedirect(logoutRequest);
     }
 
-    async getToken(): Promise<string> {
+    async getToken(): Promise<string|undefined> {
         const currentAccounts = this.authClient.getAllAccounts();
         if (currentAccounts.length) {
             this.authClient.setActiveAccount(currentAccounts[0]);
+        } else {
+            return;
         }
 
         const result = await this.authClient.acquireTokenSilent({
