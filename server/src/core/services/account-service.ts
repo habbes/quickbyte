@@ -1,7 +1,7 @@
 import { Collection } from "mongodb";
 import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
-import { IInviteService, InviteService } from "./invite-service.js";
+import { IInviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
 import { CommentService } from "./comment-service.js";
 import { IAccessHandler } from "./access-handler.js";

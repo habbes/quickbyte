@@ -14,6 +14,7 @@ export type Principal = {
 export const SystemPrincipal = { type: 'system' as const, _id: 'system' as const};
 
 export interface Account extends PersistedModel {
+    name: string;
     owner: Principal;
 }
 
@@ -223,11 +224,15 @@ export interface UserInvite extends PersistedModel {
     expiresAt: Date;
 }
 
-export type UserInviteWithSender = Omit<UserInvite, '_createdBy'> & {
+export type UserInviteWithSender = UserInvite & {
     sender: {
         name: string;
         email: string;
     }
+}
+
+export type RecipientInvite = UserInviteWithSender & {
+    secret: string;
 }
 
 export interface ResourceReference {
@@ -265,7 +270,7 @@ export interface BasicUserData {
     user: UserWithAccount;
     accounts: AccountWithSubscription[];
     projects: WithRole<Project>[];
-    invites: UserInviteWithSender[];
+    invites: RecipientInvite[];
     defaultProjectId?: string;
     defaultAccountId: string;
 }

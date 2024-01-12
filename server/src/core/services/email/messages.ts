@@ -61,9 +61,9 @@ ${error.stack}
     return message;
 }
 
-export function createGenericInviteEmail(invitedBy: string, inviteId: string, name: string, appBaseUrl: string) {
+export function createGenericInviteEmail(invitedBy: string, inviteSecret: string, name: string, appBaseUrl: string) {
     const greeting = name ? `Hello ${name}` : 'Hello';
-    const inviteUrl = `${appBaseUrl}/i/${inviteId}`;
+    const inviteUrl = `${appBaseUrl}/i/${inviteSecret}`;
 
     const message =`
 ${greeting},
@@ -83,9 +83,9 @@ Quickbyte Team
     return message;
 }
 
-export function createProjectInviteEmail(invitedBy: string, invite: UserInvite, appBaseUrl: string) {
+export function createProjectInviteEmail(invitedBy: string, invite: UserInvite, secretCode: string, appBaseUrl: string) {
     const greeting = invite.name ? `Hello ${invite.name}` : 'Hello';
-    const inviteUrl = `${appBaseUrl}/i/${invite._id}`;
+    const inviteUrl = `${appBaseUrl}/i/${secretCode}`;
 
     const customMessage = invite.message ? `<p>${invite.message}</p>` : '';
 

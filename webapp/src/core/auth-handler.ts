@@ -15,14 +15,18 @@ export class AuthHandler {
         return this.makeSignInRequest();
     }
 
-    async signInWithInvite(inviteId: string): Promise<void> {
+    /**
+     * forces a sign in request even there's a user
+     * currently logged in.
+     * If current user session is active, its data
+     * is first cleared from the local cache.
+     */
+    async forceSignInNewUser(): Promise<void> {
         this.clearLocalSession();
         return this.makeSignInRequest({
             // setting 'login' as the prompt forces the user to manually login even if there's already an active session on this app
             // see: https://azuread.github.io/microsoft-authentication-library-for-js/ref/types/_azure_msal_browser.RedirectRequest.html
-            prompt: 'login',
-            state: JSON.stringify({ invite: inviteId }),
-            extraQueryParameters: { invite: inviteId },
+            prompt: 'login'
         });
     }
 
@@ -50,7 +54,7 @@ export class AuthHandler {
         const account = this.authClient.getAccountByUsername(currentUser?.email || "");
         const logoutRequest = {
             account: account,
-            // postLogoutRedirectUri: '/signout', // remove this line if you would like navigate to index page after logout.
+            postLogoutRedirectUri: '/', // remove this line if you would like navigate to index page after logout.
         };
 
         const result = this.config.onSignOut && this.config.onSignOut();
@@ -61,10 +65,12 @@ export class AuthHandler {
         await this.authClient.logoutRedirect(logoutRequest);
     }
 
-    async getToken(): Promise<string> {
+    async getToken(): Promise<string|undefined> {
         const currentAccounts = this.authClient.getAllAccounts();
         if (currentAccounts.length) {
             this.authClient.setActiveAccount(currentAccounts[0]);
+        } else {
+            return;
         }
 
         const result = await this.authClient.acquireTokenSilent({
@@ -116,19 +122,19 @@ export class AuthHandler {
      * simultaneously logged-in accounts since our app currently
      * does not support switching between multiple active accounts.
      */
-    private clearLocalSession() {
+    clearLocalSession() {
         // This is a hack. We resort
         // to removing data from local storage manually
         // since the MSAL client does not expose
         // an API for clearing the local cache.
-        // localStorage.clear();
+        localStorage.clear();
 
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && (key.includes('msal') || key.includes('ciamlogin') || key.includes('server-telemetry'))) {
-                localStorage.removeItem(key);
-            }
-        }
+        // for (let i = 0; i < localStorage.length; i++) {
+        //     const key = localStorage.key(i);
+        //     if (key && (key.includes('msal') || key.includes('ciamlogin') || key.includes('server-telemetry'))) {
+        //         localStorage.removeItem(key);
+        //     }
+        // }
     }
 }
 

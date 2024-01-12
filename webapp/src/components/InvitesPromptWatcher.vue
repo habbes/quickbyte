@@ -3,8 +3,8 @@
     ref="dialog"
     title="Join projects"
   >
-    <div>
-      <div v-for="invite in invites" :key="invite._id" class="flex flex-col gap-2">
+    <div class="flex flex-col gap-4">
+      <div v-for="invite in invites" :key="invite._id" class="flex flex-col gap-2 border-t border-t-slate-200 py-4">
         <div v-if="invite.resource.type === 'project' && invite.resource.name">
           <span class="font-bold">{{ invite.sender.name }}</span> <span class="italic">({{ invite.sender.email }})</span>
           invited you to join project <span class="font-bold">{{ invite.resource.name }}</span>.
@@ -19,11 +19,11 @@
         </div>
         <div class="flex justify-end gap-2">
           <button
-            @click="acceptInvite(invite._id)"
+            @click="handleAccept(invite)"
             class="btn btn-primary btn-sm"
           >Accept</button>
           <button
-            @click="declineInvite(invite._id)"
+            @click="handleDecline(invite)"
             class="btn btn-default btn-sm"
           >Decline</button>
         </div>
@@ -33,9 +33,9 @@
 </template>
 <script lang="ts" setup>
 import { ref, watch } from "vue";
-import { logger, showToast, store, trpcClient } from "@/app-utils";
+import { logger, showToast, store, acceptInvite, declineInvite } from "@/app-utils";
 import Dialog from "@/components/ui/Dialog.vue";
-import { ensure } from "@/core";
+import type { RecipientInvite } from "../../../common/dist";
 
 const dialog = ref<typeof Dialog>();
 const invites = store.invites;
@@ -60,12 +60,9 @@ watch(store.invites, (invites, prev) => {
   dialog.value?.open();
 });
 
-async function declineInvite(id: string) {
-  const user = ensure(store.user.value);
+async function handleDecline(invite: RecipientInvite) {
   try {
-    // optimisitically remove the invite
-    store.removeInvite(id);
-    await trpcClient.declineInvite.mutate({ id, email: user.email });
+    await declineInvite(invite._id, invite.secret);
     showToast('Invitation declined.', 'info');
     dialog.value?.close();
   }
@@ -75,14 +72,9 @@ async function declineInvite(id: string) {
   }
 }
 
-async function acceptInvite(id: string) {
-  const user = ensure(store.user.value);
+async function handleAccept(invite: RecipientInvite) {
   try {
-    const resource = await trpcClient.acceptInvite.mutate({ id , email: user.email, name: user.name });
-    store.removeInvite(id);
-    if (resource.type === 'project' && resource.object) {
-      store.addProject(resource.object);
-    }
+    await acceptInvite(invite._id, invite.secret);
 
     dialog.value?.close();
   } catch (e: any) {

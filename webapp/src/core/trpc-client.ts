@@ -27,5 +27,5 @@ export function createTrpcClient(config: TrpcClientConfig) {
 
 export interface TrpcClientConfig {
     baseUrl: string;
-    getToken(): Promise<string>;
+    getToken(): Promise<string|undefined>;
 }

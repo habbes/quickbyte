@@ -1,5 +1,6 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
 import { DeclineInviteArgs, AcceptInviteArgs } from '@quickbyte/common';
+import { z } from 'zod';
 
 export const appRouter = router({
     getCurrentUserData: protectedProcedure.query(({ ctx }) =>
@@ -9,11 +10,16 @@ export const appRouter = router({
     .input(DeclineInviteArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.auth.declineUserInvite(input.id, input.email)),
-    
+    // TODO: acceptInvite should only use secret code
     acceptInvite: publicProcedure
     .input(AcceptInviteArgs)
     .mutation(({ input, ctx }) =>
-        ctx.app.auth.acceptUserInvite(input))
+        ctx.app.auth.acceptUserInvite(input)),
+    
+    verifyInvite: publicProcedure
+    .input(z.string())
+    .query(({ input, ctx }) => 
+        ctx.app.auth.verifyInvite(input))
     
 });
 

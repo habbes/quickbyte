@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import { 
     type User,
     type SubscriptionAndPlan,
-    type UserInviteWithSender,
+    type RecipientInvite,
     type WithRole,
     type Project,
     type AccountWithSubscription
@@ -23,7 +23,7 @@ const providers = ref<StorageProvider[]>([]);
 const preferredProvider = ref<PreferredProviderRegionResult>();
 const recoveredTransfers = ref<TrackedTransfer[]>([]);
 const deviceData = ref<DeviceData>();
-const invites = ref<UserInviteWithSender[]>([]);
+const invites = ref<RecipientInvite[]>([]);
 const projects = ref<WithRole<Project>[]>([]);
 const accounts = ref<AccountWithSubscription[]>([]);
 const currentAccountId = ref<string>();

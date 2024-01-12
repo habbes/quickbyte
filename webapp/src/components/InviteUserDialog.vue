@@ -68,7 +68,7 @@ async function inviteUser() {
     showToast('Sent invitations to users.', 'info');
   }
   catch (e: any) {
-    showToast(`Failed to invite user: {$e.message}`, 'error');
+    showToast(`Failed to invite user: ${e.message}`, 'error');
     logger.error(e.message, e);
   }
   

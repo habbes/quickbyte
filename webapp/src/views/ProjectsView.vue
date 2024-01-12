@@ -17,14 +17,16 @@
         </div>
       </div>
       <div v-else class="flex flex-col flex-1">
-        <div class="flex flex-row items-center px-5" :style="{ height: `${headerHeight}px` }">
-          <button
-            @click="createProject()"
-            class="btn btn-primary btn-sm"
-          >
-            <PlusIcon class="h-5 w-5" /> New Project
-          </button>
-        </div>
+        <RequireAccountOwner>
+          <div class="flex flex-row items-center px-5" :style="{ height: `${headerHeight}px` }">
+              <button
+                @click="createProject()"
+                class="btn btn-primary btn-sm"
+              >
+                <PlusIcon class="h-5 w-5" /> New Project
+              </button>
+          </div>
+        </RequireAccountOwner>
         <div class="flex-grow overflow-y-auto p-5" :style="{ height: contentHeight }">
           <div
             class="grid"
@@ -51,6 +53,7 @@ import { ref } from 'vue';
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue';
 import { layoutDimensions } from '@/styles/dimentions';
 import { PlusIcon } from '@heroicons/vue/24/solid';
+import RequireAccountOwner from '@/components/RequireAccountOwner.vue';
 
 const projects = store.currentProjects;
 const loading = ref(false);
