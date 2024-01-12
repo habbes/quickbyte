@@ -26,15 +26,21 @@
         </button>
       </div>
       <div v-else>
-        <button class="btn btn-primary">Get Started</button>
+        <button
+          @click="handleGetStarted()"
+          class="btn btn-primary"
+        >Get Started</button>
       </div>
+    </div>
+    <div v-else-if="loadError" class="p-5">
+      <div class="alert alert-error">{{ loadError }}</div>
     </div>
   </div>
 </template>
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { logger, trpcClient, store, acceptInvite, declineInvite, showToast } from '@/app-utils';
+import { logger, trpcClient, store, acceptInvite, declineInvite, showToast, auth } from '@/app-utils';
 import { ensure } from '@/core';
 import type { UserInviteWithSender } from '@quickbyte/common';
 import EmptyNavBar from '@/components/EmptyNavBar.vue';
@@ -43,6 +49,7 @@ const route = useRoute();
 const router = useRouter();
 const invite = ref<UserInviteWithSender>();
 const user = store.user;
+const loadError = ref<string>();
 
 onMounted(async () => {
   console.log('invite view mount');
@@ -62,37 +69,25 @@ onMounted(async () => {
       console.log('invited user is current user');
     }
     else if (user.value) {
-      // different user is logged
-      // await auth.signInWithInvite(inviteCode);
-      console.log('invited user different from current user');
+      // different user is logged, clear the session
+      // so the invited user can login
+      auth.clearLocalSession();
     }
-    else {
-      // ask user to login
-      // await auth.signInWithInvite(inviteCode);
-      console.log('no user currently signed in');
-    }
-
-    // todo when landing on invite view
-    // fetch/validate invite record
-    // if no logged in user:
-    //   show login/account page. After login prompt user to join project
-    // if logged in user different from invited email:
-    //    clear local cache, ask user to login, then prompt user to join project
-    // if logged in user same email
-    //     prompt user to join project
     
     
   } catch (e: any) {
     logger.error(e.message, e);
+    loadError.value = e.message;
   }
   
 });
 
 async function handleAccept() {
   if (!invite.value) return;
+  const inviteCode = ensure(route.params.inviteId) as string;
 
   try {
-    const resource = await acceptInvite(invite.value._id);
+    const resource = await acceptInvite(invite.value._id, inviteCode);
     if (resource.type === 'project') {
       router.push({ name: 'project', params: { projectId: resource.id }});
     }
@@ -104,14 +99,19 @@ async function handleAccept() {
 
 async function handleDecline() {
   if (!invite.value) return;
+  const inviteCode = ensure(route.params.inviteId) as string;
 
   try {
-    await declineInvite(invite.value._id);
+    await declineInvite(invite.value._id, inviteCode);
     router.push({ name: 'appHome' });
   } catch (e: any) {
     showToast(e.message, 'error');
     logger?.error(e.message, e);
   }
+}
+
+async function handleGetStarted() {
+  await auth.forceSignInNewUser();
 }
 
 </script>

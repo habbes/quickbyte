@@ -162,7 +162,7 @@ export class AuthService {
 
     async acceptUserInvite(args: AcceptInviteArgs): Promise<Resource> {
         try {
-            const invite = await this.args.invites.verifyInvite(args.id);
+            const invite = await this.args.invites.verifyInvite(args.code);
             // check if user already exists
             let user = await this.usersCollection.findOne({ email: args.email })
 
@@ -183,20 +183,12 @@ export class AuthService {
             const role = await this.args.access.assignRole(invite._createdBy, user._id, invite.resource.type, invite.resource.id, invite.role);
             await this.args.invites.deleteInvite(invite._id);
 
-            const resource: Resource = invite.resource;
-            if (invite.resource.type === 'project') {
-                const project = await this.db.projects().findOne({ _id: invite.resource.id });
-                if (project) {
-                    resource.object = { ...project, role: role.role }
-                }
-            }
-
-
             const invitor = await this.usersCollection.findOne({ _id: invite._createdBy._id });
             if (!invitor) {
                 throw createInvalidAppStateError(`Expected invitor creator '${invite._createdBy._id}' to exist but was not found`);
             }
 
+            // TODO: email should happen in background
             await this.args.email.sendEmail({
                 to: {
                     name: invitor.name,
@@ -206,7 +198,18 @@ export class AuthService {
                 message: createInviteAcceptedEmail(invitor.name, user.name, invite)
             });
 
-            return resource;
+            if (invite.resource.type === 'project') {
+                
+                const project = await this.db.projects().findOne({ _id: invite.resource.id });
+                if (!project) {
+                    throw createInvalidAppStateError(`Expected project '${invite.resource.id}' to exist for resource of invite '${invite._id}' but was not found.`);
+                }
+
+                const resource = { ...invite.resource, object: { ...project, role: role.role } }
+                return resource;
+            } else {
+                throw createInvalidAppStateError(`Resource of type '${invite.resource.type}' for invite '${invite._id}' not handled.`);
+            }
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

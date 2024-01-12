@@ -19,11 +19,11 @@
         </div>
         <div class="flex justify-end gap-2">
           <button
-            @click="handleAccept(invite._id)"
+            @click="handleAccept(invite)"
             class="btn btn-primary btn-sm"
           >Accept</button>
           <button
-            @click="handleDecline(invite._id)"
+            @click="handleDecline(invite)"
             class="btn btn-default btn-sm"
           >Decline</button>
         </div>
@@ -33,9 +33,9 @@
 </template>
 <script lang="ts" setup>
 import { ref, watch } from "vue";
-import { logger, showToast, store, trpcClient, acceptInvite, declineInvite } from "@/app-utils";
+import { logger, showToast, store, acceptInvite, declineInvite } from "@/app-utils";
 import Dialog from "@/components/ui/Dialog.vue";
-import { ensure } from "@/core";
+import type { RecipientInvite } from "../../../common/dist";
 
 const dialog = ref<typeof Dialog>();
 const invites = store.invites;
@@ -60,9 +60,9 @@ watch(store.invites, (invites, prev) => {
   dialog.value?.open();
 });
 
-async function handleDecline(id: string) {
+async function handleDecline(invite: RecipientInvite) {
   try {
-    await declineInvite(id);
+    await declineInvite(invite._id, invite.secret);
     showToast('Invitation declined.', 'info');
     dialog.value?.close();
   }
@@ -72,9 +72,9 @@ async function handleDecline(id: string) {
   }
 }
 
-async function handleAccept(id: string) {
+async function handleAccept(invite: RecipientInvite) {
   try {
-    await acceptInvite(id);
+    await acceptInvite(invite._id, invite.secret);
 
     dialog.value?.close();
   } catch (e: any) {

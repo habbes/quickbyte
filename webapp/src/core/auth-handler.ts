@@ -15,14 +15,18 @@ export class AuthHandler {
         return this.makeSignInRequest();
     }
 
-    async signInWithInvite(inviteId: string): Promise<void> {
+    /**
+     * forces a sign in request even there's a user
+     * currently logged in.
+     * If current user session is active, its data
+     * is first cleared from the local cache.
+     */
+    async forceSignInNewUser(): Promise<void> {
         this.clearLocalSession();
         return this.makeSignInRequest({
             // setting 'login' as the prompt forces the user to manually login even if there's already an active session on this app
             // see: https://azuread.github.io/microsoft-authentication-library-for-js/ref/types/_azure_msal_browser.RedirectRequest.html
-            prompt: 'login',
-            state: JSON.stringify({ invite: inviteId }),
-            extraQueryParameters: { invite: inviteId },
+            prompt: 'login'
         });
     }
 
@@ -118,7 +122,7 @@ export class AuthHandler {
      * simultaneously logged-in accounts since our app currently
      * does not support switching between multiple active accounts.
      */
-    private clearLocalSession() {
+    clearLocalSession() {
         // This is a hack. We resort
         // to removing data from local storage manually
         // since the MSAL client does not expose

@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { NamedResource, UserInviteWithSender, UserInvite, createPersistedModel, RoleType, User } from "../models.js";
+import { NamedResource, UserInviteWithSender, RecipientInvite ,UserInvite, createPersistedModel, RoleType, User } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
 import { EmailHandler, createDeclineGenericInviteEmail, createDeclineProjectInviteEmail, createGenericInviteEmail, createProjectInviteEmail } from "./index.js";
 import { Database, DbUserInvite } from "../db.js";
@@ -99,7 +99,6 @@ export class InviteService {
                 },
                 {
                     $project: {
-                        _createdBy: 0,
                         secret: 0
                     }
                 }
@@ -179,9 +178,12 @@ export class InviteService {
         }
     }
 
-    async getByRecipientEmail(email: string): Promise<UserInviteWithSender[]> {
+    async getByRecipientEmail(email: string): Promise<RecipientInvite[]> {
         try {
-            const invites = await this.collection.aggregate<UserInviteWithSender>([
+            // this invite result contains the secret invite code
+            // because it's meant to be sent to the recipient's account.
+            // The recipient needs the code to accept the invite.
+            const invites = await this.collection.aggregate<RecipientInvite>([
                 {
                     $match: { 
                         email,
@@ -193,28 +195,21 @@ export class InviteService {
                         from: this.db.users().collectionName,
                         localField: '_createdBy._id',
                         foreignField: '_id',
-                        as: 'fullSender'
+                        as: 'sender',
+                        pipeline: [
+                            {
+                                $project:  {
+                                    name: 1,
+                                    email: 1,
+                                    _id: 0
+                                }
+                            }
+                        ]
                     }
                 },
                 {
                     $unwind: {
-                        path: '$fullSender'
-                    }
-                },
-                // get only the necessary fields from the user
-                {
-                    $addFields: {
-                        sender: {
-                            name: '$fullSender.name',
-                            email: '$fullSender.email'
-                        }
-                    }
-                },
-                // remove the extra fields from the user
-                {
-                    $project: {
-                        _createdBy: 0,
-                        fullSender: 0
+                        path: '$sender'
                     }
                 }
             ]).toArray();
