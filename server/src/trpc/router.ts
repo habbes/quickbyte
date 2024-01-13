@@ -9,7 +9,7 @@ export const appRouter = router({
     declineInvite: publicProcedure
     .input(DeclineInviteArgs)
     .mutation(({ input, ctx }) =>
-        ctx.app.auth.declineUserInvite(input.id, input.email)),
+        ctx.app.auth.declineUserInvite(input.code, input.email)),
     // TODO: acceptInvite should only use secret code
     acceptInvite: publicProcedure
     .input(AcceptInviteArgs)
