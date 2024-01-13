@@ -222,7 +222,7 @@ function getTimeFromPosition(seekPosition: number): number {
   if (!player.value) return 0;
   const width = progressBar.value.offsetWidth;
   const time = (seekPosition / width) * player.value.duration;
-  console.log('pos to time', seekPosition, width, time);
+  logger.log('pos to time', seekPosition, width, time);
   return time;
 }
 
@@ -232,7 +232,7 @@ function getPositionFromTime(timestamp: number): number {
   const duration = player.value.duration;
   const width = progressBar.value.offsetWidth;
   const x = (timestamp / duration) * width;
-  console.log('position', x, 'width', width, 'time', timestamp);
+  logger.log('position', x, 'width', width, 'time', timestamp);
   return x;
 }
 
