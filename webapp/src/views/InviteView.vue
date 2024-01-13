@@ -52,23 +52,12 @@ const user = store.user;
 const loadError = ref<string>();
 
 onMounted(async () => {
-  console.log('invite view mount');
   const inviteCode = ensure(route.params.inviteId) as string;
-  console.log('invite code', inviteCode);
   try {
     invite.value = await trpcClient.verifyInvite.query(inviteCode);
-    console.log('invite', invite);
     const user = store.user;
 
-    console.log('invite', invite);
-    console.log('user', user);
-
-    if (user.value && (invite.value.email === user.value.email)) {
-      // existing user. This should be taken care of by the invite prompt watcher
-      // redirect to home page
-      console.log('invited user is current user');
-    }
-    else if (user.value) {
+    if (user.value && (invite.value.email !== user.value.email)) {
       // different user is logged, clear the session
       // so the invited user can login
       auth.clearLocalSession();

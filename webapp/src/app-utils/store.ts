@@ -11,6 +11,7 @@ import type { StorageProvider, PreferredProviderRegionResult, TrackedTransfer } 
 import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs, getIpLocation } from '@/core';
 import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
+import { logger } from './logger';
 
 // while the user we get from the server actually has account and subscription info of
 // the user's personal account, here I opted to user the basic User type instead of the
@@ -32,7 +33,7 @@ const currentProjects = computed(() => projects.value.filter(p => p.accountId ==
 
 export async function initUserData() {
     const data = await trpcClient.getCurrentUserData.query();
-    console.log('data', data);
+    logger.log('data', data);
     user.value = data.user;
     invites.value = data.invites;
     projects.value = data.projects;
