@@ -18,13 +18,13 @@
           Members
         </router-link>
         <router-link
-          :to="{ name: 'project-media', params: { projectId: project._id }}"
+          :to="{ name: 'project-tasks', params: { projectId: project._id }}"
           class="hover:text-white py-3 px-4 inline-block"
         >
           Tasks
         </router-link>
         <router-link
-          :to="{ name: 'project-media', params: { projectId: project._id }}"
+          :to="{ name: 'project-timeline', params: { projectId: project._id }}"
           class="hover:text-white py-3 px-4 inline-block"
         >
           Timeline
