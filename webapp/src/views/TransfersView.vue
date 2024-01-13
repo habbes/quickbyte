@@ -27,7 +27,6 @@ import { ensure, humanizeSize, pluralize } from '@/core';
 import type { Transfer } from '@/core';
 import { layoutDimensions } from '@/styles/dimentions';
 
-console.log('transfers list view');
 const transfers = ref<Transfer[]>([]);
 const loading = ref(false);
 const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight}px)`;

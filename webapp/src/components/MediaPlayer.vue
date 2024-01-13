@@ -89,6 +89,7 @@ import { formatTimestampDuration, type Comment, type TimedComment } from '@/core
 import { ref, computed, watch } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
+import { logger } from '@/app-utils';
 
 const props = defineProps<{
   src: string;
@@ -188,20 +189,20 @@ function handleTimeUpdate() {
 }
 
 function handleProgressBarClick(event: MouseEvent) {
-  console.log('click');
+  logger.log('click');
   const mouseX = event.offsetX;
-  console.log('click offset', event.offsetX);
+  logger.log('click offset', event.offsetX);
   const newTime = getTimeFromPosition(mouseX);
-  console.log('seek to', newTime);
+  logger.log('seek to', newTime);
   return seek(newTime);
 }
 
 function handleProgressBarMouseEnter(event: MouseEvent) {
   if (!progressBar.value) return;
   if (!player.value) return;
-  console.log('mouse enter', event.offsetX);
+  logger.log('mouse enter', event.offsetX);
   if (event.offsetX < 3) return;
-  console.log('offset', event.offsetX);
+  logger.log('offset', event.offsetX);
   seekingHoverPosition.value = event.offsetX;
 }
 
@@ -236,7 +237,7 @@ function getTimeFromPosition(seekPosition: number): number {
   if (!player.value) return 0;
   const width = progressBar.value.offsetWidth;
   const time = (seekPosition / width) * player.value.duration;
-  console.log('pos to time', seekPosition, width, time);
+  logger.log('pos to time', seekPosition, width, time);
   return time;
 }
 
@@ -246,7 +247,7 @@ function getPositionFromTime(timestamp: number): number {
   const duration = player.value.duration;
   const width = progressBar.value.offsetWidth;
   const x = (timestamp / duration) * width;
-  console.log('position', x, 'width', width, 'time', timestamp);
+  logger.log('position', x, 'width', width, 'time', timestamp);
   return x;
 }
 

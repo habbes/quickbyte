@@ -1,5 +1,5 @@
 import { Db } from 'mongodb';
-import { Account, Project, User, UserInvite, UserRole } from './models.js';
+import { Account, Project, User, UserInvite, UserRole, Subscription, Transaction } from './models.js';
 
 
 export class Database {
@@ -15,6 +15,10 @@ export class Database {
     projects = () => this.db.collection<Project>('projects');
 
     invites = () => this.db.collection<DbUserInvite>('invites');
+
+    subscriptions = () => this.db.collection<Subscription>('subscriptions');
+
+    transactions = () => this.db.collection<Transaction>('transactions');
 }
 
 // TODO: this is temporary, until we add names to accounts

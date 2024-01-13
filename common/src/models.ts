@@ -36,6 +36,9 @@ export interface GuestUser extends BaseUser {
 export type User = FullUser | GuestUser;
 
 export interface UserWithAccount extends FullUser {
+    /**
+     * The user's personal account (i.e. the account owned by this user).
+     */
     account: AccountWithSubscription
 };
 

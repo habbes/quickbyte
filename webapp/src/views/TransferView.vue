@@ -50,7 +50,6 @@ const height = `calc(100vh - ${layoutDimensions.navBarHeight}px)`;
 
 onMounted(async () => {
   const transferId = route.params.transferId as string;
-  console.log('on mount', transferId);
   if (!transferId) return;
 
   await initTransfer(transferId);
@@ -59,7 +58,6 @@ onMounted(async () => {
 watch(
   () => route.params.transferId,
   async (transferId) => {
-    console.log('in watch', transferId);
     if (!transferId) return;
     await initTransfer(transferId as string);
 });
@@ -71,7 +69,6 @@ function copyDownloadUrl() {
 }
 
 onBeforeRouteUpdate(async (from, to) => {
-  console.log('in before update', from, 'to', to);
   if (from.params.transferId === to.params.transferId) {
     return;
   }

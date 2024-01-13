@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
@@ -110,11 +110,38 @@ export class AccountService {
         }
     }
 
-    private async tryGetByIdsInternal(ids: string[]): Promise<Account[]> {
+    private async tryGetByIdsInternal(ids: string[]): Promise<AccountWithSubscription[]> {
         try {
-            const accounts = await this.collection.aggregate<Account>([
+            const now = new Date();
+            const accounts = await this.collection.aggregate<AccountWithSubscription>([
                 {
                     $match: { _id: { $in: ids } }
+                },
+                {
+                    $lookup: {
+                        from: this.db.subscriptions().collectionName,
+                        localField: '_id',
+                        foreignField: 'accountId',
+                        as: 'subscription',
+                        pipeline: [
+                            {
+                                $match: {
+                                    expiresAt: { $gt: now },
+                                    validFrom : { $lte: now },
+                                    status: 'active'
+                                }
+                            },
+                            {
+                                $limit: 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    $unwind: {
+                        path: '$subscription',
+                        preserveNullAndEmptyArrays: true
+                    }
                 },
                 {
                     $lookup: {
@@ -146,6 +173,13 @@ export class AccountService {
                 }
             ]).toArray();
 
+            console.log('accounts', accounts);
+            for (let account of accounts) {
+                if (!account.subscription) break;
+
+                account.subscription.plan = await this.config.plans.getByName(account.subscription.planName);
+            }
+
             return accounts;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -161,7 +195,7 @@ export class AccountService {
     }
 
     transactions(authContext: AuthContext): ITransactionService {
-        return new TransactionService(this.db.db, authContext, {
+        return new TransactionService(this.db, authContext, {
             plans: this.config.plans,
             paymentHandlers: this.config.paymentHandlers
         });
@@ -234,12 +268,16 @@ export class AccountService {
             const [ownedProjects, otherProjects] = await Promise.all([ownedProjectsTask, otherProjectsTask]);
             const projects = ownedProjects.concat(otherProjects);
             // get other accounts
-            const accountIds = new Set<string>();
-            accountIds.add(authContext.user.account._id);
-            projects.forEach(p => accountIds.add(p.accountId));
-            const invites = await this.config.invites.getByRecipientEmail(authContext.user.email);
+            const externalAccountIds = new Set<string>();
+            projects.forEach(p => externalAccountIds.add(p.accountId));
+            // remove the user's own account to avoid fetching it twice since
+            // it's already part of the auth context
+            externalAccountIds.delete(authContext.user.account._id);
 
-            const accounts = await this.tryGetByIdsInternal(Array.from(accountIds));
+            const accounts = [authContext.user.account, ...await this.tryGetByIdsInternal(Array.from(externalAccountIds))];
+
+            const invites = await this.config.invites.getByRecipientEmail(authContext.user.email);
+            
 
             return {
                 user: authContext.user,
