@@ -31,7 +31,9 @@ export class FreeTrialHandler implements PaymentHandler {
         });
     }
     getSubscriptionManagementUrl(sub: Subscription, plan: Plan): Promise<SubscriptionManagementResult> {
-        throw new Error('Method not implemented.');
+        return Promise.resolve({
+            link: undefined
+        })
     }
 
 }

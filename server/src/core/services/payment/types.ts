@@ -28,5 +28,5 @@ export interface VerifyHandlerSubscriptionResult {
 }
 
 export interface SubscriptionManagementResult {
-    link: string;
+    link?: string;
 }

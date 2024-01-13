@@ -90,7 +90,11 @@ async function getManagementUrl() {
 
     loading.value = true;
     const result = await apiClient.getSubscriptionManagementUrl(account._id, subscription._id);
-    window.open(result.link, '_blank');
+    if (result.link) {
+      window.open(result.link, '_blank');
+    } else {
+      showToast('Card management not applicable for this subscription.', 'info');
+    }
   } catch (e: any) {
     showToast(e.message, 'error');
     logger.error(e);
