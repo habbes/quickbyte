@@ -6,6 +6,11 @@ export const appRouter = router({
     getCurrentUserData: protectedProcedure.query(({ ctx }) =>
         ctx.app.accounts.getUserData(ctx.auth)),
     
+    getProjectMembers: protectedProcedure
+    .input(z.string())
+    .query(({ ctx, input }) =>
+        ctx.app.accounts.projects(ctx.auth).getMembers(input)),
+    
     declineInvite: publicProcedure
     .input(DeclineInviteArgs)
     .mutation(({ input, ctx }) =>
@@ -19,7 +24,7 @@ export const appRouter = router({
     verifyInvite: publicProcedure
     .input(z.string())
     .query(({ input, ctx }) => 
-        ctx.app.auth.verifyInvite(input))
+        ctx.app.auth.verifyInvite(input)),
     
 });
 

@@ -20,10 +20,10 @@
       </TableHeader>
       <TableBody>
         <TableRow
-          v-for="user in users" :key="user._id"
+          v-for="user in members" :key="user._id"
         >
-          <TableCell>{{ user.user.name }}</TableCell>
-          <TableCell>{{ user.user.email }}</TableCell>
+          <TableCell>{{ user.name }}</TableCell>
+          <TableCell>{{ user.email }}</TableCell>
           <TableCell>{{ user.role }}</TableCell>
         </TableRow>
       </TableBody>
@@ -48,7 +48,8 @@ import {
 import InviteUserDialog from '@/components/InviteUserDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import { ensure } from '@/core';
-import { store } from '@/app-utils';
+import type { ProjectMember } from '@quickbyte/common';
+import { logger, showToast, store, trpcClient } from '@/app-utils';
 
 const inviteUsersDialog = ref<typeof InviteUserDialog>();
 const projectId = ref<string>();
@@ -56,35 +57,20 @@ const route = useRoute();
 const project = computed(() => {
   return store.projects.value.find(p => p._id === projectId.value);
 });
+const members = ref<ProjectMember[]>([]);
 
 onMounted(async () => {
   projectId.value = ensure(route.params.projectId) as string;
+  try {
+    const result = await trpcClient.getProjectMembers.query(projectId.value);
+    members.value = result;
+  } catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
 });
 
 function inviteUsers() {
   inviteUsersDialog.value?.open();
 }
-
-const users = [
-  {
-    _id: '1',
-    user: {
-      _id: '1',
-      name: 'Test H',
-      email: 'testh@gmail.com'
-    },
-    role: 'editor',
-    resourceType: 'project',
-  },
-  {
-    _id: '2',
-    user: {
-      _id: '2',
-      name: 'Tom Clancy',
-      email: 'tom@gmail.com'
-    },
-    role: 'reviewer',
-    resourceType: 'project'
-  }
-]
 </script>
