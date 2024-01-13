@@ -22,6 +22,7 @@ PaystackPaymentHandler,
 IUnauthenicatedTransactionService,
 UnauthenticatedTransactionService,
 IAlertService,
+FreeTrialHandler,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -90,8 +91,11 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         secretKey: config.paystackSecretKey,
     });
 
+    const freeTrialHandler = new FreeTrialHandler();
+
     const paymentHandlers = new PaymentHandlerProvider();
     paymentHandlers.register(paystackHandler);
+    paymentHandlers.register(freeTrialHandler);
 
     const invites = new InviteService(db, {
         emails: emailHandler,

@@ -1,10 +1,12 @@
 import { Db, Collection } from 'mongodb';
-import { DateTime as LuxonDateTime } from 'luxon';
+import { DateTime, DateTime as LuxonDateTime } from 'luxon';
 import { AuthContext, Subscription, Plan, Transaction, createPersistedModel, SubscriptionAndPlan } from '../../models.js';
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createResourceConflictError } from '../../error.js';
 import { IPlanService } from './plan-service.js';
 import { IPaymentHandlerProvider } from './payment-handler-provider.js';
 import { PaymentHandler, SubscriptionManagementResult } from './types.js';
+import { FREE_TRIAL_HANDLER_NAME } from './free-trial-handler.js';
+import { Database } from 'src/core/db.js';
 
 export const COLLECTION = 'transactions';
 export const SUBSCRIPTION_COLLECTION = 'subscriptions';
@@ -18,9 +20,9 @@ export class TransactionService {
     private collection: Collection<Transaction>;
     private subscriptionCollection: Collection<Subscription>;
 
-    constructor(db: Db, private authContext: AuthContext, private config: TransactionServiceConfig) {
-        this.collection = db.collection<Transaction>(COLLECTION);
-        this.subscriptionCollection = db.collection<Subscription>(SUBSCRIPTION_COLLECTION);
+    constructor(private db: Database, private authContext: AuthContext, private config: TransactionServiceConfig) {
+        this.collection = db.transactions();
+        this.subscriptionCollection = db.subscriptions();
     }
 
     async initiateSubscription(args: InitiateSubscrptionArgs): Promise<InitiateSubscriptionResult> {
@@ -232,7 +234,7 @@ export class TransactionService {
     async tryGetActiveSubscription(): Promise<GetActiveSubscriptionResult|undefined> {
         try {
             const now = new Date();
-            const sub = await this.subscriptionCollection.findOne({
+            let sub = await this.db.subscriptions().findOne({
                 accountId: this.authContext.user.account._id,
                 status: 'active',
                 validFrom: { $lte: now},
@@ -240,7 +242,7 @@ export class TransactionService {
             });
 
             if (!sub) {
-                return undefined;
+                sub = await this.createFreeTrialSubscription();
             }
 
             return {
@@ -256,7 +258,7 @@ export class TransactionService {
     async tryGetActiveOrPendingSubscription(): Promise<SubscriptionAndPlan|undefined> {
         try {
             const now = new Date();
-            const sub = await this.subscriptionCollection.findOne({
+            let sub = await this.db.subscriptions().findOne({
                 accountId: this.authContext.user.account._id,
                 status: { $ne: 'inactive' },
                 validFrom: { $lte: now },
@@ -264,7 +266,7 @@ export class TransactionService {
             });
 
             if (!sub) {
-                return undefined;
+                sub = await this.createFreeTrialSubscription();
             }
 
             return {
@@ -280,7 +282,7 @@ export class TransactionService {
 
     async getSubscriptionManagementUrl(subscriptionId: string): Promise<SubscriptionManagementResult> {
         try {
-            const sub = await this.subscriptionCollection.findOne({
+            const sub = await this.db.subscriptions().findOne({
                 accountId: this.authContext.user.account._id,
                 _id: subscriptionId
             });
@@ -375,6 +377,34 @@ export class TransactionService {
             }
 
             return updateResult.value;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async createFreeTrialSubscription(): Promise<Subscription> {
+        try {
+            const validUntil = DateTime.now().plus({ month: 1 }).toJSDate();
+            const plan = await this.config.plans.getByName(FREE_TRIAL_HANDLER_NAME);
+            const handler = await this.config.paymentHandlers.getByName(FREE_TRIAL_HANDLER_NAME)
+            const sub: Subscription = {
+                ...createPersistedModel({ type: 'user', _id: this.authContext.user._id }),
+                accountId: this.authContext.user.account._id,
+                planName: plan.name,
+                status: 'active',
+                willRenew: true,
+                provider: handler.name(),
+                lastTransactionId: '',
+                metadata: {},
+                renewsAt: validUntil,
+                expiresAt: validUntil,
+            };
+
+            await this.db.subscriptions().insertOne(sub);
+
+            return sub;
         }
         catch (e: any) {
             rethrowIfAppError(e);
