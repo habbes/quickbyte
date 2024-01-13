@@ -275,3 +275,11 @@ export interface BasicUserData {
     defaultAccountId: string;
 }
 
+
+export interface ProjectMember {
+    _id: string;
+    name: string;
+    email: string;
+    role: RoleType;
+    joinedAt: Date;
+}

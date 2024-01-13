@@ -1,6 +1,6 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, Media, Project, RoleType, WithRole, createPersistedModel } from "../models.js";
-import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError } from "../error.js";
+import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel } from "../models.js";
+import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
 import { CreateProjectMediaUploadArgs, CreateTransferResult, ITransactionService, ITransferService } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IMediaService, MediaService, MediaWithFile } from "./media-service.js";
@@ -168,6 +168,85 @@ export class ProjectService {
         }
     }
 
+    async getMembers(id: string): Promise<ProjectMember[]> {
+        try {
+            const project = await this.getByIdInternal(id);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+
+            const ownerTask = this.db.users().findOne({ _id: project._createdBy._id });
+            const otherUsersTask = this.collection.aggregate<ProjectMember>([
+                {
+                    $match: {
+                        _id: id
+                    }
+                },
+                {
+                    $lookup: {
+                        from: this.db.roles().collectionName,
+                        localField: '_id',
+                        foreignField: 'resourceId',
+                        as: 'roles',
+                        pipeline: [
+                            {
+                                $match: {
+                                    resourceType: 'project'
+                                }
+                            },
+                            {
+                                $lookup: {
+                                    from: this.db.users().collectionName,
+                                    localField: 'userId',
+                                    foreignField: '_id',
+                                    as: 'user'
+                                }
+                            },
+                            {
+                                $unwind: '$user'
+                            },
+                            {
+                                $project: {
+                                    _id: '$user._id',
+                                    name: '$user.name',
+                                    email: '$user.email',
+                                    joinedAt: '$_createdAt',
+                                    role: '$role'
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    $unwind: '$roles'
+                },
+                {
+                    $replaceRoot: {
+                        newRoot: '$roles'
+                    }
+                }
+            ]).toArray();
+
+            const [owner, otherUsers] = await Promise.all([ownerTask, otherUsersTask]);
+
+            if (!owner) {
+                throw createInvalidAppStateError(`Owner '${project._createdBy._id}' of project '${project._id}' expected to exist but not found.`);
+            }
+
+            return [
+                {
+                    _id: owner._id,
+                    name: owner.name,
+                    email: owner.email,
+                    joinedAt: project._createdAt,
+                    role: 'owner'
+                },
+                ...otherUsers
+            ];
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     private async getByIdInternal(id: string): Promise<Project> {
         try {
             const project = await this.collection.findOne({ _id: id });
@@ -183,7 +262,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'>;
+export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'|'getMembers'>;
 
 export interface CreateProjectArgs {
     name: string;

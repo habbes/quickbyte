@@ -6,10 +6,15 @@ export const appRouter = router({
     getCurrentUserData: protectedProcedure.query(({ ctx }) =>
         ctx.app.accounts.getUserData(ctx.auth)),
     
+    getProjectMembers: protectedProcedure
+    .input(z.string())
+    .query(({ ctx, input }) =>
+        ctx.app.accounts.projects(ctx.auth).getMembers(input)),
+    
     declineInvite: publicProcedure
     .input(DeclineInviteArgs)
     .mutation(({ input, ctx }) =>
-        ctx.app.auth.declineUserInvite(input.id, input.email)),
+        ctx.app.auth.declineUserInvite(input.code, input.email)),
     // TODO: acceptInvite should only use secret code
     acceptInvite: publicProcedure
     .input(AcceptInviteArgs)
@@ -19,7 +24,7 @@ export const appRouter = router({
     verifyInvite: publicProcedure
     .input(z.string())
     .query(({ input, ctx }) => 
-        ctx.app.auth.verifyInvite(input))
+        ctx.app.auth.verifyInvite(input)),
     
 });
 
