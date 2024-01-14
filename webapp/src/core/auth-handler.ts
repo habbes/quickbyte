@@ -101,7 +101,8 @@ export class AuthHandler {
                 // Add your account choosing logic here
                 this.config.logger?.log('Multiple accounts detected', 'warning');
             }
-            console.log('accounts', currentAccounts);
+
+            this.config.logger?.log('accounts', currentAccounts);
             const account = currentAccounts[0];
 
             this.userHandler.setUser({
