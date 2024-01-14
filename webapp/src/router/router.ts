@@ -33,6 +33,11 @@ const router = createRouter({
           children: [
             {
               path: '',
+              name: 'projects',
+              component: ProjectsView
+            },
+            {
+              path: 'upload',
               name: 'upload',
               component: UploadView
             },
@@ -55,11 +60,6 @@ const router = createRouter({
               path: 'transfers/:transferId',
               name: 'transfer',
               component: TransferView
-            },
-            {
-              path: 'projects',
-              name: 'projects',
-              component: ProjectsView
             },
             {
               path: 'projects/:projectId',
