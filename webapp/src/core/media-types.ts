@@ -1,7 +1,8 @@
 import { getFileExtension } from ".";
 
 const videoExtensions = new Set([
-    'mp4'
+    'mp4',
+    'mov'
 ]);
 const audioExtensions = new Set([
     'mp3',
