@@ -12,6 +12,7 @@ import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs
 import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 import { logger } from './logger';
+import { auth } from '.';
 
 // while the user we get from the server actually has account and subscription info of
 // the user's personal account, here I opted to user the basic User type instead of the
@@ -32,33 +33,44 @@ const currentAccount = computed(() => accounts.value.find(a => a._id === current
 const currentProjects = computed(() => projects.value.filter(p => p.accountId === currentAccount.value?._id));
 
 export async function initUserData() {
-    const data = await trpcClient.getCurrentUserData.query();
-    logger.log('data', data);
-    user.value = data.user;
-    invites.value = data.invites;
-    projects.value = data.projects;
-    accounts.value = data.accounts;
-    currentAccountId.value = data.defaultAccountId;
-    providers.value = await apiClient.getProviders();
-    preferredProvider.value = {
-        provider: providers.value[0].name,
-        bestRegions: providers.value[0].availableRegions.map(r => r.id)
+    try {
+        const data = await trpcClient.getCurrentUserData.query();
+        logger.log('data', data);
+        user.value = data.user;
+        invites.value = data.invites;
+        projects.value = data.projects;
+        accounts.value = data.accounts;
+        currentAccountId.value = data.defaultAccountId;
+        providers.value = await apiClient.getProviders();
+        preferredProvider.value = {
+            provider: providers.value[0].name,
+            bestRegions: providers.value[0].availableRegions.map(r => r.id)
+        }
+
+        const cachedProvider = getCachedPreferredProviderRegion();
+        if (cachedProvider) {
+            preferredProvider.value = cachedProvider;
+        } else {
+            // this call takes long, so we don't wait for it,
+            // but update the value when it's done
+            findBestProviderAndRegion(providers.value)
+                .then(result => preferredProvider.value = result);
+        }
+
+        const transfers = await uploadRecoveryManager.getRecoveredTransfers();
+        recoveredTransfers.value = transfers;
+
+        await getDeviceData();
+    } catch (e: any) {
+        logger?.error(e.message, e);
+        if (/signed in/.test(e.message)) {
+            // auth has expired, clear data so the user
+            // can sign in again
+            clearData();
+        } else {
+            throw e;
+        }
     }
-
-    const cachedProvider = getCachedPreferredProviderRegion();
-    if (cachedProvider) {
-        preferredProvider.value = cachedProvider;
-    } else {
-        // this call takes long, so we don't wait for it,
-        // but update the value when it's done
-        findBestProviderAndRegion(providers.value)
-            .then(result => preferredProvider.value = result);
-    }
-
-    const transfers = await uploadRecoveryManager.getRecoveredTransfers();
-    recoveredTransfers.value = transfers;
-
-    await getDeviceData();
 }
 
 export async function getDeviceData() {
@@ -71,6 +83,7 @@ export async function clearData() {
     user.value = undefined;
     providers.value = [];
     preferredProvider.value = undefined;
+    auth.clearLocalSession();
     clearPrefs();
     await uploadRecoveryManager.clearRecoveredTransfers();
 }
