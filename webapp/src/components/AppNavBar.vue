@@ -2,7 +2,7 @@
   <header class="sticky inset-0 top-0 z-50 w-full flex flex-col justify-center" :style="{ height: `${layoutDimensions.navBarHeight}px` }">
     <nav class="border-b px-6 border-[#131319] backdrop-blur-[12px] ">
       <div class="relative flex flex-wrap items-center justify-between gap-6 md:gap-0">
-        <input id="toggle_nav" aria-hidden="true" type="checkbox" name="toggle_nav" class="hidden peer">
+        <input v-model="hamburgerMenuOpen" id="toggle_nav" aria-hidden="true" type="checkbox" name="toggle_nav" class="hidden peer">
         <div class="relative top-0 z-50 flex justify-between w-full lg:w-max md:px-0">
           <div class="flex items-center sm:gap-2 align-middle">
             <router-link to="/">
@@ -32,6 +32,7 @@
         <div aria-hidden="true"
           class="fixed inset-0 z-10 w-screen h-screen transition duration-500 origin-bottom scale-y-0 bg-black backdrop-blur-[12px] peer-checked:origin-top peer-checked:scale-y-100 lg:hidden" />
         <div
+          @click="closeHamburgerMenu()"
           class="absolute left-0 z-20 flex-col flex-wrap justify-end invisible w-full gap-6 py-6 transition-all duration-300 origin-top scale-95 translate-y-1 opacity-0 rounded-3xl top-full lg:relative lg:scale-100 lg:peer-checked:translate-y-0 lg:translate-y-0 lg:flex lg:flex-row lg:items-center lg:gap-0 lg:p-0 lg:bg-transparent lg:w-7/12 lg:visible lg:opacity-100 lg:border-none peer-checked:scale-100 peer-checked:opacity-100 peer-checked:visible lg:shadow-none">
           <div class="w-full lg:pr-4 lg:w-auto lg:pt-0">
             <ul
@@ -58,14 +59,6 @@
               <li v-if="user" class="hidden sm:block">
                 <TasksDropdown />
               </li>
-              <!-- <FeaturebaseChangelog /> -->
-              <li v-for="{ id, name, path } in navLinks" :key="id"
-                class="pb-3 border-b border-[#131319] lg:border-none lg:pb-0">
-                <router-link v-smooth-scroll :to="path"
-                  class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white">
-                  {{ name }}
-                </router-link>
-              </li>
               <li>
                 <button v-if="!user" @click="auth.signIn()"
                   class="px-4 py-2 text-white bg-[#5B53FF] hover:bg-[#5237F9] transition duration-200 ease-in rounded-2xl">
@@ -82,9 +75,8 @@
 </template>
   
 <script setup lang='ts'>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useUser, auth, store } from '@/app-utils';
-import FeaturebaseChangelog from '@/components/FeaturebaseChangelog.vue';
 import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
 import TasksDropdown from '@/components/TasksDropdown.vue';
 import AccountsDropdown from './AccountSwitcherMenu.vue';
@@ -95,30 +87,23 @@ import RequireAccountOwner from './RequireAccountOwner.vue';
 const user = useUser();
 const account = store.currentAccount;
 
-const navLinks = computed(() => {
-  if (!user.value) {
-    return [
-      {
-        id: 1,
-        name: 'Features',
-        path: '#features',
-      },
-      {
-        id: 2,
-        name: 'Pricing',
-        path: '#pricing',
-      },
+/*
+The humburger menu appears on small screen sizes (mobile).
+It's activated using css by hidden checkbox. The humburger
+icon is wrapped inside a label element which references the checkbox
+such that when the hamburger is clicked, it toggles the checkbox,
+activating the menu.
 
-      {
-        id: 4,
-        name: 'FAQs',
-        path: '#faqs',
-      },
-    ]
-  }
+However, clicking links inside the menu does not automatically close
+the menu, so the following ref is used to manually toggle
+the checkbox to close the menu when a menu item is clicked.
+*/
+const hamburgerMenuOpen = ref(false);
 
-  return [];
-})
+function closeHamburgerMenu() {
+  hamburgerMenuOpen.value = false;
+}
+
 </script>
   
 <style scoped>
