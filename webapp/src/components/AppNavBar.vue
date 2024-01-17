@@ -4,7 +4,7 @@
       <div class="relative flex flex-wrap items-center justify-between gap-6 md:gap-0">
         <input id="toggle_nav" aria-hidden="true" type="checkbox" name="toggle_nav" class="hidden peer">
         <div class="relative top-0 z-50 flex justify-between w-full lg:w-max md:px-0">
-          <div class="flex items-center gap-2 align-middle">
+          <div class="flex items-center sm:gap-2 align-middle">
             <router-link to="/">
               <span class="text-md font-bold text-white">
                 {{ account?.name }}
@@ -17,11 +17,16 @@
             </AccountsDropdown>
           </div>
 
-          <div class="relative flex items-center justify-center w-8 h-8 rounded-full lg:hidden max-h-10">
-            <label id="hamburger" role="button" for="toggle_nav" aria-label="humburger">
-              <div id="line" aria-hidden="true" class="m-auto h-0.5 w-5 rounded bg-white transition duration-300" />
-              <div id="line2" aria-hidden="true" class="m-auto mt-2 h-0.5 w-5 rounded bg-white transition duration-300" />
-            </label>
+          <div class="flex items-center lg:hidden gap-2">
+            <div class="rounded-full border border-gray-600">
+              <TasksDropdown />
+            </div>
+            <div class="relative flex items-center justify-center border border-gray-600 w-8 h-8 rounded-full lg:hidden max-h-10">
+              <label id="hamburger" role="button" for="toggle_nav" aria-label="humburger">
+                <div id="line" aria-hidden="true" class="m-auto h-0.5 w-3.4 rounded bg-white transition duration-300" />
+                <div id="line2" aria-hidden="true" class="m-auto mt-2 h-0.5 w-4 rounded bg-white transition duration-300" />
+              </label>
+            </div>
           </div>
         </div>
         <div aria-hidden="true"
@@ -50,7 +55,7 @@
                     activeClass="text-white">Transfers</router-link>
                 </li>
               </RequireAccountOwner>
-              <li v-if="user">
+              <li v-if="user" class="hidden sm:block">
                 <TasksDropdown />
               </li>
               <!-- <FeaturebaseChangelog /> -->
