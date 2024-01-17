@@ -80,7 +80,6 @@
 import { ref, computed } from 'vue';
 import { useUser, auth, store } from '@/app-utils';
 import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
-import TasksDropdown from '@/components/TasksDropdown.vue';
 import NotificationsMenu from '@/components/NotificationsMenu.vue';
 import AccountsDropdown from './AccountSwitcherMenu.vue';
 import { layoutDimensions } from '@/styles/dimentions.js';
