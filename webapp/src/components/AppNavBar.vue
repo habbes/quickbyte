@@ -1,7 +1,7 @@
 <template>
-  <header class="sticky inset-0 top-0 z-50 w-full" :style="{ height: `${layoutDimensions.landingNavBarHeight}px` }">
+  <header class="sticky inset-0 top-0 z-50 w-full flex flex-col justify-center" :style="{ height: `${layoutDimensions.navBarHeight}px` }">
     <nav class="border-b px-6 border-[#131319] backdrop-blur-[12px] ">
-      <div class="relative flex flex-wrap items-center justify-between gap-6 py-4 md:gap-0">
+      <div class="relative flex flex-wrap items-center justify-between gap-6 md:gap-0">
         <input id="toggle_nav" aria-hidden="true" type="checkbox" name="toggle_nav" class="hidden peer">
         <div class="relative top-0 z-50 flex justify-between w-full lg:w-max md:px-0">
           <div class="flex items-center gap-2 align-middle">

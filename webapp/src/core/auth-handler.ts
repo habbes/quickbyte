@@ -72,7 +72,7 @@ export class AuthHandler {
         } else {
             return;
         }
-
+        
         const result = await this.authClient.acquireTokenSilent({
             scopes: this.config.scopes
         });

@@ -5,10 +5,10 @@
     </PopoverButton>
 
     <PopoverPanel
-      class="absolute z-10 mt-3 w-72 max-w-sm translate-x-[-40%] transform px-4 sm:px-0 lg:max-w-3xl"
+      class="fixed left-0 h-screen sm:h-auto sm:absolute z-10 mt-3 w-screen sm:w-72  sm:translate-x-[-30%] transform sm:px-4 lg:max-w-3xl"
     >
-      <div class="overflow-hidden rounded-lg shadow-lg ring-1 ring-black/5">
-        <div class="relative bg-white">
+      <div class="h-full overflow-hidden rounded-t-lg sm:rounded-lg shadow-lg ring-1 ring-black/5">
+        <div class="relative bg-white h-full">
           <div class="px-4 py-4 text-gray-700 font-bold flex gap-2 items-center">
             <MagnifyingGlassIcon class="w-4 h-4" />
             <input
@@ -54,6 +54,7 @@
 </template>
 <script lang="ts" setup>
 import { computed, ref } from "vue";
+import { useRouter } from 'vue-router';
 import {
   Popover,
   PopoverButton,
@@ -68,6 +69,7 @@ const accounts = store.accounts;
 const projects = store.projects;
 const user = store.user;
 const searchTerm = ref<string>();
+const router = useRouter();
 
 const filteredAccounts = computed(() => {
   if (!searchTerm.value) {
@@ -82,6 +84,8 @@ const filteredAccounts = computed(() => {
 })
 
 function switchAccount(id: string) {
+  router.push({ name: 'projects' });
   store.setCurrentAccount(id);
+  
 }
 </script>
