@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { taskManager } from "@/app-utils";
-import { BellIcon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { BellIcon, XMarkIcon } from "@heroicons/vue/24/solid";
 import type { Task, TransferTask } from "@/core";
 import { useRouter } from "vue-router";
 
