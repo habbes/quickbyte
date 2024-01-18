@@ -18,7 +18,7 @@
       leave-from-class="translate-y-0 opacity-100"
       leave-to-class="translate-y-1 opacity-0"
     >
-      <PopoverPanel class="fixed top-24 left-0 h-screen w-screen z-10 sm:absolute sm:top-auto sm:w-96 sm:translate-x-[-50%] sm:max-w-xl sm:h-96">
+      <PopoverPanel class="fixed top-24 left-0 h-screen w-screen z-10 sm:absolute sm:top-auto sm:w-96 sm:right-0 sm:left-auto  sm:translate-y-[3%] sm:max-w-xl sm:h-96">
         <div class="h-full overflow-auto rounded-t-lg shadow-lg ring-black/5 sm:rounded-lg">
           <div class="relative h-full bg-white">
             <ul v-if="tasks.length" tabindex="0">
