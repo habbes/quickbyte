@@ -82,7 +82,7 @@
               <li class="border-b border-gray-600 m-0 p-0 sm:hidden"></li>
               <li class="sm:hidden">
                 <a @click="auth.signOut()" class="flex items-center gap-2">
-                  <ArrowLeftOnRectangleIcon class="w-5 h-5" />
+                  <ArrowLeftStartOnRectangleIcon class="w-5 h-5" />
                   Sign Out
                 </a>
               </li>
@@ -113,7 +113,7 @@ import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
 import NotificationsMenu from '@/components/NotificationsMenu.vue';
 import AccountsDropdown from './AccountSwitcherMenu.vue';
 import { layoutDimensions } from '@/styles/dimentions.js';
-import { ChevronUpDownIcon, ArrowLeftOnRectangleIcon, StarIcon, CreditCardIcon } from '@heroicons/vue/24/solid';
+import { ChevronUpDownIcon, ArrowLeftStartOnRectangleIcon, StarIcon, CreditCardIcon } from '@heroicons/vue/24/solid';
 import RequireAccountOwner from './RequireAccountOwner.vue';
 
 const user = useUser();

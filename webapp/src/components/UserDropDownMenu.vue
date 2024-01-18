@@ -1,54 +1,60 @@
 <template>
-  <details ref="dropdown" class="dropdown dropdown-end">
-    <summary class="m-1 btn btn-sm btn-ghost text-white inline-flex items-center">
-      {{ user.name }}
-      <div class="avatar placeholder">
-        <div class="bg-primary-focus text-neutral-content rounded-full w-8">
-          <span class="text-xs">{{ user.name[0] }}</span>
+  <!-- <div class="fixed top-16 w-56 text-right"> -->
+  <Menu as="div" class="relative inline-block text-left">
+    <MenuButton>
+      <div class="flex items-center gap-2 text-white">
+        <div class="avatar placeholder">
+          <div class="bg-primary-focus text-neutral-content text-center rounded-full w-8">
+            <span class="text-xs">{{ user.name[0] }}</span>
+          </div>
         </div>
       </div>
-    </summary>
-    <ul class="p-2 shadow menu dropdown-content z-[1] bg-base-100 rounded-box w-52">
-      <li class="px-2 py-3 border-b border-b-gray-100">
-        {{ user.email }}
-      </li>
-      <li @click="closeDropdown()">
-        <router-link :to="{ name: 'billing' }">
-          <CreditCardIcon class="w-6 h-6" />
-          Billing
-        </router-link>
-      </li>
-      <Separator />
-      <li @click="closeDropdown()">
-        <a href="https://quickbyte.featurebase.app" target="_blank">
-          <StarIcon class="w-6 h-6" />
-          Share feedback
-        </a>
-      </li>
-      <Separator />
-      <li @click="closeDropdown()">
-        <a @click="auth.signOut()">
-          <ArrowLeftOnRectangleIcon class="w-6 h-6" />
-          Sign out
-        </a>
-      </li>
-    </ul>
-  </details>
+    </MenuButton>
+
+    <MenuItems
+      class="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none text-gray-700">
+      <!-- <div class="px-1 py-1"> -->
+      <MenuItem>
+        <div class="py-4 px-4 flex flex-col items-center">
+          <span class="font-bold text-lg">{{ user.name }}</span>
+          <span class="text-sm">{{ user.email }}</span>
+        </div>
+      </MenuItem>
+      <MenuItem>
+        <div class="py-4 px-4">
+          <router-link :to="{ name: 'billing' }" class="flex items-center gap-2">
+            <CreditCardIcon class="w-5 h-5" />
+            Billing
+          </router-link>
+        </div>
+      </MenuItem>
+      <MenuItem>
+        <div class="py-4 px-4">
+          <a href="https://quickbyte.featurebase.app" target="_blank" class="flex items-center gap-2">
+            <StarIcon class="w-5 h-5" />
+            Share feedback
+          </a>
+        </div>
+      </MenuItem>
+      <MenuItem>
+        <div class="py-4 px-4">
+          <a @click="auth.signOut()" class="flex items-center gap-2">
+            <ArrowLeftStartOnRectangleIcon class="w-5 h-5" />
+            Sign out
+          </a>
+        </div>
+      </MenuItem>
+      <!-- </div> -->
+    </MenuItems>
+  </Menu>
 </template>
 <script setup lang="ts">
-import { ref } from "vue";
 import { auth } from "@/app-utils";
 import type { User } from '@/core';
-import { ArrowLeftOnRectangleIcon, CreditCardIcon, StarIcon } from "@heroicons/vue/24/outline";
-import Separator from "./Separator.vue";
+import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue'
+import { ArrowLeftStartOnRectangleIcon, CreditCardIcon, StarIcon } from "@heroicons/vue/24/solid";
 
-const props = defineProps<{
+defineProps<{
   user: User
 }>();
-
-const dropdown = ref<HTMLElement>();
-
-function closeDropdown() {
-  dropdown.value?.removeAttribute('open');
-}
 </script>
