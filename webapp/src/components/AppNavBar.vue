@@ -4,7 +4,7 @@
       <div class="relative flex flex-wrap items-center justify-between gap-6 md:gap-0">
         <input v-model="hamburgerMenuOpen" id="toggle_nav" aria-hidden="true" type="checkbox" name="toggle_nav" class="hidden peer">
         <div class="relative top-0 z-50 flex justify-between w-full lg:w-max md:px-0">
-          <div class="flex items-center sm:gap-2 align-middle">
+          <div class="flex items-center gap-1 sm:gap-2 align-middle">
             <router-link to="/">
               <span class="text-md font-bold text-white">
                 {{ account?.name }}
@@ -36,13 +36,20 @@
           class="absolute left-0 z-20 flex-col flex-wrap justify-end invisible w-full gap-6 py-6 transition-all duration-300 origin-top scale-95 translate-y-1 opacity-0 rounded-3xl top-full lg:relative lg:scale-100 lg:peer-checked:translate-y-0 lg:translate-y-0 lg:flex lg:flex-row lg:items-center lg:gap-0 lg:p-0 lg:bg-transparent lg:w-7/12 lg:visible lg:opacity-100 lg:border-none peer-checked:scale-100 peer-checked:opacity-100 peer-checked:visible lg:shadow-none">
           <div class="w-full lg:pr-4 lg:w-auto lg:pt-0">
             <ul
-              class="flex flex-col gap-6 font-medium tracking-wide lg:text-sm lg:items-center lg:space-x-4 lg:flex-row lg:gap-0">
+              class="flex flex-col gap-4 sm:gap-6 font-medium tracking-wide lg:text-sm lg:items-center lg:space-x-4 lg:flex-row lg:gap-0 text-[#A1A1A1]"
+            >
+              <li v-if="user" class="sm:hidden">
+                {{ user.email }}
+              </li>
+              <li class="sm:hidden border-b border-gray-600 m-0 p-0"></li>
               <li v-if="user">
                 <router-link :to="{ name: 'projects' }"
                   class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"
                   activeClass="text-white">Projects</router-link>
               </li>
+              
               <RequireAccountOwner>
+                <li class="sm:hidden border-b border-gray-600 m-0 p-0"></li>
                 <li v-if="user">
                   <router-link :to="{ name: 'upload' }"
                     class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"
@@ -50,18 +57,41 @@
                 </li>
               </RequireAccountOwner>
               <RequireAccountOwner>
+                <li class="sm:hidden border-b border-gray-600 m-0 p-0"></li>
                 <li v-if="user">
                   <router-link :to="{ name: 'transfers' }"
                     class="text-[#A1A1A1] transition-all duration-200 ease-in text-md md:px-2 hover:text-white"
                     activeClass="text-white">Transfers</router-link>
                 </li>
               </RequireAccountOwner>
+
+              <li class="border-b border-gray-600 m-0 p-0 sm:hidden"></li>
+              <li class="sm:hidden">
+                <router-link :to="{ name: 'billing' }" class="flex items-center gap-2">
+                  <CreditCardIcon class="h-5 w-5" />
+                  Billing
+                </router-link>
+              </li>
+              <li class="border-b border-gray-600 m-0 p-0 sm:hidden"></li>
+              <li class="sm:hidden">
+                <a href="https://quickbyte.featurebase.app" target="_blank" class="flex items-center gap-2">
+                  <StarIcon class="w-5 h-5" />
+                  Share Feedback
+                </a>
+              </li>
+              <li class="border-b border-gray-600 m-0 p-0 sm:hidden"></li>
+              <li class="sm:hidden">
+                <a @click="auth.signOut()" class="flex items-center gap-2">
+                  <ArrowLeftStartOnRectangleIcon class="w-5 h-5" />
+                  Sign Out
+                </a>
+              </li>
               <li v-if="user" class="hidden sm:block">
                 <div class="rounded-full border border-gray-600">
                   <NotificationsMenu />
                 </div>
               </li>
-              <li>
+              <li class="hidden sm:block">
                 <button v-if="!user" @click="auth.signIn()"
                   class="px-4 py-2 text-white bg-[#5B53FF] hover:bg-[#5237F9] transition duration-200 ease-in rounded-2xl">
                   Sign In
@@ -83,7 +113,7 @@ import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
 import NotificationsMenu from '@/components/NotificationsMenu.vue';
 import AccountsDropdown from './AccountSwitcherMenu.vue';
 import { layoutDimensions } from '@/styles/dimentions.js';
-import { ChevronUpDownIcon } from '@heroicons/vue/24/outline';
+import { ChevronUpDownIcon, ArrowLeftStartOnRectangleIcon, StarIcon, CreditCardIcon } from '@heroicons/vue/24/solid';
 import RequireAccountOwner from './RequireAccountOwner.vue';
 
 const user = useUser();
