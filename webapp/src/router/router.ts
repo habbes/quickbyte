@@ -15,8 +15,6 @@ import ProjectView from '@/views/ProjectView.vue';
 import ProjectMediaView from '@/views/ProjectMediaView.vue';
 import ProjectMembersView from '@/views/ProjectMembersView.vue';
 import InviteView from '@/views/InviteView.vue';
-import ProjectTasksView from '@/views/ProjectTasksView.vue';
-import ProjectTimelineView from '@/views/ProjectTimelineView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -75,16 +73,6 @@ const router = createRouter({
                   path: 'members',
                   name: 'project-members',
                   component: ProjectMembersView
-                },
-                {
-                  path: 'tasks',
-                  name: 'project-tasks',
-                  component: ProjectTasksView
-                },
-                {
-                  path: 'timeline',
-                  name: 'project-timeline',
-                  component: ProjectTimelineView
                 }
               ]
             },
