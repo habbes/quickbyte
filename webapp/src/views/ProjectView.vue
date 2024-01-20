@@ -25,34 +25,40 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { apiClient, showToast, store } from '@/app-utils';
-import { ensure, type Project } from '@/core';
-import { logger } from '@azure/storage-blob';
+import { showToast, store, logger } from '@/app-utils';
+import { ensure } from '@/core';
+import type { WithRole, Project } from '@quickbyte/common';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { layoutDimensions } from '@/styles/dimentions.js';
 
 const route = useRoute();
-const project = ref<Project>();
+const project = ref<WithRole<Project>>();
 const loading = ref(false);
 const headerHeight = 50;
 const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight + headerHeight }px)`;
 
 onMounted(async () => {
+  logger.log('project view mounted');
   const account = ensure(store.currentAccount.value);
   const id = ensure(route.params.projectId) as string;
   loading.value = true;
 
-  try {
-    // TODO: should be able to fetch project without using account id
-    // The project might belong to a different account than the current user
-    // Or the current user could be a guest without an account
-    project.value = await apiClient.getProject(account._id, id);
-  } catch (e: any) {
-    logger.error(e);
-    showToast(e.message, 'error');
-  } finally {
-    loading.value = false;
+  // we expect the project to be in the store since
+  // the site fetches all user projects at load time.
+  // So the project should exist in the store (if it exists for this user) even if this page
+  // is visted directly by the user.
+  project.value = store.projects.value.find(p => p._id === id);
+  loading.value = false;
+  if (!project.value) {
+    showToast('The project does not exist or you do not have access.', 'error');
+    return;
+  }
+  
+  // automatically set the current account to the project's account
+  // if they differ
+  if (project.value.accountId !== account._id) {
+    store.setCurrentAccount(project.value.accountId);
   }
 });
 </script>
