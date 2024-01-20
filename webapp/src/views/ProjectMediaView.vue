@@ -10,9 +10,11 @@
       class="grid overflow-y-auto"
       style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(250px,1fr))"
     >
-      <div class="w-full aspect-square rounded-md border border-gray-600 flex items-center justify-center">
-        <ArrowUpOnSquareIcon @click="openFilePicker()" class="h-24 w-24 hover:text-white hover:cursor-pointer" />
-      </div>
+      <RequireRole v-if="project" :accepted="['admin', 'owner', 'editor']" :current="project.role">
+        <div class="w-full aspect-square rounded-md border border-gray-600 flex items-center justify-center">
+          <ArrowUpOnSquareIcon @click="openFilePicker()" class="h-24 w-24 hover:text-white hover:cursor-pointer" />
+        </div>
+      </RequireRole>
       <div
         v-for="medium in media"
         :key="medium._id"
@@ -28,11 +30,14 @@ import { onMounted, ref, watch } from 'vue';
 import { useRoute} from 'vue-router';
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
+import type { WithRole, Project } from "@quickbyte/common";
 import { ArrowUpOnSquareIcon } from '@heroicons/vue/24/outline'
 import MediaCardItem from '@/components/MediaCardItem.vue';
+import RequireRole from '@/components/RequireRole.vue';
 
 const route = useRoute();
 const loading = ref(false);
+const project = ref<WithRole<Project>>();
 const {
   openFilePicker,
   onFilesSelected,
@@ -75,6 +80,7 @@ onFilesSelected(async (files, directories) => {
 onMounted(async () => {
   const projectId = ensure(route.params.projectId) as string;
   const account = ensure(store.currentAccount.value);
+  project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
   loading.value = true;
 
   try {

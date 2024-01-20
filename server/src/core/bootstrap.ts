@@ -124,7 +124,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         access: accessHandler
     });
 
-    const downloads = new TransferDownloadService(db.db, storageProvider);
+    const downloads = new TransferDownloadService(db, storageProvider);
 
     const transactions = new UnauthenticatedTransactionService(db.db, {
         paymentHandlers: paymentHandlers,

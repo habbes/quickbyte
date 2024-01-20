@@ -3,6 +3,7 @@ import { createAppError, createInvalidAppStateError, createNotFoundError, create
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
+import { Database } from "../db.js";
 
 const COLLECTION = "transfers";
 const FILES_COLLECTION = "files";
@@ -22,30 +23,24 @@ export class TransferService {
     private collection: Collection<DbTransfer>;
     private filesCollection: Collection<TransferFile>;
 
-    constructor(private db: Db, private authContext: AuthContext, private config: TransferServiceConfig) {
-        this.collection = this.db.collection(COLLECTION);
-        this.filesCollection = this.db.collection(FILES_COLLECTION);
+    constructor(private db: Database, private authContext: AuthContext, private config: TransferServiceConfig) {
+        this.collection = this.db.transfers();
+        this.filesCollection = this.db.files();
     }
 
     create(args: CreateShareableTransferArgs): Promise<CreateTransferResult> {
-        return this.createInternal(args);
+        return this.createInternal({ ...args, accountId: this.authContext.user._id });
     }
 
     async createProjectMediaUpload(project: Project, args: CreateProjectMediaUploadArgs): Promise<CreateTransferResult> {
         try {
-            if (project.accountId !== this.authContext.user.account._id) {
-                // it's possible that the project belongs to a different account that the user has logged in if the user
-                // has been invited to projects owned by a different account.
-                // In that case we should make sure that the user's current account matches that of the project.
-                // TODO: may have to revisit this when we actually add support for multiple accounts, teams and invites
-                throw createResourceNotFoundError(`The target project '${project.name}' not found in the current active account.`);
-            }
-
+    
             const transfer = await this.createInternal({
                 ...args,
                 name: `Media upload for ${project.name} - (${new Date().toDateString()})`,
                 projectId: project._id,
-                hidden: true
+                hidden: true,
+                accountId: project.accountId
             });
 
             return transfer;
@@ -205,10 +200,10 @@ export class TransferDownloadService {
     private filesCollection: Collection<TransferFile>;
     private downloadsCollection: Collection<DownloadRequest>;
 
-    constructor (private db: Db, private providerRegistry: IStorageHandlerProvider) {
-        this.collection = db.collection(COLLECTION);
-        this.filesCollection = db.collection(FILES_COLLECTION);
-        this.downloadsCollection = db.collection(DOWNLOADS_COLLECTION);
+    constructor (private db: Database, private providerRegistry: IStorageHandlerProvider) {
+        this.collection = db.transfers();
+        this.filesCollection = db.files();
+        this.downloadsCollection = db.downloads();
     }
 
     async requestDownload(transferId: string, args: DownloadRequestArgs): Promise<DownloadTransferResult> {
@@ -397,6 +392,7 @@ interface CreateTransferMeta {
 export interface CreateTransferArgs extends CreateShareableTransferArgs {
     hidden?: boolean;
     projectId?: string;
+    accountId: string;
 }
 
 export interface CreateTransferFileArgs {

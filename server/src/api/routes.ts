@@ -72,7 +72,6 @@ routes.post('/accounts/:accountId/projects',
 
 routes.post('/accounts/:accountId/projects/:projectId/upload',
     requireAuth(),
-    requireAccountOwner(),
     wrapResponse(req =>
         req.services.accounts.projects(req.authContext).uploadMedia(req.params.projectId, req.body)));
 
