@@ -1,16 +1,21 @@
 <template>
   <div class="w-full">
-    <video
-      v-if="mediaType === 'video'"
-      ref="player"
-      :src="src"
-      controlslist="nodownload"
-      @seeked="$emit('seeked')"
-      @play="isPlaying = true"
-      @pause="isPlaying = false"
-      @timeupdate="handleTimeUpdate()"
-      @canplay="handleCanPlay()"
-    ></video>
+    <!-- we wrap the video in a black container in case the video can't fill the width due the aspect ration -->
+    <div v-if="mediaType === 'video'"
+      class="bg-black"
+    >
+      <video
+        ref="player"
+        :src="src"
+        controlslist="nodownload"
+        @seeked="$emit('seeked')"
+        @play="isPlaying = true"
+        @pause="isPlaying = false"
+        @timeupdate="handleTimeUpdate()"
+        @canplay="handleCanPlay()"
+        class="max-w-full m-auto"
+      ></video>
+    </div>
     <div v-else class="bg-black p-10 flex items-center justify-center">
       <MusicalNoteIcon class="h-24 w-24 text-white" />
       <audio
@@ -75,7 +80,7 @@
           <SpeakerXMarkIcon v-if="isMuted" class="h-5 w-5 cursor-pointer" @click="unmute()"/>
         </div>
         <div>
-          <Slider :model-value="[volume]" @update:model-value="handleSliderUpdate($event)" :min="0" :max="1" :step="0.01" class=" w-20" />
+          <Slider :model-value="[volume]" @update:model-value="handleSliderUpdate($event)" :min="0" :max="1" :step="0.01" class="w-[80px]" />
         </div>
       </div>
       <div>

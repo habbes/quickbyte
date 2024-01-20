@@ -1,6 +1,6 @@
 <template>
   <div v-if="media" class="flex flex-col fixed top-0 bottom-0 left-0 right-0 z-50 bg-[#261922]">
-    <div class="h-12 border-b border-b-[#120c11] flex flex-row items-center justify-between px-5" :style="headerClasses">
+    <div class="h-[48px] border-b border-b-[#120c11] flex flex-row items-center justify-between px-5" :style="headerClasses">
       <div>
         <XMarkIcon class="h-5 w-5 hover:text-white hover:cursor-pointer" @click="closePlayer()" />
       </div>
