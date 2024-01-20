@@ -17,18 +17,6 @@
         >
           Members
         </router-link>
-        <router-link
-          :to="{ name: 'project-tasks', params: { projectId: project._id }}"
-          class="hover:text-white py-3 px-4 inline-block"
-        >
-          Tasks
-        </router-link>
-        <router-link
-          :to="{ name: 'project-timeline', params: { projectId: project._id }}"
-          class="hover:text-white py-3 px-4 inline-block"
-        >
-          Timeline
-        </router-link>
       </div>
     </div>
     <div class="flex-grow overflow-y-auto p-5" :style="{ height: contentHeight }">
