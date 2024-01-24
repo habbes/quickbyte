@@ -136,3 +136,33 @@ Hello ${invitorName},
 ${inviteeName} (${invite.email}) has accepted your invitation on <b>Quickbyte</b>.
 `;
 }
+
+// TODO: mention media file name in message
+export function createMediaCommentNotificationEmail({
+    authorName,
+    recipientName,
+    commentText,
+    projectName,
+    url
+}: {
+    authorName: string,
+    recipientName: string,
+    commentText: string,
+    projectName: string,
+    url: string
+}) {
+    return `
+Hello ${recipientName},
+<br>
+${authorName} has shared the following commen in the project <b>${projectName}</b>.
+<br>
+<p style="padding:10px">
+    <blockquote>
+    ${commentText}
+    </blockquote>
+</p>
+<p>
+Click <a href="${url}">here</a> to open the comment.
+</p>
+`
+}

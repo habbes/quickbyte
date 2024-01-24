@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription, LinkGenerator } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
@@ -15,6 +15,7 @@ export interface AccountServiceConfig {
     webappBaseUrl: string;
     invites: IInviteService;
     access: IAccessHandler;
+    links: LinkGenerator;
 }
 
 export class AccountService {
@@ -208,6 +209,8 @@ export class AccountService {
             invites: this.config.invites,
             transfers,
             access: this.config.access,
+            email: this.config.emailHandler,
+            links: this.config.links,
             media: new MediaService(this.db.db, authContext, {
                 transfers,
                 comments: new CommentService(this.db.db, authContext)

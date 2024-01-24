@@ -63,7 +63,7 @@ export async function initUserData() {
         await getDeviceData();
     } catch (e: any) {
         logger?.error(e.message, e);
-        if (/signed in/.test(e.message)) {
+        if (/signed in/.test(e.message) || /sign in/.test(e.message)) {
             // auth has expired, clear data so the user
             // can sign in again
             clearData();
