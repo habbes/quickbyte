@@ -1,7 +1,7 @@
 import { Db, Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
-import { CreateProjectMediaUploadArgs, CreateTransferResult, ITransactionService, ITransferService } from "./index.js";
+import { CreateProjectMediaUploadArgs, CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IMediaService, MediaService, MediaWithFile } from "./media-service.js";
 import { CreateMediaCommentArgs } from "./comment-service.js";
@@ -14,6 +14,8 @@ export interface ProjectServiceConfig {
     media: IMediaService;
     invites: IInviteService;
     access: IAccessHandler;
+    links: LinkGenerator,
+    email: EmailHandler,
 }
 
 export class ProjectService {
@@ -136,7 +138,27 @@ export class ProjectService {
         try {
             const project = await this.getByIdInternal(projectId);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
-            return this.config.media.createMediaComment(projectId, mediaId, args);
+            
+            const user = this.authContext.user;
+            const comment = await this.config.media.createMediaComment(projectId, mediaId, args);
+            // TODO: email should be done in the background
+            const members = await this.getMembersInternal(project);
+            const otherMembers = members.filter(m => m._id !== this.authContext.user._id);
+            const emailTasks = otherMembers.map(member => {
+                this.config.email.sendEmail({
+                    subject: `${user.name} commented in project ${project.name}`,
+                    to: { name: member.name, email: member.email },
+                    message: createMediaCommentNotificationEmail({
+                        authorName: user.name,
+                        recipientName: member.name,
+                        projectName: project.name,
+                        commentText: comment.text,
+                        url: this.config.links.getMediaCommentUrl(projectId, mediaId, comment._id)
+                    })
+                })
+            });
+            await Promise.all(emailTasks);
+            return comment;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -172,7 +194,33 @@ export class ProjectService {
         try {
             const project = await this.getByIdInternal(id);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+            
+            const members = await this.getMembersInternal(project);
 
+            return members;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async getByIdInternal(id: string): Promise<Project> {
+        try {
+            const project = await this.collection.findOne({ _id: id });
+            if (!project) {
+                throw createResourceNotFoundError();
+            }
+
+            return project;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async getMembersInternal(project: Project): Promise<ProjectMember[]> {
+        try {
+            const id = project._id;
             const ownerTask = this.db.users().findOne({ _id: project._createdBy._id });
             const otherUsersTask = this.collection.aggregate<ProjectMember>([
                 {
@@ -241,20 +289,6 @@ export class ProjectService {
                 },
                 ...otherUsers
             ];
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
-    private async getByIdInternal(id: string): Promise<Project> {
-        try {
-            const project = await this.collection.findOne({ _id: id });
-            if (!project) {
-                throw createResourceNotFoundError();
-            }
-
-            return project;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

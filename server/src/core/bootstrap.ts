@@ -23,6 +23,7 @@ IUnauthenicatedTransactionService,
 UnauthenticatedTransactionService,
 IAlertService,
 FreeTrialHandler,
+LinkGenerator,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -50,6 +51,10 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
 
     const storageProvider = new StorageHandlerProvider();
     storageProvider.registerHandler(azureStorageHandler);
+
+    const links = new LinkGenerator({
+        webappBaseUrl: config.webappBaseUrl
+    });
 
     const emailHandler: EmailHandler = config.emailProvider === 'local'?
         new LocalEmailHandler() :
@@ -109,7 +114,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         emailHandler,
         webappBaseUrl: config.webappBaseUrl,
         invites,
-        access: accessHandler
+        access: accessHandler,
+        links
     });
 
     const auth = new AuthService(db, {
