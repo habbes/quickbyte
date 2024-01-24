@@ -176,10 +176,17 @@ const timedComments = computed<TimedComment[]>(() => sortedComments.value.filter
 
 onMounted(async () => {
   const account = ensure(store.currentAccount.value);
+  const queriedCommentId = Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment;
 
   try {
     media.value = await apiClient.getProjectMediumById(account._id, route.params.projectId as string, route.params.mediaId as string);
     comments.value = media.value.comments;
+    if (queriedCommentId) {
+      const comment = comments.value.find(c => c._id === queriedCommentId);
+      if (comment) {
+        handleVideoCommentClicked(comment);
+      }
+    }
   }
   catch (e: any) {
     error.value = e;
@@ -199,15 +206,20 @@ function seekToComment(comment: Comment) {
 }
 
 function scrollToComment(comment: Comment) {
-  document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView({
-    block: 'end',
-    inline: 'nearest',
-    behavior: 'smooth'
+  // we wait for the next tick to ensure the comment has been added to the DOM
+  // before we scroll into it
+  nextTick(() => {
+    document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView({
+      block: 'end',
+      inline: 'nearest',
+      behavior: 'smooth'
+    });
   });
 }
 
 function selectComment(comment: Comment) {
   selectedCommentId.value = comment._id;
+  router.push({ query: { ...route.query, comment: comment._id }});
 }
 
 function unselectComment() {
@@ -239,7 +251,7 @@ function handleCommentClicked(comment: Comment) {
   selectComment(comment);
 }
 
-function handleVideoCommentClicked(comment: TimedComment) {
+function handleVideoCommentClicked(comment: Comment) {
   seekToComment(comment);
   selectComment(comment);
   scrollToComment(comment);
@@ -266,9 +278,8 @@ async function sendComment() {
     commentInputText.value = '';
     comments.value.push(comment);
     
-    // we wait for the next tick to ensure the new comment has been added to the DOM
-    // before we scroll into it
-    nextTick(() => scrollToComment(comment));
+    
+    scrollToComment(comment);
   }
   catch (e: any) {
     logger.error(e.message, e);
