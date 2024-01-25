@@ -79,6 +79,8 @@
               :comments="timedComments"
               :selectedCommentId="selectedCommentId"
               @clickComment="handleVideoCommentClicked($event)"
+              :fileName="media.file.name"
+              @playBackError="handleMediaPlayBackError($event)"
             />
             <ImageViewer
               v-else-if="mediaType === 'image'"
@@ -285,6 +287,11 @@ async function sendComment() {
     logger.error(e.message, e);
     showToast(e.message, 'error');
   }
+}
+
+function handleMediaPlayBackError(error: Error) {
+  showToast(`Error occurred while playing media: ${error.message}`, 'error');
+  logger.error(`Error playing media, id: ${media.value?._id}, filename: ${media.value?.file.name}`);
 }
 
 </script>
