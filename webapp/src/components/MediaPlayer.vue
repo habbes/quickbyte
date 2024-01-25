@@ -16,7 +16,7 @@
       >
         <source
           :src="src"
-          :type="`video/${getFileExtension(fileName)}`"
+          :type="getMimeTypeFromFilename(fileName)"
         />
       </video>
     </div>
@@ -33,7 +33,7 @@
       >
         <source
           :src="src"
-          :type="`audio/${getFileExtension(fileName)}`"
+          :type="getMimeTypeFromFilename(fileName)"
         />
       </audio>
     </div>
@@ -98,11 +98,12 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { formatTimestampDuration, type Comment, type TimedComment, getFileExtension } from '@/core';
+import { formatTimestampDuration, type Comment, type TimedComment } from '@/core';
 import { ref, computed, watch } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
 import { logger } from '@/app-utils';
+import { getMimeTypeFromFilename } from '@/core/media-types';
 
 const props = defineProps<{
   src: string;
