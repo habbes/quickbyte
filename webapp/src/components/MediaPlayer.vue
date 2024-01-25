@@ -6,7 +6,6 @@
     >
       <video
         ref="player"
-        :src="src"
         controlslist="nodownload"
         @seeked="$emit('seeked')"
         @play="isPlaying = true"
@@ -14,20 +13,29 @@
         @timeupdate="handleTimeUpdate()"
         @canplay="handleCanPlay()"
         class="max-w-full m-auto"
-      ></video>
+      >
+        <source
+          :src="src"
+          :type="`video/${getFileExtension(fileName)}`"
+        />
+      </video>
     </div>
     <div v-else class="bg-black p-10 flex items-center justify-center">
       <MusicalNoteIcon class="h-24 w-24 text-white" />
       <audio
         ref="player"
-        :src="src"
         controlslist="nodownload"
         @seeked="$emit('seeked')"
         @play="isPlaying = true"
         @pause="isPlaying = false"
         @timeupdate="handleTimeUpdate()"
         @canplay="handleCanPlay()"
-      ></audio>
+      >
+        <source
+          :src="src"
+          :type="`audio/${getFileExtension(fileName)}`"
+        />
+      </audio>
     </div>
     <div
       ref="progressBar"
@@ -90,7 +98,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { formatTimestampDuration, type Comment, type TimedComment } from '@/core';
+import { formatTimestampDuration, type Comment, type TimedComment, getFileExtension } from '@/core';
 import { ref, computed, watch } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
@@ -101,11 +109,13 @@ const props = defineProps<{
   comments?: TimedComment[];
   selectedCommentId?: string;
   mediaType: 'video'|'audio';
+  fileName: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'seeked'): void;
   (e: 'clickComment', comment: TimedComment): void;
+  (e: 'playBackError', error: Error): void;
 }>();
 
 defineExpose({
@@ -165,8 +175,13 @@ function pause() {
   player.value?.pause();
 }
 
-function play() {
-  player.value?.play();
+async function play() {
+  try {
+    await player.value?.play();
+  }
+  catch (e: any) {
+    emit('playBackError', e);
+  }
 }
 
 function mute() {
@@ -194,11 +209,8 @@ function handleTimeUpdate() {
 }
 
 function handleProgressBarClick(event: MouseEvent) {
-  logger.log('click');
   const mouseX = event.offsetX;
-  logger.log('click offset', event.offsetX);
   const newTime = getTimeFromPosition(mouseX);
-  logger.log('seek to', newTime);
   return seek(newTime);
 }
 
@@ -242,7 +254,6 @@ function getTimeFromPosition(seekPosition: number): number {
   if (!player.value) return 0;
   const width = progressBar.value.offsetWidth;
   const time = (seekPosition / width) * player.value.duration;
-  logger.log('pos to time', seekPosition, width, time);
   return time;
 }
 
@@ -252,7 +263,6 @@ function getPositionFromTime(timestamp: number): number {
   const duration = player.value.duration;
   const width = progressBar.value.offsetWidth;
   const x = (timestamp / duration) * width;
-  logger.log('position', x, 'width', width, 'time', timestamp);
   return x;
 }
 
