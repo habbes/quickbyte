@@ -34,7 +34,7 @@
               <ChevronDownIcon class="w-3 h-3" />
             </UiLayout>
           </MenuButton>
-          <MenuItems class="absolute text-black right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none">
+          <MenuItems class="absolute text-black right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none z-20">
             <div
               v-for="page in projectPages"
               :key="page.name"
@@ -54,7 +54,7 @@
         </Menu>
       </div>
     </UiLayout>
-    <div class="flex-grow overflow-y-auto p-5" :style="{ height: contentHeight }">
+    <div class="flex-grow overflow-y-auto" :style="{ height: contentHeight }">
       <router-view></router-view>
     </div>
   </UiLayout>
