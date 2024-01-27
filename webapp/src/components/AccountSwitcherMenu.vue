@@ -3,7 +3,7 @@
     v-model:search="searchTerm"
     :searchPlaceholder="'Search accounts'"
   >
-    <div
+    <UiPopoverButton as="div"
         v-for="account in filteredAccounts"
         :key="account._id"
         @click="switchAccount(account._id)"
@@ -29,7 +29,7 @@
         </div>
         
       </div>
-    </div>
+    </UiPopoverButton>
   </SwitcherMenu>
 </template>
 <script lang="ts" setup>
@@ -39,6 +39,7 @@ import { CheckIcon } from '@heroicons/vue/24/solid';
 import { store } from "@/app-utils";
 import { figureWithUnit } from '@/core';
 import SwitcherMenu from "./SwitcherMenu.vue";
+import UiPopoverButton from "@/components/ui/UiPopoverButton.vue";
 
 const currentAccount = store.currentAccount;
 const accounts = store.accounts;
