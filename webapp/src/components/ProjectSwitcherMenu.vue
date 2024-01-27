@@ -3,7 +3,7 @@
     v-model:search="searchTerm"
     :searchPlaceholder="'Search projects'"
   >
-  <div
+  <UiPopoverButton
     v-for="project in filteredProjects"
     :key="project._id"
     @click="switchProject(project._id)"
@@ -19,7 +19,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </UiPopoverButton>
   </SwitcherMenu>
 </template>
 <script setup lang="ts">
@@ -27,6 +27,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { store } from '@/app-utils';
 import SwitcherMenu from '@/components/SwitcherMenu.vue';
+import UiPopoverButton from './ui/UiPopoverButton.vue';
 import { CheckIcon } from '@heroicons/vue/24/solid';
 
 const props = defineProps<{
