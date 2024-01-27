@@ -10,11 +10,7 @@
                 {{ account?.name }}
               </span>
             </router-link>
-            <AccountsDropdown class="">
-              <div class="cursor-pointer hover:bg-slate-800 rounded-sm py-2 px-1 flex items-center justify-center align-middle">
-                <ChevronUpDownIcon class="w-5 h-5" />
-              </div>
-            </AccountsDropdown>
+            <AccountsDropdown />
           </div>
 
           <div class="flex items-center lg:hidden gap-2">
