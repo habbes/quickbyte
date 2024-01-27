@@ -1,5 +1,5 @@
 <template>
-  <dialog ref="dialog" id="createProjectDialog" class="modal">
+  <dialog ref="dialog" id="createProjectDialog" class="modal text-gray-700">
     <div class="modal-box">
       <h3 class="font-bold text-lg mb-2">Create new project</h3>
       <div class="flex flex-col gap-2">
