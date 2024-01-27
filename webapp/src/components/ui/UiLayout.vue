@@ -1,5 +1,5 @@
 <template>
-  <div class="flex" :class="classes">
+  <div class="flex" :class="classes" :style="{ 'height': `${fixedHeight}px`}">
     <slot></slot>
   </div>
 </template>
@@ -20,6 +20,7 @@ const props = defineProps<{
   horizontalSpace?: boolean;
   verticalScroll?: boolean;
   fixedHeight?: string;
+  fullWidth?: string;
 }>();
 
 const classes = computed(() => {
@@ -36,6 +37,7 @@ const classes = computed(() => {
     'px-4': props.horizontalSpace,
     'overflow-y-auto': props.verticalScroll,
     [`h-[${props.fixedHeight}]`]: props.fixedHeight,
+    'w-full': props.fullWidth
   }
 })
 </script>
