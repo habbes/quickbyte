@@ -20,7 +20,7 @@ const props = defineProps<{
   horizontalSpace?: boolean;
   verticalScroll?: boolean;
   fixedHeight?: string;
-  fullWidth?: string;
+  fullWidth?: boolean;
 }>();
 
 const classes = computed(() => {
