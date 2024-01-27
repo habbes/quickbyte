@@ -9,7 +9,7 @@
       :fixedHeight="`${headerHeight}px`"
       :style="{ height: `${headerHeight}px`}"
     >
-    <div class="text-white text-lg flex items-center">{{ project.name }}</div>
+    <div class="text-white text-md flex items-center">{{ project.name }}</div>
       <div class="hidden sm:block shadow-sm h-full">
         <router-link
           v-for="page in projectPages"
