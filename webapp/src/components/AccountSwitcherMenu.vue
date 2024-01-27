@@ -8,29 +8,28 @@
         :key="account._id"
         @click="switchAccount(account._id)"
         class="py-4 px-4 border-t border-t-gray-300 text-gray-700 hover:bg-slate-200 cursor-pointer"
-      >
-        <!-- <router-link :to="{ name: 'projects' }"> -->
-          <div class="flex items-center justify-between">
-            <div>
-              <div>{{ account.name }}</div>
-              <div class="text-sm text-gray-400">
-                {{ figureWithUnit(projects.filter(p => p.accountId === account._id).length, 'project') }}
-              </div>
-            </div>
-            <div class="flex flex-col items-center gap-1">
-              <div v-if="currentAccount?._id === account._id">
-                <CheckIcon class="w-5 h-5" />
-              </div>
-              <div v-if="account.owner._id === user?._id"
-                title="You own this account"
-                class="badge badge-sm badge-primary"
-              >
-                owner
-              </div>
-            </div>
-            
+    >
+      <div class="flex items-center justify-between">
+        <div>
+          <div>{{ account.name }}</div>
+          <div class="text-sm text-gray-400">
+            {{ figureWithUnit(projects.filter(p => p.accountId === account._id).length, 'project') }}
           </div>
+        </div>
+        <div class="flex flex-col items-center gap-1">
+          <div v-if="currentAccount?._id === account._id">
+            <CheckIcon class="w-5 h-5" />
+          </div>
+          <div v-if="account.owner._id === user?._id"
+            title="You own this account"
+            class="badge badge-sm badge-primary"
+          >
+            owner
+          </div>
+        </div>
+        
       </div>
+    </div>
   </SwitcherMenu>
 </template>
 <script lang="ts" setup>
@@ -63,6 +62,5 @@ const filteredAccounts = computed(() => {
 function switchAccount(id: string) {
   router.push({ name: 'projects' });
   store.setCurrentAccount(id);
-  
 }
 </script>

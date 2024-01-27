@@ -9,7 +9,11 @@
       :fixedHeight="`${headerHeight}px`"
       :style="{ height: `${headerHeight}px`}"
     >
-    <div class="text-white text-md flex items-center">{{ project.name }}</div>
+    <div class="text-white text-md flex items-center">
+      {{ project.name }}
+      <ProjectSwitcherMenu :currentProjectId="project._id" />
+    </div>
+      <!-- tabs on large screens -->
       <div class="hidden sm:block shadow-sm h-full">
         <router-link
           v-for="page in projectPages"
@@ -21,6 +25,7 @@
           {{ page.name }}
         </router-link>
       </div>
+      <!-- dropdown menu on mobile screens -->
       <div class="sm:hidden h-full flex text-white items-center">
         <Menu as="div" class="relative inline-block">
           <MenuButton>
@@ -49,46 +54,52 @@
         </Menu>
       </div>
     </UiLayout>
-    <!-- <div class="flex flex-row items-center justify-between px-5 border-b border-[#2e2634]" :style="{ height: `${headerHeight}px` }">
-      <div class="text-white text-lg flex items-center">{{ project.name }}</div>
-      <div class="shadow-sm h-full">
-        <router-link
-          :to="{ name: 'project-media', params: { projectId: project._id }}"
-          class="hover:text-white inline-flex h-full items-center px-4"
-          exactActiveClass="text-white border-b-2 border-b-blue-300"
-        >
-          Media
-        </router-link>
-        <router-link
-          :to="{ name: 'project-members', params: { projectId: project._id }}"
-          class="hover:text-white inline-flex h-full items-center px-4"
-          activeClass="text-white border-b-2 border-b-blue-300"
-        >
-          Members
-        </router-link>
-      </div>
-    </div> -->
     <div class="flex-grow overflow-y-auto p-5" :style="{ height: contentHeight }">
       <router-view></router-view>
     </div>
   </UiLayout>
 </template>
 <script lang="ts" setup>
-import { showToast, store, logger } from '@/app-utils';
+import { showToast, store } from '@/app-utils';
 import { ensure } from '@/core';
-import type { WithRole, Project } from '@quickbyte/common';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { layoutDimensions } from '@/styles/dimentions.js';
 import UiLayout from '@/components/ui/UiLayout.vue';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { ChevronDownIcon } from '@heroicons/vue/24/solid';
+import ProjectSwitcherMenu from '@/components/ProjectSwitcherMenu.vue';
 
 const route = useRoute();
-const project = ref<WithRole<Project>>();
 const loading = ref(false);
 const headerHeight = 50;
 const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight + headerHeight }px)`;
+
+const project = computed(() => {
+  const id = ensure(route.params.projectId) as string;
+  loading.value = true;
+
+  // we expect the project to be in the store since
+  // the site fetches all user projects at load time.
+  // So the project should exist in the store (if it exists for this user) even if this page
+  // is visted directly by the user.
+  const value = store.projects.value.find(p => p._id === id);
+  if (!value) {
+    showToast('The project does not exist or you do not have access.', 'error');
+    return;
+  }
+  return value;
+});
+
+watch([project], () => {
+  if (!project.value) return;
+  const account = ensure(store.currentAccount.value);
+  // automatically set the current account to the project's account
+  // if they differ
+  if (project.value.accountId !== account._id) {
+    store.setCurrentAccount(project.value.accountId);
+  }
+});
 
 const projectPages = [
   {
@@ -103,28 +114,5 @@ const projectPages = [
 
 const currentSubPage = computed(() => {
   return projectPages.find(p => p.route === route.name);
-});
-
-onMounted(async () => {
-  const account = ensure(store.currentAccount.value);
-  const id = ensure(route.params.projectId) as string;
-  loading.value = true;
-
-  // we expect the project to be in the store since
-  // the site fetches all user projects at load time.
-  // So the project should exist in the store (if it exists for this user) even if this page
-  // is visted directly by the user.
-  project.value = store.projects.value.find(p => p._id === id);
-  loading.value = false;
-  if (!project.value) {
-    showToast('The project does not exist or you do not have access.', 'error');
-    return;
-  }
-  
-  // automatically set the current account to the project's account
-  // if they differ
-  if (project.value.accountId !== account._id) {
-    store.setCurrentAccount(project.value.accountId);
-  }
 });
 </script>
