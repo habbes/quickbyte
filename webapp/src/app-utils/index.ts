@@ -10,3 +10,4 @@ export * from './unload-manager.js';
 export * from './transfer.js';
 export * from './task-manager.js';
 export * from './invites.js';
+export * from './route-hooks.js';

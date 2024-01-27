@@ -1,42 +1,81 @@
 <template>
-  <div v-if="!loading" class="">
-    <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
-      You have no media in this project. Upload some files using the button below.
-
-      <button @click="openFilePicker()" class="btn btn-primary">Upload Files</button>
-    </div>
-    <div
-      v-else
-      class="grid overflow-y-auto"
-      style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(250px,1fr))"
+  <UiLayout fill>
+    <UiLayout
+      horizontal
+      innerSpace
+      gapSm
+      itemsCenter
+      justifyBetween
+      class="border-b border-[#2e2634]"
     >
+      <UiLayout fill>
+        <UiSearchInput v-model="searchTerm" placeholder="Search files" />
+      </UiLayout>
       <RequireRole v-if="project" :accepted="['admin', 'owner', 'editor']" :current="project.role">
-        <div class="w-full aspect-square rounded-md border border-gray-600 flex items-center justify-center">
-          <ArrowUpOnSquareIcon @click="openFilePicker()" class="h-24 w-24 hover:text-white hover:cursor-pointer" />
-        </div>
+        <Menu as="div" class="relative inline-block">
+          <MenuButton>
+            <UiButton
+              class="btn btn-primary"
+            >
+              <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">Upload media</span>
+            </UiButton>
+          </MenuButton>
+          <MenuItems class="absolute text-black right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none z-20">
+            <div
+              v-for="option in uploadMenuOptions"
+              :key="option.text"
+            >
+              <MenuItem
+              >
+                <UiLayout @click="option.onClick()" innerSpace>
+                  {{ option.text }}
+                </UiLayout>
+              </MenuItem>
+            </div>
+          </MenuItems>
+        </Menu>
       </RequireRole>
-      <div
-        v-for="medium in media"
-        :key="medium._id"
-        class="w-full aspect-square"
-      >
-        <MediaCardItem :media="medium"/>
+    </UiLayout>
+    <UiLayout v-if="!loading" innerSpace fill verticalScroll>
+      <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
+        You have no media in this project. Upload some files using the button below.
+
+        <button @click="openFilePicker()" class="btn btn-primary">Upload Files</button>
       </div>
-    </div>
-  </div>
+      <div
+        v-else
+        class="grid overflow-y-auto"
+        style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(250px,1fr))"
+      >
+        <div
+          v-for="medium in filteredMedia"
+          :key="medium._id"
+          class="w-full aspect-square"
+        >
+          <MediaCardItem :media="medium"/>
+        </div>
+      </div>
+    </UiLayout>
+  </UiLayout>
 </template>
 <script lang="ts" setup>
-import { ref, watch } from 'vue';
-import { useRoute, onBeforeRouteUpdate } from 'vue-router';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
 import type { WithRole, Project } from "@quickbyte/common";
-import { ArrowUpOnSquareIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon } from '@heroicons/vue/24/outline'
 import MediaCardItem from '@/components/MediaCardItem.vue';
 import RequireRole from '@/components/RequireRole.vue';
+import UiLayout from '@/components/ui/UiLayout.vue';
+import UiSearchInput from '@/components/ui/UiSearchInput.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue';
 
+const headerHeight = `48px`;
 const route = useRoute();
 const loading = ref(false);
+const searchTerm = ref('');
 const project = ref<WithRole<Project>>();
 const {
   openFilePicker,
@@ -56,6 +95,20 @@ watch([newMedia], () => {
     media.value = media.value.concat(newMedia.value);
   }
 })
+
+const filteredMedia = computed(() => {
+  if (!searchTerm.value) return media.value;
+
+  const regex = new RegExp(searchTerm.value, 'i');
+  return media.value.filter(m => regex.test(m.name));
+});
+
+const uploadMenuOptions = [
+  {
+    text: 'Upload files',
+    onClick: () => openFilePicker()
+  }
+]
 
 onError((e) => {
   logger.error(e.message, e);
@@ -77,19 +130,59 @@ onFilesSelected(async (files, directories) => {
   });
 });
 
-onBeforeRouteUpdate(async (to) => {
+async function loadRoute(to: RouteLocationNormalizedLoaded) {
+  // const to = route;
+  console.log('inside hook');
   const projectId = ensure(to.params.projectId) as string;
   const account = ensure(store.currentAccount.value);
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
+  console.log('project media', projectId, project.value);
   loading.value = true;
 
   try {
+    console.log('run fetch');
     media.value = await apiClient.getProjectMedia(account._id, projectId);
+    console.log('root media', media.value);
   } catch (e: any) {
+    console.log('handling error', e);
     logger.error(e.message, e);
     showToast(e.message, 'error');
+    
   } finally {
     loading.value = false;
   }
+
+  console.log('DONE');
+}
+
+onMounted(async () => {
+  await loadRoute(route);
+});
+
+// onMountedOrRouteUpdate(loadRoute);
+
+watch([route], async () => {
+  const to = route;
+  console.log('inside hook');
+  const projectId = ensure(to.params.projectId) as string;
+  const account = ensure(store.currentAccount.value);
+  project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
+  console.log('project media', projectId, project.value);
+  loading.value = true;
+
+  try {
+    console.log('run fetch');
+    media.value = await apiClient.getProjectMedia(account._id, projectId);
+    console.log('root media', media.value);
+  } catch (e: any) {
+    console.log('handling error', e);
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+    
+  } finally {
+    loading.value = false;
+  }
+
+  console.log('DONE');
 });
 </script>
