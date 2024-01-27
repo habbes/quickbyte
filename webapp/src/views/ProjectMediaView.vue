@@ -26,8 +26,8 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue';
-import { useRoute} from 'vue-router';
+import { ref, watch } from 'vue';
+import { useRoute, onBeforeRouteUpdate } from 'vue-router';
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
 import type { WithRole, Project } from "@quickbyte/common";
@@ -77,8 +77,8 @@ onFilesSelected(async (files, directories) => {
   });
 });
 
-onMounted(async () => {
-  const projectId = ensure(route.params.projectId) as string;
+onBeforeRouteUpdate(async (to) => {
+  const projectId = ensure(to.params.projectId) as string;
   const account = ensure(store.currentAccount.value);
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
   loading.value = true;
