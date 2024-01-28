@@ -120,7 +120,7 @@ const commentInputStyles = {
 };
 
 const commentsListStyles = {
-  height: `calc(100vh - ${headerSize + commentInputHeight}px)`
+  height: `calc(100dvh - ${headerSize + commentInputHeight}px)`
 };
 
 

@@ -29,7 +29,7 @@ import { layoutDimensions } from '@/styles/dimentions';
 
 const transfers = ref<Transfer[]>([]);
 const loading = ref(false);
-const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight}px)`;
+const contentHeight = `calc(100dvh - ${layoutDimensions.navBarHeight}px)`;
 
 onMounted(async () => {
   await fetchTransfers();

@@ -46,7 +46,7 @@ const transfer = ref<GetTransferResult>();
 const loading = ref(false);
 const route = useRoute();
 const downloadUrl = computed(() => transfer.value ? getTransferDownloadUrl(transfer.value._id) : '');
-const height = `calc(100vh - ${layoutDimensions.navBarHeight}px)`;
+const height = `calc(100dvh - ${layoutDimensions.navBarHeight}px)`;
 
 onMounted(async () => {
   const transferId = route.params.transferId as string;
