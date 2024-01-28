@@ -44,9 +44,10 @@
       </div>
       <div
         v-else
-        class="grid overflow-y-auto"
-        style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(250px,1fr))"
+        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
+        
       >
+      <!-- style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(250px,1fr))" -->
         <div
           v-for="medium in filteredMedia"
           :key="medium._id"
@@ -132,27 +133,20 @@ onFilesSelected(async (files, directories) => {
 
 async function loadRoute(to: RouteLocationNormalizedLoaded) {
   // const to = route;
-  console.log('inside hook');
   const projectId = ensure(to.params.projectId) as string;
   const account = ensure(store.currentAccount.value);
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
-  console.log('project media', projectId, project.value);
   loading.value = true;
 
   try {
-    console.log('run fetch');
     media.value = await apiClient.getProjectMedia(account._id, projectId);
-    console.log('root media', media.value);
   } catch (e: any) {
-    console.log('handling error', e);
     logger.error(e.message, e);
     showToast(e.message, 'error');
     
   } finally {
     loading.value = false;
   }
-
-  console.log('DONE');
 }
 
 onMounted(async () => {
