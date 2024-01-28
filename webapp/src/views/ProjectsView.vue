@@ -81,7 +81,7 @@ const filteredProjects = computed(() => {
 })
 
 const headerHeight = 50;
-const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight + headerHeight}px)`;
+const contentHeight = `calc(100dvh - ${layoutDimensions.navBarHeight + headerHeight}px)`;
 
 function createProject() {
   createProjectDialog.value?.open();
