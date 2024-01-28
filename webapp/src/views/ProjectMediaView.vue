@@ -37,7 +37,9 @@
         </Menu>
       </RequireRole>
     </UiLayout>
-    <UiLayout v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight">
+    <UiLayout v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" 
+      :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
+    >
       <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
         You have no media in this project. Upload some files using the button below.
 
@@ -61,8 +63,8 @@
   </UiLayout>
 </template>
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, onMounted, ref, watch } from 'vue';
+import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
 import type { WithRole, Project } from "@quickbyte/common";
@@ -76,13 +78,13 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue';
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 
 const headerHeight = layoutDimensions.projectMediaHeaderHeight;
+// tried different things to get the positioning to look right
+const contentOffset = headerHeight + layoutDimensions.navBarHeight + layoutDimensions.projectHeaderHeight + 2;
 const contentHeight = getRemainingContentHeightCss(
-  layoutDimensions.navBarHeight +
-  layoutDimensions.projectHeaderHeight +
-  headerHeight
+  contentOffset
 );
 const route = useRoute();
-const loading = ref(false);
+const loading = ref(true);
 const searchTerm = ref('');
 const project = ref<WithRole<Project>>();
 const {
@@ -143,9 +145,8 @@ onFilesSelected(async (files, directories) => {
 // so that we can we can load the data
 // both when the page is mounted (navigated to from another page)
 // and when the page is re-used with different route params (same route, different projectId)
-watch([route], async () => {
-  console.log('loading data...');
-  const to = route;
+
+async function loadData(to: RouteLocationNormalizedLoaded) {
   const projectId = ensure(to.params.projectId) as string;
   const account = ensure(store.currentAccount.value);
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
@@ -160,5 +161,8 @@ watch([route], async () => {
   } finally {
     loading.value = false;
   }
-});
+}
+
+onMounted(async () => await loadData(route));
+onBeforeRouteUpdate(loadData);
 </script>

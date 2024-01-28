@@ -15,7 +15,7 @@ export const layoutDimensions = {
     /**
      * Header used on the project media page
      */
-    projectMediaHeaderHeight: 48,
+    projectMediaHeaderHeight: 54,
 };
 
 /**
