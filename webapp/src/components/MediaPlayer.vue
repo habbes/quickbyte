@@ -12,7 +12,7 @@
         @pause="isPlaying = false"
         @timeupdate="handleTimeUpdate()"
         @canplay="handleCanPlay()"
-        class="max-w-full m-auto"
+        class="sm:h-[calc(100dvh-208px)] w-auto sm:m-auto"
       >
         <source
           :src="src"
