@@ -35,8 +35,8 @@
   />
 </template>
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
-import { useRoute, onBeforeRouteUpdate } from 'vue-router';
+import { computed, watch, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import {
   Table,
   TableHeader,
@@ -51,6 +51,7 @@ import { ensure } from '@/core';
 import type { ProjectMember } from '@quickbyte/common';
 import { logger, showToast, store, trpcClient } from '@/app-utils';
 
+const route = useRoute();
 const inviteUsersDialog = ref<typeof InviteUserDialog>();
 const projectId = ref<string>();
 const project = computed(() => {
@@ -58,7 +59,8 @@ const project = computed(() => {
 });
 const members = ref<ProjectMember[]>([]);
 
-onBeforeRouteUpdate(async (to) => {
+watch([route], async () => {
+  const to = route;
   projectId.value = ensure(to.params.projectId) as string;
   try {
     const result = await trpcClient.getProjectMembers.query(projectId.value);
