@@ -7,7 +7,6 @@
       itemsCenter
       justifyBetween
       :fixedHeight="`${headerHeight}px`"
-      class="border-b border-[#2e2634]"
     >
       <UiLayout fill>
         <UiSearchInput v-model="searchTerm" placeholder="Search files" />
@@ -37,7 +36,7 @@
         </Menu>
       </RequireRole>
     </UiLayout>
-    <UiLayout v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" 
+    <UiLayout v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
       :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
     >
       <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
@@ -47,7 +46,7 @@
       </div>
       <div
         v-else
-        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
+        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,auto))]"
         
       >
       <!-- style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(250px,1fr))" -->
@@ -140,12 +139,16 @@ onFilesSelected(async (files, directories) => {
   });
 });
 
-// watching the route instead of using
-// onMounted or onBeforeRouteUpdate
-// so that we can we can load the data
-// both when the page is mounted (navigated to from another page)
-// and when the page is re-used with different route params (same route, different projectId)
-
+// onMounted callback is not called when navigating from one
+// media page to another (i.e. when the route is the same
+// but params have changed) because the same component is reused
+// onBeforeRouteUpdate callback is called when the route params
+// changed and the component is reused, but is not called
+// when the component is mounted.
+// So to handle both scenarios I pass the same callback to
+// both methods.
+// I feel like there should be a better way of dealing
+// with this.
 async function loadData(to: RouteLocationNormalizedLoaded) {
   const projectId = ensure(to.params.projectId) as string;
   const account = ensure(store.currentAccount.value);

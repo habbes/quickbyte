@@ -35,8 +35,8 @@
   />
 </template>
 <script lang="ts" setup>
-import { computed, watch, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, watch, ref, onMounted } from 'vue';
+import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import {
   Table,
   TableHeader,
@@ -59,8 +59,11 @@ const project = computed(() => {
 });
 const members = ref<ProjectMember[]>([]);
 
-watch([route], async () => {
-  const to = route;
+function inviteUsers() {
+  inviteUsersDialog.value?.open();
+}
+
+async function loadDataForRoute(to: RouteLocationNormalizedLoaded) {
   projectId.value = ensure(to.params.projectId) as string;
   try {
     const result = await trpcClient.getProjectMembers.query(projectId.value);
@@ -69,9 +72,8 @@ watch([route], async () => {
     logger.error(e.message, e);
     showToast(e.message, 'error');
   }
-});
-
-function inviteUsers() {
-  inviteUsersDialog.value?.open();
 }
+
+onMounted(async () => await loadDataForRoute(route));
+onBeforeRouteUpdate(loadDataForRoute);
 </script>
