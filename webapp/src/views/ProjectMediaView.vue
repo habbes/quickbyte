@@ -6,6 +6,7 @@
       gapSm
       itemsCenter
       justifyBetween
+      :fixedHeight="`${headerHeight}px`"
       class="border-b border-[#2e2634]"
     >
       <UiLayout fill>
@@ -20,7 +21,7 @@
               <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">Upload media</span>
             </UiButton>
           </MenuButton>
-          <MenuItems class="absolute text-black right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none z-20">
+          <MenuItems class="absolute text-black right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black/5    focus:outline-none z-20">
             <div
               v-for="option in uploadMenuOptions"
               :key="option.text"
@@ -36,7 +37,7 @@
         </Menu>
       </RequireRole>
     </UiLayout>
-    <UiLayout v-if="!loading" innerSpace fill verticalScroll>
+    <UiLayout v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight">
       <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
         You have no media in this project. Upload some files using the button below.
 
@@ -60,8 +61,8 @@
   </UiLayout>
 </template>
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
 import type { WithRole, Project } from "@quickbyte/common";
@@ -72,8 +73,14 @@ import UiLayout from '@/components/ui/UiLayout.vue';
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue';
+import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 
-const headerHeight = `48px`;
+const headerHeight = layoutDimensions.projectMediaHeaderHeight;
+const contentHeight = getRemainingContentHeightCss(
+  layoutDimensions.navBarHeight +
+  layoutDimensions.projectHeaderHeight +
+  headerHeight
+);
 const route = useRoute();
 const loading = ref(false);
 const searchTerm = ref('');
@@ -131,34 +138,13 @@ onFilesSelected(async (files, directories) => {
   });
 });
 
-async function loadRoute(to: RouteLocationNormalizedLoaded) {
-  // const to = route;
-  const projectId = ensure(to.params.projectId) as string;
-  const account = ensure(store.currentAccount.value);
-  project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
-  loading.value = true;
-
-  try {
-    media.value = await apiClient.getProjectMedia(account._id, projectId);
-  } catch (e: any) {
-    logger.error(e.message, e);
-    showToast(e.message, 'error');
-    
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(async () => {
-  await loadRoute(route);
-});
-
 // watching the route instead of using
 // onMounted or onBeforeRouteUpdate
 // so that we can we can load the data
 // both when the page is mounted (navigated to from another page)
 // and when the page is re-used with different route params (same route, different projectId)
 watch([route], async () => {
+  console.log('loading data...');
   const to = route;
   const projectId = ensure(to.params.projectId) as string;
   const account = ensure(store.currentAccount.value);

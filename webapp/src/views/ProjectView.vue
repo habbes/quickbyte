@@ -64,7 +64,7 @@ import { showToast, store } from '@/app-utils';
 import { ensure } from '@/core';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { layoutDimensions } from '@/styles/dimentions.js';
+import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions.js';
 import UiLayout from '@/components/ui/UiLayout.vue';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { ChevronDownIcon } from '@heroicons/vue/24/solid';
@@ -72,8 +72,8 @@ import ProjectSwitcherMenu from '@/components/ProjectSwitcherMenu.vue';
 
 const route = useRoute();
 const loading = ref(false);
-const headerHeight = 50;
-const contentHeight = `calc(100vh - ${layoutDimensions.navBarHeight + headerHeight }px)`;
+const headerHeight = layoutDimensions.projectHeaderHeight;
+const contentHeight = getRemainingContentHeightCss(layoutDimensions.navBarHeight + headerHeight);
 
 const project = computed(() => {
   const id = ensure(route.params.projectId) as string;
