@@ -8,14 +8,18 @@
         {{ media.name }}
       </div>
       <a class="flex items-center gap-2 hover:text-white" download :href="media.file.downloadUrl">
-        Download {{ humanizeSize(media.file.size) }} <ArrowDownCircleIcon class="h-4 w-4 inline" />
+        <div class="inline-block">
+          <span class="hidden sm:inline">Download </span>{{ humanizeSize(media.file.size) }}
+        </div>
+        <ArrowDownCircleIcon class="h-4 w-4 inline" />
       </a>
     </div>
-    <div class="flex-1 flex flex-row">
-      <div class="w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col">
+    <div class=" flex flex-col-reverse sm:flex-row h-[calc(100dvh-48px)] relative">
+      <!-- start comment sidebar -->
+      <div class="w-full sm:w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col">
         
 
-        <div class="overflow-y-auto flex flex-col" :style="commentsListStyles">
+        <div class="overflow-y-auto flex flex-col h-[calc(100dvh-478px)] sm:h-[calc(100dvh-248px)]" :style="commentsListStyles">
           <div v-for="comment in sortedComments"
             :key="comment._id"
             :id="getHtmlCommentId(comment)"
@@ -42,7 +46,7 @@
           </div>
         </div>
 
-        <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2" :style="commentInputStyles">
+        <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 sm:h-[200px]">
           <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
             <div class="flex flex-row items-center justify-end">
               <div class="flex flex-row items-center gap-1" title="Save comment at the current timestamp">
@@ -68,8 +72,10 @@
         </div>
         
       </div>
-      <div class="flex-1 p-5 flex items-stretch justify-center bg-[#24141f]">
-          <div class="h-[90%] w-full flex items-center">
+      <!-- end comment sidebar -->
+      <!-- player container -->
+      <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]">
+          <div class=" sm:h-[90%] w-full flex sm:items-center">
             <MediaPlayer
               v-if="mediaType === 'video' || mediaType === 'audio'"
               ref="videoPlayer"
@@ -91,6 +97,7 @@
             </div>
           </div>
       </div>
+      <!-- end player container -->
     </div>
   </div>
   <div v-else-if="error" class="w-full flex justify-center items-center text-lg text-red-300">
@@ -119,9 +126,11 @@ const commentInputStyles = {
   height: `${commentInputHeight}px`
 };
 
-const commentsListStyles = {
+const commentsListStyles = {} /* = {
   height: `calc(100dvh - ${headerSize + commentInputHeight}px)`
-};
+}; */
+
+const commentsListClasses = `h-[calc(100dvh-${headerSize + commentInputHeight}px)]`;
 
 
 const videoPlayer = ref<typeof MediaPlayer>();
