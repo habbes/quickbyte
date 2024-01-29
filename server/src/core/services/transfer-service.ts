@@ -1,5 +1,5 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
-import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, rethrowIfAppError } from '../error.js';
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, createValidationError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
@@ -53,7 +53,9 @@ export class TransferService {
 
     private async createInternal(args: CreateTransferArgs): Promise<CreateTransferResult> {
         try {
-
+            if (!args.files.length) {
+                throw createValidationError('No files specified for transfer.');
+            }
             const sub = await this.config.transactions.tryGetActiveSubscription();
             if (!sub) {
                 throw createSubscriptionRequiredError();
