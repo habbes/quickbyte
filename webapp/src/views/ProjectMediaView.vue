@@ -36,9 +36,21 @@
         </Menu>
       </RequireRole>
     </UiLayout>
-    <UiLayout v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
+    <UiLayout ref="dropzone" v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
       :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
     >
+      <div v-if="isOverDropZone" class="absolute w-full h-full flex items-center justify-center">
+        
+        <div class="text-white text-lg flex flex-col items-center justify-center z-10">
+          <div>
+            <ArrowUpCircleIcon class=" h-12 w-12" />
+          </div>
+          <div>
+            Drop files to upload
+          </div>
+        </div>
+        <div class="absolute w-full h-full bg-black opacity-75"></div>
+      </div>
       <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
         You have no media in this project. Upload some files using the button below.
 
@@ -67,7 +79,7 @@ import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } fro
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
 import type { WithRole, Project } from "@quickbyte/common";
-import { PlusIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, ArrowUpCircleIcon } from '@heroicons/vue/24/outline'
 import MediaCardItem from '@/components/MediaCardItem.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import UiLayout from '@/components/ui/UiLayout.vue';
@@ -90,8 +102,12 @@ const {
   openFilePicker,
   onFilesSelected,
   onError,
-  reset
+  reset,
+  useDropZone
 } = useFilePicker();
+
+const dropzone = ref<HTMLDivElement>();
+const { isOverDropZone } = useDropZone(dropzone);
 
 const media = ref<Media[]>([]);
 const {
