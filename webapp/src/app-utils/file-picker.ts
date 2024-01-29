@@ -1,5 +1,5 @@
-import { ref, computed } from 'vue';
-import { useFileDialog } from '@vueuse/core';
+import { ref, computed, type Ref } from 'vue';
+import { useFileDialog, useDropZone as useDropZoneCore } from '@vueuse/core';
 
 type FilesSelectedHandler = (files: FilePickerEntry[], directories: DirectoryInfo[]) => unknown;
 
@@ -12,6 +12,10 @@ export function useFilePicker() {
     // this is useful when the caller isn't interested in the individual file changes within the list
     // but wants to react immediately when a set of files have been selected by the picker
     let filesSelectedHandler: FilesSelectedHandler | undefined = undefined;
+
+    function triggerFileSelectedHandler() {
+        filesSelectedHandler && filesSelectedHandler(Array.from(files.value.values()), Array.from(directories.value.values()));
+    }
 
     const raiseDuplicateError = () => {
         if (errorHandler) {
@@ -38,7 +42,7 @@ export function useFilePicker() {
         }
 
         // TODO: should we trigger file selection handler even after error was raised
-        filesSelectedHandler && filesSelectedHandler(Array.from(files.value.values()), Array.from(directories.value.values()));
+        triggerFileSelectedHandler();
     });
     const directoryPickerSupported = isDirectoryPickerSupported();
     const openDirectoryPicker = () => {
@@ -54,7 +58,7 @@ export function useFilePicker() {
                 files.value.set(file.path, file);
             }
 
-            filesSelectedHandler && filesSelectedHandler(Array.from(files.value.values()), Array.from(directories.value.values()));
+            triggerFileSelectedHandler();
         })
         .catch(e => {
             if (e.name === 'AbortError') {
@@ -98,6 +102,48 @@ export function useFilePicker() {
         directories.value.delete(name);
     }
 
+    function onDrop(droppedFiles: File[]|null, event: DragEvent) {
+        if (!droppedFiles) return;
+        if (!droppedFiles.length) return;
+
+        // see: https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem/webkitGetAsEntry
+        if (event.dataTransfer?.items) {
+            for (let item of event.dataTransfer.items) {
+                // TODO: we should also support folders
+                if (item.webkitGetAsEntry()?.isFile) {
+                    const file = item.getAsFile();
+                    if (!file) {
+                        continue;
+                    }
+
+                    files.value.set(file.name, { path: file.name, file });
+                }
+            }
+        } else {
+            for (let file of droppedFiles) {
+                if (!file.type) {
+                    // TODO: folder's don't have a type, so this could be a folder.
+                    // But it could also be a file with an unknown type
+                    // For now I just ignore it cause it will cause error when
+                    // we try to "read" a folder during a upload.
+                    return;
+                }
+    
+                files.value.set(file.name, { path: file.name, file });
+            }
+        }
+
+        triggerFileSelectedHandler();
+    }
+
+    const useDropZone = (element: Ref<HTMLElement|undefined>) => {
+        const { isOverDropZone } = useDropZoneCore(element, {
+            onDrop
+        });
+
+        return { isOverDropZone };
+    }
+
     return {
         files: computed(() => Array.from(files.value.values())),
         directories: computed(() => Array.from(directories.value.values())),
@@ -115,6 +161,12 @@ export function useFilePicker() {
          * @param handler 
          */
         onFilesSelected,
+        /**
+         * Lets you add file drag-and-drop support and automatically
+         * add dropped files to the files list and trigger the
+         * onFilesSelected handler
+         */
+        useDropZone,
         directoryPickerSupported
     }
 }
