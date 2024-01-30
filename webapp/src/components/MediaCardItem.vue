@@ -25,16 +25,10 @@
             <template #trigger>
               <EllipsisVerticalIcon class="h-5 w-5"/>
             </template>
-            <UiMenuItem>
+            <UiMenuItem @click="rename()">
               <UiLayout horizontal itemsCenter gapSm>
                 <PencilIcon class="w-4 h-4"/>
                 <span>Rename</span>
-              </UiLayout>
-            </UiMenuItem>
-            <UiMenuItem>
-              <UiLayout horizontal itemsCenter gapSm>
-                <TrashIcon class="h-4 w-4" />
-                <span>Delete</span>
               </UiLayout>
             </UiMenuItem>
           </UiMenu>
@@ -42,6 +36,11 @@
         </div>
       </div>
     </div>
+    <RenameMediaDialog
+      ref="renameDialog"
+      :media="media"
+      @rename="$emit('update', $event)"
+    />
   </div>
 </template>
 <script lang="ts" setup>
@@ -50,10 +49,20 @@ import type { Media } from '@/core';
 import { DocumentIcon, FilmIcon, PhotoIcon, MusicalNoteIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/solid';
 import { getMediaType } from '@/core/media-types';
 import { UiMenu, UiMenuItem, UiLayout } from '@/components/ui';
+import RenameMediaDialog from '@/components/RenameMediaDialog.vue';
 
 const props = defineProps<{
   media: Media
 }>();
 
+defineEmits<{
+  (e: 'update', updatedMedia: Media): void;
+}>();
+
+const renameDialog = ref<typeof RenameMediaDialog>();
 const mediaType = computed(() => getMediaType(props.media.name));
+
+function rename() {
+  renameDialog.value?.open();
+}
 </script>

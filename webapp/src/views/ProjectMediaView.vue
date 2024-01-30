@@ -66,7 +66,10 @@
           :key="medium._id"
           class="w-full aspect-square"
         >
-          <MediaCardItem :media="medium"/>
+          <MediaCardItem
+            :media="medium"
+            @update="handleMediaUpdate($event)"
+          />
         </div>
       </div>
     </UiLayout>
@@ -153,6 +156,15 @@ onFilesSelected(async (files, directories) => {
     projectId: ensure(route.params.projectId) as string
   });
 });
+
+function handleMediaUpdate(updatedMedia: Media) {
+  const index = media.value.findIndex(m => m._id === updatedMedia._id);
+  if (index < 0) return;
+  
+  const original = media.value[index];
+
+  media.value[index] = Object.assign(original, updatedMedia);
+}
 
 // onMounted callback is not called when navigating from one
 // media page to another (i.e. when the route is the same

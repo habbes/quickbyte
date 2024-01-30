@@ -13,6 +13,7 @@
   const props = defineProps<{
     loading?: boolean;
     sm?: boolean;
+    md?: boolean;
     xs?: boolean;
     lg?: boolean;
     xl?: boolean;
@@ -26,6 +27,7 @@
   const classes = computed(() => {
     return {
       'btn-sm': props.sm,
+      'btn-md': props.md,
       'btn-lg': props.lg,
       'btn-xl': props.xl,
       'btn-xs': props.xs,
