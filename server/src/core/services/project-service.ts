@@ -1,5 +1,5 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel } from "../models.js";
+import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
 import { CreateProjectMediaUploadArgs, CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
@@ -128,6 +128,31 @@ export class ProjectService {
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
             const media = await this.config.media.getMediaById(projectId, id);
             return media;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async updateMedia(id: string, args: UpdateMediaArgs): Promise<Media> {
+        try {
+            const project = await this.getByIdInternal(id);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner','admin', 'editor']);
+
+            const media = await this.config.media.updateMedia(id, args.id, args);
+            return media;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async deleteMedia(projectId: string, mediaId: string): Promise<void> {
+        try {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner','admin', 'editor']);
+
+            await this.config.media.deleteMedia(projectId, mediaId);
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -296,7 +321,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'|'getMembers'>;
+export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'|'getMembers'|'updateMedia'|'deleteMedia'>;
 
 export interface CreateProjectArgs {
     name: string;

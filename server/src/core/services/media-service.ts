@@ -1,5 +1,5 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, DownloadTransferFileResult, ITransferService } from "./index.js";
 import { CreateMediaCommentArgs, ICommentService } from "./comment-service.js";
@@ -36,7 +36,7 @@ export class MediaService {
 
     async getProjectMedia(projectId: string): Promise<Media[]> {
         try {
-            const media = await this.collection.find({ projectId: projectId }).toArray();
+            const media = await this.collection.find({ projectId: projectId, deleted: { $ne: true } }).toArray();
             return media;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -46,7 +46,7 @@ export class MediaService {
 
     async getMediaById(projectId: string, id: string): Promise<MediaWithFile> {
         try {
-            const medium = await this.collection.findOne({ projectId: projectId, _id: id });
+            const medium = await this.collection.findOne({ projectId: projectId, _id: id, deleted: { $ne: true } });
             if (!medium) {
                 throw createResourceNotFoundError();
             }
@@ -68,9 +68,60 @@ export class MediaService {
         }
     }
 
+    async updateMedia(projectId: string, id: string, args: UpdateMediaArgs): Promise<Media> {
+        try {
+            const result = await this.collection.findOneAndUpdate({
+                projectId: projectId,
+                _id: id,
+                deleted: { $ne: true },
+
+            }, {
+                $set: {
+                    name: args.name,
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'user', _id: this.authContext.user._id }
+                }
+            }, {
+                returnDocument: 'after'
+            });
+
+            if (!result.value) {
+                throw createResourceNotFoundError();
+            }
+
+            return result.value;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async deleteMedia(projectId: string, id: string): Promise<void> {
+        try {
+            const result = await this.collection.findOneAndUpdate({
+                projectId,
+                _id: id,
+                deleted: { $ne: true }
+            }, {
+                $set: {
+                    deleted: true,
+                    deletedAt: new Date(),
+                    deletedBy: { _id: this.authContext.user._id, type: 'user' }
+                }
+            });
+
+            if (!result.value) {
+                throw createResourceNotFoundError();
+            }
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<Comment> {
         try {
-            const medium = await this.collection.findOne({ projectId: projectId, _id: mediaId });
+            const medium = await this.collection.findOne({ projectId: projectId, _id: mediaId, deleted: { $ne: true } });
             if (!medium) {
                 throw createNotFoundError('media');
             }
@@ -104,7 +155,7 @@ export class MediaService {
     }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'|'createMediaComment'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'|'createMediaComment'|'updateMedia'|'deleteMedia'>;
 
 export interface MediaWithFile extends Media {
     file: DownloadTransferFileResult,

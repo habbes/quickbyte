@@ -6,6 +6,12 @@ export interface PersistedModel {
     _updatedBy: Principal;
 }
 
+export interface Deleteable {
+    deleted?: boolean;
+    deletedBy?: Principal;
+    deletedAt?: Date;
+}
+
 export type Principal = {
     type: 'user',
     _id: string;
