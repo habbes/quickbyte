@@ -58,10 +58,9 @@
       </div>
       <div
         v-else
-        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,auto))]"
+        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
         
       >
-      <!-- style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(250px,1fr))" -->
         <div
           v-for="medium in filteredMedia"
           :key="medium._id"
