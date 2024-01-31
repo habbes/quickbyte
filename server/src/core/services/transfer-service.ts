@@ -4,6 +4,7 @@ import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, 
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 import { Database } from "../db.js";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs } from "@quickbyte/common";
 
 const COLLECTION = "transfers";
 const FILES_COLLECTION = "files";
@@ -39,6 +40,7 @@ export class TransferService {
                 ...args,
                 name: `Media upload for ${project.name} - (${new Date().toDateString()})`,
                 projectId: project._id,
+                mediaId: args.mediaId,
                 hidden: true,
                 accountId: project.accountId
             });
@@ -367,39 +369,6 @@ async function createMediaDownloadFile(provider: IStorageHandler, file: Transfer
         accountId: file.accountId
     }
 
-}
-
-export interface CreateShareableTransferArgs {
-    name: string;
-    provider: string;
-    region: string;
-    files: CreateTransferFileArgs[];
-    meta?: CreateTransferMeta;
-}
-
-export interface CreateProjectMediaUploadArgs {
-    provider: string;
-    region: string;
-    files: CreateTransferFileArgs[];
-    meta?: CreateTransferMeta;
-}
-
-interface CreateTransferMeta {
-    ip?: string;
-    countryCode?: string;
-    state?: string;
-    userAgent?: string;
-}
-
-export interface CreateTransferArgs extends CreateShareableTransferArgs {
-    hidden?: boolean;
-    projectId?: string;
-    accountId: string;
-}
-
-export interface CreateTransferFileArgs {
-    name: string;
-    size: number;
 }
 
 export interface CreateTransferResult extends Transfer {

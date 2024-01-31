@@ -32,3 +32,52 @@ export const DeleteMediaArgs = z.object({
 
 export type DeleteMediaArgs = z.infer<typeof DeleteMediaArgs>;
 
+export const CreateTransferFileArgs = z.object({
+    name: z.string().min(1),
+    size: z.number()
+});
+
+export type CreateTransferFileArgs = z.infer<typeof CreateTransferFileArgs>;
+
+export const CreateTransferMeta = z.object({
+    ip: z.optional(z.string()),
+    countryCode: z.optional(z.string()),
+    state: z.optional(z.string()),
+    userAgent: z.optional(z.string())
+});
+
+export type CreateTransferMeta = z.infer<typeof CreateTransferMeta>;
+
+export const CreateShareableTransferArgs = z.object({
+    name: z.string().min(1),
+    provider: z.string().min(1),
+    region: z.string().min(1),
+    files: CreateTransferFileArgs.array(),
+    meta: z.optional(CreateTransferMeta)
+});
+
+export type CreateShareableTransferArgs = z.infer<typeof CreateShareableTransferArgs>;
+
+export const CreateTransferArgs = CreateShareableTransferArgs.extend({
+    hidden: z.optional(z.boolean()),
+    projectId: z.optional(z.string()),
+    mediaId: z.optional(z.string()),
+    accountId: z.string().min(1)
+});
+
+export type CreateTransferArgs = z.infer<typeof CreateTransferArgs>;
+
+export const CreateProjectMediaUploadArgs = z.object({
+    provider: z.string().min(1),
+    region: z.string().min(1),
+    /**
+     * When media id is provided, the files
+     * will be uploaded as versions of an existing
+     * media instead of creating new media
+     */
+    mediaId: z.optional(z.string()),
+    files: CreateTransferFileArgs.array(),
+    meta: z.optional(CreateTransferMeta)
+});
+
+export type CreateProjectMediaUploadArgs = z.infer<typeof CreateProjectMediaUploadArgs>;

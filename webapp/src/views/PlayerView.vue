@@ -4,9 +4,10 @@
       <div>
         <XMarkIcon class="h-5 w-5 hover:text-white hover:cursor-pointer" @click="closePlayer()" />
       </div>
-      <div class="text-white text-md">
-        {{ media.name }}
-      </div>
+      <UiLayout horizontal itemsCenter gapSm>
+        <span class="text-white text-md">{{ media.name }}</span>
+        <MediaPlayerVersionDropdown :media="media" :selectedVersionId="media.preferredVersionId" />
+      </UiLayout>
       <a class="flex items-center gap-2 hover:text-white" download :href="media.file.downloadUrl">
         <div class="inline-block">
           <span class="hidden sm:inline">Download </span>{{ humanizeSize(media.file.size) }}
@@ -111,8 +112,10 @@ import { apiClient, logger, showToast, store } from "@/app-utils";
 import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined, type TimedComment, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
 // import VideoPlayer from "@/components/VideoPlayer.vue";
+import { UiLayout } from '@/components/ui';
 import MediaPlayer from '@/components/MediaPlayer.vue';
 import ImageViewer from '@/components/ImageViewer.vue';
+import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
 import { getMediaType } from "@/core/media-types";
 
 // had difficulties getting the scrollbar on the comments panel to work

@@ -25,6 +25,12 @@ export class MediaService {
 
         const files = transfer.files;
         try {
+
+            if (transfer.mediaId) {
+                const medium = await this.uploadMediaVersions(transfer.mediaId, transfer);
+                return [medium];
+            }
+
             const media = files.map(file => this.convertFileToMedia(transfer.projectId!, file));
             await this.collection.insertMany(media);
             return media;
@@ -152,6 +158,15 @@ export class MediaService {
         }
 
         return media;
+    }
+
+    private async uploadMediaVersions(mediaId: string, transfer: CreateTransferResult): Promise<MediaWithFile> {
+        try {
+            throw new Error("Not implemented");
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 }
 

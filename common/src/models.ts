@@ -96,6 +96,12 @@ export interface Transfer extends PersistedModel {
      * then this is the project it belongs to.
      */
     projectId?: string;
+    /**
+     * If this transfer is meant for a media item,
+     * then the file(s) will be added as new versions
+     * to the media
+     */
+    mediaId?: string;
 }
 
 export interface DbTransfer extends Transfer {
