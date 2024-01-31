@@ -69,6 +69,7 @@
           <MediaCardItem
             :media="medium"
             @update="handleMediaUpdate($event)"
+            @delete="handleMediaDeletion($event)"
           />
         </div>
       </div>
@@ -164,6 +165,13 @@ function handleMediaUpdate(updatedMedia: Media) {
   const original = media.value[index];
 
   media.value[index] = Object.assign(original, updatedMedia);
+}
+
+function handleMediaDeletion(mediaId: string) {
+  const index = media.value.findIndex(m => m._id === mediaId);
+  if (index < 0) return;
+
+  media.value.splice(index, 1);
 }
 
 // onMounted callback is not called when navigating from one
