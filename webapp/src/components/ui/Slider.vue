@@ -11,7 +11,7 @@ const emitsAsProps = useEmitAsProps(emits)
 
 <template>
   <SliderRoot
-    class="relative flex w-full touch-none select-none items-center"
+    class="relative flex touch-none select-none items-center"
     v-bind="{ ...props, ...emitsAsProps }"
   >
     <SliderTrack class="relative h-1 w-full grow overflow-hidden rounded-full bg-[#333]">
