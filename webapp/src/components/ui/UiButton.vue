@@ -19,6 +19,7 @@
     xl?: boolean;
     primary?: boolean;
     error?: boolean;
+    danger?: boolean;
     secondary?: boolean;
     warning?: boolean;
     fill?: boolean;
@@ -33,7 +34,7 @@
       'btn-xs': props.xs,
       'btn-primary': props.primary,
       'btn-secondary': props.secondary,
-      'btn-error': props.error,
+      'btn-error': props.error || props.danger,
       'btn-warning': props.warning,
       'w-full': props.fill,
     }

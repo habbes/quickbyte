@@ -31,6 +31,12 @@
                 <span>Rename</span>
               </UiLayout>
             </UiMenuItem>
+            <UiMenuItem @click="deleteMedia()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <TrashIcon class="w-4 h-4"/>
+                <span>Delete</span>
+              </UiLayout>
+            </UiMenuItem>
           </UiMenu>
           
         </div>
@@ -41,6 +47,11 @@
       :media="media"
       @rename="$emit('update', $event)"
     />
+    <DeleteMediaDialog
+      ref="deleteDialog"
+      :media="media"
+      @delete="$emit('delete', $event)"
+    />
   </div>
 </template>
 <script lang="ts" setup>
@@ -50,6 +61,7 @@ import { DocumentIcon, FilmIcon, PhotoIcon, MusicalNoteIcon, EllipsisVerticalIco
 import { getMediaType } from '@/core/media-types';
 import { UiMenu, UiMenuItem, UiLayout } from '@/components/ui';
 import RenameMediaDialog from '@/components/RenameMediaDialog.vue';
+import DeleteMediaDialog from '@/components/DeleteMediaDialog.vue';
 
 const props = defineProps<{
   media: Media
@@ -57,12 +69,18 @@ const props = defineProps<{
 
 defineEmits<{
   (e: 'update', updatedMedia: Media): void;
+  (e: 'delete', mediaId: string): void;
 }>();
 
 const renameDialog = ref<typeof RenameMediaDialog>();
+const deleteDialog = ref<typeof DeleteMediaDialog>();
 const mediaType = computed(() => getMediaType(props.media.name));
 
 function rename() {
   renameDialog.value?.open();
+}
+
+function deleteMedia() {
+  deleteDialog.value?.open();
 }
 </script>

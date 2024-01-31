@@ -40,7 +40,7 @@
                 {{ formatTimestampDuration(comment.timestamp) }}
               </span>
             </div>
-            <div class="text-xs">
+            <div class="text-xs whitespace-pre-line">
               {{ comment.text }}
             </div>
           </div>
