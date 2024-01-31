@@ -48,10 +48,15 @@ export function formatTimestampDuration(timestamp: number): string {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
   
+    if (minutes < 60) {
     // Format the duration as MM:SS
-    const formattedDuration = `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-  
-    return formattedDuration;
+        return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    return `${String(hours).padStart(2, '0')}:${String(remainingMinutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
 export function pluralize(word: string, count: number, plural: string = '') {
