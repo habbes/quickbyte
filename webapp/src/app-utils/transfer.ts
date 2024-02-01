@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo, taskManager } from '@/app-utils';
+import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo, taskManager, showToast } from '@/app-utils';
 import { ensure, ApiError, AzUploader, MultiFileUploader, type CreateTransferResult, type Media, type TransferTask, pluralize, type TrackedTransfer } from "@/core";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete' | 'error';
@@ -82,6 +82,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
         if ('projectId' in args) {
             const uploadResult = await apiClient.uploadProjectMedia(account._id, args.projectId, {
                 provider: provider.provider,
+                mediaId: args.mediaId,
                 region: provider.bestRegions[0],
                 files: files.map(f => ({ name: f.path, size: f.file.size })),
                 meta: {
@@ -181,6 +182,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
 
         task.status = 'complete';
         await transferTracker.completeTransfer(); // we shouldn't block for this, maybe use promise.then?
+        showToast(`Upload of ${files.length} ${pluralize('file', files.length)} complete`, 'info');
     } catch (e: any) {
         logger.error(e.message, e);
         uploadState.value = 'initial';
@@ -327,7 +329,15 @@ interface StartShareableFileTransferArgs extends StartFileTransferBaseArgs {
 }
 
 interface StartProjectMediaTransferArgs extends StartFileTransferBaseArgs {
+    /**
+     * When provided, the transfer will upload media to a project and the transfer
+     * will neither be visible nor shareable.
+     */
     projectId: string;
+    /**
+     * When provided, the transfer will add new versions to an existing media item
+     */
+    mediaId?: string;
 }
 
 export type StartFileTransferArgs = StartShareableFileTransferArgs | StartProjectMediaTransferArgs;

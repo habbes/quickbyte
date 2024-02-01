@@ -96,6 +96,12 @@ export interface Transfer extends PersistedModel {
      * then this is the project it belongs to.
      */
     projectId?: string;
+    /**
+     * If this transfer is meant for a media item,
+     * then the file(s) will be added as new versions
+     * to the media
+     */
+    mediaId?: string;
 }
 
 export interface DbTransfer extends Transfer {
@@ -222,7 +228,26 @@ export interface CommentWithAuthor extends Comment {
     }
 }
 
+export interface TimedCommentWithAuthor extends CommentWithAuthor {
+    timestamp: number;
+}
+
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
+
+export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> {
+    downloadUrl: string;
+}
+
+export interface MediaWithFileAndComments extends Media {
+    versions: MediaVersionWithFile[];
+    file: DownloadTransferFileResult;
+    comments: CommentWithAuthor[];
+}
+
+export interface MediaVersionWithFile extends MediaVersion {
+    file: DownloadTransferFileResult;
+}
+
 
 export interface UserInvite extends PersistedModel {
     email: string;
