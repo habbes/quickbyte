@@ -4,7 +4,7 @@ import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, 
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 import { Database } from "../db.js";
-import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs } from "@quickbyte/common";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult } from "@quickbyte/common";
 
 const COLLECTION = "transfers";
 const FILES_COLLECTION = "files";
@@ -428,8 +428,4 @@ export interface DownloadRequestUpdateArgs {
 export interface DownloadTransferResult extends Pick<Transfer, '_id'|'name'|'_createdAt'> {
     files: DownloadTransferFileResult[];
     downloadRequestId: string;
-}
-
-export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> {
-    downloadUrl: string;
 }

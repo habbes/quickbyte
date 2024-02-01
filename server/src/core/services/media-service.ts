@@ -1,7 +1,7 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, DownloadTransferFileResult } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
-import { CreateTransferFileResult, CreateTransferResult, DownloadTransferFileResult, ITransferService } from "./index.js";
+import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
 import { CreateMediaCommentArgs, ICommentService } from "./comment-service.js";
 
 const COLLECTION = 'media';

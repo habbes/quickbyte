@@ -1,7 +1,7 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, MediaVersion } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
-import { CreateTransferFileResult, CreateTransferResult, DownloadTransferFileResult, ITransferService } from "./index.js";
+import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media } from "../models.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError } from "../error.js";
+import { ITransferService } from "./index.js";
 
 const COLLECTION = 'comments';
 
