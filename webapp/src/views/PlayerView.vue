@@ -4,9 +4,15 @@
       <div>
         <XMarkIcon class="h-5 w-5 hover:text-white hover:cursor-pointer" @click="closePlayer()" />
       </div>
-      <div class="text-white text-md">
-        {{ media.name }}
-      </div>
+      <UiLayout horizontal itemsCenter gapSm>
+        <span class="text-white text-md">{{ media.name }}</span>
+        <MediaPlayerVersionDropdown
+          :media="media"
+          :selectedVersionId="selectedVersionId"
+          @versionUpload="handleVersionUpload()"
+          @selectVersion="handleSelectVersion($event)"
+        />
+      </UiLayout>
       <a class="flex items-center gap-2 hover:text-white" download :href="media.file.downloadUrl">
         <div class="inline-block">
           <span class="hidden sm:inline">Download </span>{{ humanizeSize(media.file.size) }}
@@ -77,20 +83,20 @@
       <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]">
           <div class=" sm:h-[90%] w-full flex sm:items-center">
             <MediaPlayer
-              v-if="mediaType === 'video' || mediaType === 'audio'"
+              v-if="file && (mediaType === 'video' || mediaType === 'audio')"
               ref="videoPlayer"
               :mediaType="mediaType"
-              :src="media.file.downloadUrl"
+              :src="file.downloadUrl"
               @seeked="handleSeek()"
               :comments="timedComments"
               :selectedCommentId="selectedCommentId"
               @clickComment="handleVideoCommentClicked($event)"
-              :fileName="media.file.name"
+              :fileName="file.name"
               @playBackError="handleMediaPlayBackError($event)"
             />
             <ImageViewer
-              v-else-if="mediaType === 'image'"
-              :src="media.file.downloadUrl"
+              v-else-if="file && mediaType === 'image'"
+              :src="file.downloadUrl"
             />
             <div v-else class="w-full flex items-center justify-center">
               Preview unsupported for this file type.
@@ -108,11 +114,13 @@
 import { computed, onMounted, ref, nextTick } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store } from "@/app-utils";
-import { formatTimestampDuration, ensure, type MediaWithFile, type Comment, isDefined, type TimedComment, humanizeSize } from "@/core";
+import type { Media, MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor } from "@quickbyte/common";
+import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
-// import VideoPlayer from "@/components/VideoPlayer.vue";
+import { UiLayout } from '@/components/ui';
 import MediaPlayer from '@/components/MediaPlayer.vue';
 import ImageViewer from '@/components/ImageViewer.vue';
+import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
 import { getMediaType } from "@/core/media-types";
 
 // had difficulties getting the scrollbar on the comments panel to work
@@ -130,15 +138,24 @@ const commentsListStyles = {} /* = {
   height: `calc(100dvh - ${headerSize + commentInputHeight}px)`
 }; */
 
-const commentsListClasses = `h-[calc(100dvh-${headerSize + commentInputHeight}px)]`;
-
 
 const videoPlayer = ref<typeof MediaPlayer>();
 const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
-const media = ref<MediaWithFile>();
-const comments = ref<Comment[]>([]);
+const media = ref<MediaWithFileAndComments>();
+const selectedVersionId = ref<string>();
+const file = computed(() => {
+  if (!media.value) return;
+  if (!selectedVersionId.value) return;
+
+  const version = ensure(media.value.versions.find(v => v._id === selectedVersionId.value),
+    `Expected version '${selectedVersionId.value}'' to exist for media '${media.value._id}'.`);
+
+  logger.log('changed to version', version.name, version.file);
+  return version.file;
+});
+const comments = ref<CommentWithAuthor[]>([]);
 const loading = ref(true);
 const selectedCommentId = ref<string>();
 const mediaType = computed(() => {
@@ -183,7 +200,7 @@ const sortedComments = computed(() => {
   return temp;
 });
 
-const timedComments = computed<TimedComment[]>(() => sortedComments.value.filter(c => isDefined(c.timestamp)) as TimedComment[]);
+const timedComments = computed<TimedCommentWithAuthor[]>(() => sortedComments.value.filter(c => isDefined(c.timestamp)) as TimedCommentWithAuthor[]);
 
 onMounted(async () => {
   const account = ensure(store.currentAccount.value);
@@ -191,6 +208,7 @@ onMounted(async () => {
 
   try {
     media.value = await apiClient.getProjectMediumById(account._id, route.params.projectId as string, route.params.mediaId as string);
+    selectedVersionId.value = media.value.preferredVersionId;
     comments.value = media.value.comments;
     if (queriedCommentId) {
       const comment = comments.value.find(c => c._id === queriedCommentId);
@@ -201,13 +219,36 @@ onMounted(async () => {
   }
   catch (e: any) {
     error.value = e;
+    logger.error(e.message, e);
   }
   finally {
     loading.value = false;
   }
 });
 
-function seekToComment(comment: Comment) {
+async function handleVersionUpload() {
+  // TODO: since we don't have the file, for now just reload
+  // the entire media object and update the local instance
+  // this is unnecessarily costly, we just need to load
+  // the downloadable file for the new preferred version
+  // but wanted to get this done quickly by re-using existing
+  // endpoints and maybe optmize later.
+  try {
+    const account = ensure(store.currentAccount.value);
+    media.value = await apiClient.getProjectMediumById(account._id, route.params.projectId as string, route.params.mediaId as string);
+    selectedVersionId.value = media.value.preferredVersionId;
+  } catch (e: any) {
+    showToast(e.message, 'error');
+    logger.error(e.message, e);
+  }
+};
+
+async function handleSelectVersion(versionId: string) {
+  console.log('changed version to', versionId);
+  selectedVersionId.value = versionId;
+}
+
+function seekToComment(comment: CommentWithAuthor) {
   if (!videoPlayer.value) return;
   if (comment.timestamp === null || comment.timestamp === undefined) {
     return;
@@ -216,7 +257,7 @@ function seekToComment(comment: Comment) {
   videoPlayer.value.seek(comment.timestamp);
 }
 
-function scrollToComment(comment: Comment) {
+function scrollToComment(comment: CommentWithAuthor) {
   // we wait for the next tick to ensure the comment has been added to the DOM
   // before we scroll into it
   nextTick(() => {
@@ -228,7 +269,7 @@ function scrollToComment(comment: Comment) {
   });
 }
 
-function selectComment(comment: Comment) {
+function selectComment(comment: CommentWithAuthor) {
   selectedCommentId.value = comment._id;
   router.push({ query: { ...route.query, comment: comment._id }});
 }
@@ -253,16 +294,16 @@ function closePlayer() {
   router.push({ name: 'project-media', params: { projectId: route.params.projectId as string } })
 }
 
-function getHtmlCommentId(comment: Comment) {
+function getHtmlCommentId(comment: CommentWithAuthor) {
   return `comment_${comment._id}`;
 }
 
-function handleCommentClicked(comment: Comment) {
+function handleCommentClicked(comment: CommentWithAuthor) {
   seekToComment(comment);
   selectComment(comment);
 }
 
-function handleVideoCommentClicked(comment: Comment) {
+function handleVideoCommentClicked(comment: CommentWithAuthor) {
   seekToComment(comment);
   selectComment(comment);
   scrollToComment(comment);

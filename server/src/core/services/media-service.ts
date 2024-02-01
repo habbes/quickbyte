@@ -1,7 +1,7 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, DownloadTransferFileResult } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
-import { CreateTransferFileResult, CreateTransferResult, DownloadTransferFileResult, ITransferService } from "./index.js";
+import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
 import { CreateMediaCommentArgs, ICommentService } from "./comment-service.js";
 
 const COLLECTION = 'media';
@@ -25,6 +25,12 @@ export class MediaService {
 
         const files = transfer.files;
         try {
+
+            if (transfer.mediaId) {
+                const medium = await this.uploadMediaVersions(transfer.mediaId, transfer);
+                return [medium];
+            }
+
             const media = files.map(file => this.convertFileToMedia(transfer.projectId!, file));
             await this.collection.insertMany(media);
             return media;
@@ -44,24 +50,40 @@ export class MediaService {
         }
     }
 
-    async getMediaById(projectId: string, id: string): Promise<MediaWithFile> {
+    async getMediaById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
         try {
             const medium = await this.collection.findOne({ projectId: projectId, _id: id, deleted: { $ne: true } });
             if (!medium) {
                 throw createResourceNotFoundError();
             }
 
-            const version = medium.versions.find(v => v._id === medium.preferredVersionId);
-            if (!version) {
-                throw createInvalidAppStateError(`Could not find preferred verson '${medium.preferredVersionId}' for media '${medium._id}'`);
-            }
-
-            const [file, comments] = await Promise.all([
-                this.config.transfers.getMediaFile(version.fileId),
+            const [files, comments] = await Promise.all([
+                this.config.transfers.getMediaFiles(medium.versions.map(v => v.fileId)),
                 this.config.comments.getMediaComments(medium._id)
             ]);
 
-            return { ...medium, file, comments }
+            const versionsWithFiles = medium.versions.map<MediaVersionWithFile>(v => {
+
+                const file = files.find(f => f._id === v.fileId);
+                if (!file) {
+                    throw createInvalidAppStateError(`Could not find file '${v.fileId}' for version '${v._id}' of media '${medium._id}'`);
+                }
+                const version = {
+                    ...v,
+                    file
+                }
+
+                return version;
+            });
+
+            const preferredVersion = versionsWithFiles.find(v => v._id === medium.preferredVersionId);
+            if (!preferredVersion) {
+                throw createInvalidAppStateError(`Could not find preferred verson '${medium.preferredVersionId}' for media '${medium._id}'`);
+            }
+
+            const file = preferredVersion.file;
+
+            return { ...medium, file, versions: versionsWithFiles, comments }
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -136,12 +158,7 @@ export class MediaService {
     }
 
     private convertFileToMedia(projectId: string, file: CreateTransferFileResult) {
-        const initialVersion: MediaVersion = {
-            ...createPersistedModel(this.authContext.user._id),
-            fileId: file._id,
-            // TODO: handle folder paths later
-            name: file.name.split('/').at(-1)!,
-        }
+        const initialVersion: MediaVersion = this.convertFileToMediaVersion(file);
 
         const media: Media = {
             ...createPersistedModel(this.authContext.user._id),
@@ -153,11 +170,43 @@ export class MediaService {
 
         return media;
     }
+
+    private async uploadMediaVersions(mediaId: string, transfer: CreateTransferResult): Promise<Media> {
+        try {
+            const newVersions: MediaVersion[] = transfer.files.map(f => this.convertFileToMediaVersion(f));
+            
+            const newPreferredVersionId = newVersions[0]._id;
+
+            const result = await this.collection.findOneAndUpdate({
+                _id: mediaId, deleted: { $ne: true }
+            }, {
+                $push: { versions: { $each: newVersions } },
+                $set: {
+                    preferredVersionId: newPreferredVersionId,
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'user', _id: this.authContext.user._id }
+                }
+            });
+
+            if (!result.value) {
+                throw createNotFoundError('media');
+            }
+
+            return result.value;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private convertFileToMediaVersion(file: CreateTransferFileResult): MediaVersion {
+        return {
+            ...createPersistedModel(this.authContext.user._id),
+            fileId: file._id,
+            // TODO: handle folder paths later
+            name: file.name.split('/').at(-1)!
+        };
+    }
 }
 
 export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'|'createMediaComment'|'updateMedia'|'deleteMedia'>;
-
-export interface MediaWithFile extends Media {
-    file: DownloadTransferFileResult,
-    comments: Comment[]
-}

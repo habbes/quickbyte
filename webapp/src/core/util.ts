@@ -59,6 +59,12 @@ export function formatTimestampDuration(timestamp: number): string {
     return `${String(hours).padStart(2, '0')}:${String(remainingMinutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
+export function formatPercentage(value: number, total: number) {
+    const percent = 100 * value / total;
+    const formatted = `${percent.toFixed(2)}%`;
+    return formatted;
+}
+
 export function pluralize(word: string, count: number, plural: string = '') {
     plural = plural || `${word}s`;
     // TODO handle special cases (e.g. directory -> directories)

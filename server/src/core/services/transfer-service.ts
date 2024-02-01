@@ -4,6 +4,7 @@ import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, 
 import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 import { Database } from "../db.js";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult } from "@quickbyte/common";
 
 const COLLECTION = "transfers";
 const FILES_COLLECTION = "files";
@@ -39,6 +40,7 @@ export class TransferService {
                 ...args,
                 name: `Media upload for ${project.name} - (${new Date().toDateString()})`,
                 projectId: project._id,
+                mediaId: args.mediaId,
                 hidden: true,
                 accountId: project.accountId
             });
@@ -80,6 +82,7 @@ export class TransferService {
                 accountId: this.authContext.user.account._id,
                 hidden: args.hidden,
                 projectId: args.projectId,
+                mediaId: args.mediaId,
                 status: 'progress',
                 expiresAt: new Date(Date.now() + validityInMillis),
                 numFiles: args.files.length,
@@ -194,6 +197,24 @@ export class TransferService {
             throw createAppError(e);
         }
     }
+
+    async getMediaFiles(fileIds: string[]): Promise<DownloadTransferFileResult[]> {
+        try {
+            const files = await this.filesCollection.find({ _id: { $in: fileIds } }).toArray();
+
+            const downloadableFilesTasks = files.map(file => {
+                const provider = this.config.providerRegistry.getHandler(file.provider);
+                return createMediaDownloadFile(provider, file);
+            });
+
+            const downloadableFiles = await Promise.all(downloadableFilesTasks);
+            return downloadableFiles;
+
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
     
 }
 
@@ -298,7 +319,7 @@ export class TransferDownloadService {
     }
 }
 
-export type ITransferService = Pick<TransferService, 'create'| 'createProjectMediaUpload'|'finalize'|'getById'|'get'|'getMediaFile'>;
+export type ITransferService = Pick<TransferService, 'create'| 'createProjectMediaUpload'|'finalize'|'getById'|'get'|'getMediaFile'|'getMediaFiles'>;
 export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDownload'|'updateDownloadRequest'>;
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
@@ -369,39 +390,6 @@ async function createMediaDownloadFile(provider: IStorageHandler, file: Transfer
 
 }
 
-export interface CreateShareableTransferArgs {
-    name: string;
-    provider: string;
-    region: string;
-    files: CreateTransferFileArgs[];
-    meta?: CreateTransferMeta;
-}
-
-export interface CreateProjectMediaUploadArgs {
-    provider: string;
-    region: string;
-    files: CreateTransferFileArgs[];
-    meta?: CreateTransferMeta;
-}
-
-interface CreateTransferMeta {
-    ip?: string;
-    countryCode?: string;
-    state?: string;
-    userAgent?: string;
-}
-
-export interface CreateTransferArgs extends CreateShareableTransferArgs {
-    hidden?: boolean;
-    projectId?: string;
-    accountId: string;
-}
-
-export interface CreateTransferFileArgs {
-    name: string;
-    size: number;
-}
-
 export interface CreateTransferResult extends Transfer {
     files: CreateTransferFileResult[]
 }
@@ -440,8 +428,4 @@ export interface DownloadRequestUpdateArgs {
 export interface DownloadTransferResult extends Pick<Transfer, '_id'|'name'|'_createdAt'> {
     files: DownloadTransferFileResult[];
     downloadRequestId: string;
-}
-
-export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> {
-    downloadUrl: string;
 }

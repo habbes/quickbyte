@@ -18,7 +18,11 @@
         :title="media.name"
       >
         <div class="flex-1 text-ellipsis">
-          {{ media.name }}
+          <router-link
+            :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
+          >
+            {{ media.name }}
+          </router-link>
         </div>
         <div>
           <UiMenu>
