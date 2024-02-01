@@ -142,12 +142,7 @@ export class MediaService {
     }
 
     private convertFileToMedia(projectId: string, file: CreateTransferFileResult) {
-        const initialVersion: MediaVersion = {
-            ...createPersistedModel(this.authContext.user._id),
-            fileId: file._id,
-            // TODO: handle folder paths later
-            name: file.name.split('/').at(-1)!,
-        }
+        const initialVersion: MediaVersion = this.convertFileToMediaVersion(file);
 
         const media: Media = {
             ...createPersistedModel(this.authContext.user._id),
@@ -160,13 +155,41 @@ export class MediaService {
         return media;
     }
 
-    private async uploadMediaVersions(mediaId: string, transfer: CreateTransferResult): Promise<MediaWithFile> {
+    private async uploadMediaVersions(mediaId: string, transfer: CreateTransferResult): Promise<Media> {
         try {
-            throw new Error("Not implemented");
+            const newVersions: MediaVersion[] = transfer.files.map(f => this.convertFileToMediaVersion(f));
+            
+            const newPreferredVersionId = newVersions[0]._id;
+
+            const result = await this.collection.findOneAndUpdate({
+                _id: mediaId, deleted: { $ne: true }
+            }, {
+                $push: { versions: { $each: newVersions } },
+                $set: {
+                    preferredVersionId: newPreferredVersionId,
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'user', _id: this.authContext.user._id }
+                }
+            });
+
+            if (!result.value) {
+                throw createNotFoundError('media');
+            }
+
+            return result.value;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
+    }
+
+    private convertFileToMediaVersion(file: CreateTransferFileResult): MediaVersion {
+        return {
+            ...createPersistedModel(this.authContext.user._id),
+            fileId: file._id,
+            // TODO: handle folder paths later
+            name: file.name.split('/').at(-1)!
+        };
     }
 }
 
