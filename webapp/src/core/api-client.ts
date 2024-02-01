@@ -1,5 +1,5 @@
 import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, CreateProjectArgs, Media, MediaWithFile, Comment, RoleType } from './types.js'
-import { type SubscriptionAndPlan, type WithRole, type Project } from "@quickbyte/common";
+import type { SubscriptionAndPlan, WithRole, Project, MediaWithFileAndComments } from "@quickbyte/common";
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -186,7 +186,7 @@ export class ApiClient {
         return this.get<Media[]>(`accounts/${accountId}/projects/${projectId}/media`);
     }
 
-    async getProjectMediumById(accountId: string, projectId: string, mediaId: string): Promise<MediaWithFile> {
+    async getProjectMediumById(accountId: string, projectId: string, mediaId: string): Promise<MediaWithFileAndComments> {
         return this.get<MediaWithFile>(`accounts/${accountId}/projects/${projectId}/media/${mediaId}`);
     }
 
@@ -370,6 +370,7 @@ export interface SubscriptionManagementResult {
 }
 
 export interface CreateProjectMediaUploadArgs {
+    mediaId?: string;
     provider: string;
     region: string;
     files: CreateTransferFileArgs[];

@@ -1,10 +1,10 @@
-import { Db, Collection } from "mongodb";
+import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
 import { CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs } from '@quickbyte/common';
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
-import { IMediaService, MediaService, MediaWithFile } from "./media-service.js";
+import { IMediaService  } from "./media-service.js";
 import { CreateMediaCommentArgs } from "./comment-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
@@ -123,7 +123,7 @@ export class ProjectService {
         }
     }
 
-    async getMediumById(projectId: string, id: string): Promise<MediaWithFile> {
+    async getMediumById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
         try {
             const project = await this.getByIdInternal(projectId);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
