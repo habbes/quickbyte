@@ -187,7 +187,7 @@ export class ApiClient {
     }
 
     async getProjectMediumById(accountId: string, projectId: string, mediaId: string): Promise<MediaWithFileAndComments> {
-        return this.get<MediaWithFile>(`accounts/${accountId}/projects/${projectId}/media/${mediaId}`);
+        return this.get<MediaWithFileAndComments>(`accounts/${accountId}/projects/${projectId}/media/${mediaId}`);
     }
 
     async createMediaComment(accountId: string, projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<Comment> {
