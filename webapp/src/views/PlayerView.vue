@@ -332,7 +332,7 @@ async function sendComment() {
       mediaId,
       {
         text: commentInputText.value,
-        mediaVersionId: media.value?.preferredVersionId,
+        mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
         timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined
       }
     );

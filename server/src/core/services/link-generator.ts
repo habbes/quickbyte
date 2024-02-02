@@ -16,7 +16,12 @@ export class LinkGenerator {
         return `${this.getProjectUrl(projectId)}/player/${mediaId}`;
     }
 
-    getMediaCommentUrl(projectId: string, mediaId: string, commentId: string) {
-        return `${this.getProjectUrl(projectId)}/player/${mediaId}?comment=${commentId}`
+    getMediaCommentUrl(projectId: string, mediaId: string, commentId: string, versionId?: string) {
+        const base = `${this.getProjectUrl(projectId)}/player/${mediaId}?comment=${commentId}`;
+        if (versionId) {
+            return `${base}&version=${versionId}`;
+        }
+
+        return base;
     }
 }

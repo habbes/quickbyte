@@ -179,7 +179,7 @@ export class ProjectService {
                         recipientName: member.name,
                         projectName: project.name,
                         commentText: comment.text,
-                        url: this.config.links.getMediaCommentUrl(projectId, mediaId, comment._id)
+                        url: this.config.links.getMediaCommentUrl(projectId, mediaId, comment._id, comment.mediaVersionId)
                     })
                 })
             });
