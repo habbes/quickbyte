@@ -95,6 +95,7 @@
               :selectedCommentId="selectedCommentId"
               @clickComment="handleVideoCommentClicked($event)"
               :fileName="file.name"
+              :versionId="selectedVersionId"
               @playBackError="handleMediaPlayBackError($event)"
             />
             <ImageViewer

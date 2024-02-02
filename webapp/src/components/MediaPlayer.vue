@@ -72,8 +72,12 @@
         @click="handleCommentClick(comment)"
         @mouseenter="handleCommentMouseEnter(comment)"
         @mouseleave="handleCommentMouseLeave()"
-        class="h-3 w-3 rounded-full bg-blue-400 border-b border-blue-800 absolute cursor-pointer translate-x-[-50%]"
-        :class="{ 'ring-offset-1 ring-offset-white ring-1': comment._id === selectedCommentId}"
+        class="h-2 w-2 sm:h-3 sm:w-3 rounded-full  absolute cursor-pointer translate-x-[-50%]"
+        :class="{
+          'ring-offset-1 ring-offset-white ring-1': comment._id === selectedCommentId,
+          'bg-blue-400 border-b border-blue-800': !versionId || (comment.mediaVersionId === versionId),
+          'bg-gray-400 border-b border-gray-800': versionId && (comment.mediaVersionId !== versionId)
+          }"
         :style="{ left: `${getPositionFromTime(comment.timestamp)}px`}"
       ></div>
     </div>
@@ -112,6 +116,7 @@ const props = defineProps<{
   selectedCommentId?: string;
   mediaType: 'video'|'audio';
   fileName: string;
+  versionId?: string;
 }>();
 
 const emit = defineEmits<{
