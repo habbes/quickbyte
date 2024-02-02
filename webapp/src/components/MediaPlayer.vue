@@ -6,6 +6,7 @@
     >
       <video
         ref="player"
+        playsinline
         controlslist="nodownload"
         @seeked="$emit('seeked')"
         @play="isPlaying = true"
@@ -72,7 +73,7 @@
         @click="handleCommentClick(comment)"
         @mouseenter="handleCommentMouseEnter(comment)"
         @mouseleave="handleCommentMouseLeave()"
-        class="h-2 w-2 sm:h-3 sm:w-3 rounded-full  absolute cursor-pointer translate-x-[-50%]"
+        class="h-3 w-3 rounded-full  absolute cursor-pointer translate-x-[-50%]"
         :class="{
           'ring-offset-1 ring-offset-white ring-1': comment._id === selectedCommentId,
           'bg-blue-400 border-b border-blue-800': !versionId || (comment.mediaVersionId === versionId),
