@@ -4,8 +4,10 @@
       <div>
         <XMarkIcon class="h-5 w-5 hover:text-white hover:cursor-pointer" @click="closePlayer()" />
       </div>
-      <UiLayout horizontal itemsCenter gapSm>
-        <span class="text-white text-md">{{ media.name }}</span>
+      <UiLayout horizontal itemsCenter gapSm class="overflow-hidden">
+        <div class="max-w-[200px] sm:max-w-max overflow-hidden text-ellipsis">
+          <span :title="file?.name" class="text-white text-md overflow-hidden whitespace-nowrap">{{ file?.name }}</span>
+        </div>
         <MediaPlayerVersionDropdown
           :media="media"
           :selectedVersionId="selectedVersionId"
@@ -15,7 +17,8 @@
       </UiLayout>
       <a class="flex items-center gap-2 hover:text-white" download :href="media.file.downloadUrl">
         <div class="inline-block">
-          <span class="hidden sm:inline">Download </span>{{ humanizeSize(media.file.size) }}
+          <span class="hidden sm:inline">Download </span>
+          <span class="whitespace-nowrap">{{ humanizeSize(media.file.size) }}</span>
         </div>
         <ArrowDownCircleIcon class="h-4 w-4 inline" />
       </a>
@@ -92,6 +95,7 @@
               :selectedCommentId="selectedCommentId"
               @clickComment="handleVideoCommentClicked($event)"
               :fileName="file.name"
+              :versionId="selectedVersionId"
               @playBackError="handleMediaPlayBackError($event)"
             />
             <ImageViewer
@@ -329,7 +333,7 @@ async function sendComment() {
       mediaId,
       {
         text: commentInputText.value,
-        mediaVersionId: media.value?.preferredVersionId,
+        mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
         timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined
       }
     );
