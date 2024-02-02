@@ -18,15 +18,15 @@
       </UiLayout>
     </UiMenuItem>
     <UiMenuItem
-      v-for="(version, index) in media.versions"
-      @click="selectVersion(version._id)"
+      v-for="version in versions"
+      @click="selectVersion(version.version._id)"
     >
       <UiLayout horizontal itemsCenter justifyBetween fullWidth>
-        <UiLayout horizontal fill gapSm itemsCenter>
-          <span class="text-gray-500">v{{ index + 1 }}</span>
-          <span class="text-ellipsis">{{ version.name }}</span>
+        <UiLayout horizontal fill gapSm itemsCenter class="overflow-hidden" :title="version.version.name">
+          <span class="text-gray-500">{{ version.code }}</span>
+          <span class="overflow-hidden whitespace-nowrap text-ellipsis">{{ version.version.name }}</span>
         </UiLayout>
-        <CheckIcon v-if="version._id === selectedVersionId" class="h-4 w-4" />
+        <CheckIcon v-if="version.version._id === selectedVersionId" class="h-4 w-4" />
       </UiLayout>
     </UiMenuItem>
   </UiMenu>
@@ -61,13 +61,23 @@ const updatedVersions = computed(() => {
   return uploadedMedia.value[0].versions;
 });
 
+const versions = computed(() => {
+  // sort in descending chronoligcal order and assign codes such that
+  // the latest version gets code vN and the oldest version v1
+  // TODO: deserialize the date properties in the correct type to avoid converting them here
+  const reversed = [...props.media.versions].sort((v1, v2) => new Date(v2._createdAt).getTime() - new Date(v1._createdAt).getTime());
+  return reversed.map((v, index) => ({
+    version: v,
+    code: `v${reversed.length - index}`
+  }));
+});
+
 watch([uploadState], () => {
   if (uploadState.value === 'complete' && uploadedMedia.value && uploadedMedia.value.length) {
     emit('versionUpload', uploadedMedia.value[0])
   }
 });
 
-// TODO: initiate transfer
 onFilesSelected((selectedFiles, selectedDirectories) => {
   reset();
   showToast(`Uploading ${selectedFiles.length} new ${pluralize('version', selectedFiles.length)}`, 'info');

@@ -152,7 +152,6 @@ const file = computed(() => {
   const version = ensure(media.value.versions.find(v => v._id === selectedVersionId.value),
     `Expected version '${selectedVersionId.value}'' to exist for media '${media.value._id}'.`);
 
-  logger.log('changed to version', version.name, version.file);
   return version.file;
 });
 const comments = ref<CommentWithAuthor[]>([]);
@@ -205,10 +204,11 @@ const timedComments = computed<TimedCommentWithAuthor[]>(() => sortedComments.va
 onMounted(async () => {
   const account = ensure(store.currentAccount.value);
   const queriedCommentId = Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment;
+  const queriedVersionId = Array.isArray(route.query.version) ? route.query.version[0] : route.query.version;
 
   try {
     media.value = await apiClient.getProjectMediumById(account._id, route.params.projectId as string, route.params.mediaId as string);
-    selectedVersionId.value = media.value.preferredVersionId;
+    selectedVersionId.value = queriedVersionId && media.value.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : media.value.preferredVersionId;
     comments.value = media.value.comments;
     if (queriedCommentId) {
       const comment = comments.value.find(c => c._id === queriedCommentId);
@@ -244,12 +244,18 @@ async function handleVersionUpload() {
 };
 
 async function handleSelectVersion(versionId: string) {
-  console.log('changed version to', versionId);
   selectedVersionId.value = versionId;
+  router.push({ query: { ...route.query, version: versionId }});
 }
 
 function seekToComment(comment: CommentWithAuthor) {
-  if (!videoPlayer.value) return;
+  if (!videoPlayer.value) {
+    // if the video ref isn't ready yet (e.g. component just mounted),
+    // wait before we seek
+    nextTick(() => seekToComment(comment));
+    return;
+  }
+
   if (comment.timestamp === null || comment.timestamp === undefined) {
     return;
   }
