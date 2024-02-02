@@ -104,6 +104,7 @@ import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIco
 import Slider from '@/components/ui/Slider.vue';
 import { logger } from '@/app-utils';
 import { getMimeTypeFromFilename } from '@/core/media-types';
+import { nextTick } from 'process';
 
 const props = defineProps<{
   src: string;
@@ -124,17 +125,6 @@ defineExpose({
   pause,
   play,
   getCurrentTime
-});
-
-watch(props, (curr, prev) => {
-  // change in props.src does not to automatically
-  // change the src of the video because we're using the
-  // <source> element to set the source. So we do it
-  // manually here instead.
-  // TODO: how to update the mime type to match the new source?
-  if (curr.src === prev.src) return;
-  if (!player.value) return;
-  player.value.src = props.src;
 });
 
 const player = ref<HTMLMediaElement>();
@@ -158,6 +148,35 @@ const duration = ref(0);
 const isMuted = ref(false);
 const volume = ref(0);
 const prevVolume = ref(0);
+
+watch(props, (curr, prev) => {
+  // change in props.src does not to automatically
+  // change the src of the video because we're using the
+  // <source> element to set the source. So we do it
+  // manually here instead.
+  // TODO: how to update the mime type to match the new source?
+  if (!player.value) return;
+  // just in case the video is currently playing, let's
+  // reset it first before we change the source
+  // otherwise the user might get issues trying to play
+  // the new source
+  const currentTime = player.value.currentTime;
+  pause();
+  seek(0);
+  // change the source in the next tick to ensure
+  // the reset has happened
+  
+  nextTick(() => {
+    if (!player.value) return;
+    player.value.src = curr.src;
+    // seek to the same time where the previous version was playing
+    // at.
+    // TODO: this updates the timestamp but does not update the 
+    // play progress bar until the user clicks the play
+    // button again. Please investigate
+    seek(currentTime);
+  });
+});
 
 watch([volume], (curr, prev) => {
   if (!player.value) return;

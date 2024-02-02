@@ -152,7 +152,6 @@ const file = computed(() => {
   const version = ensure(media.value.versions.find(v => v._id === selectedVersionId.value),
     `Expected version '${selectedVersionId.value}'' to exist for media '${media.value._id}'.`);
 
-  logger.log('changed to version', version.name, version.file);
   return version.file;
 });
 const comments = ref<CommentWithAuthor[]>([]);
