@@ -22,9 +22,9 @@
       @click="selectVersion(version._id)"
     >
       <UiLayout horizontal itemsCenter justifyBetween fullWidth>
-        <UiLayout horizontal fill gapSm itemsCenter>
+        <UiLayout horizontal fill gapSm itemsCenter class="overflow-hidden" :title="version.name">
           <span class="text-gray-500">v{{ index + 1 }}</span>
-          <span class="text-ellipsis">{{ version.name }}</span>
+          <span class="overflow-hidden whitespace-nowrap text-ellipsis">{{ version.name }}</span>
         </UiLayout>
         <CheckIcon v-if="version._id === selectedVersionId" class="h-4 w-4" />
       </UiLayout>
