@@ -126,6 +126,17 @@ defineExpose({
   getCurrentTime
 });
 
+watch(props, (curr, prev) => {
+  // change in props.src does not to automatically
+  // change the src of the video because we're using the
+  // <source> element to set the source. So we do it
+  // manually here instead.
+  // TODO: how to update the mime type to match the new source?
+  if (curr.src === prev.src) return;
+  if (!player.value) return;
+  player.value.src = props.src;
+});
+
 const player = ref<HTMLMediaElement>();
 const progressBar = ref<HTMLDivElement>();
 const isPlaying = ref(false);
