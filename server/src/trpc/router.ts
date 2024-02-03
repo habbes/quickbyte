@@ -1,9 +1,14 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs } from '@quickbyte/common';
 import { query } from 'express';
 import { z } from 'zod';
 
 export const appRouter = router({
+    createUser: publicProcedure
+    .input(CreateUserArgs)
+    .mutation(({ ctx, input }) =>
+        ctx.app.auth.createUser(input)),
+
     getCurrentUserData: protectedProcedure.query(({ ctx }) =>
         ctx.app.accounts.getUserData(ctx.auth)),
     

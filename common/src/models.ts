@@ -30,6 +30,10 @@ export interface BaseUser extends PersistedModel {
     invitedBy?: Principal;
 }
 
+export interface UserDbOnlyFields {
+    password: string;
+}
+
 export interface FullUser extends BaseUser {
     /**
      * ID of the user in Azure AD. No longer user
@@ -61,6 +65,9 @@ export interface GuestUser extends BaseUser {
 }
 
 export type User = FullUser | GuestUser;
+
+export type FullUserInDb = FullUser & UserDbOnlyFields;
+export type UserInDb = FullUserInDb | GuestUser;
 
 export interface UserWithAccount extends FullUser {
     /**
@@ -347,3 +354,13 @@ export type UserAuthMethodResult = {
 } | {
     exists: false;
 }
+
+export interface UserVerification extends PersistedModel {
+    code: string;
+    type: UserVerificationType;
+    expiresAt: Date;
+    userId: string;
+    email: string;
+}
+
+export type UserVerificationType = 'email';

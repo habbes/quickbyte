@@ -4,9 +4,9 @@ import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
-import { EmailHandler, IAlertService, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
+import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
@@ -14,8 +14,9 @@ import * as bcrypt from "bcrypt";
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core'
 import * as zxcvbnCommonPackage from '@zxcvbn-ts/language-common'
 import * as zxcvbnEnPackage from '@zxcvbn-ts/language-en'
+import { randomInt } from 'node:crypto';
 
-const password = 'somePassword'
+
 const options = {
   dictionary: {
     ...zxcvbnCommonPackage.dictionary,
@@ -63,7 +64,7 @@ export class AuthService {
     private authConfig: AuthConfig;
     private jwksClient: JwksClient;
     private msalClient: ConfidentialClientApplication;
-    private usersCollection: Collection<User>;
+    private usersCollection: Collection<UserInDb>;
 
     constructor(private db: Database, private args: AuthServiceArgs) {
         this.authConfig = {
@@ -133,15 +134,17 @@ export class AuthService {
 
             const password = await validateAndHashPassword(args);
 
-            const user: FullUser = {
+            let fullUser: FullUserInDb = {
                 ...createPersistedModel({ type: 'system', _id: 'system'}),
                 name: args.name,
                 email: args.email,
-                password, // TODO hash password
+                password,
                 verified: false
             };
 
-            await this.usersCollection.insertOne(user);
+            await this.usersCollection.insertOne(fullUser);
+            const user = getSafeUser(fullUser) as FullUserInDb;
+            
             const account = await this.args.accounts.getOrCreateByOwner(user._id);
 
             const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account` } }
@@ -150,6 +153,8 @@ export class AuthService {
             if (sub) {
                 userWithAccount.account.subscription = sub;
             }
+
+            await this.createEmailVerification(user._id, user.email, user.name);
 
             return userWithAccount;
         } catch (e: any) {
@@ -363,9 +368,45 @@ export class AuthService {
         }
     }
 
+    private async createEmailVerification(userId: string, email: string, name?: string) {
+        
+        try {
+            const code = generateVerificationCode();
+            const validity = 60 * 1000; // 1hr
+            const expiresAt = new Date(Date.now() + validity);
+
+            const verification: UserVerification = {
+                ...createPersistedModel({ type: 'system', _id: 'system' }),
+                code,
+                userId,
+                type: 'email',
+                email,
+                expiresAt
+            };
+
+            // we allow more than one active verification per user.
+            // since we only need an email to request verification,
+            // an attacker who knows the email can send repeated
+            // verifications, invalidating previous ones, making it
+            // impossible for the account owner to validate a verification code
+            await this.db.userVerifications().insertOne(verification);
+
+            await this.args.email.sendEmail({
+                to: { email, name },
+                subject: `Here's your verification code ${code}`,
+                message: createEmailVerificationEmail({ code })
+            })
+            return verification;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' | 'verifyTokenAndGetUser' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' | 'verifyTokenAndGetUser' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {
@@ -383,6 +424,17 @@ function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     }
 
     return uniqueName;
+}
+
+function getSafeUser(user: UserInDb): User {
+    if ('password' in user) {
+        const safeUser = { ...user };
+        // @ts-ignore
+        delete safeUser.password;
+        return safeUser;
+    }
+
+    return user;
 }
 
 function hashPassword(plaintext: string): Promise<string> {
@@ -406,8 +458,8 @@ function checkPasswordStrength(password: string, args: CreateUserArgs) {
 async function validateAndHashPassword(args: CreateUserArgs): Promise<string> {
     const passwordStrengh = checkPasswordStrength(args.password, args);
     if (!passwordStrengh.isStrong) {
-        if (passwordStrengh.feedback) {
-            throw createValidationError(`You entered a weak password: ${passwordStrengh.feedback}`);
+        if (passwordStrengh.feedback.warning) {
+            throw createValidationError(`You entered a weak password: ${passwordStrengh.feedback.warning}`);
         }
 
         throw createValidationError("You entered a weak password");
@@ -415,6 +467,17 @@ async function validateAndHashPassword(args: CreateUserArgs): Promise<string> {
 
     const password = await hashPassword(args.password);
     return password;
+}
+
+function generateVerificationCode(): string {
+    const result = [];
+    const length = 6;
+    for (let i = 0; i < length; i++)
+    {
+        result.push(randomInt(0, 10));
+    }
+    
+    return result.join('');
 }
 
 export interface AuthServiceArgs {
