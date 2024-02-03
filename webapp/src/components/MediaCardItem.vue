@@ -17,7 +17,7 @@
         class="h-12 border-t border-t-[#5e5e8b] bg-[#38364e] flex justify-between flex-row items-center p-2 text-white overflow-hidden"
         :title="media.name"
       >
-        <div class="flex-1 text-ellipsis">
+        <div class="flex-1 text-ellipsis whitespace-nowrap overflow-hidden">
           <router-link
             :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
           >
