@@ -1,5 +1,5 @@
 <template>
-  <AuthShell title="Create new account">
+  <AuthShell v-if="!verificationStep" title="Create new account">
     <form class="flex flex-col gap-4 mb-4" @submit.prevent="handleContinue()">
       <UiTextInput
         ref="emailInput"
@@ -30,13 +30,16 @@
       </div>
     </form>
   </AuthShell>
+  <EmailVerificationStep v-else-if="user" :user="user" />
 </template>
 <script lang="ts" setup>
 import { nextTick, onMounted, ref } from 'vue';
 import { useRoute } from "vue-router";
 import { UiButton, UiTextInput } from '@/components/ui';
 import AuthShell from './AuthShell.vue';
+import EmailVerificationStep from './EmailVerificationStep.vue';
 import { logger, showToast, trpcClient } from '@/app-utils';
+import type { User, UserWithAccount }from "@quickbyte/common";
 
 const email = ref<string>();
 const password = ref<string>();
@@ -45,6 +48,8 @@ const loading = ref(false);
 const nameInput = ref<typeof UiTextInput>();
 const emailInput = ref<typeof UiTextInput>();
 const route = useRoute();
+const user = ref<UserWithAccount>();
+const verificationStep = ref(false);
 
 onMounted(() => {
   const queryEmail = Array.isArray(route.query.email) ? route.query.email[0] : route.query.email;
@@ -62,14 +67,14 @@ async function handleContinue() {
   try {
     loading.value = true;
 
-    const result = await trpcClient.createUser.mutate({
+    user.value = await trpcClient.createUser.mutate({
       name: name.value,
       email: email.value,
       password: password.value
     });
 
-    console.log('created user', result);
-
+    // we expect the created user to be unverified,
+    verificationStep.value = true;
   }
   catch (e: any) {
     showToast(e.message, 'error');
