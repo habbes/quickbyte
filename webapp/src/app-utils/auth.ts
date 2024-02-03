@@ -1,12 +1,9 @@
 import { LogLevel } from "@azure/msal-browser";
-import { ref } from "vue";
-import { AuthHandler, type User } from '@/core';
+import { AuthHandler } from '@/core';
 import { clearData } from './store';
 import { logger } from './logger';
 import { router } from '../router';
 import { trpcClient } from ".";
-
-const user = ref<User|undefined>();
 
 /**
  * Configuration object to be passed to MSAL instance on creation. 
@@ -58,8 +55,3 @@ export const auth = new AuthHandler({
     apiClient: trpcClient,
     router: router
 });
-
-
-export function useUser() {
-    return user;
-}

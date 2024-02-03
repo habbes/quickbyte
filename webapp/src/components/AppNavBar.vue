@@ -104,7 +104,7 @@
   
 <script setup lang='ts'>
 import { ref, computed } from 'vue';
-import { useUser, auth, store } from '@/app-utils';
+import { auth, store } from '@/app-utils';
 import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
 import NotificationsMenu from '@/components/NotificationsMenu.vue';
 import AccountsDropdown from './AccountSwitcherMenu.vue';
@@ -112,7 +112,7 @@ import { layoutDimensions } from '@/styles/dimentions.js';
 import { ChevronUpDownIcon, ArrowLeftStartOnRectangleIcon, StarIcon, CreditCardIcon } from '@heroicons/vue/24/solid';
 import RequireAccountOwner from './RequireAccountOwner.vue';
 
-const user = useUser();
+const user = store.user;
 const account = store.currentAccount;
 
 /*

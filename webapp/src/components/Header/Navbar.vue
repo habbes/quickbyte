@@ -73,12 +73,12 @@
 
 <script setup lang='ts'>
 import { computed } from 'vue';
-import { useUser } from '@/app-utils';
+import { store } from '@/app-utils';
 import FeaturebaseChangelog from '@/components/FeaturebaseChangelog.vue';
 import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
 import { layoutDimensions } from '@/styles/dimentions.js';
 
-const user = useUser();
+const user = store.user;
 
 const navLinks = computed(() => {
   if (!user.value) {

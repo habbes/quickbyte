@@ -2,19 +2,26 @@ import { Logger } from './logger';
 import type { Router } from "vue-router";
 import type { TrpcApiClient } from ".";
 import type { AuthToken } from '@quickbyte/common';
+import { computed, ref } from 'vue';
+import type { init } from '@sentry/vue';
 
 // full token object
 const TOKEN_OBJECT_STORAGE_KEY = "authToken";
 // token code
 const TOKEN_CODE_STORAGE_KEY = "accessToken";
 
-export class AuthHandler {
 
+export class AuthHandler {
+    private authenticated =  ref<boolean>(false);
     constructor(private config: AuthClientConfig) {
     }
 
     async signIn(nextUrl?: string): Promise<void> {
         return this.makeSignInRequest(nextUrl);
+    }
+
+    init() {
+        this.authenticated.value = !!localStorage.getItem(TOKEN_CODE_STORAGE_KEY);
     }
 
     /**
@@ -41,6 +48,7 @@ export class AuthHandler {
         this.clearLocalSession();
         this.config.onSignOut && this.config.onSignOut();
 
+        this.authenticated.value = false;
         this.config.router.push({ name: 'login' });
     }
 
@@ -57,6 +65,11 @@ export class AuthHandler {
         const serialized = JSON.stringify(token);
         localStorage.setItem(TOKEN_OBJECT_STORAGE_KEY, serialized);
         localStorage.setItem(TOKEN_CODE_STORAGE_KEY, token.code);
+        this.authenticated.value = true;
+    }
+
+    isAuthenticated() {
+        return computed(() => this.authenticated.value);
     }
 
     /**
