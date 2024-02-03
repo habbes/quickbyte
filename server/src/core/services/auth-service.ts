@@ -4,7 +4,7 @@ import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
@@ -14,7 +14,7 @@ import * as bcrypt from "bcrypt";
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core'
 import * as zxcvbnCommonPackage from '@zxcvbn-ts/language-common'
 import * as zxcvbnEnPackage from '@zxcvbn-ts/language-en'
-import { randomInt } from 'node:crypto';
+import { randomInt, randomBytes } from 'node:crypto';
 
 
 const options = {
@@ -204,7 +204,7 @@ export class AuthService {
             });
 
             if (!result.value) {
-                throw createInvalidAppStateError(`Expected user '${args.userId}' to exist after verification '${verification._id}'`);
+                throw createInvalidAppStateError(`Expected user '${args.userId}' to exist after verification.`);
             }
 
             return getSafeUser(result.value) as FullUser;
@@ -214,67 +214,84 @@ export class AuthService {
         }
     }
 
-    /**
-     * Verifies whether the specified auth token is valid.
-     * Throws an authentication error if the token cannot be validated.
-     * @param token 
-     */
-    async verifyToken(token: string): Promise<void> {
-        const validationOptions = {
-            audience: `api://${this.args.aadClientId}`,
-            // issuer: `${this.authConfig.authOptions.authority}/v2.0`
-        };
-
-        const getSigningKey: GetPublicKeyOrSecret = (header, callback) => {
-            this.jwksClient.getSigningKey(header.kid, (err, result) => {
-                callback(err, result?.getPublicKey())
+    async login(args: LoginRequestArgs): Promise<UserAndToken> {
+        try {
+            const unsafeUser = await this.db.users().findOne({
+                email: args.email
             });
+
+            if (!unsafeUser) {
+                throw createAuthError("Invalid email or password");
+            }
+
+            if (!('password' in unsafeUser)) {
+                // This is either a guest user or an old account
+                // from before we implemented in-house auth solution
+                throw createAuthError("Invalid email or password");
+            }
+
+            const passwordCorrect = await verifyPassword(args.password, unsafeUser.password);
+            if (!passwordCorrect) {
+                throw createAuthError("Invalid email or password");
+            }
+
+            const user = getSafeUser(unsafeUser) as FullUser;
+
+            if (!user.verified) {
+                // We currently don't allow users to access the app without verifying their email
+                await this.createEmailVerification(user._id, user.email, user.name);
+                return { user };
+            }
+
+            const authToken = await this.createAuthToken(user._id, args);
+
+            const userWithAccount = await this.getUserAccountAndSub(user);
+
+            return {
+                authToken,
+                user: userWithAccount
+            };
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
         }
-
-        await new Promise<void>((resolve, reject) => {
-            jwt.verify(token, getSigningKey, validationOptions, (err, payload) => {
-                if (err) {
-                    if (isAppError(err)) {
-                        reject(err);
-                        return;
-                    }
-
-                    reject(createAuthError(err));
-                    return;
-                }
-
-                resolve();
-            })
-        });
     }
 
-    async getUserByToken(token: string): Promise<UserWithAccount> {
-        const parsed = jwt.decode(token, { complete: true });
-        if (!parsed) {
-            throw createAuthError("Invalid token");
+    async logoutToken(code: string): Promise<void> {
+        try {
+            await this.db.authTokens().deleteOne({ code });
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
         }
-
-        if (typeof parsed.payload === 'string') {
-            throw createAuthError("Invalid token");
-        }
-
-        const user = await this.getOrCreateUser(parsed.payload);
-        const account = await this.args.accounts.getOrCreateByOwner(user._id);
-
-        const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account` } }
-
-        const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription();
-        if (sub) {
-            userWithAccount.account.subscription = sub;
-        }
-
-        return userWithAccount;
     }
 
-    async verifyTokenAndGetUser(token: string): Promise<UserWithAccount> {
-        await this.verifyToken(token);
-        const user = await this.getUserByToken(token);
-        return user;
+    async getUserByToken(code: string): Promise<UserWithAccount> {
+        try {
+            const token = await this.db.authTokens().findOne({
+                code,
+                expiresAt: { $gt: new Date() }
+            });
+
+            if (!token) {
+                throw createAuthError("Invalid token. Please login again.");
+            }
+
+            const user = await this.db.users().findOne({ _id: token.userId }, { projection: { password: 0 } });
+            if (!user) {
+                throw createInvalidAppStateError(`Expected user '${token.userId}' to exist for token '${token._id}'.`);
+            }
+
+            if (user.isGuest) {
+                throw createInvalidAppStateError(`Did not expect user '${user._id}' to be guest when acquired token '${token._id}'`);
+            }
+
+            const userWithAccount = await this.getUserAccountAndSub(user);
+            return userWithAccount;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 
     async getUserById(id: string): Promise<UserWithAccount> {
@@ -362,62 +379,42 @@ export class AuthService {
         }
     }
 
-    /**
-     * 
-     * @param data
-     * @deprecated
-     */
-    private async getOrCreateUser(data: jwt.JwtPayload): Promise<FullUser> {
-        const email: string = getEmailFromJwt(data);
-        const aadId: string = data.oid;
-        const name: string = data.name;
-
+    private async getUserAccountAndSub(user: FullUser): Promise<UserWithAccount> {
         try {
-            const existingUser = await this.usersCollection.findOne({ email: email, aadId: aadId });
-            if (existingUser && !existingUser.isGuest) {
-                return existingUser;
-            }
+            const account = await this.args.accounts.getOrCreateByOwner(user._id);
+            const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account` } }
 
-            if (existingUser && existingUser.isGuest) {
-                throw createAppError('Upgrading guest to full user not yet supported.');
+            const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription();
+            if (sub) {
+                userWithAccount.account.subscription = sub;
             }
+            return userWithAccount;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
 
-            const newUser: User = {
-                ...createPersistedModel({ type: 'system', _id: 'system' }),
-                email,
-                aadId,
-                name: name || email
+    private async createAuthToken(userId: string, args: LoginRequestArgs) {
+        try {
+            const code = generateAuthTokenCode();
+            const validity = 7 * 60 * 60 * 1000; // 7 days
+            const token: AuthToken = {
+                ...createPersistedModel({ type: 'user', _id: userId }),
+                code,
+                userId,
+                ip: args.ip,
+                userAgent: args.userAgent,
+                countryCode: args.countryCode,
+                expiresAt: new Date(Date.now() + validity)
             };
 
-            await this.usersCollection.insertOne(newUser);
-            await this.args.accounts.getOrCreateByOwner(newUser._id);
+            await this.db.authTokens().insertOne(token);
 
-            // we don't want to fail operation due to an email failure
-            // so we don't await it
-            this.args.email.sendEmail({
-                to: { email: newUser.email, name: newUser.name },
-                subject: 'Welcome to Quickbyte!',
-                message: createWelcomeEmail(newUser.name, this.args.webappBaseUrl)
-            }).catch(e => {
-                console.error(`Error sending welcome email`, e);
-            });
-
-            this.args.adminAlerts.sendNotification(
-                'New user',
-                `New user signed up:<br>Name: ${newUser.name}<br>Email: ${newUser.email}`
-            ).catch(e => {
-                console.error('Failed to send new user alert', e);
-            });
-
-            return newUser;
-        }
-        catch (e: any) {
-            if (isMongoDuplicateKeyError(e)) {
-                throw createResourceConflictError(e);
-            }
-
+            return token;
+        } catch (e: any) {
             rethrowIfAppError(e);
-            throw createDbError(e);
+            throw createAppError(e);
         }
     }
 
@@ -458,7 +455,7 @@ export class AuthService {
     }
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' | 'verifyTokenAndGetUser' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'|'verifyUserEmail'|'requestUserVerificationEmail'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'|'verifyUserEmail'|'requestUserVerificationEmail'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {
@@ -530,6 +527,10 @@ function generateVerificationCode(): string {
     }
     
     return result.join('');
+}
+
+function generateAuthTokenCode(): string {
+    return randomBytes(2048).toString('base64');
 }
 
 export interface AuthServiceArgs {

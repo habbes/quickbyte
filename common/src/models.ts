@@ -364,3 +364,19 @@ export interface UserVerification extends PersistedModel {
 }
 
 export type UserVerificationType = 'email';
+
+export interface AuthToken extends PersistedModel {
+    code: string;
+    userId: string;
+    expiresAt: Date;
+    ip?: string;
+    countryCode?: string;
+    userAgent?: string;
+}
+
+export type UserAndToken = {
+    user: FullUser;
+} | {
+    authToken: AuthToken,
+    user: UserWithAccount
+}

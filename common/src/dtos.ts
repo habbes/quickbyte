@@ -1,4 +1,4 @@
-import { string, z } from "zod";
+import { z } from "zod";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -111,3 +111,13 @@ export const RequestUserVerificationEmailArgs = z.object({
 });
 
 export type RequestUserVerificationEmailArgs = z.infer<typeof RequestUserVerificationEmailArgs>;
+
+export const LoginRequestArgs = z.object({
+    email: z.string().email(),
+    password: z.string(),
+    ip: z.string().optional(),
+    countryCode: z.string().optional(),
+    userAgent: z.string().optional()
+});
+
+export type LoginRequestArgs = z.infer<typeof LoginRequestArgs>;
