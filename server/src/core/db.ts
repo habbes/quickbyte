@@ -25,6 +25,10 @@ export class Database {
     transfers = () => this.db.collection<DbTransfer>('transfers');
 
     downloads = () => this.db.collection<DownloadRequest>('downloads');
+
+    async initialize() {
+        await this.users().createIndex('email', { unique: true });
+    }
 }
 
 // TODO: this is temporary, until we add names to accounts

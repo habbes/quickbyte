@@ -87,3 +87,12 @@ export const CheckUserAuthMethodArgs = z.object({
 });
 
 export type CheckUserAuthMethodArgs = z.infer<typeof CheckUserAuthMethodArgs>;
+
+
+export const CreateUserArgs = z.object({
+    email: z.string().email(),
+    name: z.string().min(1),
+    password: z.string().min(1)
+});
+
+export type CreateUserArgs = z.infer<typeof CreateUserArgs>;

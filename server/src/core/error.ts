@@ -28,7 +28,11 @@ export type ErrorCode =
  * @param error
  * @param key
  */
-export function isMongoDuplicateKeyError(error: MongoError, key?: any): boolean {
+export function isMongoDuplicateKeyError(error: unknown, key?: any): boolean {
+    if (!(error instanceof MongoError)) {
+        return false;
+    }
+
     const MONGO_ERROR_DUPLICATE_KEY = 11000;
 
     if (error.code !== MONGO_ERROR_DUPLICATE_KEY) {

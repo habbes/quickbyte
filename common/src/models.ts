@@ -31,8 +31,29 @@ export interface BaseUser extends PersistedModel {
 }
 
 export interface FullUser extends BaseUser {
-    aadId: string;
+    /**
+     * ID of the user in Azure AD. No longer user
+     * for new user accounts.
+     * @deprecated
+     */
+    aadId?: string;
     isGuest?: false|undefined;
+    /**
+     * This field was introduced when migrating from Azure AD to a custom
+     * auth implementation. Users that already existed in the db
+     * at that point did not have the verified field even though
+     * they were technically verified by AAD.
+     * For backwards compatibility, we consider users verified when
+     * either this field is set to true or when aadId is set.
+     */
+    verified?: boolean;
+    /**
+     * Password is optional because we did not handle user password before
+     * migrating from Azure AD. But each new user account requires a password.
+     * Older accounts will need to create a password through the password reset
+     * flow before they can access their accounts again.
+     */
+    password?: string;
 }
 
 export interface GuestUser extends BaseUser {
@@ -322,6 +343,7 @@ export interface ProjectMember {
 export type UserAuthMethodResult = {
     exists: true;
     provider: 'email'|'google';
+    verified: boolean;
 } | {
     exists: false;
 }

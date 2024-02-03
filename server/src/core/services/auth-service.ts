@@ -1,15 +1,30 @@
-import { Collection, } from "mongodb";
+import { Collection, MongoError, } from "mongodb";
 import msal, { ConfidentialClientApplication, ICachePlugin } from "@azure/msal-node";
 import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
-import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
+import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
+import * as bcrypt from "bcrypt";
+import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core'
+import * as zxcvbnCommonPackage from '@zxcvbn-ts/language-common'
+import * as zxcvbnEnPackage from '@zxcvbn-ts/language-en'
+
+const password = 'somePassword'
+const options = {
+  dictionary: {
+    ...zxcvbnCommonPackage.dictionary,
+    ...zxcvbnEnPackage.dictionary,
+  },
+  graphs: zxcvbnCommonPackage.adjacencyGraphs,
+  translations: zxcvbnEnPackage.translations,
+}
+zxcvbnOptions.setOptions(options)
 
 // We use AAD on-behalf-of flow for authentication:
 // https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
@@ -86,10 +101,15 @@ export class AuthService {
         try {
             console.log('here', args);
             const user = await this.usersCollection.findOne({ email: args.email });
-            if (user) {
+            if (user && !user.isGuest) {
+                // users that we created through Azure AD before we migrated to a custom
+                // auth solution are considered verified
+                const verified = user.verified || user.aadId ? true : false;
                 return {
                     exists: true,
-                    provider: 'email'
+                    // TODO: support email provider
+                    provider: 'email',
+                    verified
                 }
             };
 
@@ -98,6 +118,45 @@ export class AuthService {
             }
         }
         catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async createUser(args: CreateUserArgs): Promise<UserWithAccount> {
+        try {
+            const existingUser = await this.usersCollection.findOne({ email: args.email });
+            if (existingUser && existingUser.isGuest) {
+                // TODO: handle guest user upgrade
+                throw createAppError("Upgrading guest user to full user not yet supported");
+            }
+
+            const password = await validateAndHashPassword(args);
+
+            const user: FullUser = {
+                ...createPersistedModel({ type: 'system', _id: 'system'}),
+                name: args.name,
+                email: args.email,
+                password, // TODO hash password
+                verified: false
+            };
+
+            await this.usersCollection.insertOne(user);
+            const account = await this.args.accounts.getOrCreateByOwner(user._id);
+
+            const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account` } }
+
+            const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription();
+            if (sub) {
+                userWithAccount.account.subscription = sub;
+            }
+
+            return userWithAccount;
+        } catch (e: any) {
+            if (isMongoDuplicateKeyError(e, 'email')) {
+                throw createResourceConflictError("The email you entered is already taken.");
+            }
+
             rethrowIfAppError(e);
             throw createAppError(e);
         }
@@ -324,6 +383,38 @@ function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     }
 
     return uniqueName;
+}
+
+function hashPassword(plaintext: string): Promise<string> {
+    return bcrypt.hash(plaintext, 10);
+}
+
+function verifyPassword(plaintext: string, hashed: string): Promise<boolean> {
+    return bcrypt.compare(plaintext, hashed);
+}
+
+function checkPasswordStrength(password: string, args: CreateUserArgs) {
+    const result = zxcvbn(password, [args.email, args.name]);
+    const isStrong = result.score >= 3;
+    const feedback = result.feedback;
+    return {
+        isStrong,
+        feedback
+    };
+}
+
+async function validateAndHashPassword(args: CreateUserArgs): Promise<string> {
+    const passwordStrengh = checkPasswordStrength(args.password, args);
+    if (!passwordStrengh.isStrong) {
+        if (passwordStrengh.feedback) {
+            throw createValidationError(`You entered a weak password: ${passwordStrengh.feedback}`);
+        }
+
+        throw createValidationError("You entered a weak password");
+    }
+
+    const password = await hashPassword(args.password);
+    return password;
 }
 
 export interface AuthServiceArgs {
