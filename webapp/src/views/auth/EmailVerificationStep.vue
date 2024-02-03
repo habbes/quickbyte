@@ -19,12 +19,12 @@ import { ref } from 'vue';
 import { UiButton, UiTextInput } from '@/components/ui';
 import AuthShell from './AuthShell.vue';
 import { logger, showToast, trpcClient } from '@/app-utils';
-import type { UserWithAccount } from '@quickbyte/common';
+import type { FullUser } from '@quickbyte/common';
 import { loginUserFromToken } from './auth-helpers';
 import { useRouter } from 'vue-router';
 
 const props = defineProps<{
-  user: UserWithAccount,
+  user: FullUser,
   /**
    * Password used to automatically
    * log the user in after email verification

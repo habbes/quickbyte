@@ -33,7 +33,7 @@
       Already have an account? <router-link :to="{ name: 'login' }" class="underline">Log in</router-link>.
     </div>
   </AuthShell>
-  <EmailVerificationStep v-else-if="user" :user="user" :password="password"/>
+  <EmailVerificationStep v-else-if="user && password" :user="user" :password="password"/>
 </template>
 <script lang="ts" setup>
 import { nextTick, onMounted, ref } from 'vue';
@@ -42,7 +42,7 @@ import { UiButton, UiTextInput } from '@/components/ui';
 import AuthShell from './AuthShell.vue';
 import EmailVerificationStep from './EmailVerificationStep.vue';
 import { logger, showToast, trpcClient } from '@/app-utils';
-import type { User }from "@quickbyte/common";
+import type { FullUser }from "@quickbyte/common";
 
 const email = ref<string>();
 const password = ref<string>();
@@ -51,7 +51,7 @@ const loading = ref(false);
 const nameInput = ref<typeof UiTextInput>();
 const emailInput = ref<typeof UiTextInput>();
 const route = useRoute();
-const user = ref<User>();
+const user = ref<FullUser>();
 const verificationStep = ref(false);
 
 onMounted(() => {

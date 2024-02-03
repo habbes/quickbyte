@@ -11,7 +11,7 @@
       Don't have an account? <router-link :to="{ name: 'signup' }" class="underline">Sign up</router-link>.
     </div>
   </AuthShell>
-  <EmailVerificationStep v-else-if="user && !user.verified" :user="user" :password="password" />
+  <EmailVerificationStep v-else-if="user && !user.verified && password" :user="user" :password="password" />
 </template>
 <script lang="ts" setup>
 import { nextTick, ref } from 'vue';
