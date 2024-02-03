@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs } from '@quickbyte/common';
 import { query } from 'express';
 import { z } from 'zod';
 
@@ -46,6 +46,16 @@ export const appRouter = router({
     .input(CheckUserAuthMethodArgs)
     .query(({ input, ctx }) => 
         ctx.app.auth.getAuthMethod(input)),
+    
+    verifyUserEmail: publicProcedure
+    .input(VerifyUserEmailArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.auth.verifyUserEmail(input)),
+
+    requestEmailVerification: publicProcedure
+    .input(RequestUserVerificationEmailArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.auth.requestUserVerificationEmail(input))
     
 });
 

@@ -29,6 +29,9 @@
         <UiButton primary fill submit :loading="loading">Continue</UiButton>
       </div>
     </form>
+    <div class="text-sm text-gray-600 mt-2 mb-2">
+      Already have an account? <router-link :to="{ name: 'login' }" class="underline">Log in</router-link>.
+    </div>
   </AuthShell>
   <EmailVerificationStep v-else-if="user" :user="user" />
 </template>
@@ -39,7 +42,7 @@ import { UiButton, UiTextInput } from '@/components/ui';
 import AuthShell from './AuthShell.vue';
 import EmailVerificationStep from './EmailVerificationStep.vue';
 import { logger, showToast, trpcClient } from '@/app-utils';
-import type { User, UserWithAccount }from "@quickbyte/common";
+import type { User }from "@quickbyte/common";
 
 const email = ref<string>();
 const password = ref<string>();
@@ -48,7 +51,7 @@ const loading = ref(false);
 const nameInput = ref<typeof UiTextInput>();
 const emailInput = ref<typeof UiTextInput>();
 const route = useRoute();
-const user = ref<UserWithAccount>();
+const user = ref<User>();
 const verificationStep = ref(false);
 
 onMounted(() => {

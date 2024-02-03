@@ -21,6 +21,9 @@
         <UiButton primary fill submit :loading="loading">Continue</UiButton>
       </div>
     </form>
+    <div class="text-sm text-gray-600 mt-2 mb-2">
+      Don't have an account? <router-link :to="{ name: 'signup' }" class="underline">Sign up</router-link>.
+    </div>
   </AuthShell>
 </template>
 <script lang="ts" setup>

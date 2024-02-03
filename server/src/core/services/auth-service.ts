@@ -4,7 +4,7 @@ import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
@@ -124,7 +124,7 @@ export class AuthService {
         }
     }
 
-    async createUser(args: CreateUserArgs): Promise<UserWithAccount> {
+    async createUser(args: CreateUserArgs): Promise<FullUser> {
         try {
             const existingUser = await this.usersCollection.findOne({ email: args.email });
             if (existingUser && existingUser.isGuest) {
@@ -143,25 +143,72 @@ export class AuthService {
             };
 
             await this.usersCollection.insertOne(fullUser);
-            const user = getSafeUser(fullUser) as FullUserInDb;
-            
-            const account = await this.args.accounts.getOrCreateByOwner(user._id);
-
-            const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account` } }
-
-            const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription();
-            if (sub) {
-                userWithAccount.account.subscription = sub;
-            }
+            const user = getSafeUser(fullUser) as FullUser;
 
             await this.createEmailVerification(user._id, user.email, user.name);
-
-            return userWithAccount;
+            return user;
         } catch (e: any) {
             if (isMongoDuplicateKeyError(e, 'email')) {
                 throw createResourceConflictError("The email you entered is already taken.");
             }
 
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async requestUserVerificationEmail(args: RequestUserVerificationEmailArgs): Promise<void> {
+        try {
+            const user = await this.usersCollection.findOne({
+                _id: args.userId,
+                email: args.email
+            }, {
+                projection: { password: 0}
+            });
+
+            if (!user) {
+                throw createResourceNotFoundError("User not found");
+            }
+
+            await this.createEmailVerification(user._id, user.email, user.name);
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async verifyUserEmail(args: VerifyUserEmailArgs): Promise<FullUser> {
+        try {
+            const verificationResult = await this.db.userVerifications().findOneAndDelete({
+                userId: args.userId,
+                code: args.code,
+                type: 'email',
+                expiresAt: { $gt: new Date() }
+            });
+            console.log('verification', verificationResult);
+            if (!verificationResult.value) {
+                throw createAuthError("Invalid verification code");
+            }
+
+            const result = await this.db.users().findOneAndUpdate({
+                _id: args.userId
+            }, {
+                $set: {
+                    verified: true,
+                    updatedAt: new Date(),
+                    updatedBy: { type: 'system', _id: 'system' }
+                }
+            }, {
+                returnDocument: 'after',
+                projection: { password: 0 }
+            });
+
+            if (!result.value) {
+                throw createInvalidAppStateError(`Expected user '${args.userId}' to exist after verification '${verification._id}'`);
+            }
+
+            return getSafeUser(result.value) as FullUser;
+        } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
@@ -315,6 +362,11 @@ export class AuthService {
         }
     }
 
+    /**
+     * 
+     * @param data
+     * @deprecated
+     */
     private async getOrCreateUser(data: jwt.JwtPayload): Promise<FullUser> {
         const email: string = getEmailFromJwt(data);
         const aadId: string = data.oid;
@@ -364,6 +416,7 @@ export class AuthService {
                 throw createResourceConflictError(e);
             }
 
+            rethrowIfAppError(e);
             throw createDbError(e);
         }
     }
@@ -372,7 +425,7 @@ export class AuthService {
         
         try {
             const code = generateVerificationCode();
-            const validity = 60 * 1000; // 1hr
+            const validity = 60 * 60 * 1000; // 1hr
             const expiresAt = new Date(Date.now() + validity);
 
             const verification: UserVerification = {
@@ -403,10 +456,9 @@ export class AuthService {
             throw createAppError(e);
         }
     }
-
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' | 'verifyTokenAndGetUser' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' | 'verifyTokenAndGetUser' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'|'verifyUserEmail'|'requestUserVerificationEmail'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {

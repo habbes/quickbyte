@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { string, z } from "zod";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -96,3 +96,18 @@ export const CreateUserArgs = z.object({
 });
 
 export type CreateUserArgs = z.infer<typeof CreateUserArgs>;
+
+export const VerifyUserEmailArgs = z.object({
+    code: z.string().min(1),
+    userId: z.string().min(1)
+});
+
+export type VerifyUserEmailArgs = z.infer<typeof VerifyUserEmailArgs>;
+
+export const RequestUserVerificationEmailArgs = z.object({
+    userId: z.string().min(1),
+    email: z.string().email().min(1),
+    // todo: should we require password to request email verification
+});
+
+export type RequestUserVerificationEmailArgs = z.infer<typeof RequestUserVerificationEmailArgs>;
