@@ -1,12 +1,12 @@
 import { Db } from 'mongodb';
-import { Account, Project, User, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest } from './models.js';
+import { Account, Project, User, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken } from './models.js';
 
 
 export class Database {
     constructor(public readonly db: Db) {
     }
 
-    users = () => this.db.collection<User>('users');
+    users = () => this.db.collection<UserInDb>('users');
 
     roles = () => this.db.collection<UserRole>('roles');
 
@@ -25,6 +25,16 @@ export class Database {
     transfers = () => this.db.collection<DbTransfer>('transfers');
 
     downloads = () => this.db.collection<DownloadRequest>('downloads');
+
+    userVerifications = () => this.db.collection<UserVerification>('user_verifications');
+
+    authTokens = () => this.db.collection<AuthToken>('auth_tokens');
+
+    async initialize() {
+        await this.users().createIndex('email', { unique: true });
+
+        await this.authTokens().createIndex('code', { unique: true });
+    }
 }
 
 // TODO: this is temporary, until we add names to accounts

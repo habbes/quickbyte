@@ -1,5 +1,5 @@
 import { CreateExpressContextOptions } from "@trpc/server/adapters/express";
-import { AppServices, IAlertService, initBackgroundErrorNotificationService } from "../core/index.js";
+import { AppServices, initBackgroundErrorNotificationService } from "../core/index.js";
 
 export function createContextFactory(app: AppServices) {
 
@@ -14,7 +14,7 @@ export function createContextFactory(app: AppServices) {
         let user = undefined;
 
         try {
-            user = await app.auth.verifyTokenAndGetUser(token);
+            user = await app.auth.getUserByToken(token);
         } catch {
 
         }

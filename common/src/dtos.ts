@@ -81,3 +81,43 @@ export const CreateProjectMediaUploadArgs = z.object({
 });
 
 export type CreateProjectMediaUploadArgs = z.infer<typeof CreateProjectMediaUploadArgs>;
+
+export const CheckUserAuthMethodArgs = z.object({
+    email: z.string().email()
+});
+
+export type CheckUserAuthMethodArgs = z.infer<typeof CheckUserAuthMethodArgs>;
+
+
+export const CreateUserArgs = z.object({
+    email: z.string().email(),
+    name: z.string().min(1),
+    password: z.string().min(1)
+});
+
+export type CreateUserArgs = z.infer<typeof CreateUserArgs>;
+
+export const VerifyUserEmailArgs = z.object({
+    code: z.string().min(1),
+    userId: z.string().min(1)
+});
+
+export type VerifyUserEmailArgs = z.infer<typeof VerifyUserEmailArgs>;
+
+export const RequestUserVerificationEmailArgs = z.object({
+    userId: z.string().min(1),
+    email: z.string().email().min(1),
+    // todo: should we require password to request email verification
+});
+
+export type RequestUserVerificationEmailArgs = z.infer<typeof RequestUserVerificationEmailArgs>;
+
+export const LoginRequestArgs = z.object({
+    email: z.string().email(),
+    password: z.string(),
+    ip: z.string().optional(),
+    countryCode: z.string().optional(),
+    userAgent: z.string().optional()
+});
+
+export type LoginRequestArgs = z.infer<typeof LoginRequestArgs>;

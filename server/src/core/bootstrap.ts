@@ -34,6 +34,7 @@ import { Database } from "./db.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = new Database(await getDbConnection(config));
+    await db.initialize();
 
     const azureStorageHandler = new AzureStorageHandler({
         tenantId: config.azTenantId,

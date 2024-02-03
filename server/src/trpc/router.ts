@@ -1,10 +1,29 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
+    createUser: publicProcedure
+    .input(CreateUserArgs)
+    .mutation(({ ctx, input }) =>
+        ctx.app.auth.createUser(input)),
+
     getCurrentUserData: protectedProcedure.query(({ ctx }) =>
         ctx.app.accounts.getUserData(ctx.auth)),
+    
+    login: publicProcedure
+    .input(LoginRequestArgs)
+    .mutation(({ ctx, input }) =>
+        ctx.app.auth.login(input)),
+    
+    logout: publicProcedure
+    .input(z.string())
+    // The reason we require passing the token manually as input
+    // instead of using a protectedProcedure and referring to the ctx auth token
+    // is because the token may be have expired and the protected procedure
+    // will return a 401, which may lead to a confusing user experience
+    .mutation(({ ctx, input }) =>
+        ctx.app.auth.logoutToken(input)),
     
     getProjectMembers: protectedProcedure
     .input(z.string())
@@ -35,6 +54,21 @@ export const appRouter = router({
     .input(DeleteMediaArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).deleteMedia(input.projectId, input.id)),
+    
+    getUserAuthMethod: publicProcedure
+    .input(CheckUserAuthMethodArgs)
+    .query(({ input, ctx }) => 
+        ctx.app.auth.getAuthMethod(input)),
+    
+    verifyUserEmail: publicProcedure
+    .input(VerifyUserEmailArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.auth.verifyUserEmail(input)),
+
+    requestEmailVerification: publicProcedure
+    .input(RequestUserVerificationEmailArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.auth.requestUserVerificationEmail(input)),
     
 });
 

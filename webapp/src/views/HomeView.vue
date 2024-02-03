@@ -1,11 +1,11 @@
 <template>
-  <router-view v-if="userAccount" />
+  <router-view v-if="authenticated" />
   <WelcomeView v-else />
 </template>
 
 <script setup lang="ts">
-import { store } from '@/app-utils'
+import { store, auth } from '@/app-utils'
 import WelcomeView from "./WelcomeView.vue";
 
-const userAccount = store.user;
+const authenticated = auth.isAuthenticated();
 </script>

@@ -30,9 +30,34 @@ export interface BaseUser extends PersistedModel {
     invitedBy?: Principal;
 }
 
+export interface UserDbOnlyFields {
+    password: string;
+}
+
 export interface FullUser extends BaseUser {
-    aadId: string;
+    /**
+     * ID of the user in Azure AD. No longer user
+     * for new user accounts.
+     * @deprecated
+     */
+    aadId?: string;
     isGuest?: false|undefined;
+    /**
+     * This field was introduced when migrating from Azure AD to a custom
+     * auth implementation. Users that already existed in the db
+     * at that point did not have the verified field even though
+     * they were technically verified by AAD.
+     * For backwards compatibility, we consider users verified when
+     * either this field is set to true or when aadId is set.
+     */
+    verified?: boolean;
+    /**
+     * Password is optional because we did not handle user password before
+     * migrating from Azure AD. But each new user account requires a password.
+     * Older accounts will need to create a password through the password reset
+     * flow before they can access their accounts again.
+     */
+    password?: string;
 }
 
 export interface GuestUser extends BaseUser {
@@ -40,6 +65,9 @@ export interface GuestUser extends BaseUser {
 }
 
 export type User = FullUser | GuestUser;
+
+export type FullUserInDb = FullUser & UserDbOnlyFields;
+export type UserInDb = FullUserInDb | GuestUser;
 
 export interface UserWithAccount extends FullUser {
     /**
@@ -316,4 +344,39 @@ export interface ProjectMember {
     email: string;
     role: RoleType;
     joinedAt: Date;
+}
+
+
+export type UserAuthMethodResult = {
+    exists: true;
+    provider: 'email'|'google';
+    verified: boolean;
+} | {
+    exists: false;
+}
+
+export interface UserVerification extends PersistedModel {
+    code: string;
+    type: UserVerificationType;
+    expiresAt: Date;
+    userId: string;
+    email: string;
+}
+
+export type UserVerificationType = 'email';
+
+export interface AuthToken extends PersistedModel {
+    code: string;
+    userId: string;
+    expiresAt: Date;
+    ip?: string;
+    countryCode?: string;
+    userAgent?: string;
+}
+
+export type UserAndToken = {
+    authToken: AuthToken;
+    user: UserWithAccount;
+} | {
+    user: FullUser
 }

@@ -166,3 +166,22 @@ Click <a href="${url}">here</a> to open the comment.
 </p>
 `
 }
+
+export function createEmailVerificationEmail({ code }: { code: string }) {
+    return `
+<p>
+Enter the 6-digit code below to verify your identity and gain access to your
+Quickbyte account.
+</p><br>
+<p style="font-weight:bold;font-size:20px">
+${code}
+</p><br>
+<p>
+Quickbyte Team
+</p>
+<br>
+<p stylef="font-size:8px">
+If this request did not come from you, contact us at <a href="mailto:support@quickbyte.io">support@quickbyte.io</a>.
+</p>
+`;
+}

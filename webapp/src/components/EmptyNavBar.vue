@@ -40,11 +40,11 @@
 </template>
   
 <script setup lang='ts'>
-import { useUser, auth } from '@/app-utils';
+import { store, auth } from '@/app-utils';
 import { layoutDimensions } from '@/styles/dimentions.js';
 import UserDropDownMenu from './UserDropDownMenu.vue';
 
-const user = useUser();
+const user = store.user;
 
 </script>
   
