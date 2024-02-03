@@ -20,11 +20,20 @@ import { UiButton, UiTextInput } from '@/components/ui';
 import AuthShell from './AuthShell.vue';
 import { logger, showToast, trpcClient } from '@/app-utils';
 import type { UserWithAccount } from '@quickbyte/common';
+import { loginUserFromToken } from './auth-helpers';
+import { useRouter } from 'vue-router';
 
 const props = defineProps<{
-  user: UserWithAccount
+  user: UserWithAccount,
+  /**
+   * Password used to automatically
+   * log the user in after email verification
+   * succeeds
+   */
+  password: string;
 }>();
 
+const router = useRouter();
 const code = ref<string>();
 const loading = ref(false);
 
@@ -37,6 +46,20 @@ async function handleVerify() {
       userId: props.user._id,
       code: code.value
     });
+
+    // if email verification is successful, we should log user in
+    if (result.verified) {
+      // TODO: maybe verification request should return token if successful
+      // in order to avoid an extra request
+      const loginResult = await trpcClient.login.mutate({
+        email: props.user.email,
+        password: props.password
+      });
+
+      if ('authToken' in loginResult) {
+        await loginUserFromToken(loginResult.authToken, router);
+      }
+    } 
   }
   catch (e: any) {
     showToast(e.message, 'error');

@@ -375,8 +375,8 @@ export interface AuthToken extends PersistedModel {
 }
 
 export type UserAndToken = {
-    user: FullUser;
+    authToken: AuthToken;
+    user: UserWithAccount;
 } | {
-    authToken: AuthToken,
-    user: UserWithAccount
+    user: FullUser
 }

@@ -33,7 +33,7 @@
       Already have an account? <router-link :to="{ name: 'login' }" class="underline">Log in</router-link>.
     </div>
   </AuthShell>
-  <EmailVerificationStep v-else-if="user" :user="user" />
+  <EmailVerificationStep v-else-if="user" :user="user" :password="password"/>
 </template>
 <script lang="ts" setup>
 import { nextTick, onMounted, ref } from 'vue';
