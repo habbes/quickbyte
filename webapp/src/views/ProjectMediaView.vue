@@ -13,6 +13,7 @@
       </UiLayout>
       <RequireRole v-if="project" :accepted="['admin', 'owner', 'editor']" :current="project.role">
         <UiButton
+            title="Upload files"
             @click="openFilePicker()"
             class="btn btn-primary"
           >
