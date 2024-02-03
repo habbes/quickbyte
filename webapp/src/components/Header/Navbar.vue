@@ -55,12 +55,12 @@
                 </router-link>
               </li>
               <li>
-                <button
+                <router-link
                   v-if="!user"
-                  @click="auth.signIn()"
+                  :to="{ name: 'login' }"
                   class="px-4 py-2 text-white bg-[#5B53FF] hover:bg-[#5237F9] transition duration-200 ease-in rounded-2xl">
                   Sign In
-                </button>
+                </router-link>
                 <UserDropDownMenu v-if="user" :user="user" />
               </li>
             </ul>
@@ -73,7 +73,7 @@
 
 <script setup lang='ts'>
 import { computed } from 'vue';
-import { useUser, auth } from '@/app-utils';
+import { useUser } from '@/app-utils';
 import FeaturebaseChangelog from '@/components/FeaturebaseChangelog.vue';
 import UserDropDownMenu from '@/components/UserDropDownMenu.vue';
 import { layoutDimensions } from '@/styles/dimentions.js';

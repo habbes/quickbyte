@@ -15,6 +15,7 @@ import ProjectView from '@/views/ProjectView.vue';
 import ProjectMediaView from '@/views/ProjectMediaView.vue';
 import ProjectMembersView from '@/views/ProjectMembersView.vue';
 import InviteView from '@/views/InviteView.vue';
+import LoginView from '@/views/LoginView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -96,6 +97,11 @@ const router = createRouter({
           ]
         }
       ]
+    },
+    {
+      path: '/auth/login',
+      name: 'login',
+      component: LoginView
     },
     {
       path: '/d/:downloadId',

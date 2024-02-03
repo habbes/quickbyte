@@ -12,7 +12,7 @@ export class AuthHandler {
     }
 
     async signIn(): Promise<void> {
-        return this.makeSignInRequest();
+        // return this.makeSignInRequest();
     }
 
     /**
