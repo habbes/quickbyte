@@ -19,10 +19,12 @@ const imageExtensions = new Set([
 export type MediaType = 'image'|'audio'|'video'|'unknown';
 
 export function getMediaType(filename: string): MediaType {
-    const ext = getFileExtension(filename);
-    if (!ext) {
+    const rawExt = getFileExtension(filename);
+    if (!rawExt) {
         return 'unknown';
     }
+
+    const ext = rawExt.toLowerCase();
 
     if (videoExtensions.has(ext)) {
         return 'video';
