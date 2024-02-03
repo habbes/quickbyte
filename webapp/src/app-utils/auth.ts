@@ -3,6 +3,8 @@ import { ref } from "vue";
 import { AuthHandler, type User } from '@/core';
 import { clearData } from './store';
 import { logger } from './logger';
+import { router } from '../router';
+import { trpcClient } from ".";
 
 const user = ref<User|undefined>();
 
@@ -49,31 +51,14 @@ export const msalConfig = {
     },
 };
 
-/**
- * Scopes you add here will be prompted for user consent during sign-in.
- * By default, MSAL.js will add OIDC scopes (openid, profile, email) to any login request.
- * For more information about OIDC scopes, visit: 
- * https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent#openid-connect-scopes
- */
-const scopes = [`api://${import.meta.env.VITE_AAD_API_CLIENT_ID}/.default`, "openid", "offline_access"];
-
 export const auth = new AuthHandler({
-    msalConfig,
-    userHandler: {
-        getUser: () => user.value,
-        setUser: authenticatedUser => user.value = authenticatedUser,
-    },
     onSignOut: () => {
         clearData();
     },
-    scopes,
-    logger
+    apiClient: trpcClient,
+    router: router
 });
 
-export function initAuth(): Promise<void> {
-    // auth.selectAccount(); // handleRedirect() already calls init auth
-    return auth.handleRedirect();
-}
 
 export function useUser() {
     return user;

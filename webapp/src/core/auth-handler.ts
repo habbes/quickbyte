@@ -1,18 +1,20 @@
-import { PublicClientApplication, type Configuration, type RedirectRequest } from "@azure/msal-browser";
-import { type User } from './types';
 import { Logger } from './logger';
+import type { Router } from "vue-router";
+import type { TrpcApiClient } from ".";
+import type { AuthToken } from '@quickbyte/common';
+
+// full token object
+const TOKEN_OBJECT_STORAGE_KEY = "authToken";
+// token code
+const TOKEN_CODE_STORAGE_KEY = "accessToken";
 
 export class AuthHandler {
-    private authClient: PublicClientApplication;
-    private userHandler: UserHandler;
 
     constructor(private config: AuthClientConfig) {
-        this.authClient = new PublicClientApplication(config.msalConfig);
-        this.userHandler = config.userHandler
     }
 
-    async signIn(): Promise<void> {
-        // return this.makeSignInRequest();
+    async signIn(nextUrl?: string): Promise<void> {
+        return this.makeSignInRequest(nextUrl);
     }
 
     /**
@@ -21,96 +23,40 @@ export class AuthHandler {
      * If current user session is active, its data
      * is first cleared from the local cache.
      */
-    async forceSignInNewUser(): Promise<void> {
+    async forceSignInNewUser(nextUrl?: string): Promise<void> {
         this.clearLocalSession();
-        return this.makeSignInRequest({
-            // setting 'login' as the prompt forces the user to manually login even if there's already an active session on this app
-            // see: https://azuread.github.io/microsoft-authentication-library-for-js/ref/types/_azure_msal_browser.RedirectRequest.html
-            prompt: 'login'
-        });
+        return this.makeSignInRequest(nextUrl);
     }
 
-    private async makeSignInRequest(request?: Partial<RedirectRequest>) {
-        /**
-         * You can pass a custom request object below. This will override the initial configuration. For more information, visit:
-         * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/request-response-object.md#request
-         */
-        const loginRequest: RedirectRequest = {
-            ...request,
-            scopes: this.config.scopes
-        };
-
-        return this.authClient.loginRedirect(loginRequest);
+    private async makeSignInRequest(nextUrl?: string) {
+       this.config.router.push(nextUrl ? { name: 'login', query: { next: nextUrl } } : { name: 'login' });
     }
 
     async signOut(): Promise<void> {
-        /**
-         * You can pass a custom request object below. This will override the initial configuration. For more information, visit:
-         * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/request-response-object.md#request
-         */
-
-        const currentUser = this.userHandler.getUser();
-        // Choose which account to logout from by passing a username.
-        const account = this.authClient.getAccountByUsername(currentUser?.email || "");
-        const logoutRequest = {
-            account: account,
-            postLogoutRedirectUri: '/', // remove this line if you would like navigate to index page after logout.
-        };
-
-        const result = this.config.onSignOut && this.config.onSignOut();
-        if (result instanceof Promise) {
-            await result;
+        const token = await this.getToken();
+        if (token) {
+            await this.config.apiClient.logout.mutate(token);
         }
 
-        await this.authClient.logoutRedirect(logoutRequest);
+        this.clearLocalSession();
+        this.config.onSignOut && this.config.onSignOut();
+
+        this.config.router.push({ name: 'login' });
     }
 
-    async getToken(): Promise<string|undefined> {
-        const currentAccounts = this.authClient.getAllAccounts();
-        if (currentAccounts.length) {
-            this.authClient.setActiveAccount(currentAccounts[0]);
-        } else {
-            return;
+    getToken(): Promise<string|undefined> {
+        const tokenString = localStorage.getItem(TOKEN_CODE_STORAGE_KEY);
+        if (!tokenString) {
+            return Promise.resolve(undefined);
         }
         
-        const result = await this.authClient.acquireTokenSilent({
-            scopes: this.config.scopes
-        });
-
-        return result.accessToken;
+        return Promise.resolve(tokenString);
     }
 
-    async handleRedirect(): Promise<void> {
-        await this.authClient.handleRedirectPromise();
-        this.selectAccount();
-    }
-
-    selectAccount () {
-
-        /**
-         * See here for more info on account retrieval: 
-         * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/docs/Accounts.md
-         */
-    
-        const currentAccounts = this.authClient.getAllAccounts();
-    
-        if (!currentAccounts  || currentAccounts.length < 1) {
-            return;
-        } else if (currentAccounts.length >= 1) {
-            if (currentAccounts.length > 1) {
-                // Add your account choosing logic here
-                this.config.logger?.log('Multiple accounts detected', 'warning');
-            }
-
-            this.config.logger?.log('accounts', currentAccounts);
-            const account = currentAccounts[0];
-
-            this.userHandler.setUser({
-                aadId: account.localAccountId,
-                name: account.name || account.username,
-                email: account.username
-            });
-        }
+    setToken(token: AuthToken) {
+        const serialized = JSON.stringify(token);
+        localStorage.setItem(TOKEN_OBJECT_STORAGE_KEY, serialized);
+        localStorage.setItem(TOKEN_CODE_STORAGE_KEY, token.code);
     }
 
     /**
@@ -124,30 +70,14 @@ export class AuthHandler {
      * does not support switching between multiple active accounts.
      */
     clearLocalSession() {
-        // This is a hack. We resort
-        // to removing data from local storage manually
-        // since the MSAL client does not expose
-        // an API for clearing the local cache.
-        localStorage.clear();
-
-        // for (let i = 0; i < localStorage.length; i++) {
-        //     const key = localStorage.key(i);
-        //     if (key && (key.includes('msal') || key.includes('ciamlogin') || key.includes('server-telemetry'))) {
-        //         localStorage.removeItem(key);
-        //     }
-        // }
+        localStorage.removeItem(TOKEN_OBJECT_STORAGE_KEY);
+        localStorage.removeItem(TOKEN_CODE_STORAGE_KEY);
     }
 }
 
 export interface AuthClientConfig {
-    msalConfig: Configuration;
-    userHandler: UserHandler;
-    scopes: string[];
     onSignOut?: () => unknown;
     logger?: Logger;
-}
-
-interface UserHandler {
-    getUser: () => User|undefined;
-    setUser: (user: User) => void;
+    router: Router;
+    apiClient: TrpcApiClient;
 }

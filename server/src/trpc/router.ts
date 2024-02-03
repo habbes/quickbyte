@@ -1,6 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs } from '@quickbyte/common';
-import { query } from 'express';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -11,6 +10,20 @@ export const appRouter = router({
 
     getCurrentUserData: protectedProcedure.query(({ ctx }) =>
         ctx.app.accounts.getUserData(ctx.auth)),
+    
+    login: publicProcedure
+    .input(LoginRequestArgs)
+    .mutation(({ ctx, input }) =>
+        ctx.app.auth.login(input)),
+    
+    logout: publicProcedure
+    .input(z.string())
+    // The reason we require passing the token manually as input
+    // instead of using a protectedProcedure and referring to the ctx auth token
+    // is because the token may be have expired and the protected procedure
+    // will return a 401, which may lead to a confusing user experience
+    .mutation(({ ctx, input }) =>
+        ctx.app.auth.logoutToken(input)),
     
     getProjectMembers: protectedProcedure
     .input(z.string())
@@ -55,7 +68,7 @@ export const appRouter = router({
     requestEmailVerification: publicProcedure
     .input(RequestUserVerificationEmailArgs)
     .mutation(({ input, ctx }) =>
-        ctx.app.auth.requestUserVerificationEmail(input))
+        ctx.app.auth.requestUserVerificationEmail(input)),
     
 });
 
