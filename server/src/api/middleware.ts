@@ -68,7 +68,6 @@ export const requireAuth = (): RequestHandler =>
         }
         try {
             const now = Date.now();
-            await req.services.auth.verifyToken(token);
             const user = await req.services.auth.getUserByToken(token);
             req.authContext = { user };
             next();
