@@ -40,7 +40,7 @@ export function getMediaType(filename: string): MediaType {
 }
 
 export function getMimeTypeFromFilename(filename: string): string {
-    const ext = getFileExtension(filename) || filename;
+    const ext = (getFileExtension(filename) || filename).toLowerCase();
     const mediaType = getMediaType(ext);
 
     if (mediaType === 'video') {

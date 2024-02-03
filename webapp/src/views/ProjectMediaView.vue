@@ -12,28 +12,13 @@
         <UiSearchInput v-model="searchTerm" placeholder="Search files" />
       </UiLayout>
       <RequireRole v-if="project" :accepted="['admin', 'owner', 'editor']" :current="project.role">
-        <Menu as="div" class="relative inline-block">
-          <MenuButton>
-            <UiButton
-              class="btn btn-primary"
-            >
-              <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">Upload media</span>
-            </UiButton>
-          </MenuButton>
-          <MenuItems class="absolute text-black right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black/5    focus:outline-none z-20">
-            <div
-              v-for="option in uploadMenuOptions"
-              :key="option.text"
-            >
-              <MenuItem
-              >
-                <UiLayout @click="option.onClick()" innerSpace>
-                  {{ option.text }}
-                </UiLayout>
-              </MenuItem>
-            </div>
-          </MenuItems>
-        </Menu>
+        <UiButton
+            title="Upload files"
+            @click="openFilePicker()"
+            class="btn btn-primary"
+          >
+          <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">Upload media</span>
+        </UiButton>
       </RequireRole>
     </UiLayout>
     <UiLayout ref="dropzone" v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
@@ -130,13 +115,6 @@ const filteredMedia = computed(() => {
   const regex = new RegExp(searchTerm.value, 'i');
   return media.value.filter(m => regex.test(m.name));
 });
-
-const uploadMenuOptions = [
-  {
-    text: 'Upload files',
-    onClick: () => openFilePicker()
-  }
-]
 
 onError((e) => {
   logger.error(e.message, e);
