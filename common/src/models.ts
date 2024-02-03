@@ -317,3 +317,11 @@ export interface ProjectMember {
     role: RoleType;
     joinedAt: Date;
 }
+
+
+export type UserAuthMethodResult = {
+    exists: true;
+    provider: 'email'|'google';
+} | {
+    exists: false;
+}

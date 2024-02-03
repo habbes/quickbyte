@@ -4,7 +4,7 @@ import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
@@ -80,6 +80,27 @@ export class AuthService {
         });
 
         this.usersCollection = this.db.users();
+    }
+
+    async getAuthMethod(args: CheckUserAuthMethodArgs): Promise<UserAuthMethodResult> {
+        try {
+            console.log('here', args);
+            const user = await this.usersCollection.findOne({ email: args.email });
+            if (user) {
+                return {
+                    exists: true,
+                    provider: 'email'
+                }
+            };
+
+            return {
+                exists: false,
+            }
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 
     /**
@@ -285,7 +306,7 @@ export class AuthService {
 
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' | 'verifyTokenAndGetUser' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' | 'verifyTokenAndGetUser' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {

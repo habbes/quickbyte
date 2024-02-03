@@ -81,3 +81,9 @@ export const CreateProjectMediaUploadArgs = z.object({
 });
 
 export type CreateProjectMediaUploadArgs = z.infer<typeof CreateProjectMediaUploadArgs>;
+
+export const CheckUserAuthMethodArgs = z.object({
+    email: z.string().email()
+});
+
+export type CheckUserAuthMethodArgs = z.infer<typeof CheckUserAuthMethodArgs>;
