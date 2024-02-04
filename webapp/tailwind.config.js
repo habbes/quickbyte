@@ -9,6 +9,7 @@ export default {
       fontFamily: {
         Inter: 'Inter',
         Orbit: 'Orbit',
+        Roboto: 'Roboto'
       },
     },
   },
