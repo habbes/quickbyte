@@ -76,6 +76,9 @@ export interface AppConfig {
      * The name of the ping file
      */
     azPingBlob: string;
+    // Google auth:
+    googleClientId: string;
+    googleClientSecret: string;
     // Email
     emailProvider: 'mailjet'|'local';
     mailjetApiKey: string;
@@ -137,7 +140,9 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         paystackSecretKey: getRequiredEnv(env, 'PAYSTACK_SECRET_KEY'),
         paystackStarterMonthlyPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_MONTHLY_PLAN'),
         paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN'),
-        webappBaseUrl: getRequiredEnv(env, 'WEBAPP_BASE_URL')
+        webappBaseUrl: getRequiredEnv(env, 'WEBAPP_BASE_URL'),
+        googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
+        googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET')
     }
 }
 

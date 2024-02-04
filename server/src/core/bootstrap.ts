@@ -123,6 +123,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         aadClientId: config.aadClientId,
         aadClientSecret: config.aadClientSecret,
         aadTenantId: config.aadTenantId,
+        googleClientId: config.googleClientId,
+        googleClientSecret: config.googleClientSecret,
         accounts,
         email: emailHandler,
         adminAlerts: adminAlerts,
