@@ -35,7 +35,7 @@
   </AuthShell>
   <EmailVerificationStep
     v-else-if="user && password"
-    :user="user"
+    :email="user.email"
     :password="password"
     @verificationSuccess="handleVerificationSuccess()"
   />

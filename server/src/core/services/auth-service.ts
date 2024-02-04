@@ -160,7 +160,6 @@ export class AuthService {
     async requestUserVerificationEmail(args: RequestUserVerificationEmailArgs): Promise<void> {
         try {
             const user = await this.usersCollection.findOne({
-                _id: args.userId,
                 email: args.email
             }, {
                 projection: { password: 0}
@@ -180,18 +179,18 @@ export class AuthService {
     async verifyUserEmail(args: VerifyUserEmailArgs): Promise<FullUser> {
         try {
             const verificationResult = await this.db.userVerifications().findOneAndDelete({
-                userId: args.userId,
+                email: args.email,
                 code: args.code,
                 type: 'email',
                 expiresAt: { $gt: new Date() }
             });
-            console.log('verification', verificationResult);
+
             if (!verificationResult.value) {
                 throw createAuthError("Invalid verification code");
             }
 
             const result = await this.db.users().findOneAndUpdate({
-                _id: args.userId
+                _id: verificationResult.value.userId
             }, {
                 $set: {
                     verified: true,
@@ -204,7 +203,7 @@ export class AuthService {
             });
 
             if (!result.value) {
-                throw createInvalidAppStateError(`Expected user '${args.userId}' to exist after verification.`);
+                throw createInvalidAppStateError(`Expected user '${verificationResult.value.userId}' to exist after verification for email '${args.email}'.`);
             }
 
             return getSafeUser(result.value) as FullUser;

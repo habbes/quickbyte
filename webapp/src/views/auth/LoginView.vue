@@ -20,7 +20,7 @@
   </AuthShell>
   <EmailVerificationStep
     v-else-if="user && !user.verified && password"
-    :user="user" :password="password"
+    :email="user.email" :password="password"
     @verificationSuccess="handleVerificationSuccess()"
   />
 </template>
