@@ -1,148 +1,344 @@
-import { Collection, } from "mongodb";
-import msal, { ConfidentialClientApplication, ICachePlugin } from "@azure/msal-node";
-import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
-import createJwksClient, { JwksClient } from "jwks-rsa";
-import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
+import { Collection } from "mongodb";
+import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs, LoginWithGoogleRequestArgs, AuthProvider } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
-import { EmailHandler, IAlertService, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
+import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
+import * as bcrypt from "bcrypt";
+import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core'
+import * as zxcvbnCommonPackage from '@zxcvbn-ts/language-common'
+import * as zxcvbnEnPackage from '@zxcvbn-ts/language-en'
+import { randomInt, randomBytes } from 'node:crypto';
+import { OAuth2Client as GoogleAuthClient } from "google-auth-library";
 
-// We use AAD on-behalf-of flow for authentication:
-// https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
 
-// TODO: this class is a hack and should be replaced with a distributed cache
-class MemoryCachePlugin implements ICachePlugin {
-    private serializedCache: string = "";
-
-    beforeCacheAccess(tokenCacheContext: msal.TokenCacheContext): Promise<void> {
-        if (this.serializedCache) {
-            tokenCacheContext.tokenCache.deserialize(this.serializedCache);
-        }
-        else {
-            this.serializedCache = tokenCacheContext.tokenCache.serialize();
-        }
-
-        console.log('before cache access', this.serializedCache);
-
-        return Promise.resolve();
-    }
-
-    afterCacheAccess(tokenCacheContext: msal.TokenCacheContext): Promise<void> {
-        if (tokenCacheContext.cacheHasChanged) {
-            this.serializedCache = tokenCacheContext.tokenCache.serialize();
-        }
-
-        console.log('after cache access', this.serializedCache);
-
-        return Promise.resolve();
-    }
+const options = {
+  dictionary: {
+    ...zxcvbnCommonPackage.dictionary,
+    ...zxcvbnEnPackage.dictionary,
+  },
+  graphs: zxcvbnCommonPackage.adjacencyGraphs,
+  translations: zxcvbnEnPackage.translations,
 }
+zxcvbnOptions.setOptions(options)
 
-const tokenCachePlugin = new MemoryCachePlugin();
 
 export class AuthService {
-    private authConfig: AuthConfig;
-    private jwksClient: JwksClient;
-    private msalClient: ConfidentialClientApplication;
-    private usersCollection: Collection<User>;
+    private usersCollection: Collection<UserInDb>;
+    private googleAuthClient: GoogleAuthClient;
 
     constructor(private db: Database, private args: AuthServiceArgs) {
-        this.authConfig = {
-            authOptions: {
-                clientId: this.args.aadClientId,
-                authority: `https://login.microsoftonline.com/${this.args.aadTenantId}`,
-                clientSecret: this.args.aadClientSecret
-            },
-            webApiScope: `api://${this.args.aadClientId}/access_as_user openid offline_access`,
-            discoveryKeysEndpoint: `https://login.microsoftonline.com/${this.args.aadTenantId}/discovery/v2.0/keys`
-        };
-
-        this.jwksClient = createJwksClient({
-            jwksUri: this.authConfig.discoveryKeysEndpoint
-        });
-
-        this.msalClient = new ConfidentialClientApplication({
-            auth: this.authConfig.authOptions,
-            system: {
-                loggerOptions: {
-                    loggerCallback(loglevel, message, containsPii) {
-                        console.log(message);
-                    },
-                    piiLoggingEnabled: false,
-                    logLevel: msal.LogLevel.Info,
-                }
-            },
-            cache: { cachePlugin: tokenCachePlugin }
-        });
-
         this.usersCollection = this.db.users();
+        this.googleAuthClient = new GoogleAuthClient();
     }
 
-    /**
-     * Verifies whether the specified auth token is valid.
-     * Throws an authentication error if the token cannot be validated.
-     * @param token 
-     */
-    async verifyToken(token: string): Promise<void> {
-        const validationOptions = {
-            audience: `api://${this.args.aadClientId}`,
-            // issuer: `${this.authConfig.authOptions.authority}/v2.0`
-        };
-
-        const getSigningKey: GetPublicKeyOrSecret = (header, callback) => {
-            this.jwksClient.getSigningKey(header.kid, (err, result) => {
-                callback(err, result?.getPublicKey())
-            });
-        }
-
-        await new Promise<void>((resolve, reject) => {
-            jwt.verify(token, getSigningKey, validationOptions, (err, payload) => {
-                if (err) {
-                    if (isAppError(err)) {
-                        reject(err);
-                        return;
-                    }
-
-                    reject(createAuthError(err));
-                    return;
+    async getAuthMethod(args: CheckUserAuthMethodArgs): Promise<UserAuthMethodResult> {
+        try {
+            const user = await this.usersCollection.findOne({ email: args.email });
+            if (user && !user.isGuest) {
+                // users that we created through Azure AD before we migrated to a custom
+                // auth solution are considered verified
+                const verified = user.verified || user.aadId ? true : false;
+                return {
+                    exists: true,
+                    provider: user.provider || 'email',
+                    verified
                 }
+            };
 
-                resolve();
-            })
-        });
+            return {
+                exists: false,
+            }
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 
-    async getUserByToken(token: string): Promise<UserWithAccount> {
-        const parsed = jwt.decode(token, { complete: true });
-        if (!parsed) {
-            throw createAuthError("Invalid token");
+    async createUser(args: CreateUserArgs): Promise<FullUser> {
+        try {
+            const existingUser = await this.usersCollection.findOne({ email: args.email });
+            if (existingUser && existingUser.isGuest) {
+                // TODO: handle guest user upgrade
+                throw createAppError("Upgrading guest user to full user not yet supported");
+            }
+
+            const password = await validateAndHashPassword(args);
+
+            let fullUser: FullUserInDb = {
+                ...createPersistedModel({ type: 'system', _id: 'system'}),
+                name: args.name,
+                email: args.email,
+                password,
+                verified: false
+            };
+
+            await this.usersCollection.insertOne(fullUser);
+            const user = getSafeUser(fullUser) as FullUser;
+
+            // TODO: we're sending a welcome email, then verification email back to back.
+            // Could that be confusing to the user? Should we send just one email with both?
+            // Should the welcome email mention that the user should expect a verification email?
+            await this.args.email.sendEmail({
+                to: { name: user.name, email: user.email },
+                subject: 'Welcome to Quickbyte',
+                message: createWelcomeEmail(user.name, this.args.webappBaseUrl)
+            });
+
+            await this.createEmailVerification(user._id, user.email, user.name);
+            return user;
+        } catch (e: any) {
+            if (isMongoDuplicateKeyError(e, 'email')) {
+                throw createResourceConflictError("The email you entered is already taken.");
+            }
+
+            rethrowIfAppError(e);
+            throw createAppError(e);
         }
-
-        if (typeof parsed.payload === 'string') {
-            throw createAuthError("Invalid token");
-        }
-
-        const user = await this.getOrCreateUser(parsed.payload);
-        const account = await this.args.accounts.getOrCreateByOwner(user._id);
-
-        const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account` } }
-
-        const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription();
-        if (sub) {
-            userWithAccount.account.subscription = sub;
-        }
-
-        return userWithAccount;
     }
 
-    async verifyTokenAndGetUser(token: string): Promise<UserWithAccount> {
-        await this.verifyToken(token);
-        const user = await this.getUserByToken(token);
-        return user;
+    async resetPassword(args: PasswordResetArgs) {
+        try {
+            const user = await this.verifyUserEmail({ code: args.code, email: args.email });
+            const password = await validateAndHashPassword({
+                password: args.password,
+                email: args.email,
+                name: user.name
+            });
+
+            const result = await this.db.users().findOneAndUpdate({
+                _id: user._id
+            }, {
+                $set: {
+                    password,
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'user', _id: user._id }
+                }
+            });
+
+            if (!result.ok) {
+                throw createDbError(`Error updating user '${user._id}': ${result.lastErrorObject}`);
+            }
+
+            return user;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async requestUserVerificationEmail(args: RequestUserVerificationEmailArgs): Promise<void> {
+        try {
+            const user = await this.usersCollection.findOne({
+                email: args.email
+            }, {
+                projection: { password: 0}
+            });
+
+            if (!user) {
+                throw createResourceNotFoundError("User not found");
+            }
+
+            await this.createEmailVerification(user._id, user.email, user.name);
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async verifyUserEmail(args: VerifyUserEmailArgs): Promise<FullUser> {
+        try {
+            const verificationResult = await this.db.userVerifications().findOneAndDelete({
+                email: args.email,
+                code: args.code,
+                type: 'email',
+                expiresAt: { $gt: new Date() }
+            });
+
+            if (!verificationResult.value) {
+                throw createAuthError("Invalid verification code");
+            }
+
+            const result = await this.db.users().findOneAndUpdate({
+                _id: verificationResult.value.userId
+            }, {
+                $set: {
+                    verified: true,
+                    updatedAt: new Date(),
+                    updatedBy: { type: 'system', _id: 'system' }
+                }
+            }, {
+                returnDocument: 'after',
+                projection: { password: 0 }
+            });
+
+            if (!result.value) {
+                throw createInvalidAppStateError(`Expected user '${verificationResult.value.userId}' to exist after verification for email '${args.email}'.`);
+            }
+
+            return getSafeUser(result.value) as FullUser;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async login(args: LoginRequestArgs): Promise<UserAndToken> {
+        try {
+            const unsafeUser = await this.db.users().findOne({
+                email: args.email
+            });
+
+            if (!unsafeUser) {
+                throw createAuthError("Invalid email or password");
+            }
+
+            if (!('password' in unsafeUser)) {
+                // This is either a guest user or an old account
+                // from before we implemented in-house auth solution
+                throw createAuthError("Invalid email or password");
+            }
+
+            const passwordCorrect = await verifyPassword(args.password, unsafeUser.password);
+            if (!passwordCorrect) {
+                throw createAuthError("Invalid email or password");
+            }
+
+            const user = getSafeUser(unsafeUser) as FullUser;
+
+            if (!user.verified) {
+                // We currently don't allow users to access the app without verifying their email
+                await this.createEmailVerification(user._id, user.email, user.name);
+                return { user };
+            }
+
+            const authToken = await this.createAuthToken(user._id, args);
+
+            const userWithAccount = await this.getUserAccountAndSub(user);
+
+            return {
+                authToken,
+                user: userWithAccount
+            };
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async loginWithGoogle(args: LoginWithGoogleRequestArgs): Promise<UserAndToken> {
+        try {
+            const payload = await this.extractGoogleIdToken(args.idToken);
+
+            const googleId = payload.sub;
+
+            const baseModel = createPersistedModel({ type: 'system', _id: 'system' });
+
+            const result = await this.db.users().findOneAndUpdate({
+                provider: 'google',
+                providerId: googleId
+            }, {
+                $set: {
+                    isGuest: false,
+                    name: payload.name,
+                    email: payload.email,
+                    verified: payload.email_verified,
+                    provider: 'google',
+                    providerId: googleId,
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'system', _id: 'system' }
+                },
+                $setOnInsert: {
+                    _id: baseModel._id,
+                    _createdAt: baseModel._createdAt,
+                    _createdBy: baseModel._createdBy
+                }
+            }, {
+                upsert: true,
+                returnDocument: 'after'
+            });
+
+            if (!result.value) {
+                throw createAppError(`Failed to upsert user from google token, sub '${googleId}'`);
+            }
+
+            const user = getSafeUser(result.value);
+            const isNewUser = user._id === baseModel._id;
+
+            if (isNewUser) {
+                console.log('new user');
+                await this.args.email.sendEmail({
+                    to: { name: user.name, email: user.email },
+                    subject: 'Welcome to Quickbyte',
+                    message: createWelcomeEmail(user.name, this.args.webappBaseUrl)
+                });
+            }
+
+            if (!('verified' in user) || !user.verified) {
+                await this.createEmailVerification(user._id, user.email, user.name);
+                if (user.isGuest) {
+                    throw createInvalidAppStateError(`Did not expect user '${user._id}' to be guest.`);
+                }
+                return { user };
+            }
+            
+            const authToken = await this.createAuthToken(user._id, args);
+
+            const userWithAccount = await this.getUserAccountAndSub(user);
+
+            return {
+                authToken,
+                user: userWithAccount
+            };  
+        } catch (e: any) {
+            if (isMongoDuplicateKeyError(e, 'email')) {
+                throw createResourceConflictError('The email is already taken.');
+            }
+
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async logoutToken(code: string): Promise<void> {
+        try {
+            await this.db.authTokens().deleteOne({ code });
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getUserByToken(code: string): Promise<UserWithAccount> {
+        try {
+            const token = await this.db.authTokens().findOne({
+                code,
+                expiresAt: { $gt: new Date() }
+            });
+
+            if (!token) {
+                throw createAuthError("Invalid token. Please login again.");
+            }
+
+            const user = await this.db.users().findOne({ _id: token.userId }, { projection: { password: 0 } });
+            if (!user) {
+                throw createInvalidAppStateError(`Expected user '${token.userId}' to exist for token '${token._id}'.`);
+            }
+
+            if (user.isGuest) {
+                throw createInvalidAppStateError(`Did not expect user '${user._id}' to be guest when acquired token '${token._id}'`);
+            }
+
+            const userWithAccount = await this.getUserAccountAndSub(user);
+            return userWithAccount;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 
     async getUserById(id: string): Promise<UserWithAccount> {
@@ -230,84 +426,182 @@ export class AuthService {
         }
     }
 
-    private async getOrCreateUser(data: jwt.JwtPayload): Promise<FullUser> {
-        const email: string = getEmailFromJwt(data);
-        const aadId: string = data.oid;
-        const name: string = data.name;
-
+    private async getUserAccountAndSub(user: FullUser): Promise<UserWithAccount> {
         try {
-            const existingUser = await this.usersCollection.findOne({ email: email, aadId: aadId });
-            if (existingUser && !existingUser.isGuest) {
-                return existingUser;
-            }
+            const account = await this.args.accounts.getOrCreateByOwner(user._id);
+            const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account` } }
 
-            if (existingUser && existingUser.isGuest) {
-                throw createAppError('Upgrading guest to full user not yet supported.');
+            const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription();
+            if (sub) {
+                userWithAccount.account.subscription = sub;
             }
+            return userWithAccount;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
 
-            const newUser: User = {
-                ...createPersistedModel({ type: 'system', _id: 'system' }),
-                email,
-                aadId,
-                name: name || email
+    private async createAuthToken(
+        userId: string,
+        args: { 
+            ip?: string,
+            userAgent?: string,
+            countryCode?: string,
+            provider?: AuthProvider,
+            providerId?: string
+        }
+    ) {
+        try {
+            const code = generateAuthTokenCode();
+            const validity = 7 * 60 * 60 * 1000; // 7 days
+            const token: AuthToken = {
+                ...createPersistedModel({ type: 'user', _id: userId }),
+                code,
+                userId,
+                ip: args.ip,
+                userAgent: args.userAgent,
+                countryCode: args.countryCode,
+                expiresAt: new Date(Date.now() + validity)
             };
 
-            await this.usersCollection.insertOne(newUser);
-            await this.args.accounts.getOrCreateByOwner(newUser._id);
+            await this.db.authTokens().insertOne(token);
 
-            // we don't want to fail operation due to an email failure
-            // so we don't await it
-            this.args.email.sendEmail({
-                to: { email: newUser.email, name: newUser.name },
-                subject: 'Welcome to Quickbyte!',
-                message: createWelcomeEmail(newUser.name, this.args.webappBaseUrl)
-            }).catch(e => {
-                console.error(`Error sending welcome email`, e);
-            });
+            return token;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
 
-            this.args.adminAlerts.sendNotification(
-                'New user',
-                `New user signed up:<br>Name: ${newUser.name}<br>Email: ${newUser.email}`
-            ).catch(e => {
-                console.error('Failed to send new user alert', e);
-            });
+    private async createEmailVerification(userId: string, email: string, name?: string) {
+        
+        try {
+            const code = generateVerificationCode();
+            const validity = 60 * 60 * 1000; // 1hr
+            const expiresAt = new Date(Date.now() + validity);
 
-            return newUser;
+            const verification: UserVerification = {
+                ...createPersistedModel({ type: 'system', _id: 'system' }),
+                code,
+                userId,
+                type: 'email',
+                email,
+                expiresAt
+            };
+
+            // we allow more than one active verification per user.
+            // since we only need an email to request verification,
+            // an attacker who knows the email can send repeated
+            // verifications, invalidating previous ones, making it
+            // impossible for the account owner to validate a verification code
+            await this.db.userVerifications().insertOne(verification);
+
+            await this.args.email.sendEmail({
+                to: { email, name },
+                subject: `Here's your verification code ${code}`,
+                message: createEmailVerificationEmail({ code })
+            })
+            return verification;
         }
         catch (e: any) {
-            if (isMongoDuplicateKeyError(e)) {
-                throw createResourceConflictError(e);
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async extractGoogleIdToken(idToken: string) {
+        try {
+            const result = await this.googleAuthClient.verifyIdToken({
+                idToken,
+                audience: this.args.googleClientId
+            });
+
+            const payload = result.getPayload();
+            if (!payload) {
+                throw createAuthError("Unable to get user info from Google token");
             }
 
-            throw createDbError(e);
+            return payload;
+        } catch (e: any) {
+            throw createAuthError(e);
         }
     }
-
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'verifyToken' | 'verifyTokenAndGetUser' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'|'verifyUserEmail'|'requestUserVerificationEmail'|'login'|'logoutToken'|'resetPassword'|'loginWithGoogle'>;
 
-function getEmailFromJwt(jwtPayload: Record<string, string>): string {
-    if (jwtPayload.email) {
-        return jwtPayload.email;
+
+function getSafeUser(user: UserInDb): User {
+    if ('password' in user) {
+        const safeUser = { ...user };
+        // @ts-ignore
+        delete safeUser.password;
+        return safeUser;
     }
 
-    const uniqueName = jwtPayload.unique_name;
-    if (uniqueName.includes('#')) {
-        // when using an external provider like Google,
-        // the uniqueName is of the format google#actualemail@gmail.com
-        const email = uniqueName.split('#')[1];
-        if (email) {
-            return email;
+    return user;
+}
+
+function hashPassword(plaintext: string): Promise<string> {
+    return bcrypt.hash(plaintext, 10);
+}
+
+function verifyPassword(plaintext: string, hashed: string): Promise<boolean> {
+    return bcrypt.compare(plaintext, hashed);
+}
+
+function checkPasswordStrength(password: string, args: CreateUserArgs) {
+    const result = zxcvbn(password, [args.email, args.name]);
+    const isStrong = result.score >= 3;
+    const feedback = result.feedback;
+    return {
+        isStrong,
+        feedback
+    };
+}
+
+async function validateAndHashPassword(args: CreateUserArgs): Promise<string> {
+    const passwordStrengh = checkPasswordStrength(args.password, args);
+    if (!passwordStrengh.isStrong) {
+        if (passwordStrengh.feedback.warning) {
+            throw createValidationError(`You entered a weak password: ${passwordStrengh.feedback.warning}`);
         }
+
+        throw createValidationError("You entered a weak password");
     }
 
-    return uniqueName;
+    const password = await hashPassword(args.password);
+    return password;
+}
+
+function generateVerificationCode(): string {
+    const result = [];
+    const length = 6;
+    for (let i = 0; i < length; i++)
+    {
+        result.push(randomInt(0, 10));
+    }
+    
+    return result.join('');
+}
+
+function generateAuthTokenCode(): string {
+    return randomBytes(2048).toString('base64');
 }
 
 export interface AuthServiceArgs {
+    /**
+     * @deprecated
+     */
     aadClientId: string;
+    /**
+     * @deprecated
+     */
     aadClientSecret: string;
+    /**
+     * @deprecated
+     */
     aadTenantId: string;
     accounts: IAccountService;
     email: EmailHandler;
@@ -315,14 +609,6 @@ export interface AuthServiceArgs {
     invites: IInviteService;
     webappBaseUrl: string;
     access: IAccessHandler;
-}
-
-interface AuthConfig {
-    authOptions: {
-        clientId: string;
-        authority: string;
-        clientSecret: string;
-    },
-    webApiScope: string;
-    discoveryKeysEndpoint: string;
+    googleClientId: string;
+    googleClientSecret: string;
 }

@@ -81,3 +81,57 @@ export const CreateProjectMediaUploadArgs = z.object({
 });
 
 export type CreateProjectMediaUploadArgs = z.infer<typeof CreateProjectMediaUploadArgs>;
+
+export const CheckUserAuthMethodArgs = z.object({
+    email: z.string().email()
+});
+
+export type CheckUserAuthMethodArgs = z.infer<typeof CheckUserAuthMethodArgs>;
+
+
+export const CreateUserArgs = z.object({
+    email: z.string().email(),
+    name: z.string().min(1),
+    password: z.string().min(1)
+});
+
+export type CreateUserArgs = z.infer<typeof CreateUserArgs>;
+
+export const VerifyUserEmailArgs = z.object({
+    code: z.string().min(1),
+    email: z.string().email().min(1)
+});
+
+export type VerifyUserEmailArgs = z.infer<typeof VerifyUserEmailArgs>;
+
+export const RequestUserVerificationEmailArgs = z.object({
+    email: z.string().email().min(1),
+});
+
+export type RequestUserVerificationEmailArgs = z.infer<typeof RequestUserVerificationEmailArgs>;
+
+export const LoginRequestArgs = z.object({
+    email: z.string().email(),
+    password: z.string(),
+    ip: z.string().optional(),
+    countryCode: z.string().optional(),
+    userAgent: z.string().optional()
+});
+
+export type LoginRequestArgs = z.infer<typeof LoginRequestArgs>;
+
+export const PasswordResetArgs = VerifyUserEmailArgs.extend({
+    password: z.string().min(1)
+});
+
+export type PasswordResetArgs = z.infer<typeof PasswordResetArgs>;
+
+export const LoginWithGoogleRequestArgs = z.object({
+    idToken: z.string().min(1),
+    ip: z.string().optional(),
+    countryCode: z.string().optional(),
+    userAgent: z.string().optional()
+});
+
+export type LoginWithGoogleRequestArgs = z.infer<typeof LoginWithGoogleRequestArgs>;
+

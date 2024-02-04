@@ -29,3 +29,5 @@ export interface TrpcClientConfig {
     baseUrl: string;
     getToken(): Promise<string|undefined>;
 }
+
+export type TrpcApiClient = ReturnType<typeof createTrpcClient>;

@@ -1,5 +1,5 @@
 <template>
-    <button type="button" class="btn" :class="classes">
+    <button :type="submit ? 'submit' : 'button'" class="btn" :class="classes">
       <span v-if="loading"
         class="loading loading-spinner"
       ></span>
@@ -23,6 +23,7 @@
     secondary?: boolean;
     warning?: boolean;
     fill?: boolean;
+    submit?: boolean;
   }>();
   
   const classes = computed(() => {

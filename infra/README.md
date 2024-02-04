@@ -191,6 +191,8 @@ terraform output
 
 # Azure AD config
 
+### Important: I moved away from Azure AD in favour of custom auth. The information here is therefore mostly deprecated. I keep it here for backwards compatibility in case there are things I forgot to move from Azure AD and want to refer back to
+
 Your service principal also needs permissions to create applications and service principals.
 Specifically, you need to grant it the `Application.ReadWrite.All` permission in your tenant.
 You can follow the following steps: https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/guides/service_principal_configuration
@@ -222,6 +224,16 @@ https://learn.microsoft.com/en-us/azure/active-directory/external-identities/cus
 For the preview, I created a project in Google console called `quickbyte-preview`. It's currently still in test-mode
 and only allows sign-ins from Google email addresses I've manually whitelisted in the settings. For the official release
 I'll create a different project that I'll move to production mode (and it may need to be reviewed).
+
+## Google Auth
+
+I used the [these docs](https://developers.google.com/identity/gsi/web/guides/overview) to setup "Sign in with Google".
+
+The client ID used on staging (and sometimes local testing) is:  `898543344414-500i7unojepnlaecqmn84cd8k11k7h6g.apps.googleusercontent.com` and is called `quickbyte-preview` in the Google Developer Console.
+
+I use a different client in production, called `quickbyte-production`.
+
+
 
 # Server and DB
 

@@ -15,6 +15,9 @@ import ProjectView from '@/views/ProjectView.vue';
 import ProjectMediaView from '@/views/ProjectMediaView.vue';
 import ProjectMembersView from '@/views/ProjectMembersView.vue';
 import InviteView from '@/views/InviteView.vue';
+import LoginView from '@/views/auth/LoginView.vue';
+import SignupView from '@/views/auth/SignupView.vue';
+import PasswordResetView from '@/views/auth/PasswordResetView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -96,6 +99,21 @@ const router = createRouter({
           ]
         }
       ]
+    },
+    {
+      path: '/auth/login',
+      name: 'login',
+      component: LoginView
+    },
+    {
+      path: '/auth/signup',
+      name: 'signup',
+      component: SignupView
+    },
+    {
+      path: '/auth/password-reset',
+      name: 'password-reset',
+      component: PasswordResetView
     },
     {
       path: '/d/:downloadId',

@@ -12,12 +12,12 @@
                     Blazingly fast, simple, and efficient way of transferring large files.
                 </p>
                 <div class="grid w-full gap-3 mt-6 place-items-center lg:inline-flex">
-                    <button
-                        @click="auth.signIn()"
+                    <router-link
+                        :to="{ name: 'login' }"
                         class="px-4 py-3 text-white bg-[#5B53FF] hover:bg-[#5237F9] transition duration-200 ease-in rounded-md flex items-center space-x-2">
                         <span>Get started</span>
                         <Icon icon="ic:baseline-arrow-forward-ios" class="text-white" />
-                    </button>
+                    </router-link>
                 </div>
             </div>
 
@@ -30,7 +30,6 @@
     </Container>
 </template>
 <script setup lang="ts">
-import { auth } from "@/app-utils";
 import { Icon } from '@iconify/vue'
 import Container from '@/components/Base/Container.vue'
 import ModalVideo from '@/components/Modal/ModalVideo.vue'

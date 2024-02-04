@@ -50,7 +50,7 @@
 </template>
 <script setup lang="ts">
 import { auth } from "@/app-utils";
-import type { User } from '@/core';
+import type { User } from '@quickbyte/common';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue'
 import { ArrowLeftStartOnRectangleIcon, CreditCardIcon, StarIcon } from "@heroicons/vue/24/solid";
 
