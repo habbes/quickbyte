@@ -2,7 +2,14 @@
   <AuthShell title="Login to Quickbyte" v-if="!user">
     <form class="flex flex-col gap-4 mb-4" @submit.prevent="handleContinue()">
       <UiTextInput v-model="email" type="email" label="Email" placeholder="john.doe@example.com" fullWidth required />
-      <UiTextInput v-model="password" ref="passwordInput" v-if="accountExists" type="password" label="Password" fullWidth required />
+      <div v-if="accountExists" class="flex flex-col gap-1">
+        <UiTextInput v-model="password" ref="passwordInput" type="password" label="Password" fullWidth required />
+        <div class="text-gray-400 flex justify-end">
+          <router-link :to="{ name: 'password-reset', query: { email } }">Forgot password?</router-link>
+        </div>
+      </div>
+      
+      
       <div>
         <UiButton primary fill submit :loading="loading">Continue</UiButton>
       </div>
@@ -11,7 +18,11 @@
       Don't have an account? <router-link :to="{ name: 'signup' }" class="underline">Sign up</router-link>.
     </div>
   </AuthShell>
-  <EmailVerificationStep v-else-if="user && !user.verified && password" :user="user" :password="password" />
+  <EmailVerificationStep
+    v-else-if="user && !user.verified && password"
+    :email="user.email" :password="password"
+    @verificationSuccess="handleVerificationSuccess()"
+  />
 </template>
 <script lang="ts" setup>
 import { nextTick, ref } from 'vue';
@@ -21,7 +32,8 @@ import AuthShell from './AuthShell.vue';
 import EmailVerificationStep from './EmailVerificationStep.vue';
 import { auth, initUserData, logger, showToast, store, trpcClient } from '@/app-utils';
 import type { FullUser } from "@quickbyte/common";
-import { loginUserFromToken } from './auth-helpers';
+import { loginUserFromCredentials, loginUserFromToken } from './auth-helpers';
+import { ensure } from '@/core';
 
 const router = useRouter();
 const email = ref<string>();
@@ -87,5 +99,13 @@ async function login() {
   } else {
     user.value = result.user;
   }
+}
+
+async function handleVerificationSuccess() {
+  await loginUserFromCredentials(
+    ensure(email.value),
+    ensure(password.value),
+    router
+  );
 }
 </script>

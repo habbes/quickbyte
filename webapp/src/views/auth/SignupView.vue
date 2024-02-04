@@ -33,16 +33,23 @@
       Already have an account? <router-link :to="{ name: 'login' }" class="underline">Log in</router-link>.
     </div>
   </AuthShell>
-  <EmailVerificationStep v-else-if="user && password" :user="user" :password="password"/>
+  <EmailVerificationStep
+    v-else-if="user && password"
+    :email="user.email"
+    :password="password"
+    @verificationSuccess="handleVerificationSuccess()"
+  />
 </template>
 <script lang="ts" setup>
 import { nextTick, onMounted, ref } from 'vue';
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { UiButton, UiTextInput } from '@/components/ui';
 import AuthShell from './AuthShell.vue';
 import EmailVerificationStep from './EmailVerificationStep.vue';
 import { logger, showToast, trpcClient } from '@/app-utils';
 import type { FullUser }from "@quickbyte/common";
+import { loginUserFromCredentials } from "./auth-helpers.js";
+import { ensure } from '@/core';
 
 const email = ref<string>();
 const password = ref<string>();
@@ -51,6 +58,7 @@ const loading = ref(false);
 const nameInput = ref<typeof UiTextInput>();
 const emailInput = ref<typeof UiTextInput>();
 const route = useRoute();
+const router = useRouter();
 const user = ref<FullUser>();
 const verificationStep = ref(false);
 
@@ -86,5 +94,13 @@ async function handleContinue() {
   finally {
     loading.value = false;
   }
+}
+
+async function handleVerificationSuccess() {
+  await loginUserFromCredentials(
+    ensure(email.value),
+    ensure(password.value),
+    router
+  );
 }
 </script>
