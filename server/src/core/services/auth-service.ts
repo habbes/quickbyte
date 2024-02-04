@@ -61,40 +61,9 @@ class MemoryCachePlugin implements ICachePlugin {
 const tokenCachePlugin = new MemoryCachePlugin();
 
 export class AuthService {
-    private authConfig: AuthConfig;
-    private jwksClient: JwksClient;
-    private msalClient: ConfidentialClientApplication;
     private usersCollection: Collection<UserInDb>;
 
     constructor(private db: Database, private args: AuthServiceArgs) {
-        this.authConfig = {
-            authOptions: {
-                clientId: this.args.aadClientId,
-                authority: `https://login.microsoftonline.com/${this.args.aadTenantId}`,
-                clientSecret: this.args.aadClientSecret
-            },
-            webApiScope: `api://${this.args.aadClientId}/access_as_user openid offline_access`,
-            discoveryKeysEndpoint: `https://login.microsoftonline.com/${this.args.aadTenantId}/discovery/v2.0/keys`
-        };
-
-        this.jwksClient = createJwksClient({
-            jwksUri: this.authConfig.discoveryKeysEndpoint
-        });
-
-        this.msalClient = new ConfidentialClientApplication({
-            auth: this.authConfig.authOptions,
-            system: {
-                loggerOptions: {
-                    loggerCallback(loglevel, message, containsPii) {
-                        console.log(message);
-                    },
-                    piiLoggingEnabled: false,
-                    logLevel: msal.LogLevel.Info,
-                }
-            },
-            cache: { cachePlugin: tokenCachePlugin }
-        });
-
         this.usersCollection = this.db.users();
     }
 
@@ -144,6 +113,15 @@ export class AuthService {
 
             await this.usersCollection.insertOne(fullUser);
             const user = getSafeUser(fullUser) as FullUser;
+
+            // TODO: we're sending a welcome email, then verification email back to back.
+            // Could that be confusing to the user? Should we send just one email with both?
+            // Should the welcome email mention that the user should expect a verification email?
+            await this.args.email.sendEmail({
+                to: { name: user.name, email: user.email },
+                subject: 'Welcome to Quickbyte',
+                message: createWelcomeEmail(user.name, this.args.webappBaseUrl)
+            });
 
             await this.createEmailVerification(user._id, user.email, user.name);
             return user;
