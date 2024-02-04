@@ -126,3 +126,12 @@ export const PasswordResetArgs = VerifyUserEmailArgs.extend({
 
 export type PasswordResetArgs = z.infer<typeof PasswordResetArgs>;
 
+export const LoginWithGoogleRequestArgs = z.object({
+    idToken: z.string().min(1),
+    ip: z.string().optional(),
+    countryCode: z.string().optional(),
+    userAgent: z.string().optional()
+});
+
+export type LoginWithGoogleRequestArgs = z.infer<typeof LoginWithGoogleRequestArgs>;
+

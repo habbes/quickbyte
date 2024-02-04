@@ -1,10 +1,7 @@
-import { Collection, MongoError, } from "mongodb";
-import msal, { ConfidentialClientApplication, ICachePlugin } from "@azure/msal-node";
-import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
-import createJwksClient, { JwksClient } from "jwks-rsa";
-import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
+import { Collection } from "mongodb";
+import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs, LoginWithGoogleRequestArgs, AuthProvider } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
@@ -15,6 +12,7 @@ import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core'
 import * as zxcvbnCommonPackage from '@zxcvbn-ts/language-common'
 import * as zxcvbnEnPackage from '@zxcvbn-ts/language-en'
 import { randomInt, randomBytes } from 'node:crypto';
+import { OAuth2Client as GoogleAuthClient } from "google-auth-library";
 
 
 const options = {
@@ -27,49 +25,18 @@ const options = {
 }
 zxcvbnOptions.setOptions(options)
 
-// We use AAD on-behalf-of flow for authentication:
-// https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-node-samples/on-behalf-of
-
-// TODO: this class is a hack and should be replaced with a distributed cache
-class MemoryCachePlugin implements ICachePlugin {
-    private serializedCache: string = "";
-
-    beforeCacheAccess(tokenCacheContext: msal.TokenCacheContext): Promise<void> {
-        if (this.serializedCache) {
-            tokenCacheContext.tokenCache.deserialize(this.serializedCache);
-        }
-        else {
-            this.serializedCache = tokenCacheContext.tokenCache.serialize();
-        }
-
-        console.log('before cache access', this.serializedCache);
-
-        return Promise.resolve();
-    }
-
-    afterCacheAccess(tokenCacheContext: msal.TokenCacheContext): Promise<void> {
-        if (tokenCacheContext.cacheHasChanged) {
-            this.serializedCache = tokenCacheContext.tokenCache.serialize();
-        }
-
-        console.log('after cache access', this.serializedCache);
-
-        return Promise.resolve();
-    }
-}
-
-const tokenCachePlugin = new MemoryCachePlugin();
 
 export class AuthService {
     private usersCollection: Collection<UserInDb>;
+    private googleAuthClient: GoogleAuthClient;
 
     constructor(private db: Database, private args: AuthServiceArgs) {
         this.usersCollection = this.db.users();
+        this.googleAuthClient = new GoogleAuthClient();
     }
 
     async getAuthMethod(args: CheckUserAuthMethodArgs): Promise<UserAuthMethodResult> {
         try {
-            console.log('here', args);
             const user = await this.usersCollection.findOne({ email: args.email });
             if (user && !user.isGuest) {
                 // users that we created through Azure AD before we migrated to a custom
@@ -77,8 +44,7 @@ export class AuthService {
                 const verified = user.verified || user.aadId ? true : false;
                 return {
                     exists: true,
-                    // TODO: support email provider
-                    provider: 'email',
+                    provider: user.provider || 'email',
                     verified
                 }
             };
@@ -264,6 +230,74 @@ export class AuthService {
         }
     }
 
+    async loginWithGoogle(args: LoginWithGoogleRequestArgs): Promise<UserAndToken> {
+        try {
+            const payload = await this.extractGoogleIdToken(args.idToken);
+
+            const googleId = payload.sub;
+
+            const baseModel = createPersistedModel({ type: 'system', _id: 'system' });
+
+            const result = await this.db.users().findOneAndUpdate({
+                provider: 'google',
+                providerId: googleId
+            }, {
+                $set: {
+                    isGuest: false,
+                    name: payload.name,
+                    email: payload.email,
+                    verified: payload.email_verified,
+                    provider: 'google',
+                    providerId: googleId,
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'system', _id: 'system' }
+                },
+                $setOnInsert: {
+                    ...baseModel
+                }
+            }, {
+                upsert: true,
+                returnDocument: 'after'
+            });
+
+            if (!result.value) {
+                throw createAppError(`Failed to upsert user from google token, sub '${googleId}'`);
+            }
+
+            const user = getSafeUser(result.value);
+            const isNewUser = user._id === baseModel._id;
+
+            if (isNewUser) {
+                console.log('new user');
+                await this.args.email.sendEmail({
+                    to: { name: user.name, email: user.email },
+                    subject: 'Welcome to Quickbyte',
+                    message: createWelcomeEmail(user.name, this.args.webappBaseUrl)
+                });
+            }
+
+            if (!('verified' in user) || !user.verified) {
+                await this.createEmailVerification(user._id, user.email, user.name);
+                if (user.isGuest) {
+                    throw createInvalidAppStateError(`Did not expect user '${user._id}' to be guest.`);
+                }
+                return { user };
+            }
+            
+            const authToken = await this.createAuthToken(user._id, args);
+
+            const userWithAccount = await this.getUserAccountAndSub(user);
+
+            return {
+                authToken,
+                user: userWithAccount
+            };  
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     async logoutToken(code: string): Promise<void> {
         try {
             await this.db.authTokens().deleteOne({ code });
@@ -402,7 +436,16 @@ export class AuthService {
         }
     }
 
-    private async createAuthToken(userId: string, args: LoginRequestArgs) {
+    private async createAuthToken(
+        userId: string,
+        args: { 
+            ip?: string,
+            userAgent?: string,
+            countryCode?: string,
+            provider?: AuthProvider,
+            providerId?: string
+        }
+    ) {
         try {
             const code = generateAuthTokenCode();
             const validity = 7 * 60 * 60 * 1000; // 7 days
@@ -460,27 +503,28 @@ export class AuthService {
             throw createAppError(e);
         }
     }
-}
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'|'verifyUserEmail'|'requestUserVerificationEmail'|'login'|'logoutToken'|'resetPassword'>;
+    private async extractGoogleIdToken(idToken: string) {
+        try {
+            const result = await this.googleAuthClient.verifyIdToken({
+                idToken,
+                audience: this.args.googleClientId
+            });
 
-function getEmailFromJwt(jwtPayload: Record<string, string>): string {
-    if (jwtPayload.email) {
-        return jwtPayload.email;
-    }
+            const payload = result.getPayload();
+            if (!payload) {
+                throw createAuthError("Unable to get user info from Google token");
+            }
 
-    const uniqueName = jwtPayload.unique_name;
-    if (uniqueName.includes('#')) {
-        // when using an external provider like Google,
-        // the uniqueName is of the format google#actualemail@gmail.com
-        const email = uniqueName.split('#')[1];
-        if (email) {
-            return email;
+            return payload;
+        } catch (e: any) {
+            throw createAuthError(e);
         }
     }
-
-    return uniqueName;
 }
+
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'|'verifyUserEmail'|'requestUserVerificationEmail'|'login'|'logoutToken'|'resetPassword'|'loginWithGoogle'>;
+
 
 function getSafeUser(user: UserInDb): User {
     if ('password' in user) {
@@ -541,8 +585,17 @@ function generateAuthTokenCode(): string {
 }
 
 export interface AuthServiceArgs {
+    /**
+     * @deprecated
+     */
     aadClientId: string;
+    /**
+     * @deprecated
+     */
     aadClientSecret: string;
+    /**
+     * @deprecated
+     */
     aadTenantId: string;
     accounts: IAccountService;
     email: EmailHandler;
@@ -550,14 +603,6 @@ export interface AuthServiceArgs {
     invites: IInviteService;
     webappBaseUrl: string;
     access: IAccessHandler;
-}
-
-interface AuthConfig {
-    authOptions: {
-        clientId: string;
-        authority: string;
-        clientSecret: string;
-    },
-    webApiScope: string;
-    discoveryKeysEndpoint: string;
+    googleClientId: string;
+    googleClientSecret: string;
 }

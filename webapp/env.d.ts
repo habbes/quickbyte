@@ -13,6 +13,10 @@ interface ImportMetaEnv {
      * Client ID of the web API app in Microsoft Entra
      */
     readonly VITE_AAD_API_CLIENT_ID: string;
+    /**
+     * used for Sign in with Google
+     */
+    readonly VITE_GOOLE_CLIENT_ID: string;
   }
   
   interface ImportMeta {

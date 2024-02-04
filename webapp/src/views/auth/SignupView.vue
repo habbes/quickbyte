@@ -29,6 +29,11 @@
         <UiButton primary fill submit :loading="loading">Continue</UiButton>
       </div>
     </form>
+
+    <AuthMethodSeparator class="mb-3" />
+
+    <GoogleSignInButton />
+
     <div class="text-sm text-gray-600 mt-2 mb-2">
       Already have an account? <router-link :to="{ name: 'login' }" class="underline">Log in</router-link>.
     </div>
@@ -50,6 +55,8 @@ import { logger, showToast, trpcClient } from '@/app-utils';
 import type { FullUser }from "@quickbyte/common";
 import { loginUserFromCredentials } from "./auth-helpers.js";
 import { ensure } from '@/core';
+import AuthMethodSeparator from './AuthMethodSeparator.vue';
+import GoogleSignInButton from './GoogleSignInButton.vue';
 
 const email = ref<string>();
 const password = ref<string>();

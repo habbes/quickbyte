@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -15,6 +15,13 @@ export const appRouter = router({
     .input(LoginRequestArgs)
     .mutation(({ ctx, input }) =>
         ctx.app.auth.login(input)),
+    
+    // we should probably have one login endpoint
+    // that takes a provider and relevant credentials
+    loginWithGoogle: publicProcedure
+    .input(LoginWithGoogleRequestArgs)
+    .mutation(({ ctx, input }) =>
+        ctx.app.auth.loginWithGoogle(input)),
     
     logout: publicProcedure
     .input(z.string())

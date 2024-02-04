@@ -3,7 +3,6 @@ import type { Router } from "vue-router";
 import type { TrpcApiClient } from ".";
 import type { AuthToken } from '@quickbyte/common';
 import { computed, ref } from 'vue';
-import type { init } from '@sentry/vue';
 
 // full token object
 const TOKEN_OBJECT_STORAGE_KEY = "authToken";
@@ -44,6 +43,7 @@ export class AuthHandler {
         if (token) {
             await this.config.apiClient.logout.mutate(token);
         }
+
 
         this.clearLocalSession();
         this.config.onSignOut && this.config.onSignOut();

@@ -28,7 +28,12 @@ export interface BaseUser extends PersistedModel {
     email: string;
     name: string;
     invitedBy?: Principal;
+    // auth provider
+    provider?: AuthProvider;
+    providerId?: string;
 }
+
+export type AuthProvider = 'email'|'google';
 
 export interface UserDbOnlyFields {
     password: string;
@@ -349,7 +354,7 @@ export interface ProjectMember {
 
 export type UserAuthMethodResult = {
     exists: true;
-    provider: 'email'|'google';
+    provider: AuthProvider
     verified: boolean;
 } | {
     exists: false;
