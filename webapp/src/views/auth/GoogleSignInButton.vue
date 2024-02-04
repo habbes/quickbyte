@@ -1,11 +1,4 @@
 <template>
-  <!-- <button ref="loginButton" type="button" class="flex justify-center items-center gap-3 rounded-md
-  border border-gray-300 py-3 px-4 hover:bg-gray-100 active:bg-gray-200 font-Roboto font-medium">
-    <GoogleIcon />
-    <span class="text-gray-600">
-      Sign in with Google
-    </span>
-  </button> -->
   <div ref="loginButton"></div>
 </template>
 <script lang="ts" setup>
@@ -18,11 +11,9 @@ const router = useRouter();
 const loginButton = ref<HTMLElement>();
 
 watch([loginButton, googleAuth], () => {
-  console.log('login button', loginButton.value, 'googleAuth', googleAuth.value);
   if (!loginButton.value) return;
 
   if (!googleAuth.value) {
-    console.log('google auth not initialized');
     return;
   }
 
