@@ -227,6 +227,14 @@ I'll create a different project that I'll move to production mode (and it may ne
 
 ## Google Auth
 
+I used the [these docs](https://developers.google.com/identity/gsi/web/guides/overview) to setup "Sign in with Google".
+
+The client ID used on staging (and sometimes local testing) is:  `898543344414-500i7unojepnlaecqmn84cd8k11k7h6g.apps.googleusercontent.com` and is called `quickbyte-preview` in the Google Developer Console.
+
+I use a different client in production, called `quickbyte-production`.
+
+
+
 # Server and DB
 
 The server runs on [Railway](https://railway.app). In prod the DB runs in MongoDB Atlas. But in other environments, the DB runs on Railway as well.

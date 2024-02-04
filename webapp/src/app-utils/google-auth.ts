@@ -1,51 +1,54 @@
 import { ref } from "vue";
 
-export const googleAuth = ref<GoogleApi['auth2']>();
+export const googleAuth = ref<GoogleClient['accounts']['id']>();
+export const googleUser = ref<GoogleUser>();
 
-export const initGoogleAuth = function (clientId: string) {
-    // we load the google client after page load to ensure
-    // that its script tag has loaded
+export function initGoogleAuth(clientId: string) {
     window.addEventListener('load', () => {
-        gapi.load('auth2', function () {
-            // Retrieve the singleton for the GoogleAuth library and set up the client.
-            const auth2 = gapi.auth2.init({
-                client_id: clientId,
-                cookiepolicy: 'single_host_origin',
-            });
-
-            googleAuth.value = auth2;
+        google.accounts.id.initialize({
+            client_id: clientId,
+            ux_mode: 'popup',
+            callback: (user) => {
+                googleUser.value = user;
+            }
         });
+
+        googleAuth.value = google.accounts.id;
     });
-};
-
-declare const gapi: GoogleApi;
-
-export interface GoogleApi {
-    load(api: string, callback: () => any): any,
-    auth2: {
-        init(options: { client_id: string, cookiepolicy: string }): any
-        attachClickHandler(el: HTMLElement, options: any, onSuccess: (user: GoogleUser) => any, onFailure: (error: any) => any): void;
-        currentUser: {
-            get(): GoogleUser|null;
-        },
-        getAuthInstance(): {
-            signOut(): Promise<void>
-        } | null
-    },
 }
 
-export interface GoogleUser {
-    getId(): string;
-    getName(): string;
-    getGivenName(): string;
-    getFamilyName(): string;
-    getEmail(): string;
-    getImageUrl(): string;
-    getAuthResponse(): {
-        id_token: string;
+
+// see: https://developers.google.com/identity/gsi/web/reference/js-reference
+export interface GoogleClient {
+    accounts: {
+        id: {
+            initialize(config: {
+                client_id: string,
+                // see: https://developers.google.com/identity/gsi/web/guides/handle-credential-responses-js-functions
+                callback: (response: GoogleUser) => any,
+                ux_mode?: 'popup' | 'redirect'
+            }): void,
+            prompt(): void,
+            renderButton(parent: HTMLElement, config: {
+                type: 'icon' | 'standard',
+                size?: 'large' | 'small' | 'medium',
+                width?: number,
+                logo_alignment?: 'left' | 'center',
+                theme?: 'outline' | 'filled_blue' | 'filled_black',
+                click_listener?: () => any,
+            }): void,
+        }
     }
 }
 
-export function getGapi() {
-    return gapi;
+export interface GoogleUser {
+    credential: string,
+    name: string,
+    family_name: string,
+    given_name: string,
+    picture: string,
+    email: string
 }
+
+declare const google: GoogleClient;
+

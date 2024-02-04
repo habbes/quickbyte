@@ -3,7 +3,6 @@ import type { Router } from "vue-router";
 import type { TrpcApiClient } from ".";
 import type { AuthToken } from '@quickbyte/common';
 import { computed, ref } from 'vue';
-import { getGapi } from '@/app-utils';
 
 // full token object
 const TOKEN_OBJECT_STORAGE_KEY = "authToken";
@@ -51,11 +50,6 @@ export class AuthHandler {
 
         this.authenticated.value = false;
         this.config.router.push({ name: 'login' });
-
-        const gauth = getGapi().auth2.getAuthInstance();
-        if (gauth) {
-            await gauth.signOut();
-        }
     }
 
     getToken(): Promise<string|undefined> {

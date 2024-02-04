@@ -8,7 +8,7 @@ import VueSmoothScroll from 'vue3-smooth-scroll'
 import 'aos/dist/aos.css';
 import { initGoogleAuth } from './app-utils/google-auth';
 
-initGoogleAuth(import.meta.env.VITE_GOOLE_CLIENT_ID);
+initGoogleAuth(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 const app = createApp(App)
 app.use(VueSmoothScroll)
 
