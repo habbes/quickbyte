@@ -4,7 +4,7 @@ import jwt, { GetPublicKeyOrSecret } from "jsonwebtoken";
 import createJwksClient, { JwksClient } from "jwks-rsa";
 import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isAppError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
@@ -152,6 +152,36 @@ export class AuthService {
                 throw createResourceConflictError("The email you entered is already taken.");
             }
 
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async resetPassword(args: PasswordResetArgs) {
+        try {
+            const user = await this.verifyUserEmail({ code: args.code, email: args.email });
+            const password = await validateAndHashPassword({
+                password: args.password,
+                email: args.email,
+                name: user.name
+            });
+
+            const result = await this.db.users().findOneAndUpdate({
+                _id: user._id
+            }, {
+                $set: {
+                    password,
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'user', _id: user._id }
+                }
+            });
+
+            if (!result.ok) {
+                throw createDbError(`Error updating user '${user._id}': ${result.lastErrorObject}`);
+            }
+
+            return user;
+        } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
@@ -454,7 +484,7 @@ export class AuthService {
     }
 }
 
-export type IAuthService = Pick<AuthService, 'getUserByToken' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'|'verifyUserEmail'|'requestUserVerificationEmail'|'login'|'logoutToken'>;
+export type IAuthService = Pick<AuthService, 'getUserByToken' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'|'verifyUserEmail'|'requestUserVerificationEmail'|'login'|'logoutToken'|'resetPassword'>;
 
 function getEmailFromJwt(jwtPayload: Record<string, string>): string {
     if (jwtPayload.email) {

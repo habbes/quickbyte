@@ -49,6 +49,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { UiButton, UiTextInput } from '@/components/ui';
 import AuthShell from './AuthShell.vue';
 import { logger, showToast, trpcClient } from '@/app-utils';
+import { loginUserFromCredentials } from './auth-helpers';
 
 const router = useRouter();
 const route = useRoute();
@@ -87,8 +88,17 @@ async function requestEmailVerification() {
 }
 
 async function handleContinue() {
+  if (!email.value || !verificationCode.value || !password.value) return;
   try {
     loading.value = true;
+
+    await trpcClient.resetPassword.mutate({
+      email: email.value,
+      code: verificationCode.value,
+      password: password.value
+    });
+
+    await loginUserFromCredentials(email.value, password.value, router);
     
   }
   catch (e: any) {
@@ -98,9 +108,5 @@ async function handleContinue() {
   finally {
     loading.value = false;
   }
-}
-
-async function handleVerificationSuccess() {
-
 }
 </script>

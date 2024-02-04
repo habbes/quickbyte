@@ -119,3 +119,10 @@ export const LoginRequestArgs = z.object({
 });
 
 export type LoginRequestArgs = z.infer<typeof LoginRequestArgs>;
+
+export const PasswordResetArgs = VerifyUserEmailArgs.extend({
+    password: z.string().min(1)
+});
+
+export type PasswordResetArgs = z.infer<typeof PasswordResetArgs>;
+
