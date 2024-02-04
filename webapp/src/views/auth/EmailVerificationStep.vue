@@ -20,23 +20,15 @@ import { UiButton, UiTextInput } from '@/components/ui';
 import AuthShell from './AuthShell.vue';
 import { logger, showToast, trpcClient } from '@/app-utils';
 import type { FullUser } from '@quickbyte/common';
-import { useRouter } from 'vue-router';
 
 const props = defineProps<{
-  email: string,
-  /**
-   * Password used to automatically
-   * log the user in after email verification
-   * succeeds
-   */
-  password: string;
+  email: string
 }>();
 
 const emit = defineEmits<{
   (e: 'verificationSuccess', user: FullUser): void;
 }>();
 
-const router = useRouter();
 const code = ref<string>();
 const loading = ref(false);
 

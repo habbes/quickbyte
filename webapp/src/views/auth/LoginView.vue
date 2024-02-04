@@ -5,7 +5,7 @@
       <div v-if="accountExists" class="flex flex-col gap-1">
         <UiTextInput v-model="password" ref="passwordInput" type="password" label="Password" fullWidth required />
         <div class="text-gray-400 flex justify-end">
-          <span class="cursor-pointer">Forgot password?</span>
+          <router-link :to="{ name: 'password-reset', query: { email } }">Forgot password?</router-link>
         </div>
       </div>
       
