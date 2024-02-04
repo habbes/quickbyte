@@ -1,6 +1,6 @@
 <template>
-  <dialog ref="dialog" class="modal text-black bg-white">
-    <div class="modal-box">
+  <dialog ref="dialog" class="modal text-black">
+    <div class="modal-box bg-white">
       <div class="flex flex-row justify-between">
         <h3 class="font-bold text-lg mb-2">{{ title }}</h3>
         <XMarkIcon
