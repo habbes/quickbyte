@@ -33,6 +33,10 @@ const props = defineProps<{
   password: string;
 }>();
 
+const emit = defineEmits<{
+  (e: 'verificationSuccess', user: FullUser): void;
+}>();
+
 const router = useRouter();
 const code = ref<string>();
 const loading = ref(false);
@@ -49,16 +53,7 @@ async function handleVerify() {
 
     // if email verification is successful, we should log user in
     if (result.verified) {
-      // TODO: maybe verification request should return token if successful
-      // in order to avoid an extra request
-      const loginResult = await trpcClient.login.mutate({
-        email: props.user.email,
-        password: props.password
-      });
-
-      if ('authToken' in loginResult) {
-        await loginUserFromToken(loginResult.authToken, router);
-      }
+      emit('verificationSuccess', result);
     } 
   }
   catch (e: any) {
