@@ -295,6 +295,10 @@ export class AuthService {
                 user: userWithAccount
             };  
         } catch (e: any) {
+            if (isMongoDuplicateKeyError(e, 'email')) {
+                throw createResourceConflictError('The email is already taken.');
+            }
+
             rethrowIfAppError(e);
             throw createAppError(e);
         }
