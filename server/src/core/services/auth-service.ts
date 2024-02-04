@@ -253,7 +253,9 @@ export class AuthService {
                     _updatedBy: { type: 'system', _id: 'system' }
                 },
                 $setOnInsert: {
-                    ...baseModel
+                    _id: baseModel._id,
+                    _createdAt: baseModel._createdAt,
+                    _createdBy: baseModel._createdBy
                 }
             }, {
                 upsert: true,
