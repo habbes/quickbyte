@@ -84,7 +84,7 @@
       <!-- end comment sidebar -->
       <!-- player container -->
       <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]">
-          <div class=" sm:h-[90%] w-full flex sm:items-center">
+          <div class="sm:h-[90%] w-full flex sm:items-center">
             <MediaPlayer
               v-if="file && (mediaType === 'video' || mediaType === 'audio')"
               ref="videoPlayer"
@@ -115,7 +115,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick } from "vue"
+import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store } from "@/app-utils";
 import type { Media, MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor } from "@quickbyte/common";
@@ -205,7 +205,8 @@ const sortedComments = computed(() => {
 
 const timedComments = computed<TimedCommentWithAuthor[]>(() => sortedComments.value.filter(c => isDefined(c.timestamp)) as TimedCommentWithAuthor[]);
 
-onMounted(async () => {
+watch([store.currentAccount],async () => {
+  if (!store.currentAccount.value) return;
   const account = ensure(store.currentAccount.value);
   const queriedCommentId = Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment;
   const queriedVersionId = Array.isArray(route.query.version) ? route.query.version[0] : route.query.version;
