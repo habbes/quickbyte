@@ -205,7 +205,8 @@ const sortedComments = computed(() => {
 
 const timedComments = computed<TimedCommentWithAuthor[]>(() => sortedComments.value.filter(c => isDefined(c.timestamp)) as TimedCommentWithAuthor[]);
 
-watch([store.currentAccount],async () => {
+onMounted(async () => {
+  console.log('player loading', store.currentAccount);
   if (!store.currentAccount.value) return;
   const account = ensure(store.currentAccount.value);
   const queriedCommentId = Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment;

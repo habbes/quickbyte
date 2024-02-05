@@ -31,6 +31,7 @@ const accounts = ref<AccountWithSubscription[]>([]);
 const currentAccountId = ref<string>();
 const currentAccount = computed(() => accounts.value.find(a => a._id === currentAccountId.value));
 const currentProjects = computed(() => projects.value.filter(p => p.accountId === currentAccount.value?._id));
+const initialDataLoaded = ref(false);
 
 export async function initUserData() {
     try {
@@ -61,6 +62,7 @@ export async function initUserData() {
         recoveredTransfers.value = transfers;
 
         await getDeviceData();
+        initialDataLoaded.value = true;
     } catch (e: any) {
         logger?.error(e.message, e);
         if (/signed in/.test(e.message) || /sign in/.test(e.message)) {
@@ -139,5 +141,6 @@ export const store = {
     currentAccount,
     removeInvite,
     addProject,
-    setCurrentAccount
+    setCurrentAccount,
+    initialDataLoaded
 };

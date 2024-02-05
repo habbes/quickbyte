@@ -16,16 +16,4 @@ onMounted(async () => {
   AOS.init();
   auth.init();
 });
-
-watch(authenticated, async () => {
-  if (!authenticated.value) return;
-
-  logger.log('Auth update, refreshing data');
-  try {
-    await initUserData();
-  } catch (e: any) {
-    showToast(e.message, 'error');
-    logger.error(e.message, e);
-  }
-});
 </script>
