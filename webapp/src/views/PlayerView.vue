@@ -84,7 +84,7 @@
       <!-- end comment sidebar -->
       <!-- player container -->
       <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]">
-          <div class="sm:h-[90%] w-full flex sm:items-center">
+          <div class="h-full max-h-full sm:h-[90%] w-full flex sm:items-center">
             <MediaPlayer
               v-if="file && (mediaType === 'video' || mediaType === 'audio')"
               ref="videoPlayer"

@@ -1,8 +1,8 @@
 <template>
-  <div class="w-full">
+  <div class="w-full h-full max-h-full">
     <!-- we wrap the video in a black container in case the video can't fill the width due the aspect ration -->
     <div v-if="mediaType === 'video'"
-      class="bg-black"
+      class="bg-black max-h-full h-full"
     >
       <video
         ref="player"
@@ -13,7 +13,7 @@
         @pause="isPlaying = false"
         @timeupdate="handleTimeUpdate()"
         @canplay="handleCanPlay()"
-        class="sm:h-[calc(100dvh-208px)] w-auto sm:m-auto"
+        class="max-h-full h-full sm:h-[calc(100dvh-208px)] w-auto m-auto"
       >
         <source
           :src="src"
