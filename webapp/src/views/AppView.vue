@@ -1,7 +1,7 @@
 <template>
   <AppShell>
     <router-view v-if="dataLoaded"></router-view>
-    <div v-else-if="loading" class="mt-10 flex items-center justify-center">
+    <div v-else-if="loading" class="mt-10 w-full flex items-center justify-center">
       <span class="loading loading-spinner" />
     </div>
     <div v-else-if="error" class="mt-10 text-center text-error">
