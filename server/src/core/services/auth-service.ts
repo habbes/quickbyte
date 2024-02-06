@@ -454,7 +454,7 @@ export class AuthService {
     ) {
         try {
             const code = generateAuthTokenCode();
-            const validity = 7 * 60 * 60 * 1000; // 7 days
+            const validity = 14 * 24 * 60 * 60 * 1000; // 14 days
             const token: AuthToken = {
                 ...createPersistedModel({ type: 'user', _id: userId }),
                 code,
