@@ -120,8 +120,41 @@ const subscriptionPrice = computed(() => {
 })
 
 const pricingPlans = [
+  // {
+  //   id: 1,
+  //   plan: 'Free Trial',
+  //   planDescription: 'Quickbyte is currently free to use. No credit card required.',
+  //   currency: 'KSH / month',
+  //   recommended: false,
+  //   features: [
+  //     {
+  //       id: 1,
+  //       features: 'Upload up to 200GB per transfer'
+  //     },
+  //     {
+  //       id: 2,
+  //       feature: '500GB total storage size'
+  //     },
+  //     {
+  //       id: 3,
+  //       feature: 'Up to 10 users per project',
+  //     },
+  //     {
+  //       id: 4,
+  //       feature: 'Track different versions of a file'
+  //     },
+  //     {
+  //       id: 5,
+  //       feature: 'Comments and reviews'
+  //     },
+  //     {
+  //       id: 6,
+  //       feature: 'Transfer files to people without a Quickbyte account'
+  //     }
+  //   ]
+  // },
   {
-    id: 1,
+    id: 2,
     plan: 'Starter',
     planDescription: 'For solo creators working with clients.',
     currency: 'KSH / month',
