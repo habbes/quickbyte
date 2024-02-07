@@ -51,24 +51,22 @@ const features = [
     {
         id: 1,
         icon: 'ic:twotone-security',
-        name: 'Secure file transfer',
+        name: 'Storage for your media files',
         comingSoon: false,
-        description: 'All files that you send and receive are end-to-end encrypted, meaning all your information is secure before ever leaving your device.',
+        description: 'Store all your project video, audio, image and other files securely in one place.',
     },
-
     {
         id: 2,
         icon: 'ri:git-repository-private-fill',
-        name: 'Private file transfer',
+        name: 'Invite your whole team',
         comingSoon: false,
-        description: 'Send each and every large files with confidence, knowing that your data is protected every step of the way.',
+        description: 'Add unlimited team members and clients to your projects to make sharing files and feedback seamless.',
     },
-
     {
         id: 3,
         icon: 'material-symbols:alarm-outline-rounded',
         name: 'Time based comments',
-        comingSoon: true,
+        comingSoon: false,
         description: 'All files that you send and receive are end-to-end encrypted, meaning all your information is secure before ever leaving your device.',
     },
 
