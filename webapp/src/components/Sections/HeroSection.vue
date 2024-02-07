@@ -5,11 +5,12 @@
                 <div class="space-y-1">
                     <h1
                         class="block text-3xl font-bold text-center text-white sm:text-4xl lg:text-start lg:text-6xl lg:leading-tight ">
-                        Large files transfer <span class="text-[#5B53FF]"> simplified</span>
+                        Streamlined collaboration for video teams and creatives.
                     </h1>
                 </div>
                 <p class="mt-3 text-sm text-center leading-6 lg:text-start md:text-lg md:leading-8 text-[#7B7F98] ">
-                    Blazingly fast, simple, and efficient way of transferring large files.
+                    Still sifting through emails to find out what changes your client requested on that project?
+                    Switch to Quickbyte today to reclaim your sanity.
                 </p>
                 <div class="grid w-full gap-3 mt-6 place-items-center lg:inline-flex">
                     <router-link

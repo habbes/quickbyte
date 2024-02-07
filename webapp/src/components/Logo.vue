@@ -1,6 +1,6 @@
 <template>
   <div class="font-bold font-Orbit" :class="classes">
-    Quickbyte
+    <router-link to="/">Quickbyte</router-link>
   </div>
 </template>
 <script lang="ts" setup>
