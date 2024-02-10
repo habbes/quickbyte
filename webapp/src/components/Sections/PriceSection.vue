@@ -3,7 +3,7 @@
     <div class="mb-6 space-y-6">
       <div class="grid space-y-4 text-center place-items-center">
         <p class="max-w-md text-3xl font-bold leading-10 text-gray-200 lg:text-4xl ">
-          A plan that supports your <span class="text-[#5B53FF]" data-aos="fade-up">growth</span>
+          Pricing plans
         </p>
         <!-- <span class="max-w-md text-gray-200">Our pricing plan provides the necessary features and resources to
           support
@@ -30,10 +30,10 @@
               class="absolute top-0 right-0 rounded-tr-xl rounded-bl-xl text-xs font-medium bg-[#5B53FF] text-white py-1.5 px-3 "
             >Recommended</span>
 
-            <div class="flex items-center mt-5 space-x-2">
+            <div class="flex items-center mt-5 space-x-2" v-if="!plan.freeTrial">
               <div class="w-full text-center">
-                <span class="text-4xl font-bold text-white md:text-4xl ">{{ subscriptionPrice }}</span>
-                <span class="ml-3 text-gray-200">{{ plan.currency }}</span>
+                <span class="text-4xl font-bold text-white md:text-4xl ">{{ isToggled ? plan.annualPrice : plan.monthlyPrice }}</span>
+                <span class="ml-3 text-gray-200">{{ plan.priceUnit }}</span>
               </div>
             </div>
 
@@ -60,12 +60,20 @@
               class="grid w-full py-4 space-y-3 place-items-center lg:place-items-baseline lg:space-y-0 lg:mt-5 lg:py-4 lg:first:pt-0 lg:last:pb-0"
             >
               <div class="w-full">
-                <button
+                <router-link
+                  v-if="!plan.comingSoon"
+                  :to="{ name: 'login' }"
                   type="button"
                   class="inline-flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-white bg-[#5B53FF] rounded-md shadow-sm hover:bg-[#5237F9] transition-all duration-200 ease-in"
                 >
-                  Subscribe
-                </button>
+                  Get Started
+                </router-link>
+                <div
+                  v-else
+                  class="inline-flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-white border border-[#5B53FF] rounded-md shadow-sm transition-all duration-200 ease-in"
+                >
+                  Coming soon
+                </div>
               </div>
             </div>
           </div>
@@ -115,74 +123,73 @@ function handleToggleSubscription(value: boolean) {
   isToggled.value = value
 }
 
-const subscriptionPrice = computed(() => {
-  return isToggled.value === true ? 'Sh 750' : 'Sh 900'
-})
-
 const pricingPlans = [
-  // {
-  //   id: 1,
-  //   plan: 'Free Trial',
-  //   planDescription: 'Quickbyte is currently free to use. No credit card required.',
-  //   currency: 'KSH / month',
-  //   recommended: false,
-  //   features: [
-  //     {
-  //       id: 1,
-  //       features: 'Upload up to 200GB per transfer'
-  //     },
-  //     {
-  //       id: 2,
-  //       feature: '500GB total storage size'
-  //     },
-  //     {
-  //       id: 3,
-  //       feature: 'Up to 10 users per project',
-  //     },
-  //     {
-  //       id: 4,
-  //       feature: 'Track different versions of a file'
-  //     },
-  //     {
-  //       id: 5,
-  //       feature: 'Comments and reviews'
-  //     },
-  //     {
-  //       id: 6,
-  //       feature: 'Transfer files to people without a Quickbyte account'
-  //     }
-  //   ]
-  // },
   {
-    id: 2,
-    plan: 'Starter',
-    planDescription: 'For solo creators working with clients.',
+    id: 1,
+    plan: 'Free Trial',
+    planDescription: 'Quickbyte is currently free to use. No credit card required.',
     currency: 'KSH / month',
+    freeTrial: true,
     recommended: false,
     features: [
       {
         id: 1,
-        feature: 'Send up to 200GB per transfer',
+        feature: '10 maximum users'
       },
-
       {
         id: 2,
-        feature: 'Recover failed transfers within 7 days',
+        feature: '200GB total storage size'
+      },
+      {
+        id: 3,
+        feature: '200GB transfer size limit',
+      },
+      {
+        id: 4,
+        feature: '10 total projects'
+      },
+      {
+        id: 5,
+        feature: 'Version management'
+      },
+      {
+        id: 6,
+        feature: 'Comments and reviews'
+      }
+    ]
+  },
+  {
+    id: 2,
+    plan: 'Pro',
+    planDescription: 'For solo teams and solo creators.',
+    monthlyPrice: '$9',
+    annualPrice: '$7',
+    priceUnit: '/ user / month',
+    recommended: false,
+    freeTrial: false,
+    comingSoon: true,
+    features: [
+      {
+        id: 1,
+        feature: '10 maximum users',
+      },
+      {
+        id: 2,
+        feature: '500GB total storage',
       },
 
       {
         id: 3,
-        feature: '500GB total storage size',
+        feature: 'Unlimited projects',
       },
 
       {
         id: 4,
-        feature: '30-day transfer expiry',
+        feature: 'Version management',
       },
-
       {
         id: 5,
-        feature: 'More features coming soon',
+        feature: 'Review, comments and status tracking tools',
       },
     ],
   },

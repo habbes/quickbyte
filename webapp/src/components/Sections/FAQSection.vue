@@ -15,15 +15,22 @@
           <div class="grid gap-4 md:gap-6">
             <Accordion>
               <template #title>
-                How big of a file can I send?
+                When does the free trial end? And what happens after?
               </template>
 
               <p>
-                With Quickbyte you can send up to 200GB per transfer.
+                Quickbyte has not started charging and is currently free to use.
+                Eventually we'll open up our paid plans and start charging. At that point
+                the free tier might change (e.g. increased usage limits). If your usage
+                will be above the free tier limit, you will be invited to move to the
+                paid tiers (possibly at a discount). You will be notified at least 2
+                months in advance before you need to move to paid plan. Note that we're still
+                figuring out the right pricing model and currently listed prices and plans are estimates
+                that are subject to change.
               </p>
             </Accordion>
 
-            <Accordion>
+            <!-- <Accordion>
               <template #title>
                 How do I send the sharing link to someone?
               </template>
@@ -43,7 +50,7 @@
                 No. There is no limit to how many times you can use Quickbyte. Use it as much as you
                 like.
               </p>
-            </Accordion>
+            </Accordion> -->
           </div>
         </div>
       </div>
