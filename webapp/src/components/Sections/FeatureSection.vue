@@ -58,37 +58,37 @@ const features = [
     {
         id: 2,
         icon: 'ri:git-repository-private-fill',
-        name: 'Invite your whole team',
+        name: 'Get your whole team on the same page',
         comingSoon: false,
-        description: 'Add unlimited team members and clients to your projects to make sharing files and feedback seamless.',
+        description: 'Add unlimited collaborators, members and clients to your projects to make sharing files and feedback seamless. Control who can upload and who can review. Collaborates get automatically notified when files are updated or when comments are added.',
     },
     {
         id: 3,
         icon: 'material-symbols:alarm-outline-rounded',
         name: 'Time based comments',
         comingSoon: false,
-        description: 'All files that you send and receive are end-to-end encrypted, meaning all your information is secure before ever leaving your device.',
+        description: 'Add precise comments to your media files, pinning the comments to the exact frame, eliminating confusion or misinterpretations.',
     },
 
     {
         id: 4,
         icon: 'heroicons:magnifying-glass',
-        name: 'Track transfer downloads',
-        description: 'Monitor which files have been downloaded from your shared link to enhance collaboration and data management.',
+        name: 'Track different versions of the same file',
+        description: 'Track every version of your media files in one place. Easily switch back-and-forth and compare different versions and see comments made for each version.',
     },
     {
         id: 5,
         icon: 'ic:twotone-track-changes',
-        name: 'Track different revisions of a file',
+        name: 'Share files with people without a Quickbyte account',
         comingSoon: false,
-        description: 'Track each and every different revisions of a file that you upload to Quickbyte and send in realtime without hussle.',
+        description: 'Share files with people without a Quickbyte account using transfer links.',
     },
     {
         id: 4,
         icon: 'material-symbols:bolt',
-        name: 'Lightning fast transfers',
+        name: 'Fast, recoverable file uploads',
         comingSoon: false,
-        description: 'Send and share files no matter the size. Quickbyte has no file size limits and can send large files in no time.',
+        description: 'Quickbyte uploads are fast and resume automatically on network interruptions. You can even recover a failed transfer after restarting your browser or computer. Transfer up to 200GB in one go.',
     },
 ]
 </script>

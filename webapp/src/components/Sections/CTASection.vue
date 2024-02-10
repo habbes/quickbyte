@@ -17,12 +17,12 @@
                 </svg>
                 <div class="grid py-32 text-center place-items-center lg:mx-0 lg:flex-auto lg:py-20 lg:text-left">
                     <h2 class="max-w-sm text-3xl font-bold tracking-tight text-center text-white sm:text-4xl">
-                        Start
-                        sending files <span class="line-through">tomorrow</span> <span>today</span>
+                        Streamline your creative
+                        collabortive workflow <span class="line-through">tomorrow</span> <span>today</span>
                     </h2>
-                    <p class="max-w-md mt-6 leading-6 text-center text-gray-300 md:text-lg text-md md:leading-7">
+                    <!-- <p class="max-w-md mt-6 leading-6 text-center text-gray-300 md:text-lg text-md md:leading-7">
                         Start sending files with unprecedented speed and efficiency today!
-                    </p>
+                    </p> -->
                     <div class="flex items-center justify-center mt-10 gap-x-6 lg:justify-start">
                         <BaseButton label="Get started" />
                     </div>
