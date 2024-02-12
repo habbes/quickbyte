@@ -35,6 +35,4 @@ onMounted(async () => {
   
   dataLoaded.value = true;
 });
-
-console.log('AppView', store.user.value);
 </script>

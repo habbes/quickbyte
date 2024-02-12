@@ -4,7 +4,7 @@
             class="relative flex items-center justify-center focus:outline-none focus-visible:ring focus-visible:ring-indigo-300 rounded-3xl group"
             @click="modalOpen = true" aria-label="Watch the video">
             <img class="transition-shadow duration-300 ease-in-out shadow-2xl rounded-3xl"
-                src="https://i.ytimg.com/vi/aGQZpvjTF1M/hqdefault.jpg?sqp=-oaymwEmCOADEOgC8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGH8gEyg8MA8=&rs=AOn4CLA9XDwzSKsiDq5Dw9RubDi28rcLvw"
+                src="https://img.youtube.com/vi/pbxZ6RPGBps/hqdefault.jpg"
                 width="768" height="432" alt="Modal video thumbnail" />
             <svg class="absolute transition-transform duration-300 ease-in-out pointer-events-none group-hover:scale-110"
                 xmlns="<http://www.w3.org/2000/svg>" width="72" height="72">
@@ -32,7 +32,7 @@
                             </button>
 
                             <iframe class="w-full h-full"
-                                src="https://www.youtube.com/embed/aGQZpvjTF1M?si=9BKY3untP9fi2TQd"
+                                src="https://www.youtube.com/embed/pbxZ6RPGBps?si=Y_Cd1bXwvV5QNxsz"
                                 title="YouTube video player" frameborder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowfullscreen></iframe>
