@@ -154,7 +154,7 @@ export function createMediaCommentNotificationEmail({
     return `
 Hello ${recipientName},
 <br>
-${authorName} has shared the following commen in the project <b>${projectName}</b>.
+${authorName} has shared the following comment in the project <b>${projectName}</b>.
 <br>
 <p style="padding:10px">
     <blockquote>
