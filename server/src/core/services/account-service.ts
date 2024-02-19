@@ -213,7 +213,7 @@ export class AccountService {
             links: this.config.links,
             media: new MediaService(this.db.db, authContext, {
                 transfers,
-                comments: new CommentService(this.db.db, authContext)
+                comments: new CommentService(this.db, authContext)
             })
         });
     }

@@ -1,10 +1,8 @@
-import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media } from "../models.js";
+import { Collection } from "mongodb";
+import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createValidationError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { Database } from "../db.js";
-
-const COLLECTION = 'comments';
 
 export interface MediaServiceConfig {
     transfers: ITransferService
@@ -90,11 +88,17 @@ export class CommentService {
         }
     }
 
-    async getMediaComments(mediaId: string): Promise<CommentWithAuthor[]> {
+    async getMediaComments(mediaId: string): Promise<WithChildren<CommentWithAuthor>[]> {
         try {
-            const result = await this.collection.aggregate<CommentWithAuthor>([
+            const result = await this.collection.aggregate<WithChildren<CommentWithAuthor>>([
                 {
-                    $match: { mediaId: mediaId }
+                    $match: {
+                        mediaId: mediaId,
+                        $or: [
+                            { parentId: null },
+                            { parentId: { $exists: false } }
+                        ]
+                    }
                 },
                 {
                     $lookup: {
@@ -108,6 +112,30 @@ export class CommentService {
                 {
                     $unwind: {
                         path: '$author'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: this.collection.collectionName,
+                        localField: 'parentId',
+                        foreignField: '_id',
+                        as: 'children',
+                        pipeline: [
+                            {
+                                $lookup: {
+                                    from: this.db.users().collectionName,
+                                    localField: '_createdBy._id',
+                                    foreignField: '_id',
+                                    as: 'author',
+                                    pipeline: [{ $limit: 1 }]
+                                }
+                            },
+                            {
+                                $unwind: {
+                                    path: '$author'
+                                }
+                            }
+                        ]
                     }
                 }
             ]).toArray();;
