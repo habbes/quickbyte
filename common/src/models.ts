@@ -252,6 +252,7 @@ export interface Comment extends PersistedModel {
     mediaId: string;
     mediaVersionId: string;
     timestamp?: number;
+    parentId?: string;
 }
 
 export interface CommentWithAuthor extends Comment {
@@ -263,6 +264,10 @@ export interface CommentWithAuthor extends Comment {
 
 export interface TimedCommentWithAuthor extends CommentWithAuthor {
     timestamp: number;
+}
+
+export type WithChildren<T> = T & {
+    children: T[];
 }
 
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';

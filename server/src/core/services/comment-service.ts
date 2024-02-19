@@ -1,7 +1,8 @@
 import { Db, Collection } from "mongodb";
 import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError } from "../error.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createValidationError } from "../error.js";
 import { ITransferService } from "./index.js";
+import { Database } from "../db.js";
 
 const COLLECTION = 'comments';
 
@@ -12,8 +13,8 @@ export interface MediaServiceConfig {
 export class CommentService {
     private collection: Collection<Comment>;
 
-    constructor(private db: Db, private authContext: AuthContext) {
-        this.collection = db.collection<Comment>(COLLECTION);
+    constructor(private db: Database, private authContext: AuthContext) {
+        this.collection = db.comments();
     }
 
     async createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<CommentWithAuthor> {
@@ -33,12 +34,17 @@ export class CommentService {
 
     private async create(args: CreateCommentArgs): Promise<CommentWithAuthor> {
         try {
+            if (args.parentId) {
+                await this.ensurCommentReplyValid(args);
+            }
+
             const comment: Comment = {
                 ...createPersistedModel(this.authContext.user._id),
                 text: args.text,
                 mediaId: args.mediaId,
                 mediaVersionId: args.mediaVersionId,
-                projectId: args.projectId
+                projectId: args.projectId,
+                parentId: args.parentId
             };
 
             if (args.timestamp !== undefined && args.timestamp !== null) {
@@ -54,6 +60,30 @@ export class CommentService {
                 }
             };
             
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async ensurCommentReplyValid(args: CreateCommentArgs): Promise<void> {
+        try {
+            // the reply comment must apply to the same media as the parent,
+            // but could be a different version
+            const parent = await this.collection.findOne({
+                _id: args.parentId,
+                mediaId: args.mediaId,
+            });
+
+            if (!parent) {
+                throw createResourceNotFoundError(`The target comment does not exist.`);
+            }
+
+            if (parent.parentId) {
+                // TODO: we currently do not supported deeply nested comments
+                // but one day we may support this
+                throw createAppError
+            }
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -98,6 +128,7 @@ interface CreateCommentArgs {
     mediaVersionId: string;
     text: string;
     timestamp?: number;
+    parentId?: string;
 }
 
 export interface CreateMediaCommentArgs {
