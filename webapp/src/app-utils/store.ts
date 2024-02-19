@@ -12,7 +12,7 @@ import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs
 import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 import { logger } from './logger';
-import { auth } from '.';
+import { auth, showToast } from '.';
 
 // while the user we get from the server actually has account and subscription info of
 // the user's personal account, here I opted to user the basic User type instead of the
@@ -60,6 +60,10 @@ export async function initUserData() {
 
         const transfers = await uploadRecoveryManager.getRecoveredTransfers();
         recoveredTransfers.value = transfers;
+        if (transfers.length) {
+            // TODO: this is a temporary hack. We should display this in notification tray instead
+            showToast("Incomplete uploads detected from previous session. Open the Quick Transfer page to complete the transfers.", "info");
+        }
 
         await getDeviceData();
         initialDataLoaded.value = true;
