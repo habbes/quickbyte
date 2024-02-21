@@ -29,30 +29,14 @@
         
 
         <div class="overflow-y-auto flex flex-col h-[calc(100dvh-478px)] sm:h-[calc(100dvh-248px)]" :style="commentsListStyles">
-          <div v-for="comment in sortedComments"
+          <MediaComment
+            v-for="comment in sortedComments"
             :key="comment._id"
-            :id="getHtmlCommentId(comment)"
-            class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0"
-            :class="{ 'bg-[#120c11]': comment._id === selectedCommentId }"
-          >
-            <div class="flex flex-row items-center justify-between mb-2">
-              <div class="flex flex-row items-center gap-2">
-                <span class="text-sm text-white">{{ comment.author.name }}</span>
-                <span :title="`Posted on ${new Date(comment._createdAt).toLocaleString()} `">{{ new Date(comment._createdAt).toLocaleDateString() }}</span>
-              </div>
-              <span
-                v-if="comment.timestamp !== undefined"
-                @click="handleCommentClicked(comment)"
-                title="Jump to this time in the video"
-                class="font-semibold text-blue-300 hover:cursor-pointer"
-              >
-                {{ formatTimestampDuration(comment.timestamp) }}
-              </span>
-            </div>
-            <div class="text-xs whitespace-pre-line">
-              {{ comment.text }}
-            </div>
-          </div>
+            :comment="comment"
+            :htmlId="getHtmlCommentId(comment)"
+            :selected="comment._id === selectedCommentId"
+            @click="handleCommentClicked($event)"
+          />
         </div>
 
         <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 sm:h-[200px]">
@@ -125,6 +109,7 @@ import { UiLayout } from '@/components/ui';
 import MediaPlayer from '@/components/MediaPlayer.vue';
 import ImageViewer from '@/components/ImageViewer.vue';
 import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
+import MediaComment from "@/components/MediaComment.vue";
 import { getMediaType } from "@/core/media-types";
 
 // had difficulties getting the scrollbar on the comments panel to work
