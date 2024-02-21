@@ -173,8 +173,7 @@ export class AccountService {
                     }
                 }
             ]).toArray();
-
-            console.log('accounts', accounts);
+    
             for (let account of accounts) {
                 if (!account.subscription) break;
 

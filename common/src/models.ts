@@ -279,7 +279,7 @@ export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'tr
 export interface MediaWithFileAndComments extends Media {
     versions: MediaVersionWithFile[];
     file: DownloadTransferFileResult;
-    comments: CommentWithAuthor[];
+    comments: WithChildren<CommentWithAuthor>[];
 }
 
 export interface MediaVersionWithFile extends MediaVersion {

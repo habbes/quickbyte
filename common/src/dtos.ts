@@ -135,3 +135,15 @@ export const LoginWithGoogleRequestArgs = z.object({
 
 export type LoginWithGoogleRequestArgs = z.infer<typeof LoginWithGoogleRequestArgs>;
 
+export const CreateMediaCommentArgs = z.object({
+    projectId: z.string().min(1),
+    mediaId: z.string().min(1),
+    mediaVersionId: z.string().min(1),
+    text: z.string().min(1),
+    timestamp: z.number().optional(),
+    parentId: z.string().optional()
+});
+
+export type CreateMediaCommentArgs = z.infer<typeof CreateMediaCommentArgs>;
+
+
