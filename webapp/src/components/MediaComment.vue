@@ -20,14 +20,14 @@
   </div>
 </template>
 <script lang="ts" setup>
-import type { CommentWithAuthor, WithChildren, Comment } from "@quickbyte/common";
+import type { CommentWithAuthor, WithChildren } from "@quickbyte/common";
 import MediaCommentInner from "./MediaCommentInner.vue";
 
 const props = defineProps<{
   comment: WithChildren<CommentWithAuthor>;
   htmlId: string;
   selected?: boolean;
-  getHtmlId: (comment: Comment) => string;
+  getHtmlId: (comment: CommentWithAuthor) => string;
 }>();
 
 defineEmits<{
