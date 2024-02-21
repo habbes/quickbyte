@@ -1,8 +1,8 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, DownloadTransferFileResult } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
-import { CreateMediaCommentArgs, ICommentService } from "./comment-service.js";
+import { ICommentService } from "./comment-service.js";
 
 const COLLECTION = 'media';
 
@@ -141,7 +141,7 @@ export class MediaService {
         }
     }
 
-    async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<Comment> {
+    async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         try {
             const medium = await this.collection.findOne({ projectId: projectId, _id: mediaId, deleted: { $ne: true } });
             if (!medium) {

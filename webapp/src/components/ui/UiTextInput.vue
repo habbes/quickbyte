@@ -31,6 +31,7 @@ const props = defineProps<{
   fullWidth?: boolean;
   type?: TextInputType;
   required?: boolean;
+  dark?: boolean;
 }>();
 
 defineExpose({ focus });
@@ -43,7 +44,8 @@ const id = ref(props.id || `input_${Math.ceil(Math.random() * 10000)}`);
 
 const classes = computed(() => {
   return {
-    'w-full': props.fullWidth
+    'w-full': props.fullWidth,
+    'bg-transparent': props.dark
   }
 });
 

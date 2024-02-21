@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -61,6 +61,11 @@ export const appRouter = router({
     .input(DeleteMediaArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).deleteMedia(input.projectId, input.id)),
+    
+    createMediaComment: protectedProcedure
+    .input(CreateMediaCommentArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).createMediaComment(input.projectId, input.mediaId, input)),
     
     getUserAuthMethod: publicProcedure
     .input(CheckUserAuthMethodArgs)

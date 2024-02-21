@@ -19,7 +19,8 @@ export type ErrorCode =
     | 'subscriptionInsufficient'
     // When the app is an state that should never occur
     // and that could point to an undetected logic error
-    | 'invalidAppState';
+    | 'invalidAppState'
+    | 'operationNotSupported';
 
 /**
  * Checks whether the error is a MongoDB duplicate key error
@@ -98,3 +99,7 @@ export const createSubscriptionInsufficientError =
 
 export const createInvalidAppStateError =
     (message: ErrorMessage = 'Invalid app state detected.') => createAppError(message, 'invalidAppState');
+
+
+export const createOperationNotSupportedError =
+    (message: ErrorMessage = 'Operation not supported.') => createAppError(message, 'operationNotSupported');

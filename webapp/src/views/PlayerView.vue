@@ -29,30 +29,16 @@
         
 
         <div class="overflow-y-auto flex flex-col h-[calc(100dvh-478px)] sm:h-[calc(100dvh-248px)]" :style="commentsListStyles">
-          <div v-for="comment in sortedComments"
+          <MediaComment
+            v-for="comment in sortedComments"
             :key="comment._id"
-            :id="getHtmlCommentId(comment)"
-            class="px-5 py-5 border-b border-b-[#120c11] last:border-b-0"
-            :class="{ 'bg-[#120c11]': comment._id === selectedCommentId }"
-          >
-            <div class="flex flex-row items-center justify-between mb-2">
-              <div class="flex flex-row items-center gap-2">
-                <span class="text-sm text-white">{{ comment.author.name }}</span>
-                <span :title="`Posted on ${new Date(comment._createdAt).toLocaleString()} `">{{ new Date(comment._createdAt).toLocaleDateString() }}</span>
-              </div>
-              <span
-                v-if="comment.timestamp !== undefined"
-                @click="handleCommentClicked(comment)"
-                title="Jump to this time in the video"
-                class="font-semibold text-blue-300 hover:cursor-pointer"
-              >
-                {{ formatTimestampDuration(comment.timestamp) }}
-              </span>
-            </div>
-            <div class="text-xs whitespace-pre-line">
-              {{ comment.text }}
-            </div>
-          </div>
+            :comment="comment"
+            :htmlId="getHtmlCommentId(comment)"
+            :getHtmlId="getHtmlCommentId"
+            :selected="comment._id === selectedCommentId"
+            @click="handleCommentClicked($event)"
+            @reply="sendCommentReply"
+          />
         </div>
 
         <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 sm:h-[200px]">
@@ -115,16 +101,17 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick, watch } from "vue"
+import { computed, onMounted, ref, nextTick } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { apiClient, logger, showToast, store } from "@/app-utils";
-import type { Media, MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor } from "@quickbyte/common";
+import { apiClient, logger, showToast, store, trpcClient } from "@/app-utils";
+import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
 import MediaPlayer from '@/components/MediaPlayer.vue';
 import ImageViewer from '@/components/ImageViewer.vue';
 import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
+import MediaComment from "@/components/MediaComment.vue";
 import { getMediaType } from "@/core/media-types";
 
 // had difficulties getting the scrollbar on the comments panel to work
@@ -158,7 +145,7 @@ const file = computed(() => {
 
   return version.file;
 });
-const comments = ref<CommentWithAuthor[]>([]);
+const comments = ref<WithChildren<CommentWithAuthor>[]>([]);
 const loading = ref(true);
 const selectedCommentId = ref<string>();
 const mediaType = computed(() => {
@@ -203,7 +190,8 @@ const sortedComments = computed(() => {
   return temp;
 });
 
-const timedComments = computed<TimedCommentWithAuthor[]>(() => sortedComments.value.filter(c => isDefined(c.timestamp)) as TimedCommentWithAuthor[]);
+const timedComments = computed<WithChildren<TimedCommentWithAuthor>[]>(() =>
+  sortedComments.value.filter(c => isDefined(c.timestamp)) as WithChildren<TimedCommentWithAuthor>[]);
 
 onMounted(async () => {
   if (!store.currentAccount.value) return;
@@ -323,21 +311,17 @@ function handleVideoCommentClicked(comment: CommentWithAuthor) {
 async function sendComment() {
   if (!commentInputText.value) return;
   if (!media.value) return;
-  const account = ensure(store.currentAccount.value);
   const projectId = ensure(route.params.projectId) as string;
   const mediaId = ensure(route.params.mediaId) as string;
 
   try {
-    const comment = await apiClient.createMediaComment(
-      account._id,
-      projectId,
-      mediaId,
-      {
-        text: commentInputText.value,
-        mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
-        timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined
-      }
-    );
+    const comment = await trpcClient.createMediaComment.mutate({
+      projectId: projectId,
+      mediaId: mediaId,
+      mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
+      text: commentInputText.value,
+      timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined
+    });
     commentInputText.value = '';
     comments.value.push(comment);
     
@@ -345,6 +329,33 @@ async function sendComment() {
     scrollToComment(comment);
   }
   catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
+}
+
+async function sendCommentReply(text: string, parentId: string) {
+  if (!media.value) return;
+  const projectId = ensure(route.params.projectId) as string;
+  const mediaId = ensure(route.params.mediaId) as string;
+
+  try {
+    // Note: we don't support timestamps for replies
+    const comment = await trpcClient.createMediaComment.mutate({
+      projectId: projectId,
+      mediaId: mediaId,
+      mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
+      text,
+      parentId
+    });
+
+    const parent = comments.value.find(c => c._id === parentId);
+    if (parent) {
+      parent.children.push(comment);
+    }
+
+    scrollToComment(comment);
+  } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
   }

@@ -1,9 +1,8 @@
-import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError } from "../error.js";
+import { Collection } from "mongodb";
+import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren, CreateMediaCommentArgs } from "../models.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createValidationError } from "../error.js";
 import { ITransferService } from "./index.js";
-
-const COLLECTION = 'comments';
+import { Database } from "../db.js";
 
 export interface MediaServiceConfig {
     transfers: ITransferService
@@ -12,11 +11,11 @@ export interface MediaServiceConfig {
 export class CommentService {
     private collection: Collection<Comment>;
 
-    constructor(private db: Db, private authContext: AuthContext) {
-        this.collection = db.collection<Comment>(COLLECTION);
+    constructor(private db: Database, private authContext: AuthContext) {
+        this.collection = db.comments();
     }
 
-    async createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<CommentWithAuthor> {
+    async createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         const version = media.versions.find(v => v._id === args.mediaVersionId);
         if (!version) {
             throw createResourceNotFoundError(`The version '${args.mediaVersionId}' does not exist for the media '${media._id}'.`);
@@ -27,18 +26,24 @@ export class CommentService {
             projectId: media.projectId,
             mediaVersionId: args.mediaVersionId,
             text: args.text,
-            timestamp: args.timestamp
+            timestamp: args.timestamp,
+            parentId: args.parentId
         });
     }
 
-    private async create(args: CreateCommentArgs): Promise<CommentWithAuthor> {
+    private async create(args: CreateCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         try {
+            if (args.parentId) {
+                await this.ensurCommentReplyValid(args);
+            }
+
             const comment: Comment = {
                 ...createPersistedModel(this.authContext.user._id),
                 text: args.text,
                 mediaId: args.mediaId,
                 mediaVersionId: args.mediaVersionId,
-                projectId: args.projectId
+                projectId: args.projectId,
+                parentId: args.parentId
             };
 
             if (args.timestamp !== undefined && args.timestamp !== null) {
@@ -51,7 +56,8 @@ export class CommentService {
                 author: {
                     _id: this.authContext.user._id,
                     name: this.authContext.user.name
-                }
+                },
+                children: []
             };
             
         } catch (e: any) {
@@ -60,11 +66,41 @@ export class CommentService {
         }
     }
 
-    async getMediaComments(mediaId: string): Promise<CommentWithAuthor[]> {
+    private async ensurCommentReplyValid(args: CreateCommentArgs): Promise<void> {
         try {
-            const result = await this.collection.aggregate<CommentWithAuthor>([
+            // the reply comment must apply to the same media as the parent,
+            // but could be a different version
+            const parent = await this.collection.findOne({
+                _id: args.parentId,
+                mediaId: args.mediaId,
+            });
+
+            if (!parent) {
+                throw createResourceNotFoundError(`The target comment does not exist.`);
+            }
+
+            if (parent.parentId) {
+                // TODO: we currently do not supported deeply nested comments
+                // but one day we may support this
+                throw createAppError
+            }
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getMediaComments(mediaId: string): Promise<WithChildren<CommentWithAuthor>[]> {
+        try {
+            const result = await this.collection.aggregate<WithChildren<CommentWithAuthor>>([
                 {
-                    $match: { mediaId: mediaId }
+                    $match: {
+                        mediaId: mediaId,
+                        $or: [
+                            { parentId: null },
+                            { parentId: { $exists: false } }
+                        ]
+                    }
                 },
                 {
                     $lookup: {
@@ -72,12 +108,52 @@ export class CommentService {
                         localField: '_createdBy._id',
                         foreignField: '_id',
                         as: 'author',
-                        pipeline: [{ $limit: 1 }]
+                        pipeline: [
+                            { $limit: 1 },
+                            {
+                                $project: {
+                                    _id: 1,
+                                    name: 1
+                                }
+                            }
+                        ],
                     }
                 },
                 {
                     $unwind: {
                         path: '$author'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: this.collection.collectionName,
+                        localField: '_id',
+                        foreignField: 'parentId',
+                        as: 'children',
+                        pipeline: [
+                            {
+                                $lookup: {
+                                    from: this.db.users().collectionName,
+                                    localField: '_createdBy._id',
+                                    foreignField: '_id',
+                                    as: 'author',
+                                    pipeline: [
+                                        { $limit: 1 },
+                                        {
+                                            $project: {
+                                                _id: 1,
+                                                name: 1
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                $unwind: {
+                                    path: '$author'
+                                }
+                            }
+                        ]
                     }
                 }
             ]).toArray();;
@@ -98,10 +174,5 @@ interface CreateCommentArgs {
     mediaVersionId: string;
     text: string;
     timestamp?: number;
-}
-
-export interface CreateMediaCommentArgs {
-    mediaVersionId: string;
-    text: string;
-    timestamp?: number;
+    parentId?: string;
 }

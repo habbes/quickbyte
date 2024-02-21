@@ -23,6 +23,7 @@ export const errorHandler = function (alertService: IAlertService): ErrorRequest
             case 'resourceConflict':
                 return sendErrorResponse(res, 409, error);
             case 'validationError':
+            case 'operationNotSupported':
                 return sendErrorResponse(res, 400, error);
             case 'authenticationError':
                 return sendErrorResponse(res, 401, error);
