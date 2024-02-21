@@ -34,8 +34,10 @@
             :key="comment._id"
             :comment="comment"
             :htmlId="getHtmlCommentId(comment)"
+            :getHtmlId="getHtmlCommentId"
             :selected="comment._id === selectedCommentId"
             @click="handleCommentClicked($event)"
+            @reply="sendCommentReply"
           />
         </div>
 
@@ -99,10 +101,10 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick, watch } from "vue"
+import { computed, onMounted, ref, nextTick } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { apiClient, logger, showToast, store } from "@/app-utils";
-import type { Media, MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor } from "@quickbyte/common";
+import { apiClient, logger, showToast, store, trpcClient } from "@/app-utils";
+import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
@@ -143,7 +145,7 @@ const file = computed(() => {
 
   return version.file;
 });
-const comments = ref<CommentWithAuthor[]>([]);
+const comments = ref<WithChildren<CommentWithAuthor>[]>([]);
 const loading = ref(true);
 const selectedCommentId = ref<string>();
 const mediaType = computed(() => {
@@ -188,7 +190,8 @@ const sortedComments = computed(() => {
   return temp;
 });
 
-const timedComments = computed<TimedCommentWithAuthor[]>(() => sortedComments.value.filter(c => isDefined(c.timestamp)) as TimedCommentWithAuthor[]);
+const timedComments = computed<WithChildren<TimedCommentWithAuthor>[]>(() =>
+  sortedComments.value.filter(c => isDefined(c.timestamp)) as WithChildren<TimedCommentWithAuthor>[]);
 
 onMounted(async () => {
   if (!store.currentAccount.value) return;
@@ -308,21 +311,17 @@ function handleVideoCommentClicked(comment: CommentWithAuthor) {
 async function sendComment() {
   if (!commentInputText.value) return;
   if (!media.value) return;
-  const account = ensure(store.currentAccount.value);
   const projectId = ensure(route.params.projectId) as string;
   const mediaId = ensure(route.params.mediaId) as string;
 
   try {
-    const comment = await apiClient.createMediaComment(
-      account._id,
-      projectId,
-      mediaId,
-      {
-        text: commentInputText.value,
-        mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
-        timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined
-      }
-    );
+    const comment = await trpcClient.createMediaComment.mutate({
+      projectId: projectId,
+      mediaId: mediaId,
+      mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
+      text: commentInputText.value,
+      timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined
+    });
     commentInputText.value = '';
     comments.value.push(comment);
     
@@ -330,6 +329,33 @@ async function sendComment() {
     scrollToComment(comment);
   }
   catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
+}
+
+async function sendCommentReply(text: string, parentId: string) {
+  if (!media.value) return;
+  const projectId = ensure(route.params.projectId) as string;
+  const mediaId = ensure(route.params.mediaId) as string;
+
+  try {
+    // Note: we don't support timestamps for replies
+    const comment = await trpcClient.createMediaComment.mutate({
+      projectId: projectId,
+      mediaId: mediaId,
+      mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
+      text,
+      parentId
+    });
+
+    const parent = comments.value.find(c => c._id === parentId);
+    if (parent) {
+      parent.children.push(comment);
+    }
+
+    scrollToComment(comment);
+  } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
   }
