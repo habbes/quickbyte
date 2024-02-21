@@ -1,5 +1,5 @@
 import { Db } from 'mongodb';
-import { Account, Project, User, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken } from './models.js';
+import { Account, Project, User, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken } from './models.js';
 
 
 export class Database {
@@ -29,6 +29,8 @@ export class Database {
     userVerifications = () => this.db.collection<UserVerification>('user_verifications');
 
     authTokens = () => this.db.collection<AuthToken>('auth_tokens');
+
+    comments = () => this.db.collection<Comment>('comments');
 
     async initialize() {
         await this.users().createIndex('email', { unique: true });

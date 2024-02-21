@@ -173,8 +173,7 @@ export class AccountService {
                     }
                 }
             ]).toArray();
-
-            console.log('accounts', accounts);
+    
             for (let account of accounts) {
                 if (!account.subscription) break;
 
@@ -213,7 +212,7 @@ export class AccountService {
             links: this.config.links,
             media: new MediaService(this.db.db, authContext, {
                 transfers,
-                comments: new CommentService(this.db.db, authContext)
+                comments: new CommentService(this.db, authContext)
             })
         });
     }

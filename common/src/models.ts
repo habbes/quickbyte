@@ -252,6 +252,7 @@ export interface Comment extends PersistedModel {
     mediaId: string;
     mediaVersionId: string;
     timestamp?: number;
+    parentId?: string;
 }
 
 export interface CommentWithAuthor extends Comment {
@@ -265,6 +266,10 @@ export interface TimedCommentWithAuthor extends CommentWithAuthor {
     timestamp: number;
 }
 
+export type WithChildren<T> = T & {
+    children: T[];
+}
+
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
 
 export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> {
@@ -274,7 +279,7 @@ export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'tr
 export interface MediaWithFileAndComments extends Media {
     versions: MediaVersionWithFile[];
     file: DownloadTransferFileResult;
-    comments: CommentWithAuthor[];
+    comments: WithChildren<CommentWithAuthor>[];
 }
 
 export interface MediaVersionWithFile extends MediaVersion {

@@ -52,6 +52,7 @@ function convertAppError(error: AppError) {
                 cause: error
             });
         case 'validationError':
+        case 'operationNotSupported':
             return new TRPCError({
                 code: 'BAD_REQUEST',
                 message: error.message,
