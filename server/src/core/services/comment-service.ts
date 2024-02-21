@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren } from "../models.js";
+import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren, CreateMediaCommentArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createValidationError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { Database } from "../db.js";
@@ -15,7 +15,7 @@ export class CommentService {
         this.collection = db.comments();
     }
 
-    async createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<CommentWithAuthor> {
+    async createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         const version = media.versions.find(v => v._id === args.mediaVersionId);
         if (!version) {
             throw createResourceNotFoundError(`The version '${args.mediaVersionId}' does not exist for the media '${media._id}'.`);
@@ -26,11 +26,12 @@ export class CommentService {
             projectId: media.projectId,
             mediaVersionId: args.mediaVersionId,
             text: args.text,
-            timestamp: args.timestamp
+            timestamp: args.timestamp,
+            parentId: args.parentId
         });
     }
 
-    private async create(args: CreateCommentArgs): Promise<CommentWithAuthor> {
+    private async create(args: CreateCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         try {
             if (args.parentId) {
                 await this.ensurCommentReplyValid(args);
@@ -55,7 +56,8 @@ export class CommentService {
                 author: {
                     _id: this.authContext.user._id,
                     name: this.authContext.user.name
-                }
+                },
+                children: []
             };
             
         } catch (e: any) {
@@ -106,7 +108,15 @@ export class CommentService {
                         localField: '_createdBy._id',
                         foreignField: '_id',
                         as: 'author',
-                        pipeline: [{ $limit: 1 }]
+                        pipeline: [
+                            { $limit: 1 },
+                            {
+                                $project: {
+                                    _id: 1,
+                                    name: 1
+                                }
+                            }
+                        ],
                     }
                 },
                 {
@@ -117,8 +127,8 @@ export class CommentService {
                 {
                     $lookup: {
                         from: this.collection.collectionName,
-                        localField: 'parentId',
-                        foreignField: '_id',
+                        localField: '_id',
+                        foreignField: 'parentId',
                         as: 'children',
                         pipeline: [
                             {
@@ -127,7 +137,15 @@ export class CommentService {
                                     localField: '_createdBy._id',
                                     foreignField: '_id',
                                     as: 'author',
-                                    pipeline: [{ $limit: 1 }]
+                                    pipeline: [
+                                        { $limit: 1 },
+                                        {
+                                            $project: {
+                                                _id: 1,
+                                                name: 1
+                                            }
+                                        }
+                                    ]
                                 }
                             },
                             {
@@ -157,10 +175,4 @@ interface CreateCommentArgs {
     text: string;
     timestamp?: number;
     parentId?: string;
-}
-
-export interface CreateMediaCommentArgs {
-    mediaVersionId: string;
-    text: string;
-    timestamp?: number;
 }
