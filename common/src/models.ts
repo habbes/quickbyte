@@ -8,6 +8,7 @@ export interface PersistedModel {
 
 export interface Deleteable {
     deleted?: boolean;
+    // TODO: should be _deletedBy, _deletedAt for consistency
     deletedBy?: Principal;
     deletedAt?: Date;
 }
@@ -246,7 +247,7 @@ export interface MediaVersion extends PersistedModel {
     fileId: string;
 }
 
-export interface Comment extends PersistedModel {
+export interface Comment extends PersistedModel, Deleteable {
     text: string;
     projectId: string;
     mediaId: string;
