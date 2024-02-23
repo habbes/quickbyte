@@ -38,6 +38,7 @@
             :selected="comment._id === selectedCommentId"
             @click="handleCommentClicked($event)"
             @reply="sendCommentReply"
+            @delete="showDeleteCommentDialog($event)"
           />
         </div>
 
@@ -99,6 +100,12 @@
   <div v-else-if="error" class="w-full flex justify-center items-center text-lg text-red-300">
     Error: {{ error.message }}
   </div>
+  <DeleteCommentDialog
+    ref="deleteCommentDialog"
+    v-if="media"
+    :comment="commentToDelete"
+    @deleted="handleCommentDeleted($event)"
+   />
 </template>
 <script setup lang="ts">
 import { computed, onMounted, ref, nextTick } from "vue"
@@ -113,6 +120,7 @@ import ImageViewer from '@/components/ImageViewer.vue';
 import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
 import MediaComment from "@/components/MediaComment.vue";
 import { getMediaType } from "@/core/media-types";
+import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
 
 // had difficulties getting the scrollbar on the comments panel to work
 // properly using overflow: auto css, so I resorted to hardcoding dimensions
@@ -157,6 +165,8 @@ const mediaType = computed(() => {
 const currentTimeStamp = ref<number>(0);
 const includeTimestamp = ref<boolean>(true);
 const commentInputText = ref<string>();
+const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
+const commentToDelete = ref<CommentWithAuthor>();
 
 // we display all the timestamped comments before
 // all non-timestamped comments
@@ -359,6 +369,41 @@ async function sendCommentReply(text: string, parentId: string) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
   }
+}
+
+function showDeleteCommentDialog(comment: CommentWithAuthor) {
+  commentToDelete.value = comment;
+  deleteCommentDialog.value?.open();
+}
+
+function handleCommentDeleted(comment: CommentWithAuthor) {
+  if (comment.parentId) {
+    const parent = comments.value.find(c => c._id === comment.parentId);
+    
+    if (!parent) {
+      logger.warn(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' after comment deletion, but did not find it.`);
+      return;
+    }
+
+    // NOTE: we only assume two-levels of nesting
+    const indexToRemove = parent.children.findIndex(c => c._id === comment._id);
+    if (indexToRemove === -1) {
+      logger.warn(`Expected to find comment '${comment._id}' as child of '${parent._id}' in comments list after deletion, but did not find it.`);
+      return;
+    }
+
+    parent.children.splice(indexToRemove, 1);
+    return;
+  }
+
+  // top-level comment
+  const indexToRemove = comments.value.findIndex(c => c._id === comment._id);
+  if (indexToRemove === -1) {
+    logger.warn(`Expected to find comment '${comment._id}' in comment list after comment deletion.`);
+    return;
+  }
+
+  comments.value.splice(indexToRemove, 1);
 }
 
 function handleMediaPlayBackError(error: Error) {

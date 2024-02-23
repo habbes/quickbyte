@@ -7,6 +7,7 @@
       :nestingLevel="0"
       @click="$emit('click', comment)"
       @reply="$emit('reply', $event, comment._id)"
+      @delete="$emit('delete', $event)"
     />
     <MediaCommentInner
       v-for="reply in comment.children"
@@ -16,12 +17,16 @@
       :nestingLevel="1"
       @click="$emit('click', reply)"
       @reply="$emit('reply', $event, comment._id)"
+      @delete="$emit('delete', $event)"
     />
   </div>
 </template>
 <script lang="ts" setup>
 import type { CommentWithAuthor, WithChildren } from "@quickbyte/common";
 import MediaCommentInner from "./MediaCommentInner.vue";
+
+// NOTE: At the moment we don't support nested replies
+// so we assume all replies are to the top-level parent component
 
 const props = defineProps<{
   comment: WithChildren<CommentWithAuthor>;
@@ -32,9 +37,8 @@ const props = defineProps<{
 
 defineEmits<{
   (e: 'click', comment: CommentWithAuthor): void;
-  (e: 'reply', text: string, parentId: string): void
+  (e: 'reply', text: string, parentId: string): void;
+  (e: 'delete', comment: CommentWithAuthor): void;
 }>();
 
-// NOTE: At the moment we don't support nested replies
-// so we assume all replies are to the top-level parent component
 </script>
