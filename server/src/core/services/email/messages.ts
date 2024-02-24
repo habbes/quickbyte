@@ -61,6 +61,29 @@ ${error.stack}
     return message;
 }
 
+export function createServerErrorWithDetails(errors: { error: AppError, details: any }[]): string {
+    let message = '';
+    for (let error of errors) {
+        message += `
+<div>
+<h3>Code: ${error.error.code}</h3>
+<p>
+${error.error.message}
+</p>
+<pre>
+${error.error.stack}
+</pre>
+<h4>Additional details</h4>
+<pre>
+${ error.details }
+</pre>
+<div>
+`
+    }
+
+    return message;
+}
+
 export function createGenericInviteEmail(invitedBy: string, inviteSecret: string, name: string, appBaseUrl: string) {
     const greeting = name ? `Hello ${name}` : 'Hello';
     const inviteUrl = `${appBaseUrl}/i/${inviteSecret}`;
