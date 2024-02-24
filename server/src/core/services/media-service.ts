@@ -1,10 +1,9 @@
-import { Db, Collection } from "mongodb";
+import { Collection } from "mongodb";
 import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
-
-const COLLECTION = 'media';
+import { Database } from "../db.js";
 
 export interface MediaServiceConfig {
     transfers: ITransferService;
@@ -14,8 +13,8 @@ export interface MediaServiceConfig {
 export class MediaService {
     private collection: Collection<Media>;
 
-    constructor(private db: Db, private authContext: AuthContext, private config: MediaServiceConfig) {
-        this.collection = db.collection<Media>(COLLECTION);
+    constructor(private db: Database, private authContext: AuthContext, private config: MediaServiceConfig) {
+        this.collection = db.media();
     }
 
     async uploadMedia(transfer: CreateTransferResult): Promise<Media[]> {

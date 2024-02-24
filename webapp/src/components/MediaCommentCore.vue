@@ -33,7 +33,7 @@
             Reply
           </span>
           <div class="inline-flex gap-4">
-            <span title="Edit comment">
+            <span v-if="editable" title="Edit comment">
               <PencilIcon
                 @click="startEdit()"
                 class="w-4 h-4 cursor-pointer text-gray-500 hover:text-gray-200"
@@ -96,6 +96,7 @@ const props = defineProps<{
   // 1 for first-level of children, etc.
   nestingLevel: number;
   deletable?: boolean;
+  editable?: boolean;
 }>();
 
 const emit = defineEmits<{

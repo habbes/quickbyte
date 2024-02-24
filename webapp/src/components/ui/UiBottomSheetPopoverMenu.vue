@@ -14,10 +14,10 @@
       leave-to-class="translate-y-1 opacity-0"
     >
       <PopoverPanel
-        class="fixed top-24 sm:top-auto left-0 h-screen sm:h-auto sm:absolute z-10 mt-3 w-screen sm:w-72  sm:translate-x-[-30%] transform sm:px-4 lg:max-w-3xl"
+        class="fixed top-24 bottom-0 sm:top-auto sm:bottom-auto sm:bg-auto left-0 h-screen sm:h-auto sm:absolute z-10 mt-3 w-screen sm:w-72  sm:translate-x-[-30%] transform sm:px-4 lg:max-w-3xl"
       >
         <div class="h-full overflow-hidden rounded-t-lg sm:rounded-lg shadow-lg ring-1 ring-black/5">
-          <div class="relative bg-white h-full">
+          <div class="content relative bg-white h-full overflow-y-auto">
             <slot></slot>
           </div>
         </div>
@@ -33,3 +33,15 @@ import {
   PopoverOverlay
 } from '@headlessui/vue';
 </script>
+<style scoped>
+.content {
+  max-height: calc(100dvh - 6rem);
+  overflow-y: auto;
+}
+
+@media (min-width: 640px) {
+  .content {
+    max-height: 400px;
+  }
+}
+</style>

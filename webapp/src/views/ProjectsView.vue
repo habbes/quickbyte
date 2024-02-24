@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col flex-1">
     <div v-if="loading" class="w-full">
-      
+
     </div>
     <div v-else class="w-full">
       <div v-if="projects.length === 0" class="p-5 flex min-w-full min-h-full justify-center items-center">
@@ -23,31 +23,18 @@
           </UiLayout>
           <RequireAccountOwner>
             <div class="flex flex-row items-center" :style="{ height: `${headerHeight}px` }">
-                <UiButton
-                  @click="createProject()"
-                  primary
-                  lg
-                >
-                  <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">New Project</span>
-                </UiButton>
+              <UiButton @click="createProject()" primary lg>
+                <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">New Project</span>
+              </UiButton>
             </div>
           </RequireAccountOwner>
         </UiLayout>
-        <UiLayout fill innerSpace verticalScroll :fixedHeight="contentHeight">
-          <div
-            class="grid"
-            style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(200px,1fr))"
-            
-          >
-            <router-link
-              v-for="project in filteredProjects"
-              :key="project._id"
-              :to="{ name: 'project-media', params: { projectId: project._id }}"
-            >
-              <div
-                class="border border-[#5e5e8b] h-28 sm:h-auto sm:aspect-square text-white flex justify-center items-center rounded-md bg-[#1c1b26]
-                hover:border-2"
-              >
+        <UiLayout innerSpace verticalScroll :fixedHeight="contentHeight" class="overflow-y-auto">
+          <div class="grid mb-4" style="grid-gap:10px;grid-template-columns: repeat(auto-fill,minmax(200px,1fr))">
+            <router-link v-for="project in filteredProjects" :key="project._id"
+              :to="{ name: 'project-media', params: { projectId: project._id } }">
+              <div class="border border-[#5e5e8b] h-28 sm:h-auto sm:aspect-square text-white flex justify-center items-center rounded-md bg-[#1c1b26]
+                hover:border-2">
                 {{ project.name }}
               </div>
             </router-link>

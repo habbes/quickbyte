@@ -38,9 +38,11 @@
         <div class="absolute w-full h-full bg-black opacity-75"></div>
       </div>
       <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
-        You have no media in this project. Upload some files using the button below.
+        <div class="text-center">
+          You have no media in this project. Upload some files using the button below.
+        </div>
 
-        <button @click="openFilePicker()" class="btn btn-primary">Upload Files</button>
+        <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
       </div>
       <div
         v-else

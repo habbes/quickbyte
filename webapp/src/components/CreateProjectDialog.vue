@@ -4,10 +4,12 @@
       <h3 class="font-bold text-lg mb-2">Create new project</h3>
       <div class="flex flex-col gap-2">
         <div class="flex flex-col">
-          <input v-model="name"
-            class="input input-bordered input-sm w-full"
+          <UiTextInput
+            v-model="name"
             placeholder="Enter project name"
-            :class="{ 'input-error': nameError }"
+            required
+            :hasError="!!nameError"
+            fullWidth 
           />
           <span class="text-error text-xs">{{ nameError }}</span>
         </div>
@@ -18,8 +20,8 @@
       <div class="modal-action">
         <form method="dialog" class="flex gap-2">
           <!-- if there is a button in form, it will close the modal -->
-          <button @click="createProject($event)" class="btn btn-primary">Create project</button>
-          <button class="btn">Cancel</button>
+          <UiButton>Cancel</UiButton>
+          <UiButton @click="createProject($event)" primary>Create project</UiButton>
         </form>
       </div>
     </div>
@@ -30,6 +32,7 @@ import { apiClient, logger, showToast, store } from "@/app-utils";
 import { ensure, type Project } from "@/core";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { UiButton, UiTextInput } from "@/components/ui";
 
 const dialog = ref<HTMLDialogElement>();
 const name = ref('');

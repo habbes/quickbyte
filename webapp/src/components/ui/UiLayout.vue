@@ -1,10 +1,11 @@
 <template>
-  <div class="flex" :class="classes" :style="{ 'height': `${fixedHeight}px`}">
+  <div class="flex" :class="classes" :style="style">
     <slot></slot>
   </div>
 </template>
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { types } from 'util';
+import { computed, type StyleValue } from 'vue';
 
 const props = defineProps<{
   fill?: boolean;
@@ -36,8 +37,19 @@ const classes = computed(() => {
     'px-4 py-2': props.innerSpace,
     'px-4': props.horizontalSpace,
     'overflow-y-auto': props.verticalScroll,
-    [`h-[${props.fixedHeight}]`]: props.fixedHeight,
     'w-full': props.fullWidth
   }
-})
+});
+
+const style = computed(() => {
+  // I use styles for fixed height because I can't get
+  // tailwind to work reliably when custom heights with calc. Maybe
+  // it's a syntax issue.
+  const styles: StyleValue = {};
+  if (props.fixedHeight !== undefined && props.fixedHeight !== null) {
+    styles.height = props.fixedHeight
+  }
+
+  return styles;
+});
 </script>

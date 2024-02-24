@@ -61,6 +61,29 @@ ${error.stack}
     return message;
 }
 
+export function createServerErrorWithDetails(errors: { error: AppError, details: any }[]): string {
+    let message = '';
+    for (let error of errors) {
+        message += `
+<div>
+<h3>Code: ${error.error.code}</h3>
+<p>
+${error.error.message}
+</p>
+<pre>
+${error.error.stack}
+</pre>
+<h4>Additional details</h4>
+<pre>
+${ error.details }
+</pre>
+<div>
+`
+    }
+
+    return message;
+}
+
 export function createGenericInviteEmail(invitedBy: string, inviteSecret: string, name: string, appBaseUrl: string) {
     const greeting = name ? `Hello ${name}` : 'Hello';
     const inviteUrl = `${appBaseUrl}/i/${inviteSecret}`;
@@ -184,4 +207,49 @@ Quickbyte Team
 If this request did not come from you, contact us at <a href="mailto:support@quickbyte.io">support@quickbyte.io</a>.
 </p>
 `;
+}
+
+export function createProjectMediaUploadNotificationEmail({ projectName, numFiles, projectUrl, uploaderName }: {
+    projectName: string,
+    numFiles: number,
+    projectUrl: string,
+    uploaderName: string
+}) {
+   return `
+<p>
+${uploaderName} has uploaded ${numFiles} file(s) to the project <b>${projectName}</b>
+</p>
+<p>
+Click <a href="${projectUrl}">here to open the project<a>.
+</p>
+`
+}
+
+export function createProjectMediaVersionUploadNotificationEmail(
+    { projectName, mediaVersionUrl, uploaderName, mediaName } :
+    { projectName: string, mediaVersionUrl: string, uploaderName: string, mediaName: string }
+) {
+    return `
+<p>
+${uploaderName} has uploaded a new version of <b>${mediaName}</b> in project <b>${projectName}</b>.
+<p>
+<p>
+Click <a href="${mediaVersionUrl}">here to view the new version</a>.
+</p>
+    `
+}
+
+export function createProjectMediaMultipleVersionsUploadNotificationEmail(
+    args :
+    { projectName: string, mediaUrl: string, uploaderName: string, mediaName: string, numFiles: number }
+) {
+    return `
+<p>
+${args.uploaderName} has uploaded ${args.numFiles} new version(s) of <b>${args.mediaName}</b> in project <b>${args.projectName}</b>.
+<p>
+<p>
+Click <a href="${args.mediaUrl}">here to open the media</a>. Then click the dropdown arrow at the top to switch
+between different versions.
+</p>
+    `
 }

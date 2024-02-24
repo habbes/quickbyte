@@ -16,6 +16,10 @@ export class LinkGenerator {
         return `${this.getProjectUrl(projectId)}/player/${mediaId}`;
     }
 
+    getMediaVersionUrl(projectId: string, mediaId: string, versionId: string) {
+        return `${this.getMediaUrl(projectId, mediaId)}?version=${versionId}`;
+    }
+
     getMediaCommentUrl(projectId: string, mediaId: string, commentId: string, versionId?: string) {
         const base = `${this.getProjectUrl(projectId)}/player/${mediaId}?comment=${commentId}`;
         if (versionId) {

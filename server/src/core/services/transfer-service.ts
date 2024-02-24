@@ -5,6 +5,7 @@ import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 import { Database } from "../db.js";
 import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult } from "@quickbyte/common";
+import { EventDispatcher } from "./event-bus/index.js";
 
 const COLLECTION = "transfers";
 const FILES_COLLECTION = "files";
@@ -18,6 +19,7 @@ const MEDIA_DOWNLOAD_URL_VALIDITY = 2 * DAYS_TO_MILLIS;
 export interface TransferServiceConfig {
     providerRegistry: IStorageHandlerProvider,
     transactions: ITransactionService,
+    eventBus: EventDispatcher
 }
 
 export class TransferService {
@@ -154,7 +156,9 @@ export class TransferService {
     async finalize(id: string, args: FinalizeTransferArgs): Promise<Transfer> {
         try {
             const result = await this.collection.findOneAndUpdate({
-                _id: id
+                _id: id,
+                // only the user who started the upload should be able to finalize it
+                '_createdBy._id': this.authContext.user._id
             }, {
                 $set: {
                     status: 'completed',
@@ -171,6 +175,12 @@ export class TransferService {
             if (!result.ok || !result.value) {
                 throw createResourceNotFoundError();
             }
+
+            this.config.eventBus.send({
+                'transferComplete': {
+                    transfer: result.value
+                }
+            });
 
             return result.value;
 
