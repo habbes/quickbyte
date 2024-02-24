@@ -24,6 +24,7 @@ UnauthenticatedTransactionService,
 IAlertService,
 FreeTrialHandler,
 LinkGenerator,
+EventBus,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -31,6 +32,7 @@ import { AtSmsHandler } from "./services/sms/at-sms-handler.js";
 import { InviteService } from "./services/invite-service.js";
 import { AccessHandler } from "./services/access-handler.js";
 import { Database } from "./db.js";
+import { GlobalEventHandler } from "./globale-event-handler.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = new Database(await getDbConnection(config));
@@ -84,6 +86,10 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         emailHandler,
         emailRecipient: config.systemEmailRecipient
     });
+
+    const eventBus = new EventBus({
+        alerts: adminAlerts
+    });
     
     const plans = new PlanService({
         paystackPlanCodes: {
@@ -116,7 +122,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         webappBaseUrl: config.webappBaseUrl,
         invites,
         access: accessHandler,
-        links
+        links,
+        eventBus
     });
 
     const auth = new AuthService(db, {
@@ -139,6 +146,13 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         paymentHandlers: paymentHandlers,
         plans: plans
     });
+
+    const globalEventHandler = new GlobalEventHandler({
+        email: emailHandler,
+        db: db,
+        links: links
+    });
+    globalEventHandler.registerEvents(eventBus);
 
     return {
         storageProvider,

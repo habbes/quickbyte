@@ -13,7 +13,7 @@
         :type="type || 'text'"
         :placeholder="placeholder"
         :required="required"
-        class="flex-1bg-transparent border border-gray-300 px-4 py-2 rounded-md focus:border-blue-400 outline-none focus:ring-1"
+        class="flex-1bg-transparent border px-4 py-2 rounded-md outline-none focus:ring-1"
         :class="classes"
       >
     </div>
@@ -32,6 +32,7 @@ const props = defineProps<{
   type?: TextInputType;
   required?: boolean;
   dark?: boolean;
+  hasError?: boolean;
 }>();
 
 defineExpose({ focus });
@@ -45,7 +46,9 @@ const id = ref(props.id || `input_${Math.ceil(Math.random() * 10000)}`);
 const classes = computed(() => {
   return {
     'w-full': props.fullWidth,
-    'bg-transparent': props.dark
+    'bg-transparent': props.dark,
+    'border-gray-300 focus:border-blue-400': !props.hasError,
+    'focus:border-red-400 border-red-500': props.hasError
   }
 });
 

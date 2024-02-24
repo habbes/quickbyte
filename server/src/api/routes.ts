@@ -11,7 +11,6 @@ routes.post('/accounts/:accountId/transfers',
 
 routes.post('/accounts/:accountId/transfers/:transferId/finalize',
     requireAuth(),
-    requireAccountOwner(),
     wrapResponse(req =>
         req.services.accounts.transfers(req.authContext).finalize(req.params.transferId, req.body)));
 
