@@ -5,6 +5,7 @@
       :htmlId="htmlId"
       :selected="selected"
       :nestingLevel="0"
+      :deletable="currentUserId === comment.author._id || currentRole === 'admin' || currentRole === 'owner'"
       @click="$emit('click', comment)"
       @reply="$emit('reply', $event, comment._id)"
       @delete="$emit('delete', $event)"
@@ -15,6 +16,7 @@
       :comment="reply"
       :htmlId="getHtmlId(reply)"
       :nestingLevel="1"
+      :deletable="currentUserId === reply.author._id || currentRole === 'admin' || currentRole === 'owner'"
       @click="$emit('click', reply)"
       @reply="$emit('reply', $event, comment._id)"
       @delete="$emit('delete', $event)"
@@ -22,7 +24,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import type { CommentWithAuthor, WithChildren } from "@quickbyte/common";
+import type { CommentWithAuthor, RoleType, WithChildren } from "@quickbyte/common";
 import MediaCommentInner from "./MediaCommentInner.vue";
 
 // NOTE: At the moment we don't support nested replies
@@ -33,6 +35,8 @@ const props = defineProps<{
   htmlId: string;
   selected?: boolean;
   getHtmlId: (comment: CommentWithAuthor) => string;
+  currentUserId: string;
+  currentRole: RoleType;
 }>();
 
 defineEmits<{

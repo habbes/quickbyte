@@ -30,7 +30,7 @@
             Reply
           </span>
           <div>
-            <span title="Delete comment">
+            <span v-if="deletable" title="Delete comment">
               <TrashIcon
                 @click="$emit('delete', comment)"
                 class="w-4 h-4 cursor-pointer text-gray-500 hover:text-gray-200"

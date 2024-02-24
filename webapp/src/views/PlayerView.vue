@@ -30,12 +30,15 @@
 
         <div class="overflow-y-auto flex flex-col h-[calc(100dvh-478px)] sm:h-[calc(100dvh-248px)]" :style="commentsListStyles">
           <MediaComment
+            v-if="user && project"
             v-for="comment in sortedComments"
             :key="comment._id"
             :comment="comment"
             :htmlId="getHtmlCommentId(comment)"
             :getHtmlId="getHtmlCommentId"
             :selected="comment._id === selectedCommentId"
+            :currentUserId="user._id"
+            :currentRole="project.role"
             @click="handleCommentClicked($event)"
             @reply="sendCommentReply"
             @delete="showDeleteCommentDialog($event)"
@@ -103,7 +106,6 @@
   <DeleteCommentDialog
     ref="deleteCommentDialog"
     v-if="media"
-    :comment="commentToDelete"
     @deleted="handleCommentDeleted($event)"
    />
 </template>
@@ -166,7 +168,8 @@ const currentTimeStamp = ref<number>(0);
 const includeTimestamp = ref<boolean>(true);
 const commentInputText = ref<string>();
 const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
-const commentToDelete = ref<CommentWithAuthor>();
+const user = store.user;
+const project = computed(() => store.projects.value.find(p => p._id === route.params.projectId));
 
 // we display all the timestamped comments before
 // all non-timestamped comments
@@ -372,8 +375,8 @@ async function sendCommentReply(text: string, parentId: string) {
 }
 
 function showDeleteCommentDialog(comment: CommentWithAuthor) {
-  commentToDelete.value = comment;
-  deleteCommentDialog.value?.open();
+  logger.log('show dialog');
+  deleteCommentDialog.value?.open(comment);
 }
 
 function handleCommentDeleted(comment: CommentWithAuthor) {
