@@ -10,7 +10,7 @@
       </div>
       
       
-      <div>
+      <div class="w-full">
         <UiButton primary fill submit :loading="loading">Continue</UiButton>
       </div>
     </form>

@@ -25,7 +25,8 @@
             <div class="flex flex-row items-center" :style="{ height: `${headerHeight}px` }">
                 <UiButton
                   @click="createProject()"
-                  class="btn btn-primary"
+                  primary
+                  lg
                 >
                   <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">New Project</span>
                 </UiButton>
