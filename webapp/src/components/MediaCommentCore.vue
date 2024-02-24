@@ -19,17 +19,26 @@
             {{ formatTimestampDuration(comment.timestamp) }}
           </span>
         </div>
-        <div class="text-xs whitespace-pre-line">
+        <div v-if="!isEditMode" class="text-xs whitespace-pre-line">
           {{ comment.text }}
         </div>
-        <div class="mt-3 mb-2 flex justify-between">
+        <div v-else>
+          <UiExpandableTextInput v-model="editText" ref="editInput" fullWidth />
+        </div>
+        <div class="mt-3 mb-2 flex justify-between" v-if="!isEditMode">
           <span
             @click="startReply()"
             class="font-bold text-gray-500 hover:text-gray-200 cursor-pointer"
           >
             Reply
           </span>
-          <div>
+          <div class="inline-flex gap-4">
+            <span title="Edit comment">
+              <PencilIcon
+                @click="startEdit()"
+                class="w-4 h-4 cursor-pointer text-gray-500 hover:text-gray-200"
+              />
+            </span>
             <span v-if="deletable" title="Delete comment">
               <TrashIcon
                 @click="$emit('delete', comment)"
@@ -39,10 +48,10 @@
           </div>
         </div>
       </div>
-      <div v-if="isReplyMode">
-        <UiExpandableTextInput v-model="replyText" ref="replyInput" dark fullWidth />
+      <div v-if="isReplyMode && !isEditMode">
+        <UiExpandableTextInput v-model="replyText" ref="replyInput" fullWidth />
       </div>
-      <div v-if="isReplyMode" class="flex justify-end gap-4 mt-2">
+      <div v-if="isReplyMode && !isEditMode" class="flex justify-end gap-4 mt-2">
         <span
           @click="submitReply()"
           class="text-gray-300 hover:text-gray-200 cursor-pointer"
@@ -56,6 +65,20 @@
           Cancel
         </span>
       </div>
+      <div v-else-if="isEditMode" class="flex justify-end gap-4 mt-2">
+        <span
+          @click="submitEdit()"
+          class="text-gray-300 hover:text-gray-200 cursor-pointer"
+        >
+          Send
+        </span>
+        <span
+          class="text-gray-300 hover:text-gray-200 cursor-pointer"
+          @click="cancelEdit()"
+        >
+          Cancel
+        </span>
+      </div>
     </div>
 </template>
 <script lang="ts" setup>
@@ -63,7 +86,7 @@ import { ref, computed, nextTick } from "vue";
 import type { CommentWithAuthor } from "@quickbyte/common";
 import { formatTimestampDuration} from "@/core";
 import { UiExpandableTextInput } from "@/components/ui";
-import { TrashIcon } from "@heroicons/vue/24/solid";
+import { PencilIcon, TrashIcon } from "@heroicons/vue/24/solid";
 
 const props = defineProps<{
   comment: CommentWithAuthor;
@@ -78,12 +101,16 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'click', comment: CommentWithAuthor): void;
   (e: 'reply', text: string): void;
+  (e: 'edit', text: string): void;
   (e: 'delete', comment: CommentWithAuthor): void;
 }>();
 
 const isReplyMode = ref(false);
 const replyInput = ref<typeof UiExpandableTextInput>();
 const replyText = ref<string>("");
+const isEditMode = ref(false);
+const editText = ref<string>();
+const editInput = ref<typeof UiExpandableTextInput>();
 const nestingPadding = computed(() => props.nestingLevel * 20);
 
 function startReply() {
@@ -100,6 +127,23 @@ function submitReply() {
   if (!replyText.value) return;
   emit('reply', replyText.value);
   cancelReply();
+}
+
+function startEdit() {
+  isEditMode.value = true;
+  editText.value = props.comment.text;
+  nextTick(() => editInput.value?.focus());
+}
+
+function cancelEdit() {
+  editText.value = "";
+  isEditMode.value = false;
+}
+
+function submitEdit() {
+  if (!editText.value) return;
+  emit('edit', editText.value);
+  cancelEdit();
 }
 
 </script>

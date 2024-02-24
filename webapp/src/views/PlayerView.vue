@@ -42,6 +42,7 @@
             @click="handleCommentClicked($event)"
             @reply="sendCommentReply"
             @delete="showDeleteCommentDialog($event)"
+            @edit="editComment"
           />
         </div>
 
@@ -374,8 +375,52 @@ async function sendCommentReply(text: string, parentId: string) {
   }
 }
 
+async function editComment(commentId: string, text: string) {
+  if (!media.value) return;
+  const projectId = ensure(route.params.projectId) as string;
+  const mediaId = ensure(route.params.mediaId) as string;
+
+  try {
+    const comment = await trpcClient.updateMediaComment.mutate({
+      projectId,
+      mediaId,
+      commentId,
+      text
+    });
+
+    if (comment.parentId) {
+      const parent = comments.value.find(c => c._id === comment.parentId);
+      if (!parent) {
+        logger.warn(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' after comment update, but did not find it.`);
+        return;
+      }
+
+      const indexToUpdate = parent.children.findIndex(c => c._id === comment._id);
+      if (indexToUpdate === -1) {
+        logger.warn(`Expected to find comment '${comment._id}' as child of '${parent._id}' in comments list after update, but did not find it.`);
+        return;
+      }
+
+      // the comment we get from the server has less fields than the one we have in the client, so we merge
+      // the two instead of a full replacement
+      parent.children[indexToUpdate] = { ...parent.children[indexToUpdate], ...comment };
+      return;
+    }
+
+    const indexToUpdate = comments.value.findIndex(c => c._id === comment._id);
+    if (indexToUpdate === -1) {
+      logger.warn(`Expected to find comment '${comment._id}' in comment list after comment update.`);
+      return;
+    }
+
+    comments.value[indexToUpdate] = { ...comments.value[indexToUpdate], ...comment };
+  } catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
+}
+
 function showDeleteCommentDialog(comment: CommentWithAuthor) {
-  logger.log('show dialog');
   deleteCommentDialog.value?.open(comment);
 }
 
