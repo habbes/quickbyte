@@ -8,7 +8,7 @@
         :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
         class="flex-1 bg-[#1c1b26] flex items-center justify-center"
       >
-        <FilmIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
+        <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
         <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
         <MusicalNoteIcon v-else-if="mediaType === 'audio'" class="h-10 w-10"/>
         <DocumentIcon v-else class="h-10 w-10"/>
@@ -61,7 +61,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import type { Media } from '@/core';
-import { DocumentIcon, FilmIcon, PhotoIcon, MusicalNoteIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/solid';
+import { DocumentIcon, PlayIcon, PhotoIcon, MusicalNoteIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/solid';
 import { getMediaType } from '@/core/media-types';
 import { UiMenu, UiMenuItem, UiLayout } from '@/components/ui';
 import RenameMediaDialog from '@/components/RenameMediaDialog.vue';

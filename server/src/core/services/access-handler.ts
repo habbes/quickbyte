@@ -96,6 +96,24 @@ export class AccessHandler {
 
         return role;
     }
+
+    public async isRoleOrOwner<T extends AuthorizableResource>(userId: string, resourceType: ResourceType, resource: T, candidateRoles: RoleType[]) {
+        if (this.isOwner(userId, resource)) {
+            return true;
+        }
+
+        const result = await this.isUserRole(userId, resourceType, resource._id, candidateRoles);
+        return result;
+    }
+
+    public async isUserRole(userId: string, resourceType: ResourceType, resourceId: string, candidateRoles: RoleType[]) {
+        const role = await this.getUserRole(userId, resourceType, resourceId, candidateRoles);
+        if (!role) {
+            return false;
+        }
+
+        return true;
+    }
     
     private async getUserRole(userId: string, resourceType: ResourceType, resourceId: string, allowedRoles?: RoleType[]): Promise<UserRole|null> {
         try {
@@ -112,4 +130,4 @@ export class AccessHandler {
     }
 }
 
-export type IAccessHandler = Pick<AccessHandler, 'isOwner'|'requireRoleOrOwner'|'requireUserRole'|'assignRole'>;
+export type IAccessHandler = Pick<AccessHandler, 'isOwner'|'requireRoleOrOwner'|'requireUserRole'|'assignRole'|'isRoleOrOwner'|'isUserRole'>;

@@ -157,6 +157,10 @@ export class MediaService {
         }
     }
 
+    deleteMediaComment(projectId: string, mediaId: string, commentId: string, isOwnerOrAdmin: boolean): Promise<void> {
+        return this.config.comments.deleteMediaComment(projectId, mediaId, commentId, isOwnerOrAdmin);
+    }
+
     private convertFileToMedia(projectId: string, file: CreateTransferFileResult) {
         const initialVersion: MediaVersion = this.convertFileToMediaVersion(file);
 
@@ -209,4 +213,4 @@ export class MediaService {
     }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'|'createMediaComment'|'updateMedia'|'deleteMedia'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'>;
