@@ -9,6 +9,6 @@ export async function sendEmailToMany(emailHandler: EmailHandler ,recipients: { 
             message: email.message
         })
     );
-
+    
     await Promise.all(emailTasks);
 }

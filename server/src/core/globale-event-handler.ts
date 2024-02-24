@@ -16,7 +16,9 @@ export class GlobalEventHandler {
             const data = this.getEventData('transferComplete', event);
             const transfer = data.transfer;
             // currently we only care about transfers tied to project uploads
+            console.log(`Handle transferComplete event for '${transfer._id}'`);
             if (!transfer.projectId) {
+                console.log('Transfer has not project. Skip...');
                 return;
             }
 
@@ -32,12 +34,16 @@ export class GlobalEventHandler {
             }
             const members = await getProjectMembersById(this.config.db, transfer.projectId);
             // don't send to the sender
-            const otherMembers = members.filter(m => m._id !== transfer._createdBy._id);
+            const recipients = members.filter(m => m._id !== transfer._createdBy._id);
+            if (recipients.length === 0) {
+                console.log('No collaborators to notify');
+                return;
+            }
             if (!transfer.mediaId) {
                 // new media being uploaded
                 await sendEmailToMany(
                     this.config.email,
-                    otherMembers,
+                    recipients,
                     {
                         subject: `New files uploaded to ${project.name}`,
                         message: createProjectMediaUploadNotificationEmail({
@@ -58,17 +64,22 @@ export class GlobalEventHandler {
             }
 
             // get transfer files
-            const files = await this.config.db.files().findOne({ transferId: transfer._id });
+            
             if (transfer.numFiles === 1) {
                 // only a single version
-                const version = media.versions.find(v => v.fileId === files[0]._id);
+                const file = await this.config.db.files().findOne({ transferId: transfer._id });
+                if (!file) {
+                    throw createInvalidAppStateError(`Expected to find at least one file linked to transfer '${transfer._id}' but didn't.`);
+                }
+
+                const version = media.versions.find(v => v.fileId === file._id);
                 if (!version) {
-                    throw createInvalidAppStateError(`Expected to find version for file '${files[0]._id}' on media '${media._id}' but didn't.`);
+                    throw createInvalidAppStateError(`Expected to find version for file '${file._id}' on media '${media._id}' but didn't.`);
                 }
                 
                 await sendEmailToMany(
                     this.config.email,
-                    otherMembers,
+                    recipients,
                     {
                         subject: `New version of ${media.name} uploaded to project`,
                         message: createProjectMediaVersionUploadNotificationEmail({
@@ -86,7 +97,7 @@ export class GlobalEventHandler {
             // multiple versions
             await sendEmailToMany(
                 this.config.email,
-                otherMembers,
+                recipients,
                 {
                     subject: `New versions of ${media.name} uploaded to project`,
                     message: createProjectMediaMultipleVersionsUploadNotificationEmail({
@@ -117,7 +128,6 @@ export class GlobalEventHandler {
 }
 
 export interface GlobalEventHandlerConfig {
-    app: AppServices;
     db: Database;
     email: EmailHandler;
     links: LinkGenerator

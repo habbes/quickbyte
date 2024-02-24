@@ -32,6 +32,7 @@ import { AtSmsHandler } from "./services/sms/at-sms-handler.js";
 import { InviteService } from "./services/invite-service.js";
 import { AccessHandler } from "./services/access-handler.js";
 import { Database } from "./db.js";
+import { GlobalEventHandler } from "./globale-event-handler.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = new Database(await getDbConnection(config));
@@ -145,6 +146,13 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         paymentHandlers: paymentHandlers,
         plans: plans
     });
+
+    const globalEventHandler = new GlobalEventHandler({
+        email: emailHandler,
+        db: db,
+        links: links
+    });
+    globalEventHandler.registerEvents(eventBus);
 
     return {
         storageProvider,

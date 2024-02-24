@@ -15,8 +15,10 @@ export class EventBus implements EventDispatcher, EventHandlerRegister {
 
     constructor(private config: EventBusConfig) {}
 
-    send(event: TransferCompleteEvent): void {
+    send(event: Event): void {
         // fire and forget
+        const eventType = getEventType(event);
+        console.log(`EventBus: sending event ${eventType}`);
         this.executeHandlers(event);
     }
 
@@ -37,6 +39,7 @@ export class EventBus implements EventDispatcher, EventHandlerRegister {
         // but was too lazy to coordinate for the case
         // where we could have too many handlers running concurrently
         // and clogging the event loop
+        console.log(`Executing ${handlers.length} handler(s) for event ${eventType}`);
         for (const handler of handlers) {
             try {
                 await handler(event);
@@ -54,6 +57,8 @@ export class EventBus implements EventDispatcher, EventHandlerRegister {
                 console.error(`Error occurred while handling event: '${event}' with details: ${e.message}`);
             }
         }
+
+        console.log(`Completed handlers execution for event ${eventType}`);
     }
 }
 
