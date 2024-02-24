@@ -162,3 +162,11 @@ export const UpdateMediaCommentArgs = z.object({
 });
 
 export type UpdateMediaCommentArgs = z.infer<typeof UpdateMediaCommentArgs>;
+
+export const SendEmailAnnouncementArgs = z.object({
+    password: z.string().min(1),
+    message: z.string().min(1),
+    subject: z.string().min(1),
+});
+
+export type SendEmailAnnouncementArgs = z.infer<typeof SendEmailAnnouncementArgs>;

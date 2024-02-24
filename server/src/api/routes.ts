@@ -108,3 +108,6 @@ routes.patch('/downloads/:transferId/requests/:requestId', wrapResponse(req =>
 
 routes.get('/providers', wrapResponse(req =>
     Promise.resolve(req.services.storageProvider.getHandlerInfos())));
+
+routes.post('/announce', wrapResponse(req =>
+    Promise.resolve(req.services.emailAnnouncements.sendAnnouncement(req.body))));
