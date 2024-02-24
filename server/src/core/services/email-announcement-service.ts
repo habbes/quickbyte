@@ -1,4 +1,3 @@
-import { string } from "zod";
 import { Database } from "../db/index.js";
 import { createAppError, createResourceNotFoundError, rethrowIfAppError, createValidationError } from "../error.js";
 import { UserInDb, SendEmailAnnouncementArgs } from "../models.js";
@@ -6,9 +5,11 @@ import { EmailHandler } from "./email/index.js";
 
 export interface EmailAnnouncementConfig {
     email: EmailHandler;
-    secretKey: string;
+    password: string;
 }
 
+// This class is a cheap, quick and dirty API to help me sound email announcement to users
+// Down the road we should replace it with a proper solution for that use case
 export class EmailAnnouncementService {
     constructor(private db: Database, private config: EmailAnnouncementConfig) {
     }
@@ -19,10 +20,13 @@ export class EmailAnnouncementService {
             // the validation manually
             const validationResult = SendEmailAnnouncementArgs.safeParse(args);
             if (!validationResult.success) {
-                throw createValidationError(validationResult.error.message)
+                // since this is not an API that should exist, if a random
+                // user or malicious attacker discovers it, let's not
+                // give hints about why the request failed
+                throw createResourceNotFoundError();
             }
 
-            if (this.config.secretKey !== args.password) {
+            if (this.config.password !== args.password) {
                 throw createResourceNotFoundError();
             }
 

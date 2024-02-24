@@ -103,6 +103,8 @@ export interface AppConfig {
     paystackStarterAnnualPlan: string;
     // web app base url
     webappBaseUrl: string;
+    // used to authorize API for sending email announcement to users
+    emailAnnouncementPassword: string;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -142,7 +144,8 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN'),
         webappBaseUrl: getRequiredEnv(env, 'WEBAPP_BASE_URL'),
         googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
-        googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET')
+        googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
+        emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD")
     }
 }
 
