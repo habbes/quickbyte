@@ -1,5 +1,5 @@
 import { Db } from 'mongodb';
-import { Account, Project, User, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken } from './models.js';
+import { Account, Project, User, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken } from '../models.js';
 import { Media } from '../models.js';
 
 
