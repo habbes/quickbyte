@@ -15,7 +15,8 @@
         <UiButton
             title="Upload files"
             @click="openFilePicker()"
-            class="btn btn-primary"
+            primary
+            lg
           >
           <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">Upload media</span>
         </UiButton>

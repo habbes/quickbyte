@@ -1,6 +1,6 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren, CreateMediaCommentArgs } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createValidationError } from "../error.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createValidationError, createNotFoundError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { Database } from "../db.js";
 
@@ -73,6 +73,7 @@ export class CommentService {
             const parent = await this.collection.findOne({
                 _id: args.parentId,
                 mediaId: args.mediaId,
+                deleted: { $ne: true }
             });
 
             if (!parent) {
@@ -96,6 +97,7 @@ export class CommentService {
                 {
                     $match: {
                         mediaId: mediaId,
+                        deleted: { $ne: true },
                         $or: [
                             { parentId: null },
                             { parentId: { $exists: false } }
@@ -132,6 +134,11 @@ export class CommentService {
                         as: 'children',
                         pipeline: [
                             {
+                                $match: {
+                                    deleted: { $ne: true }
+                                }
+                            },
+                            {
                                 $lookup: {
                                     from: this.db.users().collectionName,
                                     localField: '_createdBy._id',
@@ -164,9 +171,40 @@ export class CommentService {
             throw createAppError(e);
         }
     }
+
+    async deleteMediaComment(projectId: string, mediaId: string, commentId: string, isOwnerOrAdmin: boolean): Promise<void> {
+        try {
+            // if the user is a project owner or admin, then allow deleting
+            // otherwise, allow deleting only if the user is the author
+            const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
+            const result = await this.collection.updateOne(
+                {
+                    _id: commentId,
+                    mediaId,
+                    projectId,
+                    deleted: { $ne: true },
+                    ...userAccessFilter
+                },
+                {
+                    $set: {
+                        deleted: true,
+                        deletedAt: new Date(),
+                        deletedBy: { type: 'user', _id: this.authContext.user._id }
+                    }
+                }
+            );
+
+            if (result.modifiedCount == 0) {
+                throw createNotFoundError('comment');
+            }
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
 }
 
-export type ICommentService = Pick<CommentService, 'createMediaComment'|'getMediaComments'>;
+export type ICommentService = Pick<CommentService, 'createMediaComment'|'getMediaComments'|'deleteMediaComment'>;
 
 interface CreateCommentArgs {
     projectId: string;

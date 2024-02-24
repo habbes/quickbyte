@@ -190,6 +190,20 @@ export class ProjectService {
         }
     }
 
+    async deleteMediaComment(projectId: string, mediaId: string, commentId: string): Promise<void> {
+        try {
+            // admin, owner or author can delete comment
+            // we'll do the actual access verification in the called method
+            const project = await this.getByIdInternal(projectId);
+            const isAdminOrOwner = await this.config.access.isRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
+            await this.config.media.deleteMediaComment(projectId, mediaId, commentId, isAdminOrOwner);
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     async inviteUsers(id: string, args: InviteUserArgs): Promise<void> {
         try {
             const project = await this.getByIdInternal(id);
@@ -321,7 +335,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'|'getMembers'|'updateMedia'|'deleteMedia'>;
+export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'|'getMembers'|'updateMedia'|'deleteMedia'|'deleteMediaComment'>;
 
 export interface CreateProjectArgs {
     name: string;

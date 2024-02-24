@@ -5,12 +5,14 @@
       :accepted="['owner', 'admin']"
       :current="project.role"
     >
-      <button
+      <UiButton
         @click="inviteUsers()"
-        class="btn btn-primary btn-sm mb-5"
+        primary
+        lg
+        class="mb-5"
       >
         + Add people
-      </button>
+      </UiButton>
     </RequireRole>
     <Table>
       <TableHeader>
@@ -50,6 +52,7 @@ import RequireRole from '@/components/RequireRole.vue';
 import { ensure } from '@/core';
 import type { ProjectMember } from '@quickbyte/common';
 import { logger, showToast, store, trpcClient } from '@/app-utils';
+import { UiButton } from "@/components/ui";
 
 const route = useRoute();
 const inviteUsersDialog = ref<typeof InviteUserDialog>();

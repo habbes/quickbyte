@@ -146,4 +146,10 @@ export const CreateMediaCommentArgs = z.object({
 
 export type CreateMediaCommentArgs = z.infer<typeof CreateMediaCommentArgs>;
 
+export const DeleteMediaCommentArgs = z.object({
+    projectId: z.string().min(1),
+    mediaId: z.string().min(1),
+    commentId: z.string().min(1)
+});
 
+export type DeleteMediaCommentArgs = z.infer<typeof DeleteMediaCommentArgs>;
