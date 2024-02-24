@@ -6,6 +6,7 @@ import { MediaService } from "./media-service.js";
 import { CommentService } from "./comment-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database, DbAccount } from "../db.js";
+import { EventDispatcher } from "./event-bus/index.js";
 
 export interface AccountServiceConfig {
     storageHandlers: IStorageHandlerProvider;
@@ -16,6 +17,7 @@ export interface AccountServiceConfig {
     invites: IInviteService;
     access: IAccessHandler;
     links: LinkGenerator;
+    eventBus: EventDispatcher;
 }
 
 export class AccountService {
@@ -189,6 +191,7 @@ export class AccountService {
 
     transfers(authContext: AuthContext): ITransferService {
         return new TransferService(this.db, authContext, {
+            eventBus: this.config.eventBus,
             providerRegistry: this.config.storageHandlers,
             transactions: this.transactions(authContext)
         });

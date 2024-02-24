@@ -1,6 +1,6 @@
 import { Transfer } from "@quickbyte/common";
-import { IAlertService } from "../admin-alerts-service";
-import { createServerErrorWithDetails} from "../email";
+import { IAlertService } from "../admin-alerts-service.js";
+import { createServerErrorWithDetails} from "../email/index.js";
 
 export interface EventDispatcher {
     send(event: Event): void;
@@ -15,7 +15,7 @@ export class EventBus implements EventDispatcher, EventHandlerRegister {
 
     constructor(private config: EventBusConfig) {}
 
-    send(event: TransferEvent): void {
+    send(event: TransferCompleteEvent): void {
         // fire and forget
         this.executeHandlers(event);
     }
@@ -27,7 +27,8 @@ export class EventBus implements EventDispatcher, EventHandlerRegister {
     }
 
     private async executeHandlers(event: Event) {
-        const handlers = this.handlers.get(event.name);
+        const eventType = getEventType(event);
+        const handlers = this.handlers.get(eventType);
         if (!handlers || !handlers.length) {
             return;
         }
@@ -46,7 +47,7 @@ export class EventBus implements EventDispatcher, EventHandlerRegister {
                     `Error occurred while handling event: '${event}'`,
                     createServerErrorWithDetails([{
                         error: e,
-                        details: event.data
+                        details: event[eventType]
                     }])
                 );
 
@@ -60,14 +61,20 @@ export interface EventBusConfig {
     alerts: IAlertService;
 }
 
-export type Event = TransferEvent;
+export function getEventType(event: Event): EventType {
+    const eventType = Object.keys(event)[0] as EventType;
+    return eventType;
+}
 
-type TransferEvent = {
-    name: 'transferComplete',
-    data: {
+export type Event = TransferCompleteEvent;
+
+type TransferCompleteEvent = {
+    'transferComplete': {
         transfer: Transfer
     }
 }
 
-type EventType = Event['name'];
-type EventHandler = (event: Event) => Promise<unknown>;
+export type EventType = (keyof Event)
+
+// export type EventType = Event['type'];
+export type EventHandler = (event: Event) => Promise<unknown>;

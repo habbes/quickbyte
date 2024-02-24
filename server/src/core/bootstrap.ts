@@ -24,6 +24,7 @@ UnauthenticatedTransactionService,
 IAlertService,
 FreeTrialHandler,
 LinkGenerator,
+EventBus,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -84,6 +85,10 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         emailHandler,
         emailRecipient: config.systemEmailRecipient
     });
+
+    const eventBus = new EventBus({
+        alerts: adminAlerts
+    });
     
     const plans = new PlanService({
         paystackPlanCodes: {
@@ -116,7 +121,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         webappBaseUrl: config.webappBaseUrl,
         invites,
         access: accessHandler,
-        links
+        links,
+        eventBus
     });
 
     const auth = new AuthService(db, {
