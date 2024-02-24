@@ -7,6 +7,7 @@ import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
+import { getProjectMembers } from "../db/helpers.js";
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
@@ -254,7 +255,7 @@ export class ProjectService {
             const project = await this.getByIdInternal(id);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
             
-            const members = await this.getMembersInternal(project);
+            const members = getProjectMembers(this.db, project);
 
             return members;
         } catch (e: any) {
@@ -277,6 +278,12 @@ export class ProjectService {
         }
     }
 
+    // TODO: delete this if notifications work without issue
+    /**
+     * 
+     * @param project
+     * @deprecated use "getProjectMembers" from the db module
+     */
     private async getMembersInternal(project: Project): Promise<ProjectMember[]> {
         try {
             const id = project._id;
