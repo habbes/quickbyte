@@ -105,7 +105,7 @@ export class InviteService {
             ]).toArray();
 
             if (!invite) {
-                throw createResourceNotFoundError('The invite does not exist.');
+                throw createResourceNotFoundError('The invite does not exist or has expired. Please ask the sender to send you a new invite.');
             }
 
             return invite;
