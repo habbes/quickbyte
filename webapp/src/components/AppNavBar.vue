@@ -60,6 +60,11 @@
                     activeClass="text-white">Transfers</router-link>
                 </li>
               </RequireAccountOwner>
+              <li class="hidden sm:inline-block">
+                <a href="https://quickbyte.featurebase.app" target="_blank" class="flex items-center gap-2">
+                  Share Feedback
+                </a>
+              </li>
 
               <li class="border-b border-gray-600 m-0 p-0 sm:hidden"></li>
               <li class="sm:hidden">

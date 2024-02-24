@@ -25,6 +25,7 @@ IAlertService,
 FreeTrialHandler,
 LinkGenerator,
 EventBus,
+EmailAnnouncementService,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -154,6 +155,11 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     });
     globalEventHandler.registerEvents(eventBus);
 
+    const emailAnnouncements = new EmailAnnouncementService(db, {
+        email: emailHandler,
+        password: config.emailAnnouncementPassword
+    });
+
     return {
         storageProvider,
         accounts,
@@ -161,7 +167,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         downloads,
         plans,
         transactions,
-        alerts: adminAlerts
+        alerts: adminAlerts,
+        emailAnnouncements
     };
 }
 
@@ -173,6 +180,7 @@ export interface AppServices {
     plans: IPlanService;
     transactions: IUnauthenicatedTransactionService;
     alerts: IAlertService;
+    emailAnnouncements: EmailAnnouncementService
 }
 
 async function getDbConnection(config: AppConfig) {
