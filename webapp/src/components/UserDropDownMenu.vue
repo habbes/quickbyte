@@ -38,7 +38,7 @@
       </MenuItem>
       <MenuItem>
         <div class="py-4 px-4">
-          <a @click="auth.signOut()" class="flex items-center gap-2">
+          <a @click="auth.signOut()" class="flex items-center gap-2 cursor-pointer">
             <ArrowLeftStartOnRectangleIcon class="w-5 h-5" />
             Sign out
           </a>

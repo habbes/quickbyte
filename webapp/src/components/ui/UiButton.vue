@@ -1,7 +1,7 @@
 <template>
     <button
       :type="submit ? 'submit' : 'button'"
-      class="inline-flex items-center justify-center gap-2 text-sm font-medium rounded-md shadow-sm lg:w-auto transition-all duration-200 ease-in"
+      class="inline-flex items-center justify-center gap-2 text-sm font-medium rounded-md shadow-sm transition-all duration-200 ease-in"
       :class="classes"
     >
       <span v-if="loading"
