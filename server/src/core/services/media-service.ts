@@ -1,5 +1,5 @@
 import { Db, Collection } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
@@ -161,6 +161,10 @@ export class MediaService {
         return this.config.comments.deleteMediaComment(projectId, mediaId, commentId, isOwnerOrAdmin);
     }
 
+    updateMediaComment(projectId: string, mediaId: string, commentId: string, args: UpdateMediaCommentArgs): Promise<Comment> {
+        return this.config.comments.updateMediaComment(projectId, mediaId, commentId, args);
+    }
+
     private convertFileToMedia(projectId: string, file: CreateTransferFileResult) {
         const initialVersion: MediaVersion = this.convertFileToMediaVersion(file);
 
@@ -213,4 +217,4 @@ export class MediaService {
     }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'>;

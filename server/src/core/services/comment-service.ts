@@ -1,6 +1,6 @@
 import { Collection } from "mongodb";
-import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren, CreateMediaCommentArgs } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createValidationError, createNotFoundError } from "../error.js";
+import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren, CreateMediaCommentArgs, UpdateMediaCommentArgs } from "../models.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createNotFoundError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { Database } from "../db.js";
 
@@ -202,9 +202,38 @@ export class CommentService {
             throw createAppError(e);
         }
     }
+
+    async updateMediaComment(projectId: string, mediaId: string, commentId: string, args: UpdateMediaCommentArgs): Promise<Comment> {
+        try {
+            const result = await this.collection.findOneAndUpdate({
+                _id: commentId,
+                projectId,
+                mediaId,
+                deleted: { $ne: true },
+                '_createdBy._id': this.authContext.user._id
+            }, {
+                $set: {
+                    text: args.text,
+                    _updatedBy: { type: 'user', _id: this.authContext.user._id },
+                    _updatedAt: new Date(),
+                }
+            }, {
+                returnDocument: 'after'
+            });
+
+            if (!result.value) {
+                throw createNotFoundError('comment');
+            }
+
+            return result.value;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
 }
 
-export type ICommentService = Pick<CommentService, 'createMediaComment'|'getMediaComments'|'deleteMediaComment'>;
+export type ICommentService = Pick<CommentService, 'createMediaComment'|'getMediaComments'|'deleteMediaComment'|'updateMediaComment'>;
 
 interface CreateCommentArgs {
     projectId: string;

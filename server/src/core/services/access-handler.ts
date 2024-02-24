@@ -80,12 +80,13 @@ export class AccessHandler {
     }
     
 
-    public async requireRoleOrOwner<T extends AuthorizableResource>(userId: string, resourceType: ResourceType, resource: T, allowedRoles: RoleType[]) {
+    public async requireRoleOrOwner<T extends AuthorizableResource>(userId: string, resourceType: ResourceType, resource: T, allowedRoles: RoleType[]): Promise<RoleType> {
         if (this.isOwner(userId, resource)) {
-            return;
+            return 'owner';
         }
 
-        await this.requireUserRole(userId, resourceType, resource._id, allowedRoles);
+        const role = await this.requireUserRole(userId, resourceType, resource._id, allowedRoles);
+        return role.role;
     }
 
     public async requireUserRole(userId: string, resourceType: ResourceType, resourceId: string, allowedRoles: RoleType[]) {

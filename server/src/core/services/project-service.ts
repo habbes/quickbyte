@@ -2,7 +2,7 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
 import { CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren } from '@quickbyte/common';
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -192,13 +192,33 @@ export class ProjectService {
 
     async deleteMediaComment(projectId: string, mediaId: string, commentId: string): Promise<void> {
         try {
+            
+            const project = await this.getByIdInternal(projectId);
+            // The following check ensures that someone may not delete a comment they created when
+            // they are not longer part of a project
+            const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
             // admin, owner or author can delete comment
             // we'll do the actual access verification in the called method
-            const project = await this.getByIdInternal(projectId);
-            const isAdminOrOwner = await this.config.access.isRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
+            const isAdminOrOwner = role === 'admin' || role === 'owner';
             await this.config.media.deleteMediaComment(projectId, mediaId, commentId, isAdminOrOwner);
         }
         catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async updateMediaComment(projectId: string, mediaId: string, commentId: string, args: UpdateMediaCommentArgs): Promise<Comment> {
+        try {
+            // the called method ensures that only the author can delete the comment.
+            // so the check for project access were do here is potentially unnecessary. But it's possible
+            // that the user has been removed from the project, in which case this check prevents
+            // them from editing a comment they created when they're not longer part of the project.
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer'])
+            const result = await this.config.media.updateMediaComment(projectId, mediaId, commentId, args);
+            return result;
+        } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
@@ -335,7 +355,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'|'getMembers'|'updateMedia'|'deleteMedia'|'deleteMediaComment'>;
+export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'|'getMembers'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'>;
 
 export interface CreateProjectArgs {
     name: string;
