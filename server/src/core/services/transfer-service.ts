@@ -156,7 +156,9 @@ export class TransferService {
     async finalize(id: string, args: FinalizeTransferArgs): Promise<Transfer> {
         try {
             const result = await this.collection.findOneAndUpdate({
-                _id: id
+                _id: id,
+                // only the user who started the upload should be able to finalize it
+                '_createdBy._id': this.authContext.user._id
             }, {
                 $set: {
                     status: 'completed',
