@@ -17,12 +17,22 @@
         class="h-12 border-t border-t-[#5e5e8b] bg-[#38364e] flex justify-between flex-row items-center p-2 text-white overflow-hidden"
         :title="media.name"
       >
-        <div class="flex-1 text-ellipsis whitespace-nowrap overflow-hidden">
-          <router-link
-            :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
-          >
-            {{ media.name }}
-          </router-link>
+        <div class="flex flex-col flex-1 gap-1 text-ellipsis whitespace-nowrap overflow-hidden">
+          <div class="flex-1 text-ellipsis whitespace-nowrap overflow-hidden">
+            <router-link
+              :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
+            >
+              {{ media.name }}
+            </router-link>
+          </div>
+          <div class="text-xs text-gray-400 flex gap-3 items-center">
+            <div>
+              {{ new Date(media._createdAt).toLocaleDateString() }}
+            </div>
+            <div v-if="media.versions.length > 1">
+              {{ media.versions.length }} versions
+            </div>
+          </div>
         </div>
         <div>
           <UiMenu>
