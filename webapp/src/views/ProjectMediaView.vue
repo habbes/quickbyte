@@ -21,6 +21,58 @@
           <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">Upload media</span>
         </UiButton>
       </RequireRole>
+      <UiLayout title="Sort items">
+        <UiMenu>
+          <template #trigger>
+            <UiLayout :fixedHeight="`${headerHeight}px`">
+              <ArrowsUpDownIcon class="h-full w-7  cursor-pointer" />
+            </UiLayout>
+            
+          </template>
+          <div v-if="queryOptions?.sortBy && selectedSortField">
+            <UiMenuLabel>Order</UiMenuLabel>
+            <UiMenuItem @click="selectSortField(selectedSortField.field, 'asc')">
+              <UiLayout fullWidth horizontal justifyBetween itemsCenter>
+                <UiLayout :class="{ 'font-bold': queryOptions.sortBy.direction === 'asc' }">
+                  {{ selectedSortField.ascName }}
+                </UiLayout>
+                <UiLayout v-if="queryOptions.sortBy.direction === 'asc'">
+                  <CheckIcon class="w-4 h-4"/>
+                </UiLayout>
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuItem @click="selectSortField(selectedSortField.field, 'desc')">
+              <UiLayout horizontal justifyBetween itemsCenter>
+                <UiLayout :class="{ 'font-bold': queryOptions.sortBy.direction === 'desc' }">
+                  {{ selectedSortField.descName }}
+                </UiLayout>
+                <UiLayout v-if="queryOptions.sortBy.direction === 'desc'">
+                  <CheckIcon class="w-4 h-4"/>
+                </UiLayout>
+              </UiLayout>
+            </UiMenuItem>
+          </div>
+          <div>
+            <UiMenuLabel>Sort by</UiMenuLabel>
+            <UiMenuItem
+              v-for="field in sortFields"
+              :key="field.field"
+              @click="selectSortField(field.field)"
+            >
+              <UiLayout fullWidth horizontal justifyBetween itemsCenter>
+                <UiLayout :class="{ 'font-bold': queryOptions?.sortBy?.field === field.field }">
+                  {{ field.displayName }}
+                </UiLayout>
+                <UiLayout v-if="field.field === queryOptions?.sortBy?.field">
+                  <CheckIcon class="w-4 h-4" />
+                </UiLayout>
+              </UiLayout>
+            </UiMenuItem>
+          </div>
+        </UiMenu>
+        
+      </UiLayout>
+      
     </UiLayout>
     <UiLayout ref="dropzone" v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
       :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
@@ -70,14 +122,23 @@ import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } fro
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
 import type { WithRole, Project } from "@quickbyte/common";
-import { PlusIcon, ArrowUpCircleIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon } from '@heroicons/vue/24/outline'
 import MediaCardItem from '@/components/MediaCardItem.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import UiLayout from '@/components/ui/UiLayout.vue';
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
-import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue';
+import { UiMenu, UiMenuItem, UiMenuLabel, UiMenuSeparator } from "@/components/ui/menu";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
+
+type SortDirection = 'asc' | 'desc';
+
+type QueryOptions = {
+  sortBy?: {
+    field: string,
+    direction: SortDirection
+  }
+};
 
 const headerHeight = layoutDimensions.projectMediaHeaderHeight;
 // tried different things to get the positioning to look right
@@ -85,9 +146,48 @@ const contentOffset = headerHeight + layoutDimensions.navBarHeight + layoutDimen
 const contentHeight = getRemainingContentHeightCss(
   contentOffset
 );
+
 const route = useRoute();
 const loading = ref(true);
 const searchTerm = ref('');
+const sortFields = [
+  {
+    field: '_createdAt',
+    displayName: 'Date Uploaded',
+    ascName: 'Oldest first',
+    descName: 'Newest first',
+    compare: (a: Media, b: Media) => {
+      return new Date(a._createdAt).getTime() - new Date(b._createdAt).getTime();
+    }
+  },
+  {
+    field: '_updatedAt',
+    displayName: 'Date modified',
+    ascName: 'Oldest first',
+    descName: 'Newest first',
+    compare: (a: Media, b: Media) => {
+      return new Date(a._updatedAt).getTime() - new Date(b._updatedAt).getTime();
+    }
+  },
+  {
+    field: 'name',
+    displayName: 'Name',
+    ascName: 'A-Z',
+    descName: 'Z-A',
+    compare: (a: Media, b: Media) => {
+      return a.name.localeCompare(b.name);
+    }
+  }
+];
+const queryOptions = ref<QueryOptions>();
+const selectedSortField = computed(() => {
+  if (!(queryOptions.value) || !(queryOptions.value.sortBy)) {
+    return;
+  }
+
+  return sortFields.find(f => f.field === queryOptions.value!.sortBy!.field);
+});
+
 const project = ref<WithRole<Project>>();
 const {
   openFilePicker,
@@ -113,11 +213,31 @@ watch([newMedia], () => {
 })
 
 const filteredMedia = computed(() => {
-  if (!searchTerm.value) return media.value;
+  if (!searchTerm.value && !queryOptions.value) return media.value;
 
-  const regex = new RegExp(searchTerm.value, 'i');
-  return media.value.filter(m => regex.test(m.name));
+  let result = [...media.value];
+  if (searchTerm) {
+    const regex = new RegExp(searchTerm.value, 'i');
+    result = media.value.filter(m => regex.test(m.name));
+  }
+  if (selectedSortField.value) {
+    if (queryOptions.value!.sortBy?.direction === 'asc') {
+      result.sort(selectedSortField.value.compare);
+    } else {
+      result.sort((a, b) => -selectedSortField.value!.compare(a, b));
+    }
+  }
+
+  return result;
 });
+
+watch([selectSortField], () => {
+  // selected sort filter
+})
+
+function filterAndSort() {
+  
+}
 
 onError((e) => {
   logger.error(e.message, e);
@@ -153,6 +273,17 @@ function handleMediaDeletion(mediaId: string) {
   if (index < 0) return;
 
   media.value.splice(index, 1);
+}
+
+function selectSortField(field: string, direction?: SortDirection) {
+  if (!queryOptions.value) {
+    queryOptions.value = {};
+  }
+
+  queryOptions.value.sortBy = {
+    field,
+    direction: direction || 'asc'
+  };
 }
 
 // onMounted callback is not called when navigating from one

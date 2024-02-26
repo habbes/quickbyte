@@ -13,35 +13,11 @@
   </DropdownMenuRoot>
 </template>
 <script lang="ts" setup>
-import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import {
-  DropdownMenuArrow,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuItemIndicator,
-  DropdownMenuLabel,
   DropdownMenuPortal,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuRoot,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from 'radix-vue'
 
-const projectPages = [
-  {
-    _id: 'id1', name: 'Page', route: 'project-media'
-  },
-  {
-    _id: 'id2', name: 'Page 2', route: 'project-media'
-  }
-]
-
-const project = {
-  _id: 'pid'
-}
 </script>
