@@ -14,10 +14,15 @@ export function showToast(message: string, type: MessageType) {
     }, TOAST_TIMEOUT_MS);
 }
 
+export function closeToast(id: number) {
+    toasts.value = toasts.value.filter(t => t.id !== id);
+}
+
 export type MessageType = 'info' | 'error' | 'success';
+export type ToastPosition = 'center' | 'right';
 
 export interface Toast {
     message: string;
     type: MessageType;
-    id: string|number;
+    id: number;
 }
