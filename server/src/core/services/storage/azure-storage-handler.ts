@@ -22,7 +22,7 @@ export class AzureStorageHandler implements IStorageHandler {
 
         try {
             const tasks = this.config.availableRegionCodes.map(regionCode => this.getConfigForRegion(regionCode));
-            await tasks;
+            await Promise.all(tasks);
             this.initialized = true;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -55,7 +55,7 @@ export class AzureStorageHandler implements IStorageHandler {
         const pingContainer = client.getContainerClient(this.config.pingContainer);
         const pingBlobName = this.config.pingBlob;
         const pingBlob = pingContainer.getBlobClient(pingBlobName);
-
+        
         const oneYear = 1 * 365 * 24 * 60 * 60 * 1000;
         const expiryDate = new Date(oneYear + Date.now());
         const pingUrl = await pingBlob.generateSasUrl({

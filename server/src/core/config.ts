@@ -76,6 +76,9 @@ export interface AppConfig {
      * The name of the ping file
      */
     azPingBlob: string;
+    // S3
+    s3AccessKeyId: string;
+    s3SecretAccessKey: string;
     // Google auth:
     googleClientId: string;
     googleClientSecret: string;
@@ -124,6 +127,8 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         azDataContainer: env.AZ_DATA_CONTAINER || 'data',
         azPingContainer: env.AZ_PING_CONTAINER || 'ping',
         azPingBlob: env.AZ_PING_BLOB || 'ping.txt',
+        s3AccessKeyId: getRequiredEnv(env, 'S3_ACCESS_KEY_ID'),
+        s3SecretAccessKey: getRequiredEnv(env, 'S3_SECRET_ACCESS_KEY'),
         mailjetApiKey: getRequiredEnv(env, 'MAILJET_API_KEY'),
         mailjetApiSecret: getRequiredEnv(env, 'MAILJET_API_SECRET'),
         mailjetSenderEmail: getRequiredEnv(env, 'MAILJET_SENDER_EMAIL'),
