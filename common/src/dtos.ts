@@ -170,3 +170,12 @@ export const SendEmailAnnouncementArgs = z.object({
 });
 
 export type SendEmailAnnouncementArgs = z.infer<typeof SendEmailAnnouncementArgs>;
+
+export const InitTransferFileUploadArgs = z.object({
+    transferId: z.string().min(1),
+    fileName: z.string().min(1),
+    fileId: z.string().min(1),
+    blockSize: z.number()
+});
+
+export type InitTransferFileUploadArgs = z.infer<typeof InitTransferFileUploadArgs>;
