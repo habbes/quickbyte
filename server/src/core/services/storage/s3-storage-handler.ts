@@ -1,7 +1,8 @@
-import { S3Client, GetObjectCommand, PutObjectCommand, PutBucketCorsCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, PutObjectCommand, PutBucketCorsCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { IStorageHandler, StorageRegionInfo } from "./types.js";
 import { createAppError, createInvalidAppStateError, createResourceNotFoundError } from "../../error.js";
+import { executeTasksInBatches } from "@quickbyte/common";
 
 
 export class S3StorageHandler implements IStorageHandler {
@@ -120,6 +121,90 @@ export class S3StorageHandler implements IStorageHandler {
 
         const url = await getSignedUrl(client, command, { expiresIn: expiresInSeconds });
         return url;
+    }
+
+    async initMultitpartUpload(region: string, account: string, blobName: string, size: number, blockSize: number) {
+        this.ensureInitialized();
+
+        if (!(region in this.regions)) {
+            throw createResourceNotFoundError(`Unknown region '${region}' for the specified provider '${this.name()}'`);
+        }
+
+        const { client, bucket } = this.regions[region];
+        const multipartUpload = await client.send(new CreateMultipartUploadCommand({
+            Bucket: bucket,
+            Key: `data/${account}/${blobName}`
+        }));
+
+        // generate parts
+        let remainingSize = size;
+        const blockNumbers = [];
+        let index = 1;
+        while (remainingSize > 0) {
+            const block = {
+                number: index,
+                size: Math.min(remainingSize, blockSize)
+            };
+
+            remainingSize -= block.size;
+            blockNumbers.push(block);
+        }
+
+        const fiveDays = 5 * 24 * 60 * 60;
+
+        const presignedBlocks = await executeTasksInBatches(
+            blockNumbers,
+            async block => {
+                const url = await getSignedUrl(client, new UploadPartCommand({
+                    UploadId: multipartUpload.UploadId,
+                    Bucket: bucket,
+                    Key: blobName,
+                    PartNumber: block.number,
+                }), {
+                    expiresIn: fiveDays
+                });
+
+                return {
+                    index: block.number,
+                    size: block.size,
+                    url
+                }
+            },
+            10
+        );
+
+        return {
+            uploadId: multipartUpload.UploadId,
+            blockSize,
+            size,
+            blocks: presignedBlocks
+        };
+    }
+
+    async completeMultiPartUpload(region: string, account: string, blobName: string, uploadId: string, blocks: { index: number, etag: string }[]) {
+        this.ensureInitialized();
+
+        if (!(region in this.regions)) {
+            throw createResourceNotFoundError(`Unknown region '${region}' for the specified provider '${this.name()}'`);
+        }
+
+        const { client, bucket } = this.regions[region];
+
+        const result = await client.send(new CompleteMultipartUploadCommand({
+            UploadId: uploadId,
+            Bucket: bucket,
+            Key: `data/${account}/${blobName}`,
+            MultipartUpload: {
+                Parts: blocks.map(b => ({
+                    PartNumber: b.index,
+                    ETag: b.etag
+                }))
+            }
+        }));
+
+        return {
+            etag: result.ETag
+        };
     }
 }
 
