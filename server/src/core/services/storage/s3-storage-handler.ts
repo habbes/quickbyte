@@ -148,6 +148,7 @@ export class S3StorageHandler implements IStorageHandler {
 
             remainingSize -= block.size;
             blockNumbers.push(block);
+            index++;
         }
 
         const fiveDays = 5 * 24 * 60 * 60;

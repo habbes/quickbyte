@@ -124,6 +124,7 @@ export class S3Uploader {
     private addProgress(blockProgress: number) {
         this.progress += blockProgress;
         this.config.onProgress(this.progress);
+        console.log('added progress', this.progress);
     }
 
     private uploadBlockList(blockList: S3PresignedBlock[]) {
@@ -182,16 +183,17 @@ export class S3Uploader {
                     method: 'PUT',
                     body: data,
                     headers: {
-                        Accept: "application/json",
                         "Content-Length": `${data.size}`
                     }
                 });
                 
-                const json = await response.json();
-                console.log('block response', block.index, json);
-                const etag = json.ETag;
+                const etag = response.headers.get("ETag") || response.headers.get("Etag") || response.headers.get("etag");
+                if (!etag) {
+                    this.config.logger?.error(`ETag not returned for block ${block.index} of file ${this.config.fileId}`);
+                    break;
+                }
 
-                this.addProgress(block.size = lastUpdateProgress);
+                this.addProgress(block.size - lastUpdateProgress);
                 lastUpdateProgress = data.size;
                 retry = false;
                 return {
@@ -199,7 +201,7 @@ export class S3Uploader {
                     etag: etag
                 };
             } catch (e: any) {
-                this.config.logger?.error(`error staging block ${block.index} for file '${this.config.file}' in transfer '${this.config.transferId}'`, e);
+                this.config.logger?.error(`error staging block ${block.index} for file '${this.config.fileId}' in transfer '${this.config.transferId}': ${e.message}`, e);
                 retry = true;
             }
         }
