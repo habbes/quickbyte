@@ -21,7 +21,7 @@ interface RecoveryDbSchema extends DBSchema {
     },
     files: {
         value: TrackedFile,
-        key: string
+        key: string,
     },
     blocks: {
         value: {
@@ -160,6 +160,8 @@ export interface TransferTracker {
 }
 
 export interface FileTracker {
+    setS3PresignedBlocks(uploadId: string, blocks: S3PresignedBlock[]): Promise<void>;
+    getS3PresignedBlocks(): Promise<{ s3UploadId: string, presignedBlocks: S3PresignedBlock[] }|undefined>;
     /**
      * **Eventually** marks the specified block as completed.
      * @param block 
@@ -359,6 +361,38 @@ class DefaultFileTracker implements FileTracker, RecoveredFileTracker {
         this.busy = false;
     }
 
+    async getS3PresignedBlocks() {
+        if (this.upload.s3UploadId && this.upload.presignedBlocks) {
+            return {
+                s3UploadId: this.upload.s3UploadId,
+                presignedBlocks: this.upload.presignedBlocks
+            }
+        }
+
+        const db = await this.manager.getDb();
+        const file = await db.get("files", this.upload.id);
+        this.upload.s3UploadId = file?.s3UploadId;
+        this.upload.presignedBlocks = file?.presignedBlocks;
+        if (!file || !file.s3UploadId || !file.presignedBlocks) {
+            return;
+        }
+
+        return {
+            s3UploadId: file.s3UploadId,
+            presignedBlocks: file.presignedBlocks
+        };
+    }
+
+    async setS3PresignedBlocks(multipartUploadId: string, blocks: S3PresignedBlock[]) {
+        this.upload.s3UploadId = multipartUploadId;
+        this.upload.presignedBlocks = blocks;
+        
+        this.busy = true;
+        const db = await this.manager.getDb();
+        await db.put("files", { ...this.upload, s3UploadId: multipartUploadId, presignedBlocks: blocks });
+        this.busy = false;
+    }
+
     hasCompletedBlock(index: number): boolean {
         return index in this.completedBlocks;
     }
@@ -466,6 +500,9 @@ export interface TrackedFile {
     blockSize: number;
     // TODO: make this required in future version
     completed?: boolean;
+    // this is required for S3 only, it represents the multipart upload id
+    s3UploadId?: string;
+    presignedBlocks?: S3PresignedBlock[]
 }
 
 export interface TrackedTransfer {
@@ -478,6 +515,19 @@ export interface TrackedTransfer {
 }
 
 export interface TrackedBlock {
+    // for S3, this corresponds to the ETag. For AZ, the ids are generated client-side.
     id: string;
+    // for Azure the indices start from 0, for S3 the indices start from 1 and correspond to the part numbers
     index: number;
+}
+
+export interface S3PresignedBlock {
+    /**
+     * This is actual the part number, not the array index. Part numbers start from 1.
+     * So to get the corresponding index in the file's block sequence,
+     * subtract 1, i.e. let arrayIndex = block.index - 1
+     */
+    index: number;
+    size: number;
+    url: string;
 }
