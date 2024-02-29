@@ -189,10 +189,11 @@ export class TransferService {
             }
 
             const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
+            const blobName = `${transfer._id}/${file._id}`;
             const result = await provider.initMultitpartUpload(
                 file.region,
                 transfer.accountId,
-                file._id,
+                blobName,
                 file.size,
                 args.blockSize
             );
@@ -231,10 +232,11 @@ export class TransferService {
             }
 
             const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
+            const blobName = `${transfer._id}/${file._id}`;
             const result = await provider.completeMultiPartUpload(
                 file.region,
                 transfer.accountId,
-                file._id,
+                blobName,
                 args.uploadId,
                 args.blocks
             );
@@ -452,6 +454,8 @@ function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): T
 async function createResultFile(provider: IStorageHandler, transfer: Transfer, file: TransferFile): Promise<CreateTransferFileResult> {
     const blobName = `${transfer._id}/${file._id}`;
     const expiryDate = new Date(transfer.expiresAt);
+    // TODO: for s3 we should not create presigned upload URLS because we'll presign
+    // each block individually
     const uploadUrl = await provider.getBlobUploadUrl(transfer.region, transfer.accountId, blobName, expiryDate);
     return {
         ...file,

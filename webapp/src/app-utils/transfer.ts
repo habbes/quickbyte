@@ -1,6 +1,7 @@
 import { ref, type Ref } from "vue";
-import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo, taskManager, showToast } from '@/app-utils';
+import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo, taskManager, showToast, trpcClient } from '@/app-utils';
 import { ensure, ApiError, AzUploader, MultiFileUploader, type CreateTransferResult, type Media, type TransferTask, pluralize, type TrackedTransfer } from "@/core";
+import { S3Uploader } from "@/core/s3-uploader";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete' | 'error';
 
@@ -132,21 +133,41 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
                 const fileToTrack = ensure(
                     transfer.value?.files.find(f => f.name === files[fileIndex].path),
                     `Cannot find file '${files[fileIndex].path}' in transfer package.`);
-
-                return new AzUploader({
-                    file: files[fileIndex].file,
-                    blockSize,
-                    uploadUrl: file.uploadUrl,
-                    tracker: transferTracker.createFileTracker({
+                
+                if (transfer.value?.provider === 'az') {
+                    return new AzUploader({
+                        file: files[fileIndex].file,
                         blockSize,
-                        id: fileToTrack._id,
-                        filename: fileToTrack.name,
-                        size: fileToTrack.size
-                    }),
-                    onProgress: onFileProgress,
-                    logger,
-                    concurrencyStrategy: transfer.value?.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
-                })
+                        uploadUrl: file.uploadUrl,
+                        tracker: transferTracker.createFileTracker({
+                            blockSize,
+                            id: fileToTrack._id,
+                            filename: fileToTrack.name,
+                            size: fileToTrack.size
+                        }),
+                        onProgress: onFileProgress,
+                        logger,
+                        concurrencyStrategy: transfer.value?.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
+                    })
+                } else {
+                    return new S3Uploader({
+                        file: files[fileIndex].file,
+                        blockSize,
+                        uploadUrl: file.uploadUrl,
+                        tracker: transferTracker.createFileTracker({
+                            blockSize,
+                            id: fileToTrack._id,
+                            filename: fileToTrack.name,
+                            size: fileToTrack.size
+                        }),
+                        onProgress: onFileProgress,
+                        logger,
+                        concurrencyStrategy: transfer.value?.files.length === 1 ? 'maxParallelism' : 'fixedWorkers',
+                        transferId: ensure(transfer.value)._id,
+                        fileId: fileToTrack._id,
+                        apiClient: trpcClient
+                    })
+                }
             }
         });
 

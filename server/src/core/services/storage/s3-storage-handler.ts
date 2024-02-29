@@ -158,7 +158,7 @@ export class S3StorageHandler implements IStorageHandler {
                 const url = await getSignedUrl(client, new UploadPartCommand({
                     UploadId: multipartUpload.UploadId,
                     Bucket: bucket,
-                    Key: blobName,
+                    Key: `data/${account}/${blobName}`,
                     PartNumber: block.number,
                 }), {
                     expiresIn: fiveDays
