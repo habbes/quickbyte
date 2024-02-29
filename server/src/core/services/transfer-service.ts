@@ -4,7 +4,7 @@ import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, 
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 import { Database } from "../db.js";
-import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs } from "@quickbyte/common";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
 
 const COLLECTION = "transfers";
@@ -205,6 +205,53 @@ export class TransferService {
         }
     }
 
+    async completeFileUpload(args: CompleteFileUploadArgs) {
+        try {
+            // only the user who has created a transfer
+            // can complete file uploads
+            // 
+            const transfer = await this.collection.findOne({
+                _id: args.transferId,
+                '_createdBy._id': this.authContext.user._id,
+                status: 'progress'
+            });
+
+            if (!transfer) {
+                throw createNotFoundError('transfer');
+            }
+
+            const file = await this.filesCollection.findOne({ _id: args.fileId, transferId: args.transferId });
+            if (!file) {
+                throw createNotFoundError('file');
+            }
+
+            if (file.provider !== 's3') {
+                console.log(`CompleteFileUpload endpoint unexpectedly called with storage handler '${file.provider}', only 's3' is supported.`);
+                throw createOperationNotSupportedError("This operation is supported for the specified transfer provider");
+            }
+
+            const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
+            const result = await provider.completeMultiPartUpload(
+                file.region,
+                transfer.accountId,
+                file._id,
+                args.uploadId,
+                args.blocks
+            );
+
+            return {
+                transferId: args.transferId,
+                file: file._id,
+                etag: result.etag,
+                uploadId: args.uploadId
+            }
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     async finalize(id: string, args: FinalizeTransferArgs): Promise<Transfer> {
         try {
             const result = await this.collection.findOneAndUpdate({
@@ -381,7 +428,10 @@ export class TransferDownloadService {
     }
 }
 
-export type ITransferService = Pick<TransferService, 'create'| 'createProjectMediaUpload'|'finalize'|'getById'|'get'|'getMediaFile'|'getMediaFiles'>;
+// TODO: I don't think there's much gain in passing around
+// an interface instead of the actual service class since
+// we'll only have on implementation anyway.
+export type ITransferService = TransferService;
 export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDownload'|'updateDownloadRequest'>;
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {

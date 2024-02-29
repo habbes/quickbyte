@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { number, z } from "zod";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -179,3 +179,15 @@ export const InitTransferFileUploadArgs = z.object({
 });
 
 export type InitTransferFileUploadArgs = z.infer<typeof InitTransferFileUploadArgs>;
+
+export const CompleteFileUploadArgs = z.object({
+    transferId: z.string().min(1),
+    fileId: z.string().min(1),
+    uploadId: z.string().min(1),
+    blocks: z.array(z.object({
+        index: z.number(),
+        etag: z.string()
+    }))
+});
+
+export type CompleteFileUploadArgs = z.infer<typeof CompleteFileUploadArgs>;
