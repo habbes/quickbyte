@@ -111,7 +111,7 @@ export class S3StorageHandler implements IStorageHandler {
         }
 
         const defaultDownloadName = normalizeFileNameForSasUrl(originalName);
-        const expiresInSeconds = Math.floor((Date.now() - expiryDate.getTime()) / 1000);
+        const expiresInSeconds = Math.floor((expiryDate.getTime() - Date.now()) / 1000);
         const { client, bucket } = this.regions[region];
         const command = new GetObjectCommand({
             Bucket: bucket,
