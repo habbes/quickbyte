@@ -26,6 +26,7 @@ FreeTrialHandler,
 LinkGenerator,
 EventBus,
 EmailAnnouncementService,
+S3StorageHandler,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -53,7 +54,17 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
 
     await azureStorageHandler.initialize();
 
+    const s3StorageHandler = new S3StorageHandler({
+        availableRegions: ['eu-north-1'],
+        accessKeyId: config.s3AccessKeyId,
+        secretAccessKey: config.s3SecretAccessKey,
+    });
+
+    await s3StorageHandler.initialize();
+
     const storageProvider = new StorageHandlerProvider();
+    // TODO: Enable S3 handler after we implement full support for it
+    // storageProvider.registerHandler(s3StorageHandler);
     storageProvider.registerHandler(azureStorageHandler);
 
     const links = new LinkGenerator({

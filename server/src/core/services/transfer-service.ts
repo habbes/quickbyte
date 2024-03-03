@@ -1,10 +1,10 @@
 import { Db, Collection, UpdateFilter } from "mongodb";
-import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, createValidationError, rethrowIfAppError } from '../error.js';
+import { createAppError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, createValidationError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
-import { IStorageHandler, IStorageHandlerProvider } from './storage/index.js'
+import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 import { Database } from "../db.js";
-import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult } from "@quickbyte/common";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
 
 const COLLECTION = "transfers";
@@ -146,6 +146,107 @@ export class TransferService {
                 hidden: { $ne: true }
             }).toArray();
             return transfers;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async initFileUpload(args: InitTransferFileUploadArgs) {
+        try {
+            // only the user who has created a transfer
+            // can initiate file uploads
+            // 
+            const transfer = await this.collection.findOne({
+                _id: args.transferId,
+                '_createdBy._id': this.authContext.user._id,
+                status: 'progress'
+            });
+
+            if (!transfer) {
+                throw createNotFoundError('transfer');
+            }
+
+            const file = await this.filesCollection.findOne({ _id: args.fileId, transferId: args.transferId });
+            if (!file) {
+                throw createNotFoundError('file');
+            }
+
+            // This is currently only supported by the S3 provider.
+            // On Azure, we can initiate a multipart upload
+            // with a single presigned url that will be used for all the files.
+            // On S3 we have to initiate a multipart upload first to get the upload id
+            // then we have to presign each part individually and attach the upload id
+            // to it. To make uplaods efficient, this endpoint is used
+            // to initate the upload and presign all the blocks in advance.
+            // TODO: we should probably limit how many pre-signed urls we generate
+            // in one request.
+
+            if (file.provider !== 's3') {
+                console.log(`InitFileUpload endpoint unexpectedly called with storage handler '${file.provider}', only 's3' is supported.`);
+                throw createOperationNotSupportedError("This operation is supported for the specified transfer provider");
+            }
+
+            const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
+            const blobName = `${transfer._id}/${file._id}`;
+            const result = await provider.initMultitpartUpload(
+                file.region,
+                transfer.accountId,
+                blobName,
+                file.size,
+                args.blockSize
+            );
+
+            return result;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async completeFileUpload(args: CompleteFileUploadArgs) {
+        try {
+            // only the user who has created a transfer
+            // can complete file uploads
+            // 
+            const transfer = await this.collection.findOne({
+                _id: args.transferId,
+                '_createdBy._id': this.authContext.user._id,
+                status: 'progress'
+            });
+
+            if (!transfer) {
+                throw createNotFoundError('transfer');
+            }
+
+            const file = await this.filesCollection.findOne({ _id: args.fileId, transferId: args.transferId });
+            if (!file) {
+                throw createNotFoundError('file');
+            }
+
+            if (file.provider !== 's3') {
+                console.log(`CompleteFileUpload endpoint unexpectedly called with storage handler '${file.provider}', only 's3' is supported.`);
+                throw createOperationNotSupportedError("This operation is supported for the specified transfer provider");
+            }
+
+            const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
+            const blobName = `${transfer._id}/${file._id}`;
+            const result = await provider.completeMultiPartUpload(
+                file.region,
+                transfer.accountId,
+                blobName,
+                args.uploadId,
+                args.blocks
+            );
+
+            return {
+                transferId: args.transferId,
+                file: file._id,
+                etag: result.etag,
+                uploadId: args.uploadId
+            }
         }
         catch (e: any) {
             rethrowIfAppError(e);
@@ -329,7 +430,10 @@ export class TransferDownloadService {
     }
 }
 
-export type ITransferService = Pick<TransferService, 'create'| 'createProjectMediaUpload'|'finalize'|'getById'|'get'|'getMediaFile'|'getMediaFiles'>;
+// TODO: I don't think there's much gain in passing around
+// an interface instead of the actual service class since
+// we'll only have on implementation anyway.
+export type ITransferService = TransferService;
 export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDownload'|'updateDownloadRequest'>;
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
@@ -350,6 +454,8 @@ function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): T
 async function createResultFile(provider: IStorageHandler, transfer: Transfer, file: TransferFile): Promise<CreateTransferFileResult> {
     const blobName = `${transfer._id}/${file._id}`;
     const expiryDate = new Date(transfer.expiresAt);
+    // TODO: for s3 we should not create presigned upload URLS because we'll presign
+    // each block individually
     const uploadUrl = await provider.getBlobUploadUrl(transfer.region, transfer.accountId, blobName, expiryDate);
     return {
         ...file,
