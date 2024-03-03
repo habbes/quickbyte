@@ -1,28 +1,59 @@
 <template>
-  <Dialog ref="dialog" title="Invite user">
-    <div>
-      <input ref="emailInput" v-model="email" type="email" class="input input-bordered input-sm w-full" placeholder="Enter email address"/>
-      <span v-if="emailError" class="text-sm text-error">
-        {{ emailError }}
-      </span>
+  <Dialog ref="dialog" title="Invite users">
+    <div class="flex flex-col gap-4">
+      <div>
+        <label for="inviteEmails" class="text-xs mb-2">Enter email addresses of the people to invite</label>
+        <input id="inviteEmails" ref="emailInput" v-model="email" type="text" class="input input-bordered input-sm w-full" placeholder="john.doe@example.com;jane.doe@example.com"/>
+        <span v-if="emailError" class="text-sm text-error">
+          {{ emailError }}
+        </span>
+      </div>
+      <div class="flex flex-col gap-2">
+        <div class="text-xs">
+          Select the level of access the users will have on this project.
+        </div>
+        <UiRadioList v-model="role">
+          <UiRadioListItem value="reviewer">
+            <div class="font-semibold">Reviewer</div>
+            <div class="font-light text-xs text-gray-500">
+              Can view files and comments and post new comments.
+            </div>
+          </UiRadioListItem>
+          <UiRadioListItem value="editor">
+            <div class="font-bold">Editor</div>
+            <div class="font-light text-xs text-gray-500">
+              Can also upload files, update versions, and delete files they uploaded.
+            </div>
+          </UiRadioListItem>
+          <UiRadioListItem value="admin">
+            <div class="font-bold">Admin</div>
+            <div class="font-light text-xs text-gray-500">
+              Can also delete any files and add users to the project.
+            </div>
+          </UiRadioListItem>
+        </UiRadioList>
+      </div>
     </div>
     
     <template #actions>
-      <button @click="inviteUser()" class="btn btn-primary btn-sm">Invite User</button>
-      <button class="btn btn-sm" @click="close()">Cancel</button>
+      <UiButton primary @click="inviteUser()">Invite Users</UiButton>
+      <UiButton @click="close()">Cancel</UiButton>
     </template>
   </Dialog>
 </template>
 <script lang="ts" setup>
 import Dialog from '@/components/ui/Dialog.vue';
 import { ref } from 'vue';
-import { ensure, type RoleType } from '@/core';
+import { ensure, pluralize } from '@/core';
 import { apiClient, showToast, store, logger } from '@/app-utils';
+import { UiRadioList, UiRadioListItem, UiButton } from "@/components/ui";
+import { type RoleType } from "@quickbyte/common";
 
 const dialog = ref<typeof Dialog>();
 const emailInput = ref<HTMLInputElement>();
 const email = ref<string>();
 const emailError = ref<string>();
+const role = ref<RoleType>("editor");
 
 const account = ensure(store.currentAccount.value);
 
@@ -56,16 +87,20 @@ async function inviteUser() {
     return;
   }
 
+  const emails = email.value.split(/[,;]/g);
+  const users = emails.map(e => ({ email: e.trim() }));
   const args = {
-    users: [{ email: email.value }],
-    role: 'editor' as RoleType
+    users,
+    role: role.value
   }
+
+  console.log('args', args);
 
   try {
     await apiClient.inviteUsersToProject(account._id, props.projectId, args);
-    emit('invite', [{ email: email.value }]);
+    emit('invite', args.users);
     close();
-    showToast('Sent invitations to users.', 'info');
+    showToast(`Sent invitations to ${args.users.length} ${pluralize('user', args.users.length)}.`, 'info');
   }
   catch (e: any) {
     showToast(`Failed to invite user: ${e.message}`, 'error');

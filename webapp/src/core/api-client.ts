@@ -1,5 +1,5 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, CreateProjectArgs, Media, MediaWithFile, Comment, RoleType } from './types.js'
-import type { SubscriptionAndPlan, WithRole, Project, MediaWithFileAndComments } from "@quickbyte/common";
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, CreateProjectArgs, Media, MediaWithFile, Comment } from './types.js'
+import type { SubscriptionAndPlan, WithRole, Project, MediaWithFileAndComments, RoleType } from "@quickbyte/common";
 
 export interface ApiClientConfig {
     baseUrl: string;

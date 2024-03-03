@@ -152,8 +152,14 @@ export class ProjectService {
         try {
             const project = await this.getByIdInternal(projectId);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner','admin', 'editor']);
+            // The following check ensures that someone may not delete a media they created when
+            // they are not longer part of a project
+            const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
+            // admin, owner or uploader can delete media
+            // we'll do the actual access verification in the called method
+            const isAdminOrOwner = role === 'admin' || role === 'owner';
 
-            await this.config.media.deleteMedia(projectId, mediaId);
+            await this.config.media.deleteMedia(projectId, mediaId, isAdminOrOwner);
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
