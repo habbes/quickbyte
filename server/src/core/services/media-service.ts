@@ -117,12 +117,16 @@ export class MediaService {
         }
     }
 
-    async deleteMedia(projectId: string, id: string): Promise<void> {
+    async deleteMedia(projectId: string, id: string, isOwnerOrAdmin: boolean): Promise<void> {
         try {
+            // if the user is a project owner or admin, then allow deleting
+            // otherwise, allow deleting only if the user is the author
+            const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
             const result = await this.collection.findOneAndUpdate({
                 projectId,
                 _id: id,
-                deleted: { $ne: true }
+                deleted: { $ne: true },
+                ...userAccessFilter
             }, {
                 $set: {
                     deleted: true,
