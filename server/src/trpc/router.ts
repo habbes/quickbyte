@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -76,6 +76,16 @@ export const appRouter = router({
     .input(UpdateMediaCommentArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateMediaComment(input.projectId, input.mediaId, input.commentId, input)),
+    
+    initTransferFileUpload: protectedProcedure
+    .input(InitTransferFileUploadArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.transfers(ctx.auth).initFileUpload(input)),
+    
+    completeTransferFileUpload: protectedProcedure
+    .input(CompleteFileUploadArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.transfers(ctx.auth).completeFileUpload(input)),
     
     getUserAuthMethod: publicProcedure
     .input(CheckUserAuthMethodArgs)

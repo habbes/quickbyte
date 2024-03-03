@@ -231,14 +231,6 @@ const filteredMedia = computed(() => {
   return result;
 });
 
-watch([selectSortField], () => {
-  // selected sort filter
-})
-
-function filterAndSort() {
-  
-}
-
 onError((e) => {
   logger.error(e.message, e);
   showToast(e.message, 'error');
