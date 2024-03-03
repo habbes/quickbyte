@@ -63,7 +63,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     await s3StorageHandler.initialize();
 
     const storageProvider = new StorageHandlerProvider();
-    storageProvider.registerHandler(s3StorageHandler);
+    // TODO: Enable S3 handler after we implement full support for it
+    // storageProvider.registerHandler(s3StorageHandler);
     storageProvider.registerHandler(azureStorageHandler);
 
     const links = new LinkGenerator({
