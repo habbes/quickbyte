@@ -5,7 +5,8 @@ const PREFERRED_PROVIDER_KEY = 'preferredProvider';
 
 export async function findBestProviderAndRegion(providers: StorageProvider[]): Promise<PreferredProviderRegionResult> {
     // TODO Fror now we pick Azure until we've completed implementation of AWS support
-    const provider = ensure(providers.find(p => p.name === "az"), "az provider not found");
+    const provider = providers[0];
+    // const provider = ensure(providers.find(p => p.name === "az"), "az provider not found");
     const latencyResults = await compareLatency(provider.availableRegions);
 
     const result = {
