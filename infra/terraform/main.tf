@@ -5,9 +5,9 @@ terraform {
       version = "~> 3.0.2"
     }
 
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "~> 2.15.0"
+    aws = {
+      source = "hashicorp/aws"
+      version = "~> 3.27"
     }
   }
 
@@ -39,31 +39,11 @@ provider "azurerm" {
   }
 }
 
-# the SP we used doesn't have enough resources
-# to create new SPs
-# provider "azuread" {
-#   tenant_id = data.azurerm_client_config.current.tenant_id
-# }
+
 
 # this data source will be used to get current tenant and app id
 data "azurerm_client_config" "current" {}
-data "azuread_client_config" "current" {}
 
-# this service principal will be used by our server
-# to access the resources created here
-# we'll grant it access to relevant resources
-# and output its client id and secret
-# resource "azuread_application" "server_app" {
-#   display_name = "${var.az_resource_prefix}-server-app"
-# }
-
-# resource "azuread_service_principal" "server_app" {
-#   application_id = azuread_application.server_app.application_id
-# }
-
-# resource "azuread_service_principal_password" "server_app" {
-#   service_principal_id = azuread_service_principal.server_app.object_id
-# }
 
 # Resource Group
 
@@ -168,21 +148,6 @@ resource "azurerm_key_vault" "key_vault" {
       "Set"
     ]
   }
-
-  # access policy granted to our server
-  # the server only needs to read the secrets
-  # access_policy {
-  #   tenant_id = data.azurerm_client_config.current.tenant_id
-  #   object_id = azuread_service_principal.server_app.object_id
-
-  #   key_permissions = [
-  #     "Get"
-  #   ]
-
-  #   secret_permissions = [
-  #     "Get"
-  #   ]
-  # }
 }
 
 resource "azurerm_key_vault_secret" "secrets" {
