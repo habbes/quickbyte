@@ -1,3 +1,17 @@
+// COMMON variables
+
+variable "resource_prefix" {
+  type    = string
+  default = "quickbytetest"
+}
+
+variable "environment" {
+  type = string
+  default = "dev"
+}
+
+// AZURE STORAGE variables
+
 variable "az_regions" {
   type = map(any)
   default = {
@@ -34,11 +48,6 @@ variable "az_regions" {
   }
 }
 
-variable "az_resource_prefix" {
-  type    = string
-  default = "quickbyte"
-}
-
 variable "az_data_container_name" {
   type    = string
   default = "data"
@@ -55,6 +64,51 @@ variable "az_ping_blob_name" {
 }
 
 variable "az_ping_blob_content" {
+  type    = string
+  default = "ping"
+}
+
+// S3 variables
+
+variable "s3_regions" {
+  type = map(any)
+  default = {
+    useast1 = {
+      name = "us-east-1"
+    },
+    uswest2 = {
+      name = "us-west-2"
+    },
+    afsouth1 = {
+      name = "af-south-1"
+    },
+    eucentral1 = {
+      name = "eu-central-1"
+    },
+    euwest2 = {
+      name = "eu-west-2"
+    },
+    euwest3 = {
+      name = "eu-west-3"
+    },
+    eunorth1 = {
+      name = "eu-north-1"
+    },
+    apsouth1 = {
+      name = "ap-south-1"
+    },
+    saeast1 = {
+      name = "sa-east-1"
+    }
+  }
+}
+
+variable "s3_ping_blob_key" {
+  type    = string
+  default = "ping/ping.txt"
+}
+
+variable "s3_ping_blob_content" {
   type    = string
   default = "ping"
 }

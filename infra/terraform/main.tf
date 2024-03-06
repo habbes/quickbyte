@@ -5,9 +5,9 @@ terraform {
       version = "~> 3.0.2"
     }
 
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "~> 2.15.0"
+    aws = {
+      source = "hashicorp/aws"
+      version = "~> 5.0"
     }
   }
 
@@ -39,36 +39,17 @@ provider "azurerm" {
   }
 }
 
-# the SP we used doesn't have enough resources
-# to create new SPs
-# provider "azuread" {
-#   tenant_id = data.azurerm_client_config.current.tenant_id
-# }
+// AZURE BLOB STORAGE RESOURCES
+
 
 # this data source will be used to get current tenant and app id
 data "azurerm_client_config" "current" {}
-data "azuread_client_config" "current" {}
 
-# this service principal will be used by our server
-# to access the resources created here
-# we'll grant it access to relevant resources
-# and output its client id and secret
-# resource "azuread_application" "server_app" {
-#   display_name = "${var.az_resource_prefix}-server-app"
-# }
-
-# resource "azuread_service_principal" "server_app" {
-#   application_id = azuread_application.server_app.application_id
-# }
-
-# resource "azuread_service_principal_password" "server_app" {
-#   service_principal_id = azuread_service_principal.server_app.object_id
-# }
 
 # Resource Group
 
 resource "azurerm_resource_group" "resource_group" {
-  name     = "${var.az_resource_prefix}rg"
+  name     = "${var.resource_prefix}rg"
   location = "eastus2"
 }
 
@@ -77,7 +58,7 @@ resource "azurerm_storage_account" "storage_accounts" {
   for_each = var.az_regions
 
   resource_group_name = azurerm_resource_group.resource_group.name
-  name                = "${var.az_resource_prefix}${each.key}"
+  name                = "${var.resource_prefix}${each.key}"
   location            = each.value.name
 
   account_tier              = "Standard"
@@ -137,7 +118,7 @@ resource "azurerm_storage_blob" "ping_blob" {
 # for the storage accounts
 
 resource "azurerm_key_vault" "key_vault" {
-  name                = "${var.az_resource_prefix}kv"
+  name                = "${var.resource_prefix}kv"
   location            = azurerm_resource_group.resource_group.location
   resource_group_name = azurerm_resource_group.resource_group.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
@@ -168,21 +149,6 @@ resource "azurerm_key_vault" "key_vault" {
       "Set"
     ]
   }
-
-  # access policy granted to our server
-  # the server only needs to read the secrets
-  # access_policy {
-  #   tenant_id = data.azurerm_client_config.current.tenant_id
-  #   object_id = azuread_service_principal.server_app.object_id
-
-  #   key_permissions = [
-  #     "Get"
-  #   ]
-
-  #   secret_permissions = [
-  #     "Get"
-  #   ]
-  # }
 }
 
 resource "azurerm_key_vault_secret" "secrets" {
@@ -193,3 +159,73 @@ resource "azurerm_key_vault_secret" "secrets" {
   value        = azurerm_storage_account.storage_accounts[each.key].primary_connection_string
   key_vault_id = azurerm_key_vault.key_vault.id
 }
+
+
+// AWS S3 RESOURCES
+
+// Ideally a collection variable should be used here like with Azure,
+// Unfortunately the AWS Provider requires us to set the region
+// on the provider instead of the resources, and we can't set
+// the provider alias dynamically.
+// This is a known issue discussed in the following threads:
+// - https://github.com/hashicorp/terraform-provider-aws/issues/8853
+// - https://github.com/hashicorp/terraform-provider-aws/issues/27758
+// - https://github.com/hashicorp/terraform-provider-aws/pull/31517
+
+provider "aws" {
+  profile = "default"
+  region = "af-south-1"
+  alias = "afsouth1"
+}
+
+provider "aws" {
+  profile = "default"
+  region = "us-east-1"
+  alias = "useast1"
+}
+
+provider "aws" {
+  profile = "default"
+  region = "eu-north-1"
+  alias = "eunorth1"
+}
+
+provider "aws" {
+  profile = "default"
+  region = "ap-south-1"
+  alias = "apsouth1"
+}
+
+
+resource "aws_s3_bucket" "afsouth1_data_bucket" {
+  provider = aws.afsouth1
+
+  bucket = "${resource_prefix}afsouth1"
+
+  tags = {
+    Product = "${resource_prefix}"
+    Environment = "${environment}"
+  }
+}
+
+resource "aws_s3_bucket_cors_configuration" "afsouth1_data_bucket_cors_config" {
+  bucket = aws_s3_bucket.afsouth1_data_bucket.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["PUT", "POST", "GET", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag", "Etag", "Content-Length"]
+    max_age_seconds = 3000
+  }
+}
+
+// Ping file
+
+resource "aws_s3_object" "afshout1_ping_object" {
+  bucket = aws_s3_bucket.afsouth1_data_bucket.id
+  key    = "${s3_ping_blob_key}"
+  content = "${s3_ping_blob_content}"
+}
+
+// TODO add bucket configs for other regions
