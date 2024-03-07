@@ -5,11 +5,6 @@ variable "resource_prefix" {
   default = "quickbytetest"
 }
 
-variable "environment" {
-  type = string
-  default = "dev"
-}
-
 // AZURE STORAGE variables
 
 variable "az_regions" {
