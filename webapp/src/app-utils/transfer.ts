@@ -148,7 +148,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
                         onProgress: onFileProgress,
                         logger,
                         concurrencyStrategy: transfer.value?.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
-                    })
+                    });
                 } else {
                     return new S3Uploader({
                         file: files[fileIndex].file,
@@ -166,7 +166,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
                         transferId: ensure(transfer.value)._id,
                         fileId: fileToTrack._id,
                         apiClient: trpcClient
-                    })
+                    });
                 }
             }
         });
@@ -274,21 +274,41 @@ async function resumeTransferInternal(args: ResumeFileTransferArgs, result: Star
                     transfer.value.files.find(f => f.name === files[fileIndex].path),
                     `Cannot find file '${files[fileIndex].path}' in transfer package.`);
 
-                return new AzUploader({
-                    file: files[fileIndex].file,
-                    blockSize,
-                    uploadUrl: file.uploadUrl,
-                    completedBlocks: recoveryResult.inProgressFiles.get(fileToTrack.name)?.completedBlocks,
-                    tracker: transferTracker.recoverFileTracker({
+                if (transfer.value?.provider === 'az') {
+                    return new AzUploader({
+                        file: files[fileIndex].file,
                         blockSize,
-                        id: fileToTrack._id,
-                        filename: fileToTrack.name,
-                        size: fileToTrack.size
-                    }),
-                    onProgress: onFileProgress,
-                    logger,
-                    concurrencyStrategy: transfer.value.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
-                })
+                        uploadUrl: file.uploadUrl,
+                        completedBlocks: recoveryResult.inProgressFiles.get(fileToTrack.name)?.completedBlocks,
+                        tracker: transferTracker.recoverFileTracker({
+                            blockSize,
+                            id: fileToTrack._id,
+                            filename: fileToTrack.name,
+                            size: fileToTrack.size
+                        }),
+                        onProgress: onFileProgress,
+                        logger,
+                        concurrencyStrategy: transfer.value.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
+                    });
+                } else {
+                    return new S3Uploader({
+                        file: files[fileIndex].file,
+                        blockSize,
+                        uploadUrl: file.uploadUrl,
+                        tracker: transferTracker.createFileTracker({
+                            blockSize,
+                            id: fileToTrack._id,
+                            filename: fileToTrack.name,
+                            size: fileToTrack.size
+                        }),
+                        onProgress: onFileProgress,
+                        logger,
+                        concurrencyStrategy: transfer.value?.files.length === 1 ? 'maxParallelism' : 'fixedWorkers',
+                        transferId: ensure(transfer.value)._id,
+                        fileId: fileToTrack._id,
+                        apiClient: trpcClient
+                    });
+                }
             }
         });
 

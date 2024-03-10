@@ -48,7 +48,12 @@ export class S3Uploader {
     private readonly concurrency: number = 5;
 
     constructor(private config: S3FileUploadArgs) {
-        this.concurrency = this.config.concurrencyStrategy === 'fixedWorkers' ? 5 : 16;
+        // To be honest not sure how useful this is. At the moment
+        // I only implement one concurreny strategy and only change the default
+        // number of concurrent workers. When we have multiple files,
+        // we use less workers per file. When we have a single file, we use more workers.
+        // Should review the upload strategy regurlarly for potential optimizations
+        this.concurrency = this.config.concurrencyStrategy === 'fixedWorkers' ? 5 : 8;
     }
 
     async uploadFile(): Promise<void> {
