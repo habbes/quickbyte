@@ -114,7 +114,7 @@ export class ProjectService {
         try {
             const project = await this.getByIdInternal(id);
             // TODO should a reviewer have access to all project media or just select files?
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
             const media = await this.config.media.getProjectMedia(id);
             return media;
         } catch (e: any) {
