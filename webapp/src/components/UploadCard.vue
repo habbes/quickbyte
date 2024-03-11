@@ -1,5 +1,5 @@
 <template>
-  <div class="card w-96 bg-base-100 shadow-xl text-slate-600">
+  <div class="card sm:w-96 bg-base-100 shadow-xl text-slate-600">
     <!-- initial state -->
     <div class="card-body" v-if="uploadState === 'initial' && !transferDetails">
       <h2 class="card-title">Transfer files</h2>

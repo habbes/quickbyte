@@ -1,5 +1,5 @@
 <template>
-  <div class="card w-96 bg-base-100 shadow-xl overflow-y-auto">
+  <div class="card sm:w-96 bg-base-100 shadow-xl overflow-y-auto">
     <div class="card-body">
       <h3>Recovered transfers</h3>
       <div class="flex justify-between">
