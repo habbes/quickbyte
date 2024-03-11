@@ -43,7 +43,8 @@ export class S3StorageHandler implements IStorageHandler {
                     {
                         AllowedMethods: ["GET", "PUT", "HEAD"],
                         AllowedOrigins: ["*"],
-                        AllowedHeaders: ["*"]
+                        AllowedHeaders: ["*"],
+                        ExposeHeaders: ["ETag", "Etag"]
                     },
                 ]
             }

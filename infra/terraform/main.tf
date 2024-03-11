@@ -39,6 +39,36 @@ provider "azurerm" {
   }
 }
 
+// Ideally a collection variable should be used here like with Azure,
+// Unfortunately the AWS Provider requires us to set the region
+// on the provider instead of the resources, and we can't set
+// the provider alias dynamically.
+// This is a known issue discussed in the following threads:
+// - https://github.com/hashicorp/terraform-provider-aws/issues/8853
+// - https://github.com/hashicorp/terraform-provider-aws/issues/27758
+// - https://github.com/hashicorp/terraform-provider-aws/pull/31517
+
+# provider "aws" {
+#   region = "af-south-1"
+#   alias = "afsouth1"
+# }
+
+provider "aws" {
+  region = "us-east-1"
+  alias = "useast1"
+}
+
+# provider "aws" {
+#   region = "eu-north-1"
+#   alias = "eunorth1"
+# }
+
+# provider "aws" {
+#   region = "ap-south-1"
+#   alias = "apsouth1"
+# }
+
+
 // AZURE BLOB STORAGE RESOURCES
 
 
@@ -163,53 +193,18 @@ resource "azurerm_key_vault_secret" "secrets" {
 
 // AWS S3 RESOURCES
 
-// Ideally a collection variable should be used here like with Azure,
-// Unfortunately the AWS Provider requires us to set the region
-// on the provider instead of the resources, and we can't set
-// the provider alias dynamically.
-// This is a known issue discussed in the following threads:
-// - https://github.com/hashicorp/terraform-provider-aws/issues/8853
-// - https://github.com/hashicorp/terraform-provider-aws/issues/27758
-// - https://github.com/hashicorp/terraform-provider-aws/pull/31517
+resource "aws_s3_bucket" "useast1_data_bucket" {
+  provider = aws.useast1
 
-provider "aws" {
-  profile = "default"
-  region = "af-south-1"
-  alias = "afsouth1"
-}
-
-provider "aws" {
-  profile = "default"
-  region = "us-east-1"
-  alias = "useast1"
-}
-
-provider "aws" {
-  profile = "default"
-  region = "eu-north-1"
-  alias = "eunorth1"
-}
-
-provider "aws" {
-  profile = "default"
-  region = "ap-south-1"
-  alias = "apsouth1"
-}
-
-
-resource "aws_s3_bucket" "afsouth1_data_bucket" {
-  provider = aws.afsouth1
-
-  bucket = "${resource_prefix}afsouth1"
+  bucket = "${var.resource_prefix}useast1"
 
   tags = {
-    Product = "${resource_prefix}"
-    Environment = "${environment}"
+    Product = "${var.resource_prefix}"
   }
 }
 
-resource "aws_s3_bucket_cors_configuration" "afsouth1_data_bucket_cors_config" {
-  bucket = aws_s3_bucket.afsouth1_data_bucket.id
+resource "aws_s3_bucket_cors_configuration" "useast1_data_bucket_cors_config" {
+  bucket = aws_s3_bucket.useast1_data_bucket.id
 
   cors_rule {
     allowed_headers = ["*"]
@@ -222,10 +217,10 @@ resource "aws_s3_bucket_cors_configuration" "afsouth1_data_bucket_cors_config" {
 
 // Ping file
 
-resource "aws_s3_object" "afshout1_ping_object" {
-  bucket = aws_s3_bucket.afsouth1_data_bucket.id
-  key    = "${s3_ping_blob_key}"
-  content = "${s3_ping_blob_content}"
+resource "aws_s3_object" "useast1_ping_object" {
+  bucket = aws_s3_bucket.useast1_data_bucket.id
+  key    = "${var.s3_ping_blob_key}"
+  content = "${var.s3_ping_blob_content}"
 }
 
 // TODO add bucket configs for other regions

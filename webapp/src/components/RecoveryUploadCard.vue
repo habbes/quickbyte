@@ -1,5 +1,5 @@
 <template>
-  <div class="w-96 flex flex-col gap-2">
+  <div class="sm:w-96 flex flex-col gap-2">
     <div v-if="!filesMatch && files.length">
       <div class="alert alert-error text-xs">
           Ensure you select all files that were
@@ -7,7 +7,7 @@
           and do not add files which were not part it.
         </div>
     </div>
-    <div class="card w-96 bg-base-100 shadow-xl text-slate-600">
+    <div class="card sm:w-96 bg-base-100 shadow-xl text-slate-600">
       <!-- initial state -->
       <div class="card-body" v-if="uploadState === 'initial'">
         <div v-if="!filesMatch" class="font-bold text-sm">Select the following files and folders to resume transfer:</div>
