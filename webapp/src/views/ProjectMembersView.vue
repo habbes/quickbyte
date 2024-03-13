@@ -19,6 +19,7 @@
         <TableHead>Name</TableHead>
         <TableHead>Email</TableHead>
         <TableHead>Role</TableHead>
+        <TableHead>Actions</TableHead>
       </TableHeader>
       <TableBody>
         <TableRow
@@ -27,6 +28,23 @@
           <TableCell>{{ user.name }}</TableCell>
           <TableCell>{{ user.email }}</TableCell>
           <TableCell>{{ user.role }}</TableCell>
+          <TableCell>
+            <UiMenu>
+              <template #trigger>
+                <EllipsisVerticalIcon class="w-5 h-5" />
+              </template>
+              <UiMenuItem>
+                <UiLayout horizontal gapSm itemsCenter>
+                  <ShieldCheckIcon class="w-5 h-5 text-orange-500"/> Remove member
+                </UiLayout>
+              </UiMenuItem>
+              <UiMenuItem>
+                <UiLayout horizontal gapSm itemsCenter>
+                  <NoSymbolIcon class="w-5 h-5 text-red-500"/> Remove member
+                </UiLayout>
+              </UiMenuItem>
+            </UiMenu>
+          </TableCell>
         </TableRow>
       </TableBody>
     </Table>
@@ -52,7 +70,9 @@ import RequireRole from '@/components/RequireRole.vue';
 import { ensure } from '@/core';
 import type { ProjectMember } from '@quickbyte/common';
 import { logger, showToast, store, trpcClient } from '@/app-utils';
-import { UiButton } from "@/components/ui";
+import { UiButton, UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
+import { EllipsisVerticalIcon, NoSymbolIcon, ShieldCheckIcon } from "@heroicons/vue/24/solid";
+
 
 const route = useRoute();
 const inviteUsersDialog = ref<typeof InviteUserDialog>();
