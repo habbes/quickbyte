@@ -190,3 +190,10 @@ export const CompleteFileUploadArgs = z.object({
 });
 
 export type CompleteFileUploadArgs = z.infer<typeof CompleteFileUploadArgs>;
+
+export const UpdateProjectArgs = z.object({
+    id: z.string().min(1),
+    name: z.string().min(1)
+});
+
+export type UpdateProjectArgs = z.infer<typeof UpdateProjectArgs>;
