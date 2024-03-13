@@ -9,44 +9,34 @@
       <h2 class="text-xl">Project settings</h2>
     </UiLayout>
     <UiLayout innerSpace gapSm>
-      <UiLayout class="border border-[#2e2634] rounded-md p-8 w-2/3 mx-auto">
-        <UiLayout gapSm>
-          <UiLayout>
-            <h3 class="text-lg text-gray-200">Project name</h3>
-          </UiLayout>
-          <UiLayout>
-            Set the project's name.
-          </UiLayout>
-          <UiLayout>
-            <UiTextInput dark v-model="name" fullWidth placeholder="Enter project name"/>
-          </UiLayout>
-          <UiLayout horizontal justifyEnd>
-            <UiButton
-              :disabled="name === project.name"
-              @click="updateProjectName()"
-            >
-              Save
-            </UiButton>
-          </UiLayout>
+      <SectionCard title="Project name">
+        <UiLayout>
+          Set the project's name.
         </UiLayout>
-      </UiLayout>
-      <UiLayout class="border border-[#2e2634] rounded-md p-8 w-2/3 mx-auto">
-        <UiLayout gapSm>
-          <UiLayout>
-            <h3 class="text-lg text-gray-200">Project URL</h3>
-          </UiLayout>
-          <UiLayout>
-            This is a direct link to your project. You can share this link with
-            your collaborators after you have granted them access to your project.
-          </UiLayout>
-          <UiLayout>
-            <UiTextInput disabled :modelValue="url" fullWidth />
-          </UiLayout>
-          <UiLayout horizontal justifyEnd>
-            <UiButton @click="copyUrl()">Copy</UiButton>
-          </UiLayout>
+        <UiLayout>
+          <UiTextInput dark v-model="name" fullWidth placeholder="Enter project name"/>
         </UiLayout>
-      </UiLayout>
+        <UiLayout horizontal justifyEnd>
+          <UiButton
+            :disabled="name === project.name"
+            @click="updateProjectName()"
+          >
+            Save
+          </UiButton>
+        </UiLayout>
+      </SectionCard>
+      <SectionCard title="Project URL">
+        <UiLayout>
+          This is a direct link to your project. You can share this link with
+          your collaborators after you have granted them access to your project.
+        </UiLayout>
+        <UiLayout>
+          <UiTextInput disabled :modelValue="url" fullWidth />
+        </UiLayout>
+        <UiLayout horizontal justifyEnd>
+          <UiButton @click="copyUrl()">Copy</UiButton>
+        </UiLayout>
+      </SectionCard>
     </UiLayout>
   </UiLayout>
 </template>
@@ -56,6 +46,7 @@ import { useClipboard } from "@vueuse/core";
 import { UiLayout, UiTextInput, UiButton } from "@/components/ui";
 import { computed, ref, watch } from "vue";
 import { logger, showToast, store, trpcClient } from "@/app-utils";
+import SectionCard from "./SectionCard.vue";
 
 const route = useRoute();
 const { copy } = useClipboard();
