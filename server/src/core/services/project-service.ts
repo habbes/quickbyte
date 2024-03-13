@@ -1,8 +1,8 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
-import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError } from "../error.js";
+import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
 import { CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs } from '@quickbyte/common';
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -270,6 +270,67 @@ export class ProjectService {
         }
     }
 
+    async changeMemberRole(id: string, args: ChangeProjectMemmberRoleArgs): Promise<void> {
+        try {
+            const project = await this.getByIdInternal(id);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
+            // ensure user exists
+            const user = await this.db.users().findOne({ _id: args.userId });
+            if (!user) {
+                throw createNotFoundError("user");
+            }
+
+            // User cannot change their own role
+            if (args.userId === this.authContext.user._id) {
+                throw createOperationNotSupportedError("You cannot change your own role.");
+            }
+
+            // We currently do not support changing the owner's permissions.
+            if (args.userId === project._createdBy._id) {
+                throw createOperationNotSupportedError("You cannot change the role of the project owner.");
+            }
+            
+            await this.config.access.assignRole(
+                { type: 'user', _id: this.authContext.user._id },
+                args.userId,
+                'project',
+                project._id,
+                args.role
+            );
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async removeMember(projectId: string, args: RemoveProjectMemberArgs): Promise<void> {
+        try {
+            const project = await this.getByIdInternal(projectId); 
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
+            
+            // ensure user exists
+            const user = await this.db.users().findOne({ _id: args.userId });
+            if (!user) {
+                throw createNotFoundError("user");
+            }
+
+            // You can remove the owner
+            if (user._id === project._createdBy._id) {
+                throw createOperationNotSupportedError("You cannot remove the project owner.");
+            }
+
+            if (user._id === this.authContext.user._id) {
+                // TODO: this error message is confusing
+                throw createOperationNotSupportedError("You cannot remove yourself from the project. Consider leaving the project instead.");
+            }
+
+            await this.config.access.removeAccess(user._id, 'project', project._id);
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     private async getByIdInternal(id: string): Promise<Project> {
         try {
             const project = await this.collection.findOne({ _id: id });
@@ -368,7 +429,7 @@ export class ProjectService {
     }
 }
 
-export type IProjectService = Pick<ProjectService, 'createProject'|'getByAccount'|'getById'|'updateProject'|'uploadMedia'|'getMedia'|'getMediumById'|'inviteUsers'|'createMediaComment'|'getMembers'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'>;
+export type IProjectService = ProjectService;
 
 export interface CreateProjectArgs {
     name: string;

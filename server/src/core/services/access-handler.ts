@@ -115,6 +115,18 @@ export class AccessHandler {
 
         return true;
     }
+
+    public async removeAccess(userId: string, resourceType: ResourceType, resourceId: string) {
+        try {
+            await this.collection.deleteOne({
+                userId,
+                resourceType,
+                resourceId
+            });
+        } catch (e: any) {
+            throw createAppError(e);
+        }
+    }
     
     private async getUserRole(userId: string, resourceType: ResourceType, resourceId: string, allowedRoles?: RoleType[]): Promise<UserRole|null> {
         try {
@@ -131,4 +143,4 @@ export class AccessHandler {
     }
 }
 
-export type IAccessHandler = Pick<AccessHandler, 'isOwner'|'requireRoleOrOwner'|'requireUserRole'|'assignRole'|'isRoleOrOwner'|'isUserRole'>;
+export type IAccessHandler = Pick<AccessHandler, 'isOwner'|'requireRoleOrOwner'|'requireUserRole'|'assignRole'|'isRoleOrOwner'|'isUserRole'|'removeAccess'>;

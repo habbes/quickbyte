@@ -3,7 +3,13 @@
     <div class="flex flex-col gap-4">
       <div>
         <label for="inviteEmails" class="text-xs mb-2">Enter email addresses of the people to invite</label>
-        <input id="inviteEmails" ref="emailInput" v-model="email" type="text" class="input input-bordered input-sm w-full" placeholder="john.doe@example.com;jane.doe@example.com"/>
+        <UiTextInput
+          ref="emailInput"
+          fullWidth
+          v-model="email"
+          :type="'email'"
+          placeholder="john.doe@example.com;jane.doe@example.com"
+        />
         <span v-if="emailError" class="text-sm text-error">
           {{ emailError }}
         </span>
@@ -46,7 +52,7 @@ import Dialog from '@/components/ui/Dialog.vue';
 import { ref } from 'vue';
 import { ensure, pluralize } from '@/core';
 import { apiClient, showToast, store, logger } from '@/app-utils';
-import { UiRadioList, UiRadioListItem, UiButton } from "@/components/ui";
+import { UiRadioList, UiRadioListItem, UiButton, UiTextInput } from "@/components/ui";
 import { type RoleType } from "@quickbyte/common";
 
 const dialog = ref<typeof Dialog>();
