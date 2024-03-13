@@ -9,22 +9,24 @@
       <h2 class="text-xl">Project settings</h2>
     </UiLayout>
     <UiLayout innerSpace gapSm>
-      <SectionCard title="Project name">
-        <UiLayout>
-          Set the project's name.
-        </UiLayout>
-        <UiLayout>
-          <UiTextInput dark v-model="name" fullWidth placeholder="Enter project name"/>
-        </UiLayout>
-        <UiLayout horizontal justifyEnd>
-          <UiButton
-            :disabled="name === project.name"
-            @click="updateProjectName()"
-          >
-            Save
-          </UiButton>
-        </UiLayout>
-      </SectionCard>
+      <RequireRole :current="project.role" :accepted="['admin', 'owner']">
+        <SectionCard title="Project name">
+          <UiLayout>
+            Set the project's name.
+          </UiLayout>
+          <UiLayout>
+            <UiTextInput dark v-model="name" fullWidth placeholder="Enter project name"/>
+          </UiLayout>
+          <UiLayout horizontal justifyEnd>
+            <UiButton
+              :disabled="name === project.name"
+              @click="updateProjectName()"
+            >
+              Save
+            </UiButton>
+          </UiLayout>
+        </SectionCard>
+      </RequireRole>
       <SectionCard title="Project URL">
         <UiLayout>
           This is a direct link to your project. You can share this link with
@@ -47,6 +49,7 @@ import { UiLayout, UiTextInput, UiButton } from "@/components/ui";
 import { computed, ref, watch } from "vue";
 import { logger, showToast, store, trpcClient } from "@/app-utils";
 import SectionCard from "./SectionCard.vue";
+import RequireRole from "@/components/RequireRole.vue";
 
 const route = useRoute();
 const { copy } = useClipboard();
