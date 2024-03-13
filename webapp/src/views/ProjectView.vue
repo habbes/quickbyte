@@ -109,6 +109,10 @@ const projectPages = [
   {
     name: 'Members',
     route: 'project-members'
+  },
+  {
+    name: 'Settings',
+    route: "project-settings"
   }
 ];
 
