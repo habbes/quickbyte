@@ -197,3 +197,18 @@ export const UpdateProjectArgs = z.object({
 });
 
 export type UpdateProjectArgs = z.infer<typeof UpdateProjectArgs>;
+
+export const ChangeProjectMemberRoleArgs = z.object({
+    projectId: z.string().min(1),
+    userId: z.string().min(1),
+    role: z.enum(["reviewer", "editor", "admin"])
+});
+
+export type ChangeProjectMemmberRoleArgs = z.infer<typeof ChangeProjectMemberRoleArgs>;
+
+export const RemoveProjectMemberArgs = z.object({
+    projectId: z.string().min(1),
+    userId: z.string().min(1)
+});
+
+export type RemoveProjectMemberArgs = z.infer<typeof RemoveProjectMemberArgs>;
