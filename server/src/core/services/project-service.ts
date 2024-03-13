@@ -71,7 +71,7 @@ export class ProjectService {
     async updateProject(id: string, args: UpdateProjectArgs) {
         try {
             const project = await this.getByIdInternal(id);
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'editor']);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
             const update = await this.collection.findOneAndUpdate({
                 _id: id
             }, {
