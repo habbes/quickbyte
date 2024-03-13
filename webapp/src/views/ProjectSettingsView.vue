@@ -12,20 +12,28 @@
       <UiLayout class="border border-[#2e2634] rounded-md p-8 w-2/3 mx-auto">
         <UiLayout gapSm>
           <UiLayout>
-            <h3 class="text-lg">Project name</h3>
+            <h3 class="text-lg text-gray-200">Project name</h3>
+          </UiLayout>
+          <UiLayout>
+            Set the project's name.
           </UiLayout>
           <UiLayout>
             <UiTextInput dark v-model="name" fullWidth placeholder="Enter project name"/>
           </UiLayout>
           <UiLayout horizontal justifyEnd>
-            <UiButton>Save</UiButton>
+            <UiButton
+              :disabled="name === project.name"
+              @click="updateProjectName()"
+            >
+              Save
+            </UiButton>
           </UiLayout>
         </UiLayout>
       </UiLayout>
       <UiLayout class="border border-[#2e2634] rounded-md p-8 w-2/3 mx-auto">
         <UiLayout gapSm>
           <UiLayout>
-            <h3 class="text-lg">Project URL</h3>
+            <h3 class="text-lg text-gray-200">Project URL</h3>
           </UiLayout>
           <UiLayout>
             This is a direct link to your project. You can share this link with
@@ -47,7 +55,7 @@ import { useRoute } from "vue-router";
 import { useClipboard } from "@vueuse/core";
 import { UiLayout, UiTextInput, UiButton } from "@/components/ui";
 import { computed, ref, watch } from "vue";
-import { showToast, store } from "@/app-utils";
+import { logger, showToast, store, trpcClient } from "@/app-utils";
 
 const route = useRoute();
 const { copy } = useClipboard();
@@ -63,6 +71,26 @@ watch([route], () => {
 function copyUrl() {
   copy(url.value);
   showToast("Project URL copied to clipboard.", "info");
+}
+
+async function updateProjectName() {
+  if (!name.value) return;
+  if (!project.value) return;
+  if (name.value === project.value?.name) return;
+
+  try {
+    const udpatedProject = await trpcClient.updateProject.mutate({
+      id: project.value?._id,
+      name: name.value
+    });
+
+    const projectWithRole = { ...udpatedProject, role: project.value.role };
+    store.addProject(projectWithRole);
+    showToast(`Project name changed to ${projectWithRole.name}`, 'info');
+  } catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
 }
 
 </script>
