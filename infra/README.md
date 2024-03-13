@@ -80,6 +80,71 @@ export ARM_SUBSCRIPTION_ID="<SUBSCRIPTION_ID>"
 export ARM_TENANT_ID="<TENANT_VALUE>"
 ```
 
+## Setup AWS
+
+Create an AWS account or login into one at: https://aws.amazon.com
+
+**Enable South Africa region (af-south-1) in the AWS account**. This region is disabled by default.
+
+I'd like to use best practices for account management in AWS (e.g. creating accounts or roles or groups that only have the access to the resources created). But for now I just created IAM users with and user groups with restrictions to only access S3 resources based on tag.
+
+I create one set of policies and users for development/test and then create a similar set of configurations for production. I use a `Product` tag to isolate dev from prod. `Product = quickbytest` for dev and `Product = quickbyte` for prod. Using separate, unrelated AWS accounts would probably be a better strategy.
+
+In each "environment", I create 2 sets of policies and user configurations:
+- one set is used to provision resources (e.g. create the S3 buckets used to store data). This will be used by tools like terraform.
+- another set is only used to store and access objects in the buckets. This will be used by the Quickbyte app.
+
+Let's start with creating the "provisoning" user:
+
+- In the AWS Console, click the User dropdown menu and select **Security Credentials**
+- This opens the Identity and Access Management (IAM) console
+- Create policy:
+  - On the sidebar menu, click **Policies** (we want to create a policy that restricts the permissions our user will have)
+  - Create a policy that allows access to all S3 resources but only for the appropriate tag (e.g. `Product` =  `quickbytest`). See the JSON below showing what the policy config looks like:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": "iam:PassRole",
+            "Resource": "*"
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "s3:*",
+                "s3:CreateJob"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "aws:ResourceTag/Product": "quickbytetest"
+                }
+            }
+        }
+    ]
+}
+```
+  - In the dev scenario, I called this policy `QuickbyteTestProvisioning`
+- Next, create a group
+  - In the IAM portal, click **User groups**
+  - Create a group (I called the dev one `QuickbyteTestProvisioningGroup`)
+  - In the group's page, click **Permissions**
+  - Click **Add Permissions** -> **Attach policies**
+  - Search of the name of the policy created and attach it
+- Next, create a user:
+  - In the IAM portal, click **Users**
+  - Create User (I called the dev one `QuickbyteTestProvisioningUser`)
+  - Assign to the group created in the previous step (`quickbytetest_group`)
+
+Once the user is created, navigate to the user, then **Security Credentials** then create an access key. This access key can be used by terraform to provision resources using the following env vars:
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+
 ## Terraform environment
 
 I'm using Terraform Cloud to store configuration and resource state.
@@ -124,6 +189,7 @@ terraform {
 
 using the corresponding organization and workspace names.
 
+
 ## Provisioning infrastructure
 
 Currently I run the provisioning from the CLI. Might consider automating it via GitHub integration
@@ -147,7 +213,7 @@ terraform plan
 The following variables have been defined:
 
 ```
-variable "az_resource_prefix" {
+variable "resource_prefix" {
   type    = string
   default = "quickbytetest"
 }
@@ -171,6 +237,16 @@ variable "az_ping_blob_content" {
   type    = string
   default = "ping"
 }
+
+variable "s3_ping_blob_key" {
+  type    = string
+  default = "ping/ping.txt"
+}
+
+variable "s3_ping_blob_content" {
+  type    = string
+  default = "ping"
+}
 ```
 
 You can override them when runnging the apply command, for example:
@@ -178,6 +254,8 @@ You can override them when runnging the apply command, for example:
 ```
 terraform apply -var="az_resource_prefix=quickbyte"
 ```
+
+Ideally, **You should also define the variables that with different values for dev and prod in the terraform cloud as well**. This makes it easier to have different values defined in dev and prod without having to manually edit the file. Specficially, you should set the **resource_prefix** variable accordingly because it determines the names and tags of your resources.
 
 Then run:
 ```

@@ -40,6 +40,17 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = new Database(await getDbConnection(config));
     await db.initialize();
 
+    const storageProvider = new StorageHandlerProvider();
+
+    // TODO: enable S3 handler once support implementation ready
+    // const s3StorageHandler = new S3StorageHandler({
+    //     availableRegions: ['eu-north-1'],
+    //     accessKeyId: config.s3AccessKeyId,
+    //     secretAccessKey: config.s3SecretAccessKey,
+    // });
+    // await s3StorageHandler.initialize();
+    // storageProvider.registerHandler(s3StorageHandler);
+
     const azureStorageHandler = new AzureStorageHandler({
         tenantId: config.azTenantId,
         clientId: config.azClientId,
@@ -53,17 +64,6 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     });
 
     await azureStorageHandler.initialize();
-
-    const s3StorageHandler = new S3StorageHandler({
-        availableRegions: ['eu-north-1'],
-        accessKeyId: config.s3AccessKeyId,
-        secretAccessKey: config.s3SecretAccessKey,
-    });
-
-    await s3StorageHandler.initialize();
-
-    const storageProvider = new StorageHandlerProvider();
-    storageProvider.registerHandler(s3StorageHandler);
     storageProvider.registerHandler(azureStorageHandler);
 
     const links = new LinkGenerator({
