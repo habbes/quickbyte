@@ -4,7 +4,6 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { types } from 'util';
 import { computed, type StyleValue } from 'vue';
 
 const props = defineProps<{
@@ -32,6 +31,7 @@ const classes = computed(() => {
     'items-between': props.itemsBetween,
     'justify-center': props.justifyCenter,
     'justify-between': props.justifyBetween,
+    'justify-end': props.justifyEnd,
     [`gap-[${props.gap}]`]: props.gap,
     'gap-2': props.gapSm,
     'px-4 py-2': props.innerSpace,
