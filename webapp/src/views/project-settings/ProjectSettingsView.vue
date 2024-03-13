@@ -31,7 +31,7 @@
           your collaborators after you have granted them access to your project.
         </UiLayout>
         <UiLayout>
-          <UiTextInput disabled :modelValue="url" fullWidth />
+          <UiTextInput dark disabled :modelValue="url" fullWidth />
         </UiLayout>
         <UiLayout horizontal justifyEnd>
           <UiButton @click="copyUrl()">Copy</UiButton>

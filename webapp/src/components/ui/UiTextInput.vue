@@ -13,7 +13,7 @@
         :type="type || 'text'"
         :placeholder="placeholder"
         :required="required"
-        class="flex-1bg-transparent border px-4 py-2 rounded-md outline-none focus:ring-1"
+        class="flex-1 border px-4 py-2 rounded-md outline-none focus:ring-1"
         :class="classes"
         :disabled="disabled"
       >
@@ -48,8 +48,8 @@ const id = ref(props.id || `input_${Math.ceil(Math.random() * 10000)}`);
 const classes = computed(() => {
   return {
     'w-full': props.fullWidth,
-    'bg-transparent': props.dark,
-    'text-white': props.dark,
+    'bg-white': !props.dark,
+    'text-white bg-transparent': props.dark,
     'border-gray-300 focus:border-blue-400': !props.hasError,
     'focus:border-red-400 border-red-500': props.hasError
   }
