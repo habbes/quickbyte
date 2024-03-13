@@ -33,10 +33,12 @@
 </template>
 <script lang="ts" setup>
 import { ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import { logger, showToast, store, acceptInvite, declineInvite } from "@/app-utils";
 import Dialog from "@/components/ui/Dialog.vue";
 import type { RecipientInvite } from "../../../common/dist";
 
+const router = useRouter();
 const dialog = ref<typeof Dialog>();
 const invites = store.invites;
 
@@ -77,6 +79,14 @@ async function handleAccept(invite: RecipientInvite) {
     await acceptInvite(invite._id, invite.secret);
 
     dialog.value?.close();
+    if (invite.resource.type === 'project') {
+      // TODO:
+      // we do a hard redirect instead of using the vue router because
+      // because the app fetches all the projects at start up
+      // ideally we should just fetch the project from the API
+      // and it to the store then redirect. This was just a quick fix
+      location.href = `${location.origin}/projects/${invite.resource.id}`;
+    }
   } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
