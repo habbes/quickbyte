@@ -48,6 +48,7 @@ const id = ref(props.id || `input_${Math.ceil(Math.random() * 10000)}`);
 const classes = computed(() => {
   return {
     'w-full': props.fullWidth,
+    'text-gray-600': !props.dark && !props.disabled,
     'bg-white': !props.dark,
     'text-white bg-transparent': props.dark,
     'border-gray-300 focus:border-blue-400': !props.hasError,

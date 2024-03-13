@@ -1,7 +1,7 @@
 <template>
   <div class="h-screen flex flex-col">
     <EmptyNavBar />
-    <div v-if="invite" class="flex-1 flex flex-col mt-10 items-center gap-4">
+    <div v-if="invite" class="flex-1 flex flex-col mt-10 items-center p-4 gap-4">
       <div class="text-[#dad8d8]">
         <span class="font-bold">{{ invite.sender.name }}</span>
         has invited you to join
