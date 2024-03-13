@@ -14,6 +14,7 @@ import ProjectsView from '@/views/ProjectsView.vue';
 import ProjectView from '@/views/ProjectView.vue';
 import ProjectMediaView from '@/views/ProjectMediaView.vue';
 import ProjectMembersView from '@/views/ProjectMembersView.vue';
+import ProjectSettingsView from '@/views/ProjectSettingsView.vue';
 import InviteView from '@/views/InviteView.vue';
 import LoginView from '@/views/auth/LoginView.vue';
 import SignupView from '@/views/auth/SignupView.vue';
@@ -76,6 +77,11 @@ const router = createRouter({
                   path: 'members',
                   name: 'project-members',
                   component: ProjectMembersView
+                },
+                {
+                  path: 'settings',
+                  name: 'project-settings',
+                  component: ProjectSettingsView
                 }
               ]
             },
