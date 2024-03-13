@@ -34,8 +34,8 @@
                 <EllipsisVerticalIcon class="w-5 h-5" />
               </template>
               <UiMenuItem>
-                <UiLayout horizontal gapSm itemsCenter>
-                  <ShieldCheckIcon class="w-5 h-5 text-orange-500"/> Remove member
+                <UiLayout @click="changeMemberRole(user)" horizontal gapSm itemsCenter>
+                  <ShieldCheckIcon class="w-5 h-5 text-orange-500"/> Change role
                 </UiLayout>
               </UiMenuItem>
               <UiMenuItem>
@@ -53,6 +53,14 @@
     v-if="projectId"
     ref="inviteUsersDialog" :projectId="projectId"
   />
+  <ChangeMemberRoleDialog
+    v-if="projectId && selectedMember"
+    ref="changeMemberRoleDialog"
+    :member="selectedMember"
+    :projectId="projectId"
+    @roleUpdate="handleMemberRoleChanged($event)"
+  />
+
 </template>
 <script lang="ts" setup>
 import { computed, watch, ref, onMounted } from 'vue';
@@ -66,24 +74,40 @@ import {
   TableCell
 } from '@/components/ui/table/index.js';
 import InviteUserDialog from '@/components/InviteUserDialog.vue';
+import ChangeMemberRoleDialog from "@/components/ChangeMemberRoleDialog.vue";
 import RequireRole from '@/components/RequireRole.vue';
 import { ensure } from '@/core';
-import type { ProjectMember } from '@quickbyte/common';
+import type { ProjectMember, RoleType } from '@quickbyte/common';
 import { logger, showToast, store, trpcClient } from '@/app-utils';
 import { UiButton, UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
 import { EllipsisVerticalIcon, NoSymbolIcon, ShieldCheckIcon } from "@heroicons/vue/24/solid";
-
+import { nextTick } from 'process';
 
 const route = useRoute();
 const inviteUsersDialog = ref<typeof InviteUserDialog>();
+const changeMemberRoleDialog = ref<typeof ChangeMemberRoleDialog>();
 const projectId = ref<string>();
 const project = computed(() => {
   return store.projects.value.find(p => p._id === projectId.value);
 });
 const members = ref<ProjectMember[]>([]);
 
+const selectedMemberId = ref<string>();
+const selectedMember = computed(() => members.value.find(m => m._id === selectedMemberId.value));
+
 function inviteUsers() {
   inviteUsersDialog.value?.open();
+}
+
+function changeMemberRole(member: ProjectMember) {
+  selectedMemberId.value = member._id;
+  nextTick(() => changeMemberRoleDialog.value?.open());
+}
+
+function handleMemberRoleChanged(data: { memberId: string, projectId: string, role: RoleType }) {
+  const member = members.value.find(m => m._id === data.memberId);
+  if (!member) return;
+  member.role = data.role;
 }
 
 async function loadDataForRoute(to: RouteLocationNormalizedLoaded) {
