@@ -212,3 +212,18 @@ export const RemoveProjectMemberArgs = z.object({
 });
 
 export type RemoveProjectMemberArgs = z.infer<typeof RemoveProjectMemberArgs>;
+
+export const CreateFolderArgs = z.object({
+    projectId: z.string().min(1),
+    name: z.string().min(1),
+    parentId: z.optional(z.string().min(1))
+});
+
+export type CreateFolderArgs = z.infer<typeof CreateFolderArgs>;
+
+export const CreateFolderTreeArgs = z.object({
+    projectId: z.string().min(1),
+    paths: z.array(z.string().min(1)),
+});
+
+export type CreateFolderTreeArgs = z.infer<typeof CreateFolderTreeArgs>;

@@ -1,7 +1,6 @@
 import { Db } from 'mongodb';
-import { Account, Project, User, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken } from '../models.js';
+import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder } from '../models.js';
 import { Media } from '../models.js';
-
 
 export class Database {
     constructor(public readonly db: Db) {
@@ -35,10 +34,15 @@ export class Database {
 
     media = () => this.db.collection<Media>("media");
 
+    folders = () => this.db.collection<Folder>("folders");
+
     async initialize() {
         await this.users().createIndex('email', { unique: true });
 
         await this.authTokens().createIndex('code', { unique: true });
+
+        await this.folders().createIndex("parentId", { partialFilterExpression: { parentId: { $exists: true } } });
+        await this.media().createIndex("folderId", { partialFilterExpression: { folderId: { $exists: true } } });
     }
 }
 
