@@ -13,7 +13,7 @@
         v-model="search"
         type="text"
         :placeholder="searchPlaceholder"
-        class="flex-1 border-none outline-none"
+        class="flex-1 border-none outline-none bg-white"
       >
     </div>
     <slot></slot>
