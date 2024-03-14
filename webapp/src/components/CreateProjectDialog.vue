@@ -14,13 +14,13 @@
           <span class="text-error text-xs">{{ nameError }}</span>
         </div>
         <div>
-          <textarea v-model="description" class="textarea textarea-bordered textarea-sm w-full resize-none" placeholder="Enter project description" />
+          <UiTextArea v-model="description" fullWidth placeholder="Enter project description" />
         </div>
       </div>
       <div class="modal-action">
         <form method="dialog" class="flex gap-2">
           <!-- if there is a button in form, it will close the modal -->
-          <UiButton>Cancel</UiButton>
+          <UiButton @click="close()">Cancel</UiButton>
           <UiButton @click="createProject($event)" primary>Create project</UiButton>
         </form>
       </div>
@@ -32,7 +32,7 @@ import { apiClient, logger, showToast, store } from "@/app-utils";
 import { ensure, type Project } from "@/core";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { UiButton, UiTextInput } from "@/components/ui";
+import { UiButton, UiTextInput, UiTextArea } from "@/components/ui";
 
 const dialog = ref<HTMLDialogElement>();
 const name = ref('');
