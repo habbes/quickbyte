@@ -5,7 +5,7 @@
   >
     <UiPopoverButton
       @click="createProject()"
-      class="py-4 px-4 border-t border-t-gray-300 text-[#3f4754] flex flex-row gap-1"
+      class="cursor-pointer py-4 px-4 border-t border-t-gray-300 text-[#3f4754] flex flex-row gap-1"
     >
       <PlusCircleIcon class="w-5 h-5" />
       <span>Create Project</span>
