@@ -233,12 +233,19 @@ export interface Project extends PersistedModel {
     accountId: string;
 }
 
+export interface Folder extends PersistedModel {
+    name: string;
+    projectId: string;
+    parentId?: string;
+}
+
 export interface Media extends PersistedModel {
     name: string;
     description?: string;
     projectId: string;
     preferredVersionId: string;
     versions: MediaVersion[];
+    folderId?: string;
     // TODO: add file kind?
 }
 
