@@ -17,7 +17,7 @@ export async function loginUserFromCredentials(email: string, password: string, 
 
 export async function loginUserFromToken(token: AuthToken, router: Router) {
     auth.setToken(token);
-    await initUserData();
+    await initUserData(router);
     const route = router.currentRoute;
     if (route.value.query.next) {
         const next = route.value.query.next;
@@ -25,5 +25,10 @@ export async function loginUserFromToken(token: AuthToken, router: Router) {
         return;
     }
 
-    router.push({ name: 'projects' });
+    const nextPath = router.currentRoute.value?.query.next;
+    if (nextPath) {
+        router.push(nextPath as string);
+    } else {
+        router.push({ name: 'projects' });
+    }
 }

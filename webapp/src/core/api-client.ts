@@ -4,6 +4,7 @@ import type { SubscriptionAndPlan, WithRole, Project, MediaWithFileAndComments, 
 export interface ApiClientConfig {
     baseUrl: string;
     getToken: () => Promise<string|undefined>;
+    onTokenExpired: () => unknown;
 }
 
 export class ApiClient {
@@ -232,6 +233,9 @@ export class ApiClient {
             if (res.headers.get('Content-Length')) {
                 const data = await res.json();
                 const error = new ApiError(data.message, res.status, data.code);
+                if (/Invalid token/.test(data.message)) {
+                    this.config.onTokenExpired();
+                }
                 throw error;
             } else {
                 const error = new ApiError(res.statusText, res.status, 'UnknownError');

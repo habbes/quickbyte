@@ -15,15 +15,17 @@ import { store, initUserData, showToast, logger } from "@/app-utils";
 import AppShell from '@/components/AppShell.vue';
 import InvitesPromptWatcher from '@/components/InvitesPromptWatcher.vue';
 import { onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
 const loading = ref(false);
 const dataLoaded = ref(false);
 const error = ref<string>();
+const router = useRouter();
 
 onMounted(async () => {
   loading.value = true;
   try {
-    await initUserData();
+    await initUserData(router);
     dataLoaded.value = true;
   } catch (e: any) {
     showToast(e.message, 'error');
