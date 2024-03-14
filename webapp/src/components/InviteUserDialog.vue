@@ -100,8 +100,6 @@ async function inviteUser() {
     role: role.value
   }
 
-  console.log('args', args);
-
   try {
     await apiClient.inviteUsersToProject(account._id, props.projectId, args);
     emit('invite', args.users);

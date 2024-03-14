@@ -13,6 +13,7 @@ import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 import { logger } from './logger';
 import { auth, showToast } from '.';
+import type { Router } from "vue-router";
 
 // while the user we get from the server actually has account and subscription info of
 // the user's personal account, here I opted to user the basic User type instead of the
@@ -33,7 +34,7 @@ const currentAccount = computed(() => accounts.value.find(a => a._id === current
 const currentProjects = computed(() => projects.value.filter(p => p.accountId === currentAccount.value?._id));
 const initialDataLoaded = ref(false);
 
-export async function initUserData() {
+export async function initUserData(router: Router) {
     try {
         const data = await trpcClient.getCurrentUserData.query();
         logger.log('data', data);
@@ -69,10 +70,13 @@ export async function initUserData() {
         initialDataLoaded.value = true;
     } catch (e: any) {
         logger?.error(e.message, e);
-        if (/signed in/.test(e.message) || /sign in/.test(e.message)) {
+        if (/signed in/.test(e.message) || /sign in/.test(e.message) || /Invalid token/.test(e.message)) {
             // auth has expired, clear data so the user
             // can sign in again
             clearData();
+            
+            const nextPath = router.currentRoute.value?.path;
+            router.push({ name: 'login', query: { next: nextPath } });
         } else {
             throw e;
         }
