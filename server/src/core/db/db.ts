@@ -42,6 +42,10 @@ export class Database {
         await this.authTokens().createIndex('code', { unique: true });
 
         await this.folders().createIndex("parentId", { partialFilterExpression: { parentId: { $exists: true } } });
+        await this.folders().createIndex({
+            parentId: 1,
+            name: 1,
+        }, { unique: true, name: 'uniqueNameInParent' })
         await this.media().createIndex("folderId", { partialFilterExpression: { folderId: { $exists: true } } });
     }
 }
