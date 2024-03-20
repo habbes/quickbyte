@@ -3,6 +3,7 @@ import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder } from "@qu
 import { createAppError, createResourceNotFoundError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
+import { string } from "zod";
 
 
 export class FolderService {
@@ -68,14 +69,58 @@ export class FolderService {
         }
     }
 
-    async createFolderTree(args: CreateFolderTreeArgs) {
+    async createFolderTree(args: CreateFolderTreeArgs): Promise<Map<string, Folder>> {
         try {
             const paths = args.paths;
             // group paths into a tree
-            const folderNodes = pathsToTree(paths);
+            const folderTree = pathsToTree(paths);
 
-            
+            // we'll create parent trees before their children
+            // to ensure there are no orphan folders in case something
+            // goes wrong. Then we'll map each created folder to its
+            // path in the following map
+
+            const folderMap = new Map<string, Folder>();
+            await this.createFolderNodes(args, folderTree, folderMap);
+
+            return folderMap;
         } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    private async createFolderNodes(args: CreateFolderTreeArgs, folderTree: FolderNode[], resultMap: Map<string, Folder>): Promise<void> {
+        try {
+            const topLevelFolderTasks = folderTree.map(async (folderNode) => {
+                const folderArgs: CreateFolderArgs = {
+                    name: folderNode.name,
+                    projectId: args.projectId
+                };
+                const parent = resultMap.get(folderNode.parentPath);
+                // Since we persists parents before children,
+                // we're guaranteed that only top-level folders
+                // don't have parents in the map
+                if (parent) {
+                    folderArgs.parentId;
+                }
+
+                const folder = await this.createFolder({
+                    name: folderNode.name,
+                    projectId: args.projectId
+                });
+
+                resultMap.set(folderNode.path, folder);
+            });
+
+            // TODO awaiting tasks one level at a time,
+            // use a task queue with a configuarable max concurrency size
+            await Promise.all(topLevelFolderTasks);
+            for (let parentNode of folderTree) {
+                await this.createFolderNodes(args, parentNode.children, resultMap);
+            }
+        }
+        catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
@@ -85,28 +130,39 @@ export class FolderService {
 type FolderNode = {
     name: string;
     path: string;
+    parentPath: string;
     children: FolderNode[]
 }
 
 function pathsToTree(paths: string[]) {
     const visitedNodes = new Map<string, FolderNode>();
+    const root: FolderNode = {
+        path: "",
+        parentPath: "",
+        children: [],
+        name: ""
+    };
+
     for (let path of paths) {
-        buildPathBranch(path, visitedNodes);
+        buildPathBranch(path, visitedNodes, root);
     }
 
-    return visitedNodes;
+    return root.children;
 }
 
-function buildPathBranch(path: string, visitedNodes: Map<string, FolderNode>, parent?: FolderNode) {
-    const [name, children] = path.split('/', 2);
+function buildPathBranch(path: string, visitedNodes: Map<string, FolderNode>, parent: FolderNode) {
+    const sepIndex = path.indexOf('/');
+    const name = sepIndex === -1 ? path : path.substring(0, sepIndex);
+    const remainingPath = sepIndex === -1 ? undefined : path.substring(sepIndex + 1);
 
-    const nodePath = parent ? `${parent.path}/${name}` : name;
+    const nodePath = parent.path ? `${parent.path}/${name}` : name;
     
     let node = visitedNodes.get(nodePath);
     if (!node) {
         node = {
             name,
             path: nodePath,
+            parentPath: parent.path,
             children: []
         };
         visitedNodes.set(node.path, node);
@@ -116,11 +172,11 @@ function buildPathBranch(path: string, visitedNodes: Map<string, FolderNode>, pa
         }
     }
 
-    if (!children) {
+    if (!remainingPath) {
         return;
     }
 
-    buildPathBranch(children, visitedNodes, parent);
+    buildPathBranch(remainingPath, visitedNodes, parent);
 }
 
 export type IFolderService = FolderService;
