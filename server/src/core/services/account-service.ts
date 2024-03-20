@@ -7,6 +7,7 @@ import { CommentService } from "./comment-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database, DbAccount } from "../db.js";
 import { EventDispatcher } from "./event-bus/index.js";
+import { FolderService } from "./folder-service.js";
 
 export interface AccountServiceConfig {
     storageHandlers: IStorageHandlerProvider;
@@ -206,6 +207,7 @@ export class AccountService {
 
     projects(authContext: AuthContext): IProjectService {
         const transfers = this.transfers(authContext);
+        const folders = new FolderService(this.db, authContext);
         return new ProjectService(this.db, authContext, {
             transactions: this.transactions(authContext),
             invites: this.config.invites,
@@ -213,9 +215,11 @@ export class AccountService {
             access: this.config.access,
             email: this.config.emailHandler,
             links: this.config.links,
+            folders,
             media: new MediaService(this.db, authContext, {
                 transfers,
-                comments: new CommentService(this.db, authContext)
+                comments: new CommentService(this.db, authContext),
+                folders
             })
         });
     }

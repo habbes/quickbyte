@@ -249,6 +249,23 @@ export interface Media extends PersistedModel {
     // TODO: add file kind?
 }
 
+export type ProjectItem = ProjectFolderItem | ProjectMediaItem;
+
+export interface ProjectFolderItem {
+    _id: string;
+    name: string;
+    type: "folder";
+    item: Folder;
+}
+
+export interface ProjectMediaItem {
+    name: string;
+    type: "folder";
+    item: Media
+}
+
+export type ProjectItemType = "folder"|"media";
+
 export interface MediaVersion extends PersistedModel {
     name: string;
     fileId: string;

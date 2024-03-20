@@ -1,4 +1,4 @@
-import { Collection } from "mongodb";
+import { Collection, Filter } from "mongodb";
 import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, Folder } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
@@ -53,6 +53,27 @@ export class MediaService {
     async getProjectMedia(projectId: string): Promise<Media[]> {
         try {
             const media = await this.collection.find({ projectId: projectId, deleted: { $ne: true } }).toArray();
+            return media;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getProjectMediaByFolder(projectId: string, folderId?: string): Promise<Media[]> {
+        try {
+            const query: Filter<Media> = {
+                projectId,
+                deleted: { $ne: true }
+            };
+
+            if (folderId) {
+                query.folderId = folderId;
+            } else {
+                query.folderId = { $exists: false }
+            }
+
+            const media = await this.collection.find(query).toArray();
             return media;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -237,4 +258,4 @@ export class MediaService {
     }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'>;

@@ -2,17 +2,19 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
 import { CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs } from '@quickbyte/common';
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
+import { IFolderService } from "./folder-service.js";
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
     transfers: ITransferService;
     media: IMediaService;
+    folders: IFolderService;
     invites: IInviteService;
     access: IAccessHandler;
     links: LinkGenerator,
@@ -118,6 +120,37 @@ export class ProjectService {
             const media = await this.config.media.getProjectMedia(id);
             return media;
         } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getItems(id: string, args: GetProjectItemsArgs): Promise<ProjectItem[]> {
+        try {
+            const project = await this.getByIdInternal(id);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
+
+            const media = await this.config.media.getProjectMediaByFolder(id, args.folderId);
+            const folders = await this.config.folders.getFoldersByParent(id, args.folderId);
+
+            const items: ProjectItem[] = [
+                ...folders.map<ProjectItem>(f => ({
+                    _id: f._id,
+                    name: f.name,
+                    type: 'folder',
+                    item: f
+                })),
+                ...media.map<ProjectItem>(m => ({
+                    _id: m._id,
+                    name: m.name,
+                    type: 'media',
+                    item: m
+                })),
+            ];
+
+            return items;
+        }
+        catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }

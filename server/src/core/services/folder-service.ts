@@ -1,6 +1,6 @@
 import { Database } from "../db.js";
 import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder } from "@quickbyte/common";
-import { createAppError, createInvalidAppStateError, createResourceNotFoundError, createValidationError, rethrowIfAppError } from "../error.js";
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, createValidationError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
 
@@ -96,6 +96,42 @@ export class FolderService {
             await this.createFolderNodes(args, folderTree, folderMap);
 
             return folderMap;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getProjectFolderById(projectId: string, id: string): Promise<Folder> {
+        try {
+            // TODO: folder by not deleted
+            const folder = await this.db.folders().findOne({ projectId: projectId, _id: id });
+            if (!folder) {
+                throw createNotFoundError('folder');
+            }
+
+            return folder;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getFoldersByParent(projectId: string, parentId?: string): Promise<Folder[]> {
+        try {
+            // filter out deleted folders
+            const query: Filter<Folder> = {
+                projectId
+            };
+
+            if (parentId) {
+                query.parentId = parentId;
+            } else {
+                query.parentId = { $exists: false }
+            }
+
+            const result = await this.db.folders().find(query).toArray();
+            return result;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

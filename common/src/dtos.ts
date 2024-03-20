@@ -227,3 +227,10 @@ export const CreateFolderTreeArgs = z.object({
 });
 
 export type CreateFolderTreeArgs = z.infer<typeof CreateFolderTreeArgs>;
+
+export const GetProjectItemsArgs = z.object({
+    projectId: z.string().min(1),
+    folderId: z.optional(z.string().min(1))
+});
+
+export type GetProjectItemsArgs = z.infer<typeof GetProjectItemsArgs>;
