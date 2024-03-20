@@ -234,3 +234,22 @@ export const GetProjectItemsArgs = z.object({
 });
 
 export type GetProjectItemsArgs = z.infer<typeof GetProjectItemsArgs>;
+
+export const UpdateFolderArgs = z.object({
+    projectId: z.string().min(1),
+    id: z.string().min(1),
+    // Right now the name is required cause it's the only
+    // thing that can be updated.
+    // If we have other properties, we can make this optional
+    name: z.string().min(1)
+});
+
+export type UpdateFolderArgs = z.infer<typeof UpdateFolderArgs>;
+
+export const DeleteFolderArgs = z.object({
+    projectId: z.string().min(1),
+    id: z.string().min(1)
+});
+
+export type DeleteFolderArgs = z.infer<typeof DeleteFolderArgs>;
+

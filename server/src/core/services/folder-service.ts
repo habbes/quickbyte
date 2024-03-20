@@ -1,6 +1,6 @@
 import { Database } from "../db.js";
-import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder } from "@quickbyte/common";
-import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, createValidationError, rethrowIfAppError } from "../error.js";
+import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, UpdateFolderArgs } from "@quickbyte/common";
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, createValidationError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
 
@@ -133,6 +133,38 @@ export class FolderService {
             const result = await this.db.folders().find(query).toArray();
             return result;
         } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async updateFolder(args: UpdateFolderArgs): Promise<Folder> {
+        try {
+            
+            const result = await this.db.folders().findOneAndUpdate({
+                _id: args.id,
+                projectId: args.projectId,
+            }, {
+                $set: {
+                    name: args.name,
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'user', _id: this.authContext.user._id }
+                }
+            }, {
+                returnDocument: 'after'
+            });
+
+            if (!result.value) {
+                throw createAppError(`Could not update folder '${args.id}': ${result.lastErrorObject}`, 'dbError');
+            }
+
+            return result.value;
+        }
+        catch (e: any) {
+            if (isMongoDuplicateKeyError(e, 'uniqueNameInParent')) {
+                throw createResourceConflictError("A folder with the specified name already exists in this path.");
+            }
+
             rethrowIfAppError(e);
             throw createAppError(e);
         }
