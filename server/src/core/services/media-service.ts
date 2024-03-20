@@ -1,13 +1,15 @@
 import { Collection } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, Folder } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
 import { Database } from "../db.js";
+import { IFolderService } from "./folder-service.js";
 
 export interface MediaServiceConfig {
     transfers: ITransferService;
     comments: ICommentService;
+    folders: IFolderService
 }
 
 export class MediaService {
@@ -30,7 +32,16 @@ export class MediaService {
                 return [medium];
             }
 
-            const media = files.map(file => this.convertFileToMedia(transfer.projectId!, file));
+            // extract unique folder paths from files
+            const folderPaths = new Set(files.map((f => getFolderPath(f.name))));
+            folderPaths.delete("");
+            // create folder hierarchy in db
+            const pathToFolderMap = await this.config.folders.createFolderTree({
+                projectId: transfer.projectId,
+                paths: Array.from(folderPaths)
+            });
+
+            const media = files.map(file => this.convertFileToMedia(transfer.projectId!, file, pathToFolderMap));
             await this.collection.insertMany(media);
             return media;
         } catch (e: any) {
@@ -168,7 +179,7 @@ export class MediaService {
         return this.config.comments.updateMediaComment(projectId, mediaId, commentId, args);
     }
 
-    private convertFileToMedia(projectId: string, file: CreateTransferFileResult) {
+    private convertFileToMedia(projectId: string, file: CreateTransferFileResult, pathToFolderMap: Map<string, Folder>) {
         const initialVersion: MediaVersion = this.convertFileToMediaVersion(file);
 
         const media: Media = {
@@ -177,6 +188,12 @@ export class MediaService {
             versions: [initialVersion],
             name: initialVersion.name,
             projectId: projectId
+        }
+
+        const folderPath = getFolderPath(file.name);
+        const folder = pathToFolderMap.get(folderPath);
+        if (folder) {
+            media.folderId = folder._id;
         }
 
         return media;

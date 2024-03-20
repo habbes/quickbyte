@@ -27,3 +27,16 @@ async function executeBatchWorker<TSource, TResult>(
         nextTaskIndex += numWorkers;
     }
 }
+
+/**
+ * Gets the folder path from the specified qualified file name.
+ * If the provided file path does not include an enclosing
+ * folder segment, then an empty string is returned.
+ * @param filePath 
+ * @example getFolderPath("Music/Artists/Habbes/Sema.mp3") => "Music/Artists/Habbes"
+ * @example getFolderPath("Sema.mp3") => ""
+ */
+export function getFolderPath(filePath: string) {
+    const sepIndex = filePath.lastIndexOf('/');
+    return sepIndex === -1 ? "" : filePath.substring(0, sepIndex);
+}

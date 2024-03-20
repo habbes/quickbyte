@@ -1,9 +1,8 @@
 import { Database } from "../db.js";
 import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder } from "@quickbyte/common";
-import { createAppError, createResourceNotFoundError, rethrowIfAppError } from "../error.js";
+import { createAppError, createInvalidAppStateError, createResourceNotFoundError, createValidationError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
-import { string } from "zod";
 
 
 export class FolderService {
@@ -17,6 +16,16 @@ export class FolderService {
                 name: args.name,
                 projectId: args.projectId
             };
+
+            // Performing manual validation here because this method can be called by
+            // other internal methods and I want to make sure we don't accidentally
+            // store an empty folder name in the DB. Since this should not happen
+            // from internal code, I'm throwing an invalidate state
+            // instead of normal validation error
+            const validationResult = CreateFolderArgs.safeParse(args);
+            if (!validationResult.success) {
+                throw createInvalidAppStateError(`Invalid folder args passed by internal method: ${validationResult.error.message}`);
+            }
 
             if (args.parentId) {
                 const parentFolder = await this.db.folders().findOne({ _id: args.parentId, projectId: args.projectId });
@@ -81,6 +90,9 @@ export class FolderService {
             // path in the following map
 
             const folderMap = new Map<string, Folder>();
+            if (!folderTree.length) {
+                return folderMap;
+            }
             await this.createFolderNodes(args, folderTree, folderMap);
 
             return folderMap;
