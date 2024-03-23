@@ -69,13 +69,8 @@ const router = createRouter({
               component: ProjectView,
               children: [
                 {
-                  path: '',
+                  path: ':folderId?',
                   name: 'project-media',
-                  component: ProjectMediaView
-                },
-                {
-                  path: 'folder/:folderId',
-                  name: 'project-folder',
                   component: ProjectMediaView
                 },
                 {

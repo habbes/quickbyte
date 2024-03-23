@@ -25,7 +25,7 @@
         <router-link
           v-for="page in projectPages"
           :key="page.name"
-          :to="{ name: page.route, params: { projectId: project._id }}"
+          :to="{ name: page.route, params: { projectId: project._id, ...page.params }}"
           class="hover:text-white inline-flex h-full items-center px-4"
           exactActiveClass="text-white border-b-2 border-b-blue-300"
         >
@@ -86,6 +86,7 @@ const headerHeight = layoutDimensions.projectHeaderHeight;
 const contentHeight = getRemainingContentHeightCss(layoutDimensions.navBarHeight + headerHeight);
 const folderPath = ref<FolderPathEntry[]>([]);
 providerFolderPathSetter((path) => {
+  console.log('paths', path);
   folderPath.value = path
 });
 
@@ -116,22 +117,35 @@ watch([project], () => {
   }
 });
 
-const projectPages = [
-  {
-    name: 'Media',
-    route: 'project-media'
-  },
-  {
-    name: 'Members',
-    route: 'project-members'
-  },
-  {
-    name: 'Settings',
-    route: "project-settings"
-  }
-];
+const projectPages = computed(() => {
+  const folderId = (folderPath.value.length &&
+    folderPath.value[folderPath.value.length - 1]._id) ||
+    route.params.folderId as (string|undefined) ||
+    undefined;
+  console.log('folderId', folderId);
+  const pages = [
+    {
+      name: 'Media',
+      route: 'project-media',
+      params: folderId ? { folderId } : {}
+    },
+    {
+      name: 'Members',
+      route: 'project-members',
+      params: {},
+    },
+    {
+      name: 'Settings',
+      route: "project-settings",
+      params: {}
+    }
+  ];
+
+  console.log('pages', pages);
+  return pages;
+});
 
 const currentSubPage = computed(() => {
-  return projectPages.find(p => p.route === route.name);
+  return projectPages.value.find(p => p.route === route.name);
 });
 </script>
