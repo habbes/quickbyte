@@ -275,7 +275,8 @@ export class TransferService {
             }
 
             this.config.eventBus.send({
-                'transferComplete': {
+                type: 'transferComplete',
+                data: {
                     transfer: result.value
                 }
             });

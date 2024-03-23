@@ -216,6 +216,7 @@ export class AccountService {
             email: this.config.emailHandler,
             links: this.config.links,
             folders,
+            eventBus: this.config.eventBus,
             media: new MediaService(this.db, authContext, {
                 transfers,
                 comments: new CommentService(this.db, authContext),

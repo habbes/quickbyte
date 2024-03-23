@@ -1,7 +1,7 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
-import { EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
+import { EmailHandler, EventBus, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
 import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
@@ -19,6 +19,7 @@ export interface ProjectServiceConfig {
     access: IAccessHandler;
     links: LinkGenerator,
     email: EmailHandler,
+    eventBus: EventDispatcher,
 }
 
 export class ProjectService {
@@ -245,6 +246,13 @@ export class ProjectService {
             // TODO: we should allow editor to delete a folder they created if it's empty
 
             await this.config.folders.deleteFolder(projectId, folderId);
+            this.config.eventBus.send({
+                type: 'folderDeleted',
+                data: {
+                    projectId,
+                    folderId
+                }
+            });
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

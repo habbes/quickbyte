@@ -35,6 +35,7 @@ import { InviteService } from "./services/invite-service.js";
 import { AccessHandler } from "./services/access-handler.js";
 import { Database } from "./db.js";
 import { GlobalEventHandler } from "./globale-event-handler.js";
+import { BackgroundWorker } from "./background-worker.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const dbConn = await getDbConnection(config);
@@ -158,10 +159,15 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         plans: plans
     });
 
+    const backgroundWorker = new BackgroundWorker({
+        concurrency: config.backgroundWorkerConcurrency
+    });
+
     const globalEventHandler = new GlobalEventHandler({
         email: emailHandler,
         db: db,
-        links: links
+        links: links,
+        backgroundWorker
     });
     globalEventHandler.registerEvents(eventBus);
 
