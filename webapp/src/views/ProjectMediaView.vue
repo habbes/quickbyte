@@ -34,7 +34,7 @@
                 <CloudArrowUpIcon class="h-5 w-5" /> Upload folders
               </UiLayout>
             </UiMenuItem>
-            <UiMenuItem>
+            <UiMenuItem @click="createFolder()">
               <UiLayout horizontal itemsCenter gapSm>
                 <FolderPlusIcon class="h-5 w-5" /> New folder
               </UiLayout>
@@ -137,6 +137,11 @@
       </div>
     </UiLayout>
   </UiLayout>
+  <CreateFolderDialog
+    v-if="project"
+    ref="createFolderDialog"
+    :projectId="project._id"
+  />
 </template>
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
@@ -147,10 +152,9 @@ import type { WithRole, Project } from "@quickbyte/common";
 import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
 import MediaCardItem from '@/components/MediaCardItem.vue';
 import RequireRole from '@/components/RequireRole.vue';
-import UiLayout from '@/components/ui/UiLayout.vue';
+import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
-import UiButton from '@/components/ui/UiButton.vue';
-import { UiMenu, UiMenuItem, UiMenuLabel, UiMenuSeparator } from "@/components/ui/menu";
+import { UiMenu, UiMenuItem, UiMenuLabel, UiMenuSeparator, UiLayout, UiButton } from "@/components/ui";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 
 type SortDirection = 'asc' | 'desc';
@@ -170,6 +174,7 @@ const contentHeight = getRemainingContentHeightCss(
 );
 
 const route = useRoute();
+const createFolderDialog = ref<typeof CreateFolderDialog>();
 const loading = ref(true);
 const searchTerm = ref('');
 const sortFields = [
@@ -298,6 +303,10 @@ function selectSortField(field: string, direction?: SortDirection) {
     field,
     direction: direction || 'asc'
   };
+}
+
+function createFolder() {
+  createFolderDialog.value?.open();
 }
 
 // onMounted callback is not called when navigating from one
