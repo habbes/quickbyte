@@ -138,12 +138,16 @@ export class ProjectService {
                     _id: f._id,
                     name: f.name,
                     type: 'folder',
+                    _createdAt: f._createdAt,
+                    _updatedAt: f._updatedAt,
                     item: f
                 })),
                 ...media.map<ProjectItem>(m => ({
                     _id: m._id,
                     name: m.name,
                     type: 'media',
+                    _createdAt: m._createdAt,
+                    _updatedAt: m._updatedAt,
                     item: m
                 })),
             ];

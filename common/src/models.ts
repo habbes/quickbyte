@@ -251,15 +251,19 @@ export interface Media extends PersistedModel {
 
 export type ProjectItem = ProjectFolderItem | ProjectMediaItem;
 
-export interface ProjectFolderItem {
+export interface BaseProjectItem {
     _id: string;
     name: string;
+    _createdAt: Date;
+    _updatedAt: Date;
+}
+
+export interface ProjectFolderItem extends BaseProjectItem {
     type: "folder";
     item: Folder;
 }
 
-export interface ProjectMediaItem {
-    name: string;
+export interface ProjectMediaItem extends BaseProjectItem {
     type: "media";
     item: Media
 }

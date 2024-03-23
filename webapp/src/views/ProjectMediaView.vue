@@ -111,7 +111,7 @@
         </div>
         <div class="absolute w-full h-full bg-black opacity-75"></div>
       </div>
-      <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
+      <div v-if="items.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
         <div class="text-center">
           You have no media in this project. Upload some files using the button below.
         </div>
@@ -124,14 +124,14 @@
         
       >
         <div
-          v-for="medium in filteredMedia"
-          :key="medium._id"
+          v-for="item in filteredItems"
+          :key="item._id"
           class="w-full aspect-square"
         >
-          <MediaCardItem
-            :media="medium"
-            @update="handleMediaUpdate($event)"
-            @delete="handleMediaDeletion($event)"
+          <ProjectItemCard
+            :item="item"
+            @update="handleItemUpdate($event)"
+            @delete="handleItemDelete($event)"
           />
         </div>
       </div>
@@ -146,11 +146,11 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
+import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
-import type { WithRole, Project } from "@quickbyte/common";
+import type { WithRole, Project, ProjectItem, Folder, ProjectItemType } from "@quickbyte/common";
 import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
-import MediaCardItem from '@/components/MediaCardItem.vue';
+import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
@@ -183,7 +183,7 @@ const sortFields = [
     displayName: 'Date Uploaded',
     ascName: 'Oldest first',
     descName: 'Newest first',
-    compare: (a: Media, b: Media) => {
+    compare: (a: ProjectItem, b: ProjectItem) => {
       return new Date(a._createdAt).getTime() - new Date(b._createdAt).getTime();
     }
   },
@@ -192,7 +192,7 @@ const sortFields = [
     displayName: 'Date modified',
     ascName: 'Oldest first',
     descName: 'Newest first',
-    compare: (a: Media, b: Media) => {
+    compare: (a: ProjectItem, b: ProjectItem) => {
       return new Date(a._updatedAt).getTime() - new Date(b._updatedAt).getTime();
     }
   },
@@ -201,7 +201,7 @@ const sortFields = [
     displayName: 'Name',
     ascName: 'A-Z',
     descName: 'Z-A',
-    compare: (a: Media, b: Media) => {
+    compare: (a: ProjectItem, b: ProjectItem) => {
       return a.name.localeCompare(b.name);
     }
   }
@@ -228,24 +228,27 @@ const dropzone = ref<HTMLDivElement>();
 const { isOverDropZone } = useDropZone(dropzone);
 
 const media = ref<Media[]>([]);
+const items = ref<ProjectItem[]>([]);
+
 const {
   media: newMedia,
   startTransfer
 } = useFileTransfer();
 
+// TODO upload project items instead of media
 watch([newMedia], () => {
   if (newMedia.value?.length) {
     media.value = media.value.concat(newMedia.value);
   }
 })
 
-const filteredMedia = computed(() => {
-  if (!searchTerm.value && !queryOptions.value) return media.value;
+const filteredItems = computed(() => {
+  if (!searchTerm.value && !queryOptions.value) return items.value;
 
-  let result = [...media.value];
+  let result = [...items.value];
   if (searchTerm) {
     const regex = new RegExp(searchTerm.value, 'i');
-    result = media.value.filter(m => regex.test(m.name));
+    result = items.value.filter(m => regex.test(m.name));
   }
   if (selectedSortField.value) {
     if (queryOptions.value!.sortBy?.direction === 'asc') {
@@ -278,20 +281,25 @@ onFilesSelected(async (files, directories) => {
   });
 });
 
-function handleMediaUpdate(updatedMedia: Media) {
-  const index = media.value.findIndex(m => m._id === updatedMedia._id);
+function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
+  // TODO: handle folder update
+  const index = items.value.findIndex(m => m._id === update.item._id && m.type === update.type);
   if (index < 0) return;
   
-  const original = media.value[index];
+  const original = items.value[index];
 
-  media.value[index] = Object.assign(original, updatedMedia);
+  items.value[index] = Object.assign(original, {
+    name: update.item.name,
+    _updatedAt: update.item._updatedAt,
+    item: update.item
+  });
 }
 
-function handleMediaDeletion(mediaId: string) {
-  const index = media.value.findIndex(m => m._id === mediaId);
+function handleItemDelete(args: { type: ProjectItemType, itemId: string }) {
+  const index = items.value.findIndex(m => m._id === args.itemId);
   if (index < 0) return;
 
-  media.value.splice(index, 1);
+  items.value.splice(index, 1);
 }
 
 function selectSortField(field: string, direction?: SortDirection) {
@@ -321,12 +329,11 @@ function createFolder() {
 // with this.
 async function loadData(to: RouteLocationNormalizedLoaded) {
   const projectId = ensure(to.params.projectId) as string;
-  const account = ensure(store.currentAccount.value);
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
   loading.value = true;
 
   try {
-    media.value = await apiClient.getProjectMedia(account._id, projectId);
+    items.value = await trpcClient.getProjectItems.query({ projectId: project.value._id });
   } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');

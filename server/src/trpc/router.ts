@@ -69,7 +69,7 @@ export const appRouter = router({
     
     getProjectItems: protectedProcedure
     .input(GetProjectItemsArgs)
-    .mutation(({ input, ctx }) =>
+    .query(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).getItems(input.projectId, input)),
     
     updateMedia: protectedProcedure
