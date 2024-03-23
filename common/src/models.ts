@@ -260,7 +260,7 @@ export interface ProjectFolderItem {
 
 export interface ProjectMediaItem {
     name: string;
-    type: "folder";
+    type: "media";
     item: Media
 }
 
