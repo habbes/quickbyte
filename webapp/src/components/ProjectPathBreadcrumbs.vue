@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- desktop view -->
-    <div class="hidden sm:block">
+    <div class="hidden lg:block">
       <UiLayout horizontal itemsCenter gapSm>
         <UiLayout
           horizontal
@@ -29,7 +29,7 @@
       </UiLayout>
     </div>
     <!-- mobile view, show only one path at most and an ellipsis to move back to the parent -->
-    <div class="sm:hidden">
+    <div class="lg:hidden">
       <UiLayout horizontal itemsCenter gapSm>
         <UiLayout
           v-if="path.length > 1"
@@ -37,14 +37,25 @@
           itemsCenter
           gapSm
         >
-          <span :title="path[path.length - 2].name">
-            <router-link
-              :to="{ name: 'project-media', params: { projectId: projectId, folderId: path[path.length - 2]._id }}"
-              class="text-gray-300 hover:text-gray-100 inline-flex items-center align-middle"
-              activeClass="text-white"
-            >
-              ..
-            </router-link>
+          <span title="Show parent folders">
+            <UiMenu>
+              <template #trigger>
+                ..
+              </template>
+              <UiMenuItem
+                v-for="folder in ancestors"
+                :key="folder._id"
+              >
+                <UiLayout horizontal gapSm itemsCenter>
+                  <router-link
+                    :to="{ name: 'project-media', params: { projectId: projectId, folderId: folder._id }}"
+                    class="flex gap-2 items-center"
+                  >
+                    <FolderIcon class="h-5 w-5" /> {{ folder.name }}
+                  </router-link>
+                </UiLayout>
+              </UiMenuItem>
+            </UiMenu>
           </span>
           <span
             class="text-gray-500"
@@ -74,10 +85,20 @@
 </template>
 <script lang="ts" setup>
 import type { FolderPathEntry } from "@quickbyte/common";
-import { UiLayout } from "@/components/ui";
+import { UiLayout, UiMenu, UiMenuItem } from "@/components/ui";
+import { FolderIcon } from "@heroicons/vue/24/solid";
+import { computed } from "vue";
 
-defineProps<{
+const props = defineProps<{
   projectId: string;
   path: FolderPathEntry[];
 }>();
+
+const ancestors = computed(() => {
+  if (props.path.length < 2) {
+    return [];
+  }
+
+  return props.path.slice(0, props.path.length - 1).reverse();
+})
 </script>
