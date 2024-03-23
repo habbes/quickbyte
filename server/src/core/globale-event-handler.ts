@@ -1,19 +1,51 @@
-import { EventBus, Event, EventType, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail } from "./services/index.js";
-import { AppServices } from './bootstrap.js';
+import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent } from "./services/index.js";
 import { createAppError, createInvalidAppStateError, createNotFoundError, rethrowIfAppError } from "./error.js";
 import { Database, getProjectMembersById } from "./db/index.js";
 import { Media, Project, User } from "./models.js";
+import { BackgroundWorker } from "./background-worker.js";
 
 export class GlobalEventHandler {
     constructor(private config: GlobalEventHandlerConfig) {}
 
     registerEvents(eventBus: EventBus) {
         eventBus.on('transferComplete', (event) => this.handleTransferComplete(event));
+        eventBus.on('folderDeleted', (event) => this.handleFolderDeleted(event));
+    }
+
+    private async handleFolderDeleted(event: Event): Promise<void> {
+        try {
+            const data = this.getEventData<FolderDeletedEvent>('folderDeleted', event);
+            
+            console.log(`Handling folderDeleted event for '${data.folderId}' of project ${data.projectId}`);
+            const folder = await this.config.db.folders().findOne({ projectId: data.projectId, _id: data.folderId });
+            if (!folder) {
+                console.log(`Folder ${data.folderId} not found. Aborting...`);
+                return;
+            }
+
+            if (!folder.deleted) {
+                console.log(`Folder ${data.folderId} found but not deleted. Aborting...`);
+                return;
+            }
+
+            console.log(`Found deleted folder ${data.folderId}. Queueing job to clean up folder subtree and mark contents as parentDeleted...`);
+            const worker = this.config.backgroundWorker;
+            const projectId = data.projectId;
+            const folderIds = [data.folderId];
+            const db = this.config.db;
+            // TODO: It's possible that the server might shutdown before the job has updated all the records,
+            // this would leave the system in some invalid state. We should be able to detect
+            // unfinished jobs and resume/complete them after system restart or error
+            this.config.backgroundWorker.queueJob(() => queueDeletedFolderCleanupTask(folderIds, projectId, worker, db));
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 
     private async handleTransferComplete(event: Event): Promise<void> {
         try {
-            const data = this.getEventData('transferComplete', event);
+            const data = this.getEventData<TransferCompleteEvent>('transferComplete', event);
             const transfer = data.transfer;
             // currently we only care about transfers tied to project uploads
             console.log(`Handle transferComplete event for '${transfer._id}'`);
@@ -117,18 +149,68 @@ export class GlobalEventHandler {
         
     }
 
-    private getEventData<TExpectedType extends EventType>(expectedType: TExpectedType, event: Event): Event[TExpectedType] {
+    private getEventData<TEvent extends Event>(expectedType: TEvent['type'], event: Event): TEvent['data'] {
         const actualType = getEventType(event);
         if (expectedType !== actualType) {
             throw createInvalidAppStateError(`Expected event '${expectedType}' but got '${actualType}'`);
         }
 
-        return event[expectedType];
+        return event['data'];
     }
 }
 
 export interface GlobalEventHandlerConfig {
     db: Database;
     email: EmailHandler;
-    links: LinkGenerator
+    links: LinkGenerator;
+    backgroundWorker: BackgroundWorker
+}
+
+async function queueDeletedFolderCleanupTask(parentFolderIds: string[], projectId: string, worker: BackgroundWorker, db: Database) {
+    // remove children of the parents
+    console.log(`About to mark undeleted child folders of ${parentFolderIds.length} parents as parentDeleted...`);
+    const result = await db.folders().updateMany({
+        parentId: { $in: parentFolderIds },
+        projectId: projectId ,
+        deleted: { $ne: true }
+    }, {
+        $set: {
+            parentDeleted: true
+        }
+    });
+    console.log(`Marked ${result.modifiedCount} folders as parentDeleted`);
+
+    // remove media of the parents
+    console.log(`About to mark undeleted media of ${parentFolderIds} folders as parentDeleted...`);
+    const mediaResult = await db.media().updateMany({
+        folderId: { $in: parentFolderIds },
+        projectId: projectId,
+        deleted: { $ne: true }
+    }, {
+        $set: {
+            parentDeleted: true
+        }
+    });
+
+    console.log(`Marked ${mediaResult.modifiedCount} media items as parentDeleted...`);
+
+    // find children folders of the parents
+    const deletedSubFolders = await db.folders().find({
+        parentId: { $in: parentFolderIds },
+        projectId: projectId,
+        parentDeleted: true
+    }, {
+        projection: {
+            _id: 1
+        }
+    }).toArray();
+    const deletedSubFolderIds = deletedSubFolders.map(f => f._id);
+    if (!deletedSubFolderIds.length) {
+        console.log(`No more child folders found. Folder tree deletion complete.`);
+        return;
+    }
+
+    // queue task for child folders cleanup
+    console.log(`Found ${deletedSubFolders.length} child folders. Queuing their decendents for cleanup...`);
+    worker.queueJob(() => queueDeletedFolderCleanupTask(deletedSubFolderIds, projectId, worker, db));
 }

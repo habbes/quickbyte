@@ -13,6 +13,10 @@ export interface Deleteable {
     deletedAt?: Date;
 }
 
+export interface ParentDeleteable {
+    parentDeleted?: boolean;
+}
+
 export type Principal = {
     type: 'user',
     _id: string;
@@ -136,6 +140,16 @@ export interface Transfer extends PersistedModel {
      * to the media
      */
     mediaId?: string;
+    /**
+     * If this transfer is adding files to a project,
+     * an optional folderId specifies which folder
+     * to store the media items into. Essentially the path
+     * to this folder is prefixed to the the paths of the files being uploaded.
+     * If the folder does not exist, it will be ignored.
+     * This field is ignore when `mediaId` is set because versions
+     * of a media item are tied to the media item.
+     */
+    folderId?: string;
 }
 
 export interface DbTransfer extends Transfer {
@@ -233,13 +247,55 @@ export interface Project extends PersistedModel {
     accountId: string;
 }
 
-export interface Media extends PersistedModel {
+export interface Folder extends PersistedModel, Deleteable, ParentDeleteable {
+    name: string;
+    projectId: string;
+    parentId?: string|null;
+}
+
+export interface FolderWithPath extends Folder {
+    path: FolderPathEntry[];
+}
+
+export interface FolderPathEntry {
+    name: string;
+    _id: string;
+}
+
+export interface Media extends PersistedModel, Deleteable, ParentDeleteable {
     name: string;
     description?: string;
     projectId: string;
     preferredVersionId: string;
     versions: MediaVersion[];
+    folderId?: string;
     // TODO: add file kind?
+}
+
+export type ProjectItem = ProjectFolderItem | ProjectMediaItem;
+
+export interface BaseProjectItem {
+    _id: string;
+    name: string;
+    _createdAt: Date;
+    _updatedAt: Date;
+}
+
+export interface ProjectFolderItem extends BaseProjectItem {
+    type: "folder";
+    item: Folder;
+}
+
+export interface ProjectMediaItem extends BaseProjectItem {
+    type: "media";
+    item: Media
+}
+
+export type ProjectItemType = "folder"|"media";
+
+export interface GetProjectItemsResult {
+    folder?: FolderWithPath;
+    items: ProjectItem[];
 }
 
 export interface MediaVersion extends PersistedModel {
@@ -390,4 +446,18 @@ export type UserAndToken = {
     user: UserWithAccount;
 } | {
     user: FullUser
+}
+
+export interface CreateTransferFileResult extends TransferFile {
+    uploadUrl: string;
+}
+
+export interface CreateTransferResult extends Transfer {
+    files: CreateTransferFileResult[]
+}
+
+export interface UploadMediaResult {
+    media: Media[],
+    folders?: Folder[],
+    transfer: CreateTransferResult
 }

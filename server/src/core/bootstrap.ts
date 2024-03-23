@@ -35,9 +35,11 @@ import { InviteService } from "./services/invite-service.js";
 import { AccessHandler } from "./services/access-handler.js";
 import { Database } from "./db.js";
 import { GlobalEventHandler } from "./globale-event-handler.js";
+import { BackgroundWorker } from "./background-worker.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
-    const db = new Database(await getDbConnection(config));
+    const dbConn = await getDbConnection(config);
+    const db = new Database(dbConn.db, dbConn.client);
     await db.initialize();
 
     const storageProvider = new StorageHandlerProvider();
@@ -157,10 +159,15 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         plans: plans
     });
 
+    const backgroundWorker = new BackgroundWorker({
+        concurrency: config.backgroundWorkerConcurrency
+    });
+
     const globalEventHandler = new GlobalEventHandler({
         email: emailHandler,
         db: db,
-        links: links
+        links: links,
+        backgroundWorker
     });
     globalEventHandler.registerEvents(eventBus);
 
@@ -196,7 +203,10 @@ async function getDbConnection(config: AppConfig) {
     try {
         const client = await MongoClient.connect(config.dbUrl)
 
-        return client.db(config.dbName);
+        return {
+            client,
+            db: client.db(config.dbName),
+        }
     } catch (e: any) {
         throw createAppError(`Database connection error: ${e.message}`, 'dbError');
     }

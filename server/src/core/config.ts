@@ -108,6 +108,7 @@ export interface AppConfig {
     webappBaseUrl: string;
     // used to authorize API for sending email announcement to users
     emailAnnouncementPassword: string;
+    backgroundWorkerConcurrency: number;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -150,7 +151,8 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         webappBaseUrl: getRequiredEnv(env, 'WEBAPP_BASE_URL'),
         googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
         googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
-        emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD")
+        emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD"),
+        backgroundWorkerConcurrency: (env.BACKGROUND_WORKER_CONCURRENCY && Number(env.BACKGROUND_WORKER_CONCURRENCY)) || 5
     }
 }
 

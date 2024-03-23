@@ -1,19 +1,14 @@
-import { Db, Collection, UpdateFilter } from "mongodb";
+import { Collection, UpdateFilter } from "mongodb";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, createValidationError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 import { Database } from "../db.js";
-import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs } from "@quickbyte/common";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
 
-const COLLECTION = "transfers";
-const FILES_COLLECTION = "files";
-const DOWNLOADS_COLLECTION = "downloads";
 const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
-const UPLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 5 * DAYS_TO_MILLIS // 5 days
 const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
-const MEDIA_DOWNLOAD_URL_VALIDITY = 2 * DAYS_TO_MILLIS;
 
 
 export interface TransferServiceConfig {
@@ -32,7 +27,7 @@ export class TransferService {
     }
 
     create(args: CreateShareableTransferArgs): Promise<CreateTransferResult> {
-        return this.createInternal({ ...args, accountId: this.authContext.user._id });
+        return this.createInternal({ ...args, accountId: this.authContext.user.account._id });
     }
 
     async createProjectMediaUpload(project: Project, args: CreateProjectMediaUploadArgs): Promise<CreateTransferResult> {
@@ -43,6 +38,7 @@ export class TransferService {
                 name: `Media upload for ${project.name} - (${new Date().toDateString()})`,
                 projectId: project._id,
                 mediaId: args.mediaId,
+                folderId: args.folderId,
                 hidden: true,
                 accountId: project.accountId
             });
@@ -60,7 +56,7 @@ export class TransferService {
             if (!args.files.length) {
                 throw createValidationError('No files specified for transfer.');
             }
-            const sub = await this.config.transactions.tryGetActiveSubscription();
+            const sub = await this.config.transactions.tryGetActiveSubscription(args.accountId);
             if (!sub) {
                 throw createSubscriptionRequiredError();
             }
@@ -81,9 +77,10 @@ export class TransferService {
                 name: args.name,
                 provider: provider.name(),
                 region: args.region,
-                accountId: this.authContext.user.account._id,
+                accountId: args.accountId,
                 hidden: args.hidden,
                 projectId: args.projectId,
+                folderId: args.folderId,
                 mediaId: args.mediaId,
                 status: 'progress',
                 expiresAt: new Date(Date.now() + validityInMillis),
@@ -278,7 +275,8 @@ export class TransferService {
             }
 
             this.config.eventBus.send({
-                'transferComplete': {
+                type: 'transferComplete',
+                data: {
                     transfer: result.value
                 }
             });
@@ -506,25 +504,12 @@ async function createMediaDownloadFile(provider: IStorageHandler, file: Transfer
 
 }
 
-export interface CreateTransferResult extends Transfer {
-    files: CreateTransferFileResult[]
-}
-
-export interface CreateTransferFileResult extends TransferFile {
-    uploadUrl: string;
-}
-
 export interface GetTransferResult extends Transfer {
     files: GetTransferFileResult[];
 }
 
 export interface GetTransferFileResult extends TransferFile {
     uploadUrl: string;
-}
-
-export interface FinalizeTransferArgs {
-    duration: number;
-    recovered?: boolean;
 }
 
 export interface DownloadRequestArgs {

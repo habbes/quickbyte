@@ -1,22 +1,25 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
-import { CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs } from '@quickbyte/common';
+import { EmailHandler, EventBus, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
+import { IFolderService } from "./folder-service.js";
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
     transfers: ITransferService;
     media: IMediaService;
+    folders: IFolderService;
     invites: IInviteService;
     access: IAccessHandler;
     links: LinkGenerator,
     email: EmailHandler,
+    eventBus: EventDispatcher,
 }
 
 export class ProjectService {
@@ -28,7 +31,7 @@ export class ProjectService {
 
     async createProject(args: CreateProjectArgs): Promise<WithRole<Project>> {
         try {
-            const sub = await this.config.transactions.tryGetActiveSubscription();
+            const sub = await this.config.transactions.tryGetActiveSubscription(this.authContext.user.account._id);
             if (!sub) {
                 throw createSubscriptionRequiredError();
             }
@@ -98,10 +101,11 @@ export class ProjectService {
             const project = await this.getByIdInternal(id);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'editor']);
             const transfer = await this.config.transfers.createProjectMediaUpload(project, args);
-            const media = await this.config.media.uploadMedia(transfer);
+            const { media, folders } = await this.config.media.uploadMedia(transfer);
 
             return {
                 media,
+                folders,
                 transfer
             };
         } catch (e: any) {
@@ -118,6 +122,49 @@ export class ProjectService {
             const media = await this.config.media.getProjectMedia(id);
             return media;
         } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getItems(id: string, args: GetProjectItemsArgs): Promise<GetProjectItemsResult> {
+        try {
+            const project = await this.getByIdInternal(id);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
+
+            const media = await this.config.media.getProjectMediaByFolder(id, args.folderId);
+            const folders = await this.config.folders.getFoldersByParent(id, args.folderId);
+
+            let folder: FolderWithPath|undefined = undefined;
+            if (args.folderId) {
+                folder = await this.config.folders.getProjectFolderWithPath(id, args.folderId);
+            }
+
+            const items: ProjectItem[] = [
+                ...folders.map<ProjectItem>(f => ({
+                    _id: f._id,
+                    name: f.name,
+                    type: 'folder',
+                    _createdAt: f._createdAt,
+                    _updatedAt: f._updatedAt,
+                    item: f
+                })),
+                ...media.map<ProjectItem>(m => ({
+                    _id: m._id,
+                    name: m.name,
+                    type: 'media',
+                    _createdAt: m._createdAt,
+                    _updatedAt: m._updatedAt,
+                    item: m
+                })),
+            ];
+
+            return {
+                folder,
+                items
+            }
+        }
+        catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
@@ -160,6 +207,52 @@ export class ProjectService {
             const isAdminOrOwner = role === 'admin' || role === 'owner';
 
             await this.config.media.deleteMedia(projectId, mediaId, isAdminOrOwner);
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async createFolder(projectId: string, args: CreateFolderArgs): Promise<Folder> {
+        try {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+
+            const folder = await this.config.folders.createFolder(args);
+            return folder;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async updateFolder(projectId: string, args: UpdateFolderArgs): Promise<Folder> {
+        try {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner','admin', 'editor']);
+
+            const folder = await this.config.folders.updateFolder(args);
+            return folder;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async deleteFolder(projectId: string, folderId: string): Promise<void> {
+        try {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
+            // TODO: we should allow editor to delete a folder they created if it's empty
+
+            await this.config.folders.deleteFolder(projectId, folderId);
+            this.config.eventBus.send({
+                type: 'folderDeleted',
+                data: {
+                    projectId,
+                    folderId
+                }
+            });
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -440,9 +533,4 @@ export interface InviteUserArgs {
     users: { email: string }[];
     message?: string;
     role: RoleType;
-}
-
-export interface UploadMediaResult {
-    media: Media[],
-    transfer: CreateTransferResult
 }

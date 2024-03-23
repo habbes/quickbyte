@@ -1,5 +1,6 @@
 import { ref, computed, type Ref } from 'vue';
 import { useFileDialog, useDropZone as useDropZoneCore } from '@vueuse/core';
+import { logger } from './logger';
 
 type FilesSelectedHandler = (files: FilePickerEntry[], directories: DirectoryInfo[]) => unknown;
 
@@ -102,30 +103,77 @@ export function useFilePicker() {
         directories.value.delete(name);
     }
 
-    function onDrop(droppedFiles: File[]|null, event: DragEvent) {
+    function addFileSystemEntry(fsEntry: FileSystemEntry, taskTracker: TaskTracker, path: string = "") {
+        if (fsEntry?.isFile) {
+            const fileEntry = fsEntry as FileSystemFileEntry;
+            // We call startTask before (and outside) the async callbacks
+            // to ensure that by the time this method returns, all tasks
+            // will have been started, so the caller will be safe to signal
+            // no more tasks
+            taskTracker.startTask();
+            fileEntry.file((file: File) => {
+                const fullName = path ? `${path}/${file.name}` : file.name;
+                files.value.set(fullName, { path: fullName, file });
+                taskTracker.completeTask();
+            }, (error) => {
+                logger.error(`Failed to get dropped file from FileSystemEntry ${error}`),
+                errorHandler && errorHandler(error);
+                taskTracker.completeTask();
+            });
+        }
+        else if (fsEntry?.isDirectory) {
+            const dirReader = (fsEntry as FileSystemDirectoryEntry).createReader();
+            directories.value.set(fsEntry.name, { name: fsEntry.name, totalFiles: 0, totalSize: 0 });
+            taskTracker.startTask();
+            dirReader.readEntries((dirEntries) => {
+                for (let dirEntry of dirEntries) {
+                    addFileSystemEntry(dirEntry, taskTracker, path ? `${path}/${fsEntry.name}` : fsEntry.name);
+                }
+
+                taskTracker.completeTask();
+            }, (error) => {
+                logger.error(`Failed to read directory entries`);
+                errorHandler && errorHandler(error);
+                taskTracker.completeTask();
+            });
+        }
+    }
+
+    async function onDrop(droppedFiles: File[]|null, event: DragEvent) {
         if (!droppedFiles) return;
         if (!droppedFiles.length) return;
 
         // see: https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem/webkitGetAsEntry
         if (event.dataTransfer?.items) {
+            logger.log(`Using DragEvent.dataTransfer API to frop files`);
+            const fileTasksTracker = new TaskTracker();
             for (let item of event.dataTransfer.items) {
                 // TODO: we should also support folders
-                if (item.webkitGetAsEntry()?.isFile) {
-                    const file = item.getAsFile();
-                    if (!file) {
-                        continue;
-                    }
-
-                    files.value.set(file.name, { path: file.name, file });
+               
+                const fsEntry = item.webkitGetAsEntry();
+                if (fsEntry) {
+                    addFileSystemEntry(fsEntry, fileTasksTracker);
+                }
+                else {
+                    logger.error(`Unable to read FileSystemEntry from DataTransferItem using item.webkitGetAsEntry`);
                 }
             }
+
+            fileTasksTracker.signalNoMoreTasks();
+            try {
+                await fileTasksTracker.waitForTasksToComplete();
+            } catch (e: any) {
+                errorHandler && errorHandler(e);
+            }
         } else {
+            logger.warn(`Does not support DragEvent.dataTransfer API, falling back to standard File API`)
             for (let file of droppedFiles) {
                 if (!file.type) {
-                    // TODO: folder's don't have a type, so this could be a folder.
+                    // TODO: folders don't have a type, so this could be a folder.
                     // But it could also be a file with an unknown type
                     // For now I just ignore it cause it will cause error when
                     // we try to "read" a folder during a upload.
+                    logger.warn(`Skipping file '${file.name}' of unknown type. Could be a folder.`)
                     return;
                 }
     
@@ -231,3 +279,73 @@ export interface FilePickerEntry {
     file: File;
 }
 
+/**
+ * A utility that helps to keep track and get notified
+ * when a series of asynchronous tasks have completed when you
+ * don't know in advance how many tasks will run.
+ */
+class TaskTracker {
+    private runningTasks: number = 0;
+    private noMoreTasks: boolean = false;
+    private completionPromise: Promise<void>;
+    private resolvePromise: (() => void)|undefined = undefined;
+    private rejectPromise: ((error: Error) => void)|undefined = undefined;
+
+    constructor() {
+        this.completionPromise = new Promise<void>((resolve, reject) => {
+            this.resolvePromise = resolve;
+            this.rejectPromise = reject;
+        });
+    }
+
+    /**
+     * This method should be called before each asynchronous task is started.
+     * All calls to this method should ideally happen synchronously, linearly.
+     * In order to guarantee correct execution, the last call to startTask()
+     * should happen before the call to signalNoMoreTasks(), otherwise
+     * the promise might be triggered before all tasks have been completed.
+     */
+    startTask() {
+        this.runningTasks++;
+    }
+
+    /**
+     * Signals that a task has been completed. Each call to `completeTask()`
+     * should match a previous call to `startTask()`. I.e., `completeTask()`
+     * should be called as many times as `startTask()`, otherwise
+     * the promise might never be triggered.
+     */
+    completeTask() {
+        this.runningTasks--;
+        this.completeIfDone();
+    }
+
+    /**
+     * Signals that no more tasks will be called.
+     * This should be called after the last call to `startTask()`
+     * has happened, otherwise the promise might be triggered
+     * before all tasks have finished.
+     */
+    signalNoMoreTasks() {
+        this.noMoreTasks = true;
+        this.completeIfDone();
+    }
+
+    /**
+     * Returns  a promise that will resolve when all tasks have finished.
+     */
+    waitForTasksToComplete() {
+        return this.completionPromise;
+    }
+
+    private completeIfDone() {
+        if (this.runningTasks === 0 && this.noMoreTasks) {
+            this.resolvePromise && this.resolvePromise();
+        }
+
+        if (this.runningTasks < 0) {
+            logger.error(`Task tracker has reached an invalid state of ${this.runningTasks} running tasks. This is a logical error.`);
+            this.rejectPromise && this.rejectPromise(new Error("Invalid state error occured. Please try the operation again."));
+        }
+    }
+}

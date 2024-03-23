@@ -304,7 +304,7 @@ function handleCommentInputFocus() {
 }
 
 function closePlayer() {
-  router.push({ name: 'project-media', params: { projectId: route.params.projectId as string } })
+  router.push({ name: 'project-media', params: { projectId: route.params.projectId as string, folderId: media.value?.folderId } })
 }
 
 function getHtmlCommentId(comment: CommentWithAuthor) {
