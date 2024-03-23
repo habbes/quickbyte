@@ -127,7 +127,7 @@ export class FolderService {
             if (parentId) {
                 query.parentId = parentId;
             } else {
-                query.parentId = { $exists: false }
+                query.$or = [{ parentId: { $exists: false } }, { parentId: null }];
             }
 
             const result = await this.db.folders().find(query).toArray();
