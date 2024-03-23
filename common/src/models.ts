@@ -280,7 +280,7 @@ export interface ProjectMediaItem extends BaseProjectItem {
 export type ProjectItemType = "folder"|"media";
 
 export interface GetProjectItemsResult {
-    folder?: Folder;
+    folder?: FolderWithPath;
     items: ProjectItem[];
 }
 

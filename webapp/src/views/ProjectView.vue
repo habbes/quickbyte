@@ -9,9 +9,16 @@
       :fixedHeight="`${headerHeight}px`"
       :style="{ height: `${headerHeight}px`}"
     >
-    <div class="text-white text-md flex items-center">
-      {{ project.name }}
+    <div class="text-white text-md flex items-center gap-2">
+      <router-link
+        :to="{ name: 'project-media', params: { projectId: project._id } }"
+      >
+        {{ project.name }}
+      </router-link>
       <ProjectSwitcherMenu :currentProjectId="project._id" />
+      <div>
+        <ProjectPathBreadcrumbs :projectId="project._id" :path="folderPath" />
+      </div>
     </div>
       <!-- tabs on large screens -->
       <div class="hidden sm:block shadow-sm h-full">
@@ -69,11 +76,19 @@ import UiLayout from '@/components/ui/UiLayout.vue';
 import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { ChevronDownIcon } from '@heroicons/vue/24/solid';
 import ProjectSwitcherMenu from '@/components/ProjectSwitcherMenu.vue';
+import ProjectPathBreadcrumbs from '@/components/ProjectPathBreadcrumbs.vue';
+import type { FolderPathEntry } from '@quickbyte/common';
+import { providerFolderPathSetter } from "./project-utils.js";
 
 const route = useRoute();
 const loading = ref(false);
 const headerHeight = layoutDimensions.projectHeaderHeight;
 const contentHeight = getRemainingContentHeightCss(layoutDimensions.navBarHeight + headerHeight);
+const folderPath = ref<FolderPathEntry[]>([]);
+providerFolderPathSetter((path) => {
+  folderPath.value = path
+});
+
 
 const project = computed(() => {
   const id = ensure(route.params.projectId) as string;

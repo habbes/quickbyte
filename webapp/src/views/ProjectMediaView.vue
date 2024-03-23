@@ -150,7 +150,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
-import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem } from "@quickbyte/common";
+import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath } from "@quickbyte/common";
 import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import RequireRole from '@/components/RequireRole.vue';
@@ -158,6 +158,7 @@ import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
 import { UiMenu, UiMenuItem, UiMenuLabel, UiMenuSeparator, UiLayout, UiButton } from "@/components/ui";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
+import { injectFolderPathSetter } from "./project-utils";
 
 type SortDirection = 'asc' | 'desc';
 
@@ -175,6 +176,7 @@ const contentHeight = getRemainingContentHeightCss(
   contentOffset
 );
 
+const updateCurrentFolderPath = injectFolderPathSetter();
 const route = useRoute();
 const createFolderDialog = ref<typeof CreateFolderDialog>();
 const loading = ref(true);
@@ -231,7 +233,7 @@ const { isOverDropZone } = useDropZone(dropzone);
 
 const media = ref<Media[]>([]);
 const items = ref<ProjectItem[]>([]);
-const currentFolder = ref<Folder|undefined>();
+const currentFolder = ref<FolderWithPath|undefined>();
 
 const {
   media: newMedia,
@@ -343,6 +345,7 @@ async function loadData(to: RouteLocationNormalizedLoaded) {
     const result = await trpcClient.getProjectItems.query({ projectId: project.value._id, folderId: folderId });
     items.value = result.items;
     currentFolder.value = result.folder;
+    updateCurrentFolderPath && updateCurrentFolderPath(result.folder?.path || []);
   } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
