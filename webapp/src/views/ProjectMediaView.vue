@@ -29,7 +29,7 @@
                 <DocumentArrowUpIcon class="h-5 w-5" /> Upload files
               </UiLayout>
             </UiMenuItem>
-            <UiMenuItem>
+            <UiMenuItem v-if="directoryPickerSupported" @click="openDirectoryPicker()">
               <UiLayout horizontal itemsCenter gapSm>
                 <CloudArrowUpIcon class="h-5 w-5" /> Upload folders
               </UiLayout>
@@ -222,6 +222,8 @@ const selectedSortField = computed(() => {
 const project = ref<WithRole<Project>>();
 const {
   openFilePicker,
+  directoryPickerSupported,
+  openDirectoryPicker,
   onFilesSelected,
   onError,
   reset,
@@ -231,7 +233,6 @@ const {
 const dropzone = ref<HTMLDivElement>();
 const { isOverDropZone } = useDropZone(dropzone);
 
-const media = ref<Media[]>([]);
 const items = ref<ProjectItem[]>([]);
 const currentFolder = ref<FolderWithPath|undefined>();
 

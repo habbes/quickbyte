@@ -239,13 +239,10 @@ export class FolderService {
                 // we're guaranteed that only top-level folders
                 // don't have parents in the map
                 if (parent) {
-                    folderArgs.parentId;
+                    folderArgs.parentId = parent._id;
                 }
 
-                const folder = await this.createFolder({
-                    name: folderNode.name,
-                    projectId: args.projectId
-                });
+                const folder = await this.createFolder(folderArgs);
 
                 resultMap.set(folderNode.path, folder);
             });
