@@ -12,14 +12,36 @@
         <UiSearchInput v-model="searchTerm" placeholder="Search files" />
       </UiLayout>
       <RequireRole v-if="project" :accepted="['admin', 'owner', 'editor']" :current="project.role">
-        <UiButton
-            title="Upload files"
-            @click="openFilePicker()"
-            primary
-            lg
-          >
-          <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">Upload media</span>
-        </UiButton>
+        <UiLayout title="Add items">
+          <UiMenu>
+            <template #trigger>
+              <UiButton
+                title="Add new items to the project"
+                primary
+                lg
+              >
+              <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">New</span>
+            </UiButton>
+            
+            </template>
+            <UiMenuItem @click="openFilePicker()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <DocumentArrowUpIcon class="h-5 w-5" /> Upload files
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuItem>
+              <UiLayout horizontal itemsCenter gapSm>
+                <CloudArrowUpIcon class="h-5 w-5" /> Upload folders
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuItem>
+              <UiLayout horizontal itemsCenter gapSm>
+                <FolderPlusIcon class="h-5 w-5" /> New folder
+              </UiLayout>
+            </UiMenuItem>
+          </UiMenu>
+        </UiLayout>
+        
       </RequireRole>
       <UiLayout title="Sort items">
         <UiMenu>
@@ -122,7 +144,7 @@ import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } fro
 import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
 import type { WithRole, Project } from "@quickbyte/common";
-import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
 import MediaCardItem from '@/components/MediaCardItem.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import UiLayout from '@/components/ui/UiLayout.vue';
