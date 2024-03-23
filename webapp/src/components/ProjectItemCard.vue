@@ -5,10 +5,15 @@
     @update="$emit('update', { type: 'media', item: $event })"
     @delete="$emit('delete', { type: 'media', itemId: $event })"
   />
+  <ProjectFolderItemCard
+    v-if="item.type === 'folder'"
+    :folder="item.item"
+  />
 </template>
 <script lang="ts" setup>
 import type { Folder, Media, ProjectItem, ProjectItemType } from "@quickbyte/common";
 import MediaCardItem from "./MediaCardItem.vue";
+import ProjectFolderItemCard from "./ProjectFolderItemCard.vue";
 
 type UpdatedItemEvent = {
   type: 'media',

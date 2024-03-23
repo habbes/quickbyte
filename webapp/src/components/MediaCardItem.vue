@@ -2,25 +2,14 @@
   <ProjectItemCardBase
     :id="media._id"
     :name="media.name"
+    :link="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
     @rename="rename()"
     @delete="deleteMedia()"
   >
-    <router-link
-      :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
-      class="flex-1 bg-[#1c1b26] flex items-center justify-center"
-    >
       <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
       <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
       <MusicalNoteIcon v-else-if="mediaType === 'audio'" class="h-10 w-10"/>
       <DocumentIcon v-else class="h-10 w-10"/>
-    </router-link>
-    <template #title>
-      <router-link
-        :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
-      >
-        {{ media.name }}
-      </router-link>
-    </template>
     <template #extraDetails>
       <div>
         {{ new Date(media._createdAt).toLocaleDateString() }}
