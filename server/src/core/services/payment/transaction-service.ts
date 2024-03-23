@@ -33,7 +33,7 @@ export class TransactionService {
             // In the future there could be scenarios where we want to allow
             // creating a transaction when one exists (e.g. plan upgrade),
             // we'll cross that bridge when we get there.
-            if (await this.tryGetActiveOrPendingSubscription()) {
+            if (await this.tryGetActiveOrPendingSubscription(this.authContext.user.account._id)) {
                 throw createResourceConflictError(
                     'Unable to create the subscription because this account already ' +
                     'has an active or pending subscription. Please contact support if this is a mistake: support@quickbyte.io'
@@ -222,8 +222,8 @@ export class TransactionService {
         }
     }
 
-    async getActiveSubscription(): Promise<GetActiveSubscriptionResult> {
-        const sub = await this.tryGetActiveSubscription();
+    async getActiveSubscription(accountId: string): Promise<GetActiveSubscriptionResult> {
+        const sub = await this.tryGetActiveSubscription(accountId);
         if (!sub) {
             throw createResourceNotFoundError('Your account does not have a valid subscription. Purchase a subscription plan and try again.');
         }
@@ -231,18 +231,18 @@ export class TransactionService {
         return sub;
     }
 
-    async tryGetActiveSubscription(): Promise<GetActiveSubscriptionResult|undefined> {
+    async tryGetActiveSubscription(accountId: string): Promise<GetActiveSubscriptionResult|undefined> {
         try {
             const now = new Date();
             let sub = await this.db.subscriptions().findOne({
-                accountId: this.authContext.user.account._id,
+                accountId,
                 status: 'active',
                 validFrom: { $lte: now},
                 expiresAt: { $gt: now }
             });
 
             if (!sub) {
-                sub = await this.createFreeTrialSubscription();
+                sub = await this.createFreeTrialSubscription(accountId);
             }
 
             return {
@@ -255,18 +255,18 @@ export class TransactionService {
         }
     }
 
-    async tryGetActiveOrPendingSubscription(): Promise<SubscriptionAndPlan|undefined> {
+    async tryGetActiveOrPendingSubscription(accountId: string): Promise<SubscriptionAndPlan|undefined> {
         try {
             const now = new Date();
             let sub = await this.db.subscriptions().findOne({
-                accountId: this.authContext.user.account._id,
+                accountId: accountId,
                 status: { $ne: 'inactive' },
                 validFrom: { $lte: now },
                 expiresAt: { $gt: now }
             });
 
             if (!sub) {
-                sub = await this.createFreeTrialSubscription();
+                sub = await this.createFreeTrialSubscription(accountId);
             }
 
             return {
@@ -384,14 +384,14 @@ export class TransactionService {
         }
     }
 
-    private async createFreeTrialSubscription(): Promise<Subscription> {
+    private async createFreeTrialSubscription(accountId: string): Promise<Subscription> {
         try {
             const validUntil = DateTime.now().plus({ month: 1 }).toJSDate();
             const plan = await this.config.plans.getByName(FREE_TRIAL_HANDLER_NAME);
             const handler = await this.config.paymentHandlers.getByName(FREE_TRIAL_HANDLER_NAME)
             const sub: Subscription = {
-                ...createPersistedModel({ type: 'user', _id: this.authContext.user._id }),
-                accountId: this.authContext.user.account._id,
+                ...createPersistedModel({ type: 'system', _id: 'system' }),
+                accountId: accountId,
                 planName: plan.name,
                 status: 'active',
                 willRenew: true,

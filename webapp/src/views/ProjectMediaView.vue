@@ -12,14 +12,36 @@
         <UiSearchInput v-model="searchTerm" placeholder="Search files" />
       </UiLayout>
       <RequireRole v-if="project" :accepted="['admin', 'owner', 'editor']" :current="project.role">
-        <UiButton
-            title="Upload files"
-            @click="openFilePicker()"
-            primary
-            lg
-          >
-          <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">Upload media</span>
-        </UiButton>
+        <UiLayout title="Add items">
+          <UiMenu>
+            <template #trigger>
+              <UiButton
+                title="Add new items to the project"
+                primary
+                lg
+              >
+              <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">New</span>
+            </UiButton>
+            
+            </template>
+            <UiMenuItem @click="openFilePicker()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <DocumentArrowUpIcon class="h-5 w-5" /> Upload files
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuItem v-if="directoryPickerSupported" @click="openDirectoryPicker()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <CloudArrowUpIcon class="h-5 w-5" /> Upload folder
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuItem @click="createFolder()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <FolderPlusIcon class="h-5 w-5" /> Create folder
+              </UiLayout>
+            </UiMenuItem>
+          </UiMenu>
+        </UiLayout>
+        
       </RequireRole>
       <UiLayout title="Sort items">
         <UiMenu>
@@ -89,9 +111,9 @@
         </div>
         <div class="absolute w-full h-full bg-black opacity-75"></div>
       </div>
-      <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
+      <div v-if="items.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
         <div class="text-center">
-          You have no media in this project. Upload some files using the button below.
+          You have no media in this {{ currentFolder ? 'folder' : 'project' }}. Upload some files using the button below.
         </div>
 
         <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
@@ -102,34 +124,41 @@
         
       >
         <div
-          v-for="medium in filteredMedia"
-          :key="medium._id"
+          v-for="item in filteredItems"
+          :key="item._id"
           class="w-full aspect-square"
         >
-          <MediaCardItem
-            :media="medium"
-            @update="handleMediaUpdate($event)"
-            @delete="handleMediaDeletion($event)"
+          <ProjectItemCard
+            :item="item"
+            @update="handleItemUpdate($event)"
+            @delete="handleItemDelete($event)"
           />
         </div>
       </div>
     </UiLayout>
   </UiLayout>
+  <CreateFolderDialog
+    v-if="project"
+    ref="createFolderDialog"
+    @createFolder="handleCreatedFolder($event)"
+    :projectId="project._id"
+    :parentId="currentFolder?._id"
+  />
 </template>
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
-import { ensure, pluralize, type Media } from '@/core';
-import type { WithRole, Project } from "@quickbyte/common";
-import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon } from '@heroicons/vue/24/outline'
-import MediaCardItem from '@/components/MediaCardItem.vue';
+import { computed, ref, watch } from 'vue';
+import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
+import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
+import { ensure, pluralize } from '@/core';
+import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
+import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
+import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import RequireRole from '@/components/RequireRole.vue';
-import UiLayout from '@/components/ui/UiLayout.vue';
+import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
-import UiButton from '@/components/ui/UiButton.vue';
-import { UiMenu, UiMenuItem, UiMenuLabel, UiMenuSeparator } from "@/components/ui/menu";
+import { UiMenu, UiMenuItem, UiMenuLabel, UiMenuSeparator, UiLayout, UiButton } from "@/components/ui";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
+import { injectFolderPathSetter } from "./project-utils";
 
 type SortDirection = 'asc' | 'desc';
 
@@ -147,7 +176,9 @@ const contentHeight = getRemainingContentHeightCss(
   contentOffset
 );
 
+const updateCurrentFolderPath = injectFolderPathSetter();
 const route = useRoute();
+const createFolderDialog = ref<typeof CreateFolderDialog>();
 const loading = ref(true);
 const searchTerm = ref('');
 const sortFields = [
@@ -156,7 +187,7 @@ const sortFields = [
     displayName: 'Date Uploaded',
     ascName: 'Oldest first',
     descName: 'Newest first',
-    compare: (a: Media, b: Media) => {
+    compare: (a: ProjectItem, b: ProjectItem) => {
       return new Date(a._createdAt).getTime() - new Date(b._createdAt).getTime();
     }
   },
@@ -165,7 +196,7 @@ const sortFields = [
     displayName: 'Date modified',
     ascName: 'Oldest first',
     descName: 'Newest first',
-    compare: (a: Media, b: Media) => {
+    compare: (a: ProjectItem, b: ProjectItem) => {
       return new Date(a._updatedAt).getTime() - new Date(b._updatedAt).getTime();
     }
   },
@@ -174,7 +205,7 @@ const sortFields = [
     displayName: 'Name',
     ascName: 'A-Z',
     descName: 'Z-A',
-    compare: (a: Media, b: Media) => {
+    compare: (a: ProjectItem, b: ProjectItem) => {
       return a.name.localeCompare(b.name);
     }
   }
@@ -191,6 +222,8 @@ const selectedSortField = computed(() => {
 const project = ref<WithRole<Project>>();
 const {
   openFilePicker,
+  directoryPickerSupported,
+  openDirectoryPicker,
   onFilesSelected,
   onError,
   reset,
@@ -200,25 +233,66 @@ const {
 const dropzone = ref<HTMLDivElement>();
 const { isOverDropZone } = useDropZone(dropzone);
 
-const media = ref<Media[]>([]);
+const items = ref<ProjectItem[]>([]);
+const currentFolder = ref<FolderWithPath|undefined>();
+
 const {
   media: newMedia,
+  folders: newFolders,
   startTransfer
 } = useFileTransfer();
 
+// TODO handle folders
 watch([newMedia], () => {
-  if (newMedia.value?.length) {
-    media.value = media.value.concat(newMedia.value);
-  }
-})
+  newMedia.value?.filter(m => {
+    if (currentFolder.value) {
+      return currentFolder.value._id === m.folderId
+    } else {
+      return !m.folderId;
+    }
+  }).map<ProjectItem>(m => ({
+    _id: m._id,
+    name: m.name,
+    type: 'media',
+    _createdAt: m._createdAt,
+    _updatedAt: m._updatedAt,
+    item: m
+  })).forEach(item => items.value.push(item))
+});
 
-const filteredMedia = computed(() => {
-  if (!searchTerm.value && !queryOptions.value) return media.value;
+watch([newFolders], () => {
+  // we only care about direct children of the current folder,
+  // or top-level folders if we're not inside a folder
+  const relevantFolders = newFolders.value?.filter(f =>
+    currentFolder.value ? f.parentId === currentFolder.value._id : !f.parentId);
+  
+    const folderItems = relevantFolders?.map<ProjectItem>(f => ({
+      _id: f._id,
+      name: f.name,
+      type: 'folder',
+      item: f,
+      _createdAt: f._createdAt,
+      _updatedAt: f._updatedAt
+    }));
 
-  let result = [...media.value];
+    folderItems?.forEach(item => {
+      const currentIndex = items.value.findIndex(f => f.type === item.type && f._id === item._id);
+      if (currentIndex !== -1) {
+        items.value[currentIndex] = Object.assign(items.value[currentIndex], item);
+        return;
+      }
+
+      items.value.push(item);
+    });
+});
+
+const filteredItems = computed(() => {
+  if (!searchTerm.value && !queryOptions.value) return items.value;
+
+  let result = [...items.value];
   if (searchTerm) {
     const regex = new RegExp(searchTerm.value, 'i');
-    result = media.value.filter(m => regex.test(m.name));
+    result = items.value.filter(m => regex.test(m.name));
   }
   if (selectedSortField.value) {
     if (queryOptions.value!.sortBy?.direction === 'asc') {
@@ -247,24 +321,48 @@ onFilesSelected(async (files, directories) => {
   await startTransfer({
     files: files,
     directories: directories,
-    projectId: ensure(route.params.projectId) as string
+    projectId: ensure(route.params.projectId) as string,
+    folderId: currentFolder.value?._id
   });
 });
 
-function handleMediaUpdate(updatedMedia: Media) {
-  const index = media.value.findIndex(m => m._id === updatedMedia._id);
+function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
+  // TODO: handle folder update
+  const index = items.value.findIndex(m => m._id === update.item._id && m.type === update.type);
   if (index < 0) return;
   
-  const original = media.value[index];
+  const original = items.value[index];
 
-  media.value[index] = Object.assign(original, updatedMedia);
+  items.value[index] = Object.assign(original, {
+    name: update.item.name,
+    _updatedAt: update.item._updatedAt,
+    item: update.item
+  });
 }
 
-function handleMediaDeletion(mediaId: string) {
-  const index = media.value.findIndex(m => m._id === mediaId);
+function handleItemDelete(args: { type: ProjectItemType, itemId: string }) {
+  const index = items.value.findIndex(m => m._id === args.itemId);
   if (index < 0) return;
 
-  media.value.splice(index, 1);
+  items.value.splice(index, 1);
+}
+
+function handleCreatedFolder(newFolder: Folder) {
+  const item: ProjectFolderItem = {
+    _id: newFolder._id,
+    _createdAt: newFolder._createdAt,
+    _updatedAt: newFolder._updatedAt,
+    type: 'folder',
+    name: newFolder.name,
+    item: newFolder
+  };
+
+  // if it already exists, then no need to add it
+  if (items.value.findIndex(f => f._id === item._id) >= 0) {
+    return;
+  }
+
+  items.value.push(item);
 }
 
 function selectSortField(field: string, direction?: SortDirection) {
@@ -278,24 +376,21 @@ function selectSortField(field: string, direction?: SortDirection) {
   };
 }
 
-// onMounted callback is not called when navigating from one
-// media page to another (i.e. when the route is the same
-// but params have changed) because the same component is reused
-// onBeforeRouteUpdate callback is called when the route params
-// changed and the component is reused, but is not called
-// when the component is mounted.
-// So to handle both scenarios I pass the same callback to
-// both methods.
-// I feel like there should be a better way of dealing
-// with this.
+function createFolder() {
+  createFolderDialog.value?.open();
+}
+
 async function loadData(to: RouteLocationNormalizedLoaded) {
   const projectId = ensure(to.params.projectId) as string;
-  const account = ensure(store.currentAccount.value);
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
+  const folderId = to.params.folderId as string || undefined;
   loading.value = true;
 
   try {
-    media.value = await apiClient.getProjectMedia(account._id, projectId);
+    const result = await trpcClient.getProjectItems.query({ projectId: project.value._id, folderId: folderId });
+    items.value = result.items;
+    currentFolder.value = result.folder;
+    updateCurrentFolderPath && updateCurrentFolderPath(result.folder?.path || []);
   } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
@@ -305,6 +400,5 @@ async function loadData(to: RouteLocationNormalizedLoaded) {
   }
 }
 
-onMounted(async () => await loadData(route));
-onBeforeRouteUpdate(loadData);
+watch(route, async () => await loadData(route), { immediate: true });
 </script>

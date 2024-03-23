@@ -11,7 +11,7 @@ export interface EventHandlerRegister {
 }
 
 export class EventBus implements EventDispatcher, EventHandlerRegister {
-    private handlers: Map<EventType, EventHandler[]> = new Map();
+    private handlers: Map<EventType, EventHandler[]> = new Map<EventType, EventHandler[]>();
 
     constructor(private config: EventBusConfig) {}
 
@@ -50,7 +50,7 @@ export class EventBus implements EventDispatcher, EventHandlerRegister {
                     `Error occurred while handling event: '${event}'`,
                     createServerErrorWithDetails([{
                         error: e,
-                        details: event[eventType]
+                        details: event['data']
                     }])
                 );
 
@@ -67,19 +67,28 @@ export interface EventBusConfig {
 }
 
 export function getEventType(event: Event): EventType {
-    const eventType = Object.keys(event)[0] as EventType;
+    const eventType = event['type'] as EventType;
     return eventType;
 }
 
-export type Event = TransferCompleteEvent;
+export type Event = TransferCompleteEvent | FolderDeletedEvent;
 
-type TransferCompleteEvent = {
-    'transferComplete': {
+export type TransferCompleteEvent = {
+    type: 'transferComplete',
+    data: {
         transfer: Transfer
+    },
+}
+
+export type FolderDeletedEvent = {
+    type: 'folderDeleted',
+    data: {
+        projectId: string;
+        folderId: string;
     }
 }
 
-export type EventType = (keyof Event)
+export type EventType = Event['type'];
 
 // export type EventType = Event['type'];
 export type EventHandler = (event: Event) => Promise<unknown>;

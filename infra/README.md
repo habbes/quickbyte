@@ -317,6 +317,17 @@ I use a different client in production, called `quickbyte-production`.
 
 The server runs on [Railway](https://railway.app). In prod the DB runs in MongoDB Atlas. But in other environments, the DB runs on Railway as well.
 
+For development, I run a local copy of [Mongodb Community Edition](https://www.mongodb.com/docs/manual/installation/).
+
+Since the app uses transactions, we have to run MongoDB in a replica set configuration as opposed to a standalone server. To configure your local development MongoDB Community to run
+in a replica set, follow this guide: https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/
+
+In my case, I added the following configuration to my local `/opt/homebrew/etc/mongod.conf` file:
+```
+replication:
+   replSetName: rs0
+```
+
 # Client
 
 The web app runs on [Vercel](https://vercel.com).
