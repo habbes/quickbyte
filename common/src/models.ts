@@ -236,7 +236,7 @@ export interface Project extends PersistedModel {
 export interface Folder extends PersistedModel {
     name: string;
     projectId: string;
-    parentId?: string;
+    parentId?: string|null;
 }
 
 export interface Media extends PersistedModel {
