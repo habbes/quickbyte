@@ -103,7 +103,7 @@ export function useFilePicker() {
         directories.value.delete(name);
     }
 
-    function addFileSystemDirectoryEntry(fsEntry: FileSystemEntry, taskTracker: TaskTracker) {
+    function addFileSystemEntry(fsEntry: FileSystemEntry, taskTracker: TaskTracker, path: string = "") {
         if (fsEntry?.isFile) {
             const fileEntry = fsEntry as FileSystemFileEntry;
             // We call startTask before (and outside) the async callbacks
@@ -112,7 +112,8 @@ export function useFilePicker() {
             // no more tasks
             taskTracker.startTask();
             fileEntry.file((file: File) => {
-                files.value.set(file.name, { path: file.name, file });
+                const fullName = path ? `${path}/${file.name}` : file.name;
+                files.value.set(fullName, { path: fullName, file });
                 taskTracker.completeTask();
             }, (error) => {
                 logger.error(`Failed to get dropped file from FileSystemEntry ${error}`),
@@ -126,7 +127,7 @@ export function useFilePicker() {
             taskTracker.startTask();
             dirReader.readEntries((dirEntries) => {
                 for (let dirEntry of dirEntries) {
-                    addFileSystemDirectoryEntry(dirEntry, taskTracker);
+                    addFileSystemEntry(dirEntry, taskTracker, path ? `${path}/${fsEntry.name}` : fsEntry.name);
                 }
 
                 taskTracker.completeTask();
@@ -144,14 +145,14 @@ export function useFilePicker() {
 
         // see: https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem/webkitGetAsEntry
         if (event.dataTransfer?.items) {
-            logger.info(`Using DragEvent.dataTransfer API to frop files`);
+            logger.log(`Using DragEvent.dataTransfer API to frop files`);
             const fileTasksTracker = new TaskTracker();
             for (let item of event.dataTransfer.items) {
                 // TODO: we should also support folders
                
                 const fsEntry = item.webkitGetAsEntry();
                 if (fsEntry) {
-                    addFileSystemDirectoryEntry(fsEntry, fileTasksTracker);
+                    addFileSystemEntry(fsEntry, fileTasksTracker);
                 }
                 else {
                     logger.error(`Unable to read FileSystemEntry from DataTransferItem using item.webkitGetAsEntry`);
@@ -159,15 +160,20 @@ export function useFilePicker() {
             }
 
             fileTasksTracker.signalNoMoreTasks();
-            await fileTasksTracker.waitForTasksToComplete();
+            try {
+                await fileTasksTracker.waitForTasksToComplete();
+            } catch (e: any) {
+                errorHandler && errorHandler(e);
+            }
         } else {
             logger.warn(`Does not support DragEvent.dataTransfer API, falling back to standard File API`)
             for (let file of droppedFiles) {
                 if (!file.type) {
-                    // TODO: folder's don't have a type, so this could be a folder.
+                    // TODO: folders don't have a type, so this could be a folder.
                     // But it could also be a file with an unknown type
                     // For now I just ignore it cause it will cause error when
                     // we try to "read" a folder during a upload.
+                    logger.warn(`Skipping file '${file.name}' of unknown type. Could be a folder.`)
                     return;
                 }
     
@@ -262,16 +268,6 @@ async function getFiles(dir: FileSystemDirectoryHandle, path: string = dir.name)
     ]
 }
 
-async function getFileFromFileSystemEntry(fileEntry: FileSystemFileEntry) {
-    return new Promise((resolve, reject) => {
-        fileEntry.file((file: File) => {
-            resolve(file);
-        }, (error) => {
-            reject(error)
-        });
-    });
-}
-
 export interface DirectoryInfo {
     name: string;
     totalFiles: number;
@@ -293,10 +289,12 @@ class TaskTracker {
     private noMoreTasks: boolean = false;
     private completionPromise: Promise<void>;
     private resolvePromise: (() => void)|undefined = undefined;
+    private rejectPromise: ((error: Error) => void)|undefined = undefined;
 
     constructor() {
-        this.completionPromise = new Promise<void>((resolve) => {
+        this.completionPromise = new Promise<void>((resolve, reject) => {
             this.resolvePromise = resolve;
+            this.rejectPromise = reject;
         });
     }
 
@@ -343,6 +341,11 @@ class TaskTracker {
     private completeIfDone() {
         if (this.runningTasks === 0 && this.noMoreTasks) {
             this.resolvePromise && this.resolvePromise();
+        }
+
+        if (this.runningTasks < 0) {
+            logger.error(`Task tracker has reached an invalid state of ${this.runningTasks} running tasks. This is a logical error.`);
+            this.rejectPromise && this.rejectPromise(new Error("Invalid state error occured. Please try the operation again."));
         }
     }
 }
