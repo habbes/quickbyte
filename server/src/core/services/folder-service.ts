@@ -1,4 +1,4 @@
-import { Database } from "../db.js";
+import { createFilterForDeleteableResource, Database } from "../db.js";
 import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs } from "@quickbyte/common";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
@@ -10,7 +10,9 @@ export class FolderService {
     }
 
     async createFolder(args: CreateFolderArgs): Promise<Folder> {
+        const session = this.db.startSession();
         try {
+            session.startTransaction();
             const folder: Folder = {
                 ...createPersistedModel(this.authContext.user._id),
                 name: args.name,
@@ -28,7 +30,15 @@ export class FolderService {
             }
 
             if (args.parentId) {
-                const parentFolder = await this.db.folders().findOne({ _id: args.parentId, projectId: args.projectId });
+                // checking for the parent, then creating the child in two separate calls is
+                // suscetible to race conditions that can cause the child folder to be created
+                // in an orpharned state. We should consider using a transaction here.
+                const parentFolder = await this.db.folders().findOne(
+                    createFilterForDeleteableResource({ _id: args.parentId, projectId: args.projectId }),
+                    {
+                        session
+                    }
+                );
                 if (!parentFolder) {
                     throw createResourceNotFoundError("The specified parent folder was not found.");
                 }
@@ -40,10 +50,10 @@ export class FolderService {
             // then return the existing folder instead of creating a new one with a duplicate name
             // or throwing an error
 
-            const folderQuery: Filter<Folder> = {
+            const folderQuery: Filter<Folder> = createFilterForDeleteableResource({
                 name: args.name,
                 projectId: args.projectId
-            };
+            });
 
             if (args.parentId) {
                 folderQuery.parentId = args.parentId;
@@ -64,17 +74,24 @@ export class FolderService {
                 }
             }, {
                 upsert: true,
-                returnDocument: 'after'
+                returnDocument: 'after',
+                session
             });
 
             if (!result.value) {
                 throw createAppError(`Failed to update folder ${args.name}`, 'dbError');
             }
 
+            await session.commitTransaction();
+
             return result.value;
         } catch (e: any) {
+            await session.abortTransaction();
             rethrowIfAppError(e);
             throw createAppError(e);
+        }
+        finally {
+            await session.endSession();
         }
     }
 
@@ -104,8 +121,7 @@ export class FolderService {
 
     async getProjectFolderById(projectId: string, id: string): Promise<Folder> {
         try {
-            // TODO: folder by not deleted
-            const folder = await this.db.folders().findOne({ projectId: projectId, _id: id });
+            const folder = await this.db.folders().findOne(createFilterForDeleteableResource({ projectId: projectId, _id: id }));
             if (!folder) {
                 throw createNotFoundError('folder');
             }
@@ -121,11 +137,10 @@ export class FolderService {
         try {
             const result = await this.db.folders().aggregate<Folder & { rawPath: Folder[] }>([
                 {
-                    $match: {
+                    $match: createFilterForDeleteableResource<Folder>({
                         projectId: projectId,
                         _id: folderId
-                        // TODO: folder by not deleted
-                    }
+                    })
                 },
                 // return list of ancestor folders
                 // ordering is not guaranteed
@@ -176,10 +191,9 @@ export class FolderService {
 
     async getFoldersByParent(projectId: string, parentId?: string): Promise<Folder[]> {
         try {
-            // filter out deleted folders
-            const query: Filter<Folder> = {
+            const query: Filter<Folder> = createFilterForDeleteableResource({
                 projectId
-            };
+            });
 
             if (parentId) {
                 query.parentId = parentId;
@@ -196,32 +210,94 @@ export class FolderService {
     }
 
     async updateFolder(args: UpdateFolderArgs): Promise<Folder> {
+        const session = this.db.startSession();
         try {
-            
-            const result = await this.db.folders().findOneAndUpdate({
+            session.startTransaction();
+            const original = await this.db.folders().findOne(
+                createFilterForDeleteableResource({
                 _id: args.id,
                 projectId: args.projectId,
-            }, {
+                }),
+                {
+                    session
+                }
+            );
+
+            if (!original) {
+                throw createNotFoundError("folder");
+            }
+            
+            // we have to check for conflicts manually since we have not set up
+            // a unique index for that
+            const duplicate = await this.db.folders().findOne(
+                createFilterForDeleteableResource({
+                    projectId: args.projectId,
+                    name: args.name,
+                    parentId: original.parentId
+                }),
+                {
+                    session
+                }
+            );
+
+            if (duplicate) {
+                throw createResourceConflictError("A folder with the specified name already exists in this path.");
+            }
+
+            const result = await this.db.folders().findOneAndUpdate(createFilterForDeleteableResource({
+                _id: args.id,
+                projectId: args.projectId,
+            }), {
                 $set: {
                     name: args.name,
                     _updatedAt: new Date(),
                     _updatedBy: { type: 'user', _id: this.authContext.user._id }
                 }
             }, {
-                returnDocument: 'after'
+                returnDocument: 'after',
+                session
             });
 
             if (!result.value) {
                 throw createAppError(`Could not update folder '${args.id}': ${result.lastErrorObject}`, 'dbError');
             }
 
+            await session.commitTransaction();
+
             return result.value;
         }
         catch (e: any) {
-            if (isMongoDuplicateKeyError(e, 'uniqueNameInParent')) {
-                throw createResourceConflictError("A folder with the specified name already exists in this path.");
-            }
+            await session.abortTransaction();
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+        finally {
+            await session.endSession();
+        }
+    }
 
+    async deleteFolder(projectId: string, folderId: string): Promise<void> {
+        try {
+            // permissions should be checked by the called (project-service)
+            const result = await this.db.folders().findOneAndUpdate(
+                createFilterForDeleteableResource({
+                    projectId,
+                    _id: folderId
+                }),
+                {
+                    $set: {
+                        deleteAt: new Date(),
+                        deleted: true,
+                        deletedBy: { type: 'user', _id: this.authContext.user._id }
+                    }
+                }
+            );
+
+            if (!result.value) {
+                throw createResourceNotFoundError("folder");
+            }
+            // TODO: trigger job to mark all children with parentDeleted: true
+        } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }

@@ -203,6 +203,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
                     retry = false;
                     error.value = e;
                     logger.error(e.message, e);
+                    showToast(e.message, 'error');
                 } else {
                     logger.error('Error fetching download', e);
                     retry = true;
@@ -219,6 +220,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
         error.value = e
         task.status = 'error';
         task.error = e.message;
+        showToast(`Error uploading files: ${e.message}`, 'error');
     }
     finally {
         removeExitWarning();

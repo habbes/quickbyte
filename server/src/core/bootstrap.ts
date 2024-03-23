@@ -37,7 +37,8 @@ import { Database } from "./db.js";
 import { GlobalEventHandler } from "./globale-event-handler.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
-    const db = new Database(await getDbConnection(config));
+    const dbConn = await getDbConnection(config);
+    const db = new Database(dbConn.db, dbConn.client);
     await db.initialize();
 
     const storageProvider = new StorageHandlerProvider();
@@ -196,7 +197,10 @@ async function getDbConnection(config: AppConfig) {
     try {
         const client = await MongoClient.connect(config.dbUrl)
 
-        return client.db(config.dbName);
+        return {
+            client,
+            db: client.db(config.dbName),
+        }
     } catch (e: any) {
         throw createAppError(`Database connection error: ${e.message}`, 'dbError');
     }

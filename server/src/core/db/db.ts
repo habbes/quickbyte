@@ -1,9 +1,9 @@
-import { Db } from 'mongodb';
-import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder } from '../models.js';
+import { Db, Filter, MongoClient } from 'mongodb';
+import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder, Deleteable, ParentDeleteable } from '../models.js';
 import { Media } from '../models.js';
 
 export class Database {
-    constructor(public readonly db: Db) {
+    constructor(public readonly db: Db, private readonly client: MongoClient) {
     }
 
     users = () => this.db.collection<UserInDb>('users');
@@ -42,11 +42,19 @@ export class Database {
         await this.authTokens().createIndex('code', { unique: true });
 
         await this.folders().createIndex("parentId", { partialFilterExpression: { parentId: { $exists: true } } });
-        await this.folders().createIndex({
-            parentId: 1,
-            name: 1,
-        }, { unique: true, name: 'uniqueNameInParent' })
+        
+        await this.folders().createIndex({ projectId: 1 });
+        await this.folders().createIndex({ projectId: 1, parentId: 1 });
+        await this.folders().createIndex({ projectId: 1, name: 1 });
+        // would like to prevent two folders at the same path in the same project to have the same name,
+        // however, this restrictions should not count for folders that have been soft-deleted
+        // Not sure how to create such a partial index without changing the schema, so for now that will
+        // be handled in code
         await this.media().createIndex("folderId", { partialFilterExpression: { folderId: { $exists: true } } });
+    }
+
+    startSession() {
+        return this.client.startSession();
     }
 }
 
@@ -58,3 +66,7 @@ export type DbAccount = Omit<Account, 'name'>;
 // the invite recipient by email and used to authenticate
 // the invite
 export type DbUserInvite = UserInvite & { secret: string };
+
+export function createFilterForDeleteableResource<T extends Deleteable | ParentDeleteable>(filter: Filter<T>): Filter<T> {
+    return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } };
+}

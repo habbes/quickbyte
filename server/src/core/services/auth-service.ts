@@ -431,7 +431,7 @@ export class AuthService {
             const account = await this.args.accounts.getOrCreateByOwner(user._id);
             const userWithAccount: UserWithAccount = { ...user, account: { ...account, name: `${user.name}'s Account` } }
 
-            const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription();
+            const sub = await this.args.accounts.transactions({ user: userWithAccount }).tryGetActiveOrPendingSubscription(userWithAccount.account._id);
             if (sub) {
                 userWithAccount.account.subscription = sub;
             }

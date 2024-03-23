@@ -357,6 +357,11 @@ function handleCreatedFolder(newFolder: Folder) {
     item: newFolder
   };
 
+  // if it already exists, then no need to add it
+  if (items.value.findIndex(f => f._id === item._id) >= 0) {
+    return;
+  }
+
   items.value.push(item);
 }
 

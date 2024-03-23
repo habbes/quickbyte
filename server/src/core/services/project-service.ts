@@ -238,6 +238,19 @@ export class ProjectService {
         }
     }
 
+    async deleteFolder(projectId: string, folderId: string): Promise<void> {
+        try {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
+            // TODO: we should allow editor to delete a folder they created if it's empty
+
+            await this.config.folders.deleteFolder(projectId, folderId);
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         try {
             const project = await this.getByIdInternal(projectId);

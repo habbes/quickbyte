@@ -197,7 +197,7 @@ export class MediaService {
             const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
             const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
                 projectId,
-                _id: id
+                _id: id,
                 ...userAccessFilter
             }), {
                 $set: {
