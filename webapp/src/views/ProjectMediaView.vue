@@ -113,7 +113,7 @@
       </div>
       <div v-if="items.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
         <div class="text-center">
-          You have no media in this project. Upload some files using the button below.
+          You have no media in this {{ currentFolder ? 'folder' : 'project' }}. Upload some files using the button below.
         </div>
 
         <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
@@ -140,7 +140,9 @@
   <CreateFolderDialog
     v-if="project"
     ref="createFolderDialog"
+    @createFolder="handleCreatedFolder($event)"
     :projectId="project._id"
+    :parentId="currentFolder?._id"
   />
 </template>
 <script lang="ts" setup>
@@ -148,7 +150,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
-import type { WithRole, Project, ProjectItem, Folder, ProjectItemType } from "@quickbyte/common";
+import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem } from "@quickbyte/common";
 import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import RequireRole from '@/components/RequireRole.vue';
@@ -229,6 +231,7 @@ const { isOverDropZone } = useDropZone(dropzone);
 
 const media = ref<Media[]>([]);
 const items = ref<ProjectItem[]>([]);
+const currentFolder = ref<Folder|undefined>();
 
 const {
   media: newMedia,
@@ -302,6 +305,19 @@ function handleItemDelete(args: { type: ProjectItemType, itemId: string }) {
   items.value.splice(index, 1);
 }
 
+function handleCreatedFolder(newFolder: Folder) {
+  const item: ProjectFolderItem = {
+    _id: newFolder._id,
+    _createdAt: newFolder._createdAt,
+    _updatedAt: newFolder._updatedAt,
+    type: 'folder',
+    name: newFolder.name,
+    item: newFolder
+  };
+
+  items.value.push(item);
+}
+
 function selectSortField(field: string, direction?: SortDirection) {
   if (!queryOptions.value) {
     queryOptions.value = {};
@@ -330,10 +346,13 @@ function createFolder() {
 async function loadData(to: RouteLocationNormalizedLoaded) {
   const projectId = ensure(to.params.projectId) as string;
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
+  const folderId = to.params.folderId as string || undefined;
   loading.value = true;
 
   try {
-    items.value = await trpcClient.getProjectItems.query({ projectId: project.value._id });
+    const result = await trpcClient.getProjectItems.query({ projectId: project.value._id, folderId: folderId });
+    items.value = result.items;
+    currentFolder.value = result.folder;
   } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
@@ -343,6 +362,7 @@ async function loadData(to: RouteLocationNormalizedLoaded) {
   }
 }
 
-onMounted(async () => await loadData(route));
-onBeforeRouteUpdate(loadData);
+watch(route, async () => await loadData(route), { immediate: true });
+// onMounted(async () => await loadData(route));
+// onBeforeRouteUpdate(loadData);
 </script>

@@ -2,7 +2,7 @@
   <ProjectItemCardBase
     :id="folder._id"
     :name="folder.name"
-    :link="{ name: 'project-media', params: { projectId: folder.projectId } }"
+    :link="{ name: 'project-folder', params: { projectId: folder.projectId, folderId: folder._id } }"
     @rename="renameFolder()"
   >
     <FolderIcon class="h-10 w-10" />

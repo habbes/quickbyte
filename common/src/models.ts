@@ -270,6 +270,11 @@ export interface ProjectMediaItem extends BaseProjectItem {
 
 export type ProjectItemType = "folder"|"media";
 
+export interface GetProjectItemsResult {
+    folder?: Folder;
+    items: ProjectItem[];
+}
+
 export interface MediaVersion extends PersistedModel {
     name: string;
     fileId: string;

@@ -74,6 +74,11 @@ const router = createRouter({
                   component: ProjectMediaView
                 },
                 {
+                  path: 'folder/:folderId',
+                  name: 'project-folder',
+                  component: ProjectMediaView
+                },
+                {
                   path: 'members',
                   name: 'project-members',
                   component: ProjectMembersView
