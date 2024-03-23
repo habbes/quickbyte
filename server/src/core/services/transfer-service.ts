@@ -4,7 +4,7 @@ import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, 
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
 import { ITransactionService } from "./index.js";
 import { Database } from "../db.js";
-import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs } from "@quickbyte/common";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
 
 const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
@@ -501,14 +501,6 @@ async function createMediaDownloadFile(provider: IStorageHandler, file: Transfer
         accountId: file.accountId
     }
 
-}
-
-export interface CreateTransferResult extends Transfer {
-    files: CreateTransferFileResult[]
-}
-
-export interface CreateTransferFileResult extends TransferFile {
-    uploadUrl: string;
 }
 
 export interface GetTransferResult extends Transfer {
