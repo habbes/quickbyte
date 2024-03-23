@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs, CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -67,6 +67,11 @@ export const appRouter = router({
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateProject(input.id, input)),
     
+    getProjectItems: protectedProcedure
+    .input(GetProjectItemsArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).getItems(input.projectId, input)),
+    
     updateMedia: protectedProcedure
     .input(UpdateMediaArgs)
     .mutation(({ input, ctx }) =>
@@ -91,6 +96,16 @@ export const appRouter = router({
     .input(UpdateMediaCommentArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateMediaComment(input.projectId, input.mediaId, input.commentId, input)),
+    
+    createFolder: protectedProcedure
+    .input(CreateFolderArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).createFolder(input.projectId, input)),
+    
+    updateFolder: protectedProcedure
+    .input(UpdateFolderArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).updateFolder(input.projectId, input)),
     
     initTransferFileUpload: protectedProcedure
     .input(InitTransferFileUploadArgs)
