@@ -1,81 +1,54 @@
 <template>
-  <div class="h-full w-full flex flex-col border border-[#5e5e8b] rounded-sm">
-    <div
-      
-      class="h-full w-full flex flex-col"
+  <ProjectItemCardBase
+    :id="media._id"
+    :name="media.name"
+    @rename="rename()"
+    @delete="deleteMedia()"
+  >
+    <router-link
+      :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
+      class="flex-1 bg-[#1c1b26] flex items-center justify-center"
     >
+      <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
+      <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
+      <MusicalNoteIcon v-else-if="mediaType === 'audio'" class="h-10 w-10"/>
+      <DocumentIcon v-else class="h-10 w-10"/>
+    </router-link>
+    <template #title>
       <router-link
         :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
-        class="flex-1 bg-[#1c1b26] flex items-center justify-center"
       >
-        <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
-        <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
-        <MusicalNoteIcon v-else-if="mediaType === 'audio'" class="h-10 w-10"/>
-        <DocumentIcon v-else class="h-10 w-10"/>
+        {{ media.name }}
       </router-link>
-      <div
-        class="h-12 border-t border-t-[#5e5e8b] bg-[#38364e] flex justify-between flex-row items-center p-2 text-white overflow-hidden"
-        :title="media.name"
-      >
-        <div class="flex flex-col flex-1 gap-1 text-ellipsis whitespace-nowrap overflow-hidden">
-          <div class="flex-1 text-ellipsis whitespace-nowrap overflow-hidden">
-            <router-link
-              :to="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
-            >
-              {{ media.name }}
-            </router-link>
-          </div>
-          <div class="text-xs text-gray-400 flex gap-3 items-center">
-            <div>
-              {{ new Date(media._createdAt).toLocaleDateString() }}
-            </div>
-            <div v-if="media.versions.length > 1">
-              {{ media.versions.length }} versions
-            </div>
-          </div>
-        </div>
-        <div>
-          <UiMenu>
-            <template #trigger>
-              <EllipsisVerticalIcon class="h-5 w-5"/>
-            </template>
-            <UiMenuItem @click="rename()">
-              <UiLayout horizontal itemsCenter gapSm>
-                <PencilIcon class="w-4 h-4"/>
-                <span>Rename</span>
-              </UiLayout>
-            </UiMenuItem>
-            <UiMenuItem @click="deleteMedia()">
-              <UiLayout horizontal itemsCenter gapSm>
-                <TrashIcon class="w-4 h-4"/>
-                <span>Delete</span>
-              </UiLayout>
-            </UiMenuItem>
-          </UiMenu>
-          
-        </div>
+    </template>
+    <template #extraDetails>
+      <div>
+        {{ new Date(media._createdAt).toLocaleDateString() }}
       </div>
-    </div>
-    <RenameMediaDialog
-      ref="renameDialog"
-      :media="media"
-      @rename="$emit('update', $event)"
-    />
-    <DeleteMediaDialog
-      ref="deleteDialog"
-      :media="media"
-      @delete="$emit('delete', $event)"
-    />
-  </div>
+      <div v-if="media.versions.length > 1">
+        {{ media.versions.length }} versions
+      </div>
+    </template>
+  </ProjectItemCardBase>
+  <RenameMediaDialog
+    ref="renameDialog"
+    :media="media"
+    @rename="$emit('update', $event)"
+  />
+  <DeleteMediaDialog
+    ref="deleteDialog"
+    :media="media"
+    @delete="$emit('delete', $event)"
+  />
 </template>
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import type { Media } from '@/core';
-import { DocumentIcon, PlayIcon, PhotoIcon, MusicalNoteIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/solid';
+import { DocumentIcon, PlayIcon, PhotoIcon, MusicalNoteIcon } from '@heroicons/vue/24/solid';
 import { getMediaType } from '@/core/media-types';
-import { UiMenu, UiMenuItem, UiLayout } from '@/components/ui';
 import RenameMediaDialog from '@/components/RenameMediaDialog.vue';
 import DeleteMediaDialog from '@/components/DeleteMediaDialog.vue';
+import ProjectItemCardBase from './ProjectItemCardBase.vue';
 
 const props = defineProps<{
   media: Media
