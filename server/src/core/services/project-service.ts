@@ -1,8 +1,8 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
-import { CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath } from '@quickbyte/common';
+import { EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -100,10 +100,11 @@ export class ProjectService {
             const project = await this.getByIdInternal(id);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'editor']);
             const transfer = await this.config.transfers.createProjectMediaUpload(project, args);
-            const media = await this.config.media.uploadMedia(transfer);
+            const { media, folders } = await this.config.media.uploadMedia(transfer);
 
             return {
                 media,
+                folders,
                 transfer
             };
         } catch (e: any) {
@@ -511,9 +512,4 @@ export interface InviteUserArgs {
     users: { email: string }[];
     message?: string;
     role: RoleType;
-}
-
-export interface UploadMediaResult {
-    media: Media[],
-    transfer: CreateTransferResult
 }

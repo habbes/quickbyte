@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
 import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo, taskManager, showToast, trpcClient } from '@/app-utils';
-import { ensure, ApiError, AzUploader, MultiFileUploader, type CreateTransferResult, type TransferTask, pluralize, type TrackedTransfer } from "@/core";
-import type { Media } from '@quickbyte/common';
+import { ensure, ApiError, AzUploader, MultiFileUploader, type TransferTask, pluralize, type TrackedTransfer } from "@/core";
+import type { Folder, Media, CreateTransferResult } from '@quickbyte/common';
 import { S3Uploader } from "@/core/s3-uploader";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete' | 'error';
@@ -11,6 +11,7 @@ export function startFileTransfer(args: StartFileTransferArgs): StartTransferRes
     const uploadState = ref<UploadState>('initial');
     const transfer = ref<CreateTransferResult>();
     const media = ref<Media[]>();
+    const folders = ref<Folder[]>();
     const error = ref<Error>();
     const downloadUrl = ref<string>();
 
@@ -19,6 +20,7 @@ export function startFileTransfer(args: StartFileTransferArgs): StartTransferRes
         uploadState,
         transfer,
         media,
+        folders,
         error,
         downloadUrl
     };
@@ -33,6 +35,7 @@ export function useFileTransfer() {
     const uploadState = ref<UploadState>('initial');
     const transfer = ref<CreateTransferResult>();
     const media = ref<Media[]>();
+    const folders = ref<Folder[]>();
     const error = ref<Error>();
     const downloadUrl = ref<string>();
 
@@ -41,6 +44,7 @@ export function useFileTransfer() {
         uploadState,
         transfer,
         media,
+        folders,
         error,
         downloadUrl
     };
@@ -52,6 +56,7 @@ export function useFileTransfer() {
         uploadState.value = 'initial';
         transfer.value = undefined;
         media.value = undefined;
+        folders.value = undefined;
         error.value = undefined;
         downloadUrl.value = undefined;
     }
@@ -61,7 +66,7 @@ export function useFileTransfer() {
 
 async function startFileTransferInternal(args: StartFileTransferArgs, result: StartTransferResultTrackers) {
     const { files, directories } = args;
-    const { uploadProgress, uploadState, media, transfer, downloadUrl, error } = result;
+    const { uploadProgress, uploadState, media, folders: resultFolders, transfer, downloadUrl, error } = result;
     uploadProgress.value = 0;
     downloadUrl.value = undefined;
     uploadState.value = 'progress';
@@ -82,7 +87,8 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
         const totalSize = files.reduce((sizeSoFar, f) => sizeSoFar + f.file.size, 0);
 
         if ('projectId' in args) {
-            const uploadResult = await apiClient.uploadProjectMedia(account._id, args.projectId, {
+            const uploadResult = await trpcClient.uploadProjectMedia.mutate({
+                projectId: args.projectId,
                 provider: provider.provider,
                 mediaId: args.mediaId,
                 folderId: args.folderId,
@@ -97,6 +103,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
 
             transfer.value = uploadResult.transfer;
             media.value = uploadResult.media;
+            resultFolders.value = uploadResult.folders;
         } else {
             transfer.value = await apiClient.createTransfer(account._id, {
                 name: args.name,
@@ -400,5 +407,6 @@ interface StartTransferResultTrackers {
     downloadUrl: Ref<string | undefined>;
     transfer: Ref<CreateTransferResult | undefined>;
     media: Ref<Media[] | undefined>;
+    folders: Ref<Folder[] | undefined>;
     error: Ref<Error | undefined>;
 }

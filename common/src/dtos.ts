@@ -69,6 +69,7 @@ export const CreateTransferArgs = CreateShareableTransferArgs.extend({
 export type CreateTransferArgs = z.infer<typeof CreateTransferArgs>;
 
 export const CreateProjectMediaUploadArgs = z.object({
+    projectId: z.string(),
     provider: z.string().min(1),
     region: z.string().min(1),
     /**

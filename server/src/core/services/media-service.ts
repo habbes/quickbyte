@@ -1,5 +1,5 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, FolderWithPath } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
@@ -19,7 +19,7 @@ export class MediaService {
         this.collection = db.media();
     }
 
-    async uploadMedia(transfer: CreateTransferResult): Promise<Media[]> {
+    async uploadMedia(transfer: CreateTransferResult): Promise<{ media: Media[], folders?: Folder[] }> {
         if (!transfer.projectId) {
             throw createInvalidAppStateError(`No project id for upload media transfer '${transfer._id}'`);
         }
@@ -29,7 +29,7 @@ export class MediaService {
 
             if (transfer.mediaId) {
                 const medium = await this.uploadMediaVersions(transfer.mediaId, transfer);
-                return [medium];
+                return { media: [medium] };
             }
 
             let basePath = "";
@@ -86,7 +86,8 @@ export class MediaService {
 
             const media = files.map(file => this.convertFileToMedia(transfer.projectId!, file, pathToFolderMap));
             await this.collection.insertMany(media);
-            return media;
+            const folders = Array.from(pathToFolderMap.values());
+            return { media, folders };
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

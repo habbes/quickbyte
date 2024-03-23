@@ -238,6 +238,7 @@ const currentFolder = ref<FolderWithPath|undefined>();
 
 const {
   media: newMedia,
+  folders: newFolders,
   startTransfer
 } = useFileTransfer();
 
@@ -246,9 +247,9 @@ watch([newMedia], () => {
   newMedia.value?.filter(m => {
     if (currentFolder.value) {
       return currentFolder.value._id === m.folderId
+    } else {
+      return !m.folderId;
     }
-
-    return true;
   }).map<ProjectItem>(m => ({
     _id: m._id,
     name: m.name,
@@ -257,7 +258,33 @@ watch([newMedia], () => {
     _updatedAt: m._updatedAt,
     item: m
   })).forEach(item => items.value.push(item))
-})
+});
+
+watch([newFolders], () => {
+  // we only care about direct children of the current folder,
+  // or top-level folders if we're not inside a folder
+  const relevantFolders = newFolders.value?.filter(f =>
+    currentFolder.value ? f.parentId === currentFolder.value._id : !f.parentId);
+  
+    const folderItems = relevantFolders?.map<ProjectItem>(f => ({
+      _id: f._id,
+      name: f.name,
+      type: 'folder',
+      item: f,
+      _createdAt: f._createdAt,
+      _updatedAt: f._updatedAt
+    }));
+
+    folderItems?.forEach(item => {
+      const currentIndex = items.value.findIndex(f => f.type === item.type && f._id === item._id);
+      if (currentIndex !== -1) {
+        items.value[currentIndex] = Object.assign(items.value[currentIndex], item);
+        return;
+      }
+
+      items.value.push(item);
+    });
+});
 
 const filteredItems = computed(() => {
   if (!searchTerm.value && !queryOptions.value) return items.value;

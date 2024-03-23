@@ -443,3 +443,17 @@ export type UserAndToken = {
 } | {
     user: FullUser
 }
+
+export interface CreateTransferFileResult extends TransferFile {
+    uploadUrl: string;
+}
+
+export interface CreateTransferResult extends Transfer {
+    files: CreateTransferFileResult[]
+}
+
+export interface UploadMediaResult {
+    media: Media[],
+    folders?: Folder[],
+    transfer: CreateTransferResult
+}
