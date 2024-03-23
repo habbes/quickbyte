@@ -149,8 +149,8 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
-import { ensure, pluralize, type Media } from '@/core';
-import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath } from "@quickbyte/common";
+import { ensure, pluralize } from '@/core';
+import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
 import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import RequireRole from '@/components/RequireRole.vue';
@@ -240,11 +240,22 @@ const {
   startTransfer
 } = useFileTransfer();
 
-// TODO upload project items instead of media
+// TODO handle folders
 watch([newMedia], () => {
-  if (newMedia.value?.length) {
-    media.value = media.value.concat(newMedia.value);
-  }
+  newMedia.value?.filter(m => {
+    if (currentFolder.value) {
+      return currentFolder.value._id === m.folderId
+    }
+
+    return true;
+  }).map<ProjectItem>(m => ({
+    _id: m._id,
+    name: m.name,
+    type: 'media',
+    _createdAt: m._createdAt,
+    _updatedAt: m._updatedAt,
+    item: m
+  })).forEach(item => items.value.push(item))
 })
 
 const filteredItems = computed(() => {

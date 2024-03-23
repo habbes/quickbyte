@@ -1,6 +1,7 @@
 import { ref, type Ref } from "vue";
 import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo, taskManager, showToast, trpcClient } from '@/app-utils';
-import { ensure, ApiError, AzUploader, MultiFileUploader, type CreateTransferResult, type Media, type TransferTask, pluralize, type TrackedTransfer } from "@/core";
+import { ensure, ApiError, AzUploader, MultiFileUploader, type CreateTransferResult, type TransferTask, pluralize, type TrackedTransfer } from "@/core";
+import type { Media } from '@quickbyte/common';
 import { S3Uploader } from "@/core/s3-uploader";
 
 type UploadState = 'initial' | 'fileSelection' | 'progress' | 'complete' | 'error';
