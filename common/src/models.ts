@@ -13,6 +13,10 @@ export interface Deleteable {
     deletedAt?: Date;
 }
 
+export interface ParentDeleteable {
+    parentDeleted?: boolean;
+}
+
 export type Principal = {
     type: 'user',
     _id: string;
@@ -243,7 +247,7 @@ export interface Project extends PersistedModel {
     accountId: string;
 }
 
-export interface Folder extends PersistedModel {
+export interface Folder extends PersistedModel, Deleteable, ParentDeleteable {
     name: string;
     projectId: string;
     parentId?: string|null;
@@ -258,7 +262,7 @@ export interface FolderPathEntry {
     _id: string;
 }
 
-export interface Media extends PersistedModel {
+export interface Media extends PersistedModel, Deleteable, ParentDeleteable {
     name: string;
     description?: string;
     projectId: string;

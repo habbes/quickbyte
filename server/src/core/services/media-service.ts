@@ -1,7 +1,7 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
-import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
+import { ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
 import { Database } from "../db.js";
 import { IFolderService } from "./folder-service.js";
@@ -96,7 +96,7 @@ export class MediaService {
 
     async getProjectMedia(projectId: string): Promise<Media[]> {
         try {
-            const media = await this.collection.find({ projectId: projectId, deleted: { $ne: true } }).toArray();
+            const media = await this.collection.find(addRequiredMediaFilters({ projectId: projectId })).toArray();
             return media;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -106,10 +106,9 @@ export class MediaService {
 
     async getProjectMediaByFolder(projectId: string, folderId?: string): Promise<Media[]> {
         try {
-            const query: Filter<Media> = {
-                projectId,
-                deleted: { $ne: true }
-            };
+            const query: Filter<Media> = addRequiredMediaFilters({
+                projectId
+            });
 
             if (folderId) {
                 query.folderId = folderId;
@@ -127,7 +126,7 @@ export class MediaService {
 
     async getMediaById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
         try {
-            const medium = await this.collection.findOne({ projectId: projectId, _id: id, deleted: { $ne: true } });
+            const medium = await this.collection.findOne(addRequiredMediaFilters({ projectId: projectId, _id: id }));
             if (!medium) {
                 throw createResourceNotFoundError();
             }
@@ -167,12 +166,10 @@ export class MediaService {
 
     async updateMedia(projectId: string, id: string, args: UpdateMediaArgs): Promise<Media> {
         try {
-            const result = await this.collection.findOneAndUpdate({
+            const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
                 projectId: projectId,
                 _id: id,
-                deleted: { $ne: true },
-
-            }, {
+            }), {
                 $set: {
                     name: args.name,
                     _updatedAt: new Date(),
@@ -198,12 +195,11 @@ export class MediaService {
             // if the user is a project owner or admin, then allow deleting
             // otherwise, allow deleting only if the user is the author
             const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
-            const result = await this.collection.findOneAndUpdate({
+            const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
                 projectId,
-                _id: id,
-                deleted: { $ne: true },
+                _id: id
                 ...userAccessFilter
-            }, {
+            }), {
                 $set: {
                     deleted: true,
                     deletedAt: new Date(),
@@ -222,7 +218,7 @@ export class MediaService {
 
     async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         try {
-            const medium = await this.collection.findOne({ projectId: projectId, _id: mediaId, deleted: { $ne: true } });
+            const medium = await this.collection.findOne(addRequiredMediaFilters({ projectId: projectId, _id: mediaId }));
             if (!medium) {
                 throw createNotFoundError('media');
             }
@@ -270,9 +266,9 @@ export class MediaService {
             
             const newPreferredVersionId = newVersions[0]._id;
 
-            const result = await this.collection.findOneAndUpdate({
-                _id: mediaId, deleted: { $ne: true }
-            }, {
+            const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
+                _id: mediaId
+            }), {
                 $push: { versions: { $each: newVersions } },
                 $set: {
                     preferredVersionId: newPreferredVersionId,
@@ -300,6 +296,10 @@ export class MediaService {
             name: file.name.split('/').at(-1)!
         };
     }
+}
+
+export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
+    return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
 }
 
 export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'>;
