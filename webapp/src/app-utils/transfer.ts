@@ -105,7 +105,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
             media.value = uploadResult.media;
             resultFolders.value = uploadResult.folders;
         } else {
-            transfer.value = await apiClient.createTransfer(account._id, {
+            transfer.value = await trpcClient.createTransfer.mutate({
                 name: args.name,
                 provider: provider.provider,
                 region: provider.bestRegions[0],
@@ -187,7 +187,8 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
         let retry = true;
         while (retry) {
             try {
-                const download = await apiClient.finalizeTransfer(account._id, transfer.value._id, {
+                const download = await trpcClient.finalizeTransfer.mutate({
+                    transferId: transfer.value._id,
                     duration: stopped.getTime() - started.getTime(),
                     recovered: false
                 });

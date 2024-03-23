@@ -31,12 +31,12 @@
             </UiMenuItem>
             <UiMenuItem v-if="directoryPickerSupported" @click="openDirectoryPicker()">
               <UiLayout horizontal itemsCenter gapSm>
-                <CloudArrowUpIcon class="h-5 w-5" /> Upload folders
+                <CloudArrowUpIcon class="h-5 w-5" /> Upload folder
               </UiLayout>
             </UiMenuItem>
             <UiMenuItem @click="createFolder()">
               <UiLayout horizontal itemsCenter gapSm>
-                <FolderPlusIcon class="h-5 w-5" /> New folder
+                <FolderPlusIcon class="h-5 w-5" /> Create folder
               </UiLayout>
             </UiMenuItem>
           </UiMenu>

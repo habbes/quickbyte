@@ -30,7 +30,7 @@ export class ProjectService {
 
     async createProject(args: CreateProjectArgs): Promise<WithRole<Project>> {
         try {
-            const sub = await this.config.transactions.tryGetActiveSubscription();
+            const sub = await this.config.transactions.tryGetActiveSubscription(this.authContext.user.account._id);
             if (!sub) {
                 throw createSubscriptionRequiredError();
             }

@@ -261,3 +261,10 @@ export const DeleteFolderArgs = z.object({
 
 export type DeleteFolderArgs = z.infer<typeof DeleteFolderArgs>;
 
+export const FinalizeTransferArgs = z.object({
+    transferId: z.string().min(1),
+    duration: z.number().gte(0),
+    recovered: z.optional(z.boolean())
+});
+
+export type FinalizeTransferArgs = z.infer<typeof FinalizeTransferArgs>;
