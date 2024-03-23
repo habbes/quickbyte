@@ -8,6 +8,7 @@
   <ProjectFolderItemCard
     v-if="item.type === 'folder'"
     :folder="item.item"
+    @update="$emit('update', { type: 'folder', item: $event })"
   />
 </template>
 <script lang="ts" setup>
