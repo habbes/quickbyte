@@ -146,8 +146,8 @@
   />
 </template>
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize, type Media } from '@/core';
 import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem } from "@quickbyte/common";
@@ -333,16 +333,6 @@ function createFolder() {
   createFolderDialog.value?.open();
 }
 
-// onMounted callback is not called when navigating from one
-// media page to another (i.e. when the route is the same
-// but params have changed) because the same component is reused
-// onBeforeRouteUpdate callback is called when the route params
-// changed and the component is reused, but is not called
-// when the component is mounted.
-// So to handle both scenarios I pass the same callback to
-// both methods.
-// I feel like there should be a better way of dealing
-// with this.
 async function loadData(to: RouteLocationNormalizedLoaded) {
   const projectId = ensure(to.params.projectId) as string;
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
@@ -363,6 +353,4 @@ async function loadData(to: RouteLocationNormalizedLoaded) {
 }
 
 watch(route, async () => await loadData(route), { immediate: true });
-// onMounted(async () => await loadData(route));
-// onBeforeRouteUpdate(loadData);
 </script>

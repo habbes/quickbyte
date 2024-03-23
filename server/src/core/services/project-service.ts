@@ -2,7 +2,7 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
 import { CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult } from '@quickbyte/common';
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -133,9 +133,9 @@ export class ProjectService {
             const media = await this.config.media.getProjectMediaByFolder(id, args.folderId);
             const folders = await this.config.folders.getFoldersByParent(id, args.folderId);
 
-            let folder: Folder|undefined = undefined;
+            let folder: FolderWithPath|undefined = undefined;
             if (args.folderId) {
-                folder = await this.config.folders.getProjectFolderById(id, args.folderId);
+                folder = await this.config.folders.getProjectFolderWithPath(id, args.folderId);
             }
 
             const items: ProjectItem[] = [

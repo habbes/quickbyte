@@ -1,6 +1,6 @@
 import { Database } from "../db.js";
-import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, UpdateFolderArgs } from "@quickbyte/common";
-import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, createValidationError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
+import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs } from "@quickbyte/common";
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
 
@@ -111,6 +111,63 @@ export class FolderService {
             }
 
             return folder;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getProjectFolderWithPath(projectId: string, folderId: string): Promise<FolderWithPath> {
+        try {
+            const result = await this.db.folders().aggregate<Folder & { rawPath: Folder[] }>([
+                {
+                    $match: {
+                        projectId: projectId,
+                        _id: folderId
+                        // TODO: folder by not deleted
+                    }
+                },
+                // return list of ancestor folders
+                // ordering is not guaranteed
+                // see: https://www.mongodb.com/docs/manual/reference/operator/aggregation/graphLookup/
+                {
+                    $graphLookup: {
+                        from: this.db.folders().collectionName,
+                        startWith: "$parentId",
+                        connectFromField: "parentId",
+                        connectToField: "_id",
+                        as: "rawPath"
+                    }
+                },
+            ]).toArray();
+
+            if (!result.length) {
+                throw createNotFoundError("folder");
+            }
+
+            const folder = result[0];
+
+            // the results returned from $graphLookup are not
+            // guaranteed to be order. So let's manually
+            // sort the paths from leaf to root
+            const path: FolderPathEntry[] = [];
+
+            let current: Folder|undefined = folder;
+            while (current) {
+                path.push({ _id: current._id, name: current.name });
+                // since we expect the path to have a small number of entries,
+                // a linear search is probably better than creating a hashmap for folders
+                current = current.parentId ? folder.rawPath.find(p => p._id === current!.parentId) : undefined;
+            }
+
+            path.reverse();
+
+            const normalizedFolder = {
+                ...folder,
+                path
+            };
+
+            return normalizedFolder;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

@@ -239,6 +239,15 @@ export interface Folder extends PersistedModel {
     parentId?: string|null;
 }
 
+export interface FolderWithPath extends Folder {
+    path: FolderPathEntry[];
+}
+
+export interface FolderPathEntry {
+    name: string;
+    _id: string;
+}
+
 export interface Media extends PersistedModel {
     name: string;
     description?: string;
