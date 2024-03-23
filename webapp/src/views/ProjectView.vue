@@ -86,7 +86,6 @@ const headerHeight = layoutDimensions.projectHeaderHeight;
 const contentHeight = getRemainingContentHeightCss(layoutDimensions.navBarHeight + headerHeight);
 const folderPath = ref<FolderPathEntry[]>([]);
 providerFolderPathSetter((path) => {
-  console.log('paths', path);
   folderPath.value = path
 });
 
@@ -122,7 +121,7 @@ const projectPages = computed(() => {
     folderPath.value[folderPath.value.length - 1]._id) ||
     route.params.folderId as (string|undefined) ||
     undefined;
-  console.log('folderId', folderId);
+
   const pages = [
     {
       name: 'Media',
@@ -141,7 +140,6 @@ const projectPages = computed(() => {
     }
   ];
 
-  console.log('pages', pages);
   return pages;
 });
 
