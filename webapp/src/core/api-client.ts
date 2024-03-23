@@ -375,6 +375,7 @@ export interface SubscriptionManagementResult {
 
 export interface CreateProjectMediaUploadArgs {
     mediaId?: string;
+    folderId?: string;
     provider: string;
     region: string;
     files: CreateTransferFileArgs[];

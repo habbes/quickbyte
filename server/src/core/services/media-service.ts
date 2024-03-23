@@ -1,6 +1,6 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, Folder } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError } from "../error.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, FolderWithPath } from "../models.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { CreateTransferFileResult, CreateTransferResult, ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
 import { Database } from "../db.js";
@@ -24,7 +24,7 @@ export class MediaService {
             throw createInvalidAppStateError(`No project id for upload media transfer '${transfer._id}'`);
         }
 
-        const files = transfer.files;
+        let files = transfer.files;
         try {
 
             if (transfer.mediaId) {
@@ -32,8 +32,51 @@ export class MediaService {
                 return [medium];
             }
 
+            let basePath = "";
+            if (transfer.folderId) {
+                try {
+                    const parentFolder = await this.config.folders.getProjectFolderWithPath(transfer.projectId, transfer.folderId);
+                    basePath = parentFolder.path.map(p => p.name).join("/");
+                } catch (e: any) {
+                    // it's possible the folderId no longer exists, maybe it was deleted
+                    // in that case we ignore it and upload the files (to the project root)
+                    // anyway. We do this because the user could run an upload in the background,
+                    // we want to avoid unnecessarily causing the uploads to fail.
+                    // Another approach would be to prefix the paths to the files on the client
+                    // since folder segments
+                    // would be re-created automatically if they get deleted in the mean time.
+                    // The benefit of using the folderId is that if the folder is renamed between
+                    // creating the transfer and the media files, the files will still land
+                    // in the renamed folder
+                    // The downside of setting paths on the client is that the client
+                    // currently relies on path names matching those on the user's machine
+                    // to correctly resume files. That could be fixed, but not a priority
+                    // at the moment
+                    if (!(e instanceof AppError) || e.code !== 'resourceNotFound') {
+                        throw e;
+                    }
+
+                    // TODO: proper logging
+                    console.warn(
+                        `Target folder '${transfer.folderId} of transfer '${transfer._id}' does not exist. Files will be transfered to root of the project '${transfer.projectId}'.`
+                    );
+                }
+            }
+
+            if (basePath) {
+                // replace file paths
+                files = files.map(f => {
+                    const newFile = { ...f };
+                    const { folderPath, fileName } = splitFilePathAndName(f.name);
+                    const newPath = folderPath ? `${basePath}/${folderPath}/${fileName}` : `${basePath}/${fileName}`;
+                    newFile.name = newPath;
+                    return newFile;
+                });
+            }
+
             // extract unique folder paths from files
-            const folderPaths = new Set(files.map((f => getFolderPath(f.name))));
+            const folderPaths = new Set(
+                files.map((f => getFolderPath(f.name))));
             folderPaths.delete("");
             // create folder hierarchy in db
             const pathToFolderMap = await this.config.folders.createFolderTree({

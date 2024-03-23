@@ -282,7 +282,8 @@ onFilesSelected(async (files, directories) => {
   await startTransfer({
     files: files,
     directories: directories,
-    projectId: ensure(route.params.projectId) as string
+    projectId: ensure(route.params.projectId) as string,
+    folderId: currentFolder.value?._id
   });
 });
 

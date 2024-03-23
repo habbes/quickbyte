@@ -313,7 +313,7 @@ function buildPathBranch(path: string, visitedNodes: Map<string, FolderNode>, pa
         return;
     }
 
-    buildPathBranch(remainingPath, visitedNodes, parent);
+    buildPathBranch(remainingPath, visitedNodes, node);
 }
 
 export type IFolderService = FolderService;

@@ -84,6 +84,7 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
             const uploadResult = await apiClient.uploadProjectMedia(account._id, args.projectId, {
                 provider: provider.provider,
                 mediaId: args.mediaId,
+                folderId: args.folderId,
                 region: provider.bestRegions[0],
                 files: files.map(f => ({ name: f.path, size: f.file.size })),
                 meta: {
@@ -129,7 +130,6 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
             },
             uploaderFactory: (file, onFileProgress, fileIndex) => {
                 if (!files) throw new Error("Excepted files.value to be set");
-
                 const fileToTrack = ensure(
                     transfer.value?.files.find(f => f.name === files[fileIndex].path),
                     `Cannot find file '${files[fileIndex].path}' in transfer package.`);
@@ -379,6 +379,11 @@ interface StartProjectMediaTransferArgs extends StartFileTransferBaseArgs {
      * When provided, the transfer will add new versions to an existing media item
      */
     mediaId?: string;
+    /**
+     * When provided, the transfer files and folders will be uploaded into this folder.
+     * This value is ignored if `mediaId` is set.
+     */
+    folderId?: string;
 }
 
 export type StartFileTransferArgs = StartShareableFileTransferArgs | StartProjectMediaTransferArgs;

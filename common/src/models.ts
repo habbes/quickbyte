@@ -136,6 +136,16 @@ export interface Transfer extends PersistedModel {
      * to the media
      */
     mediaId?: string;
+    /**
+     * If this transfer is adding files to a project,
+     * an optional folderId specifies which folder
+     * to store the media items into. Essentially the path
+     * to this folder is prefixed to the the paths of the files being uploaded.
+     * If the folder does not exist, it will be ignored.
+     * This field is ignore when `mediaId` is set because versions
+     * of a media item are tied to the media item.
+     */
+    folderId?: string;
 }
 
 export interface DbTransfer extends Transfer {

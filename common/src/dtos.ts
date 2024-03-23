@@ -62,6 +62,7 @@ export const CreateTransferArgs = CreateShareableTransferArgs.extend({
     hidden: z.optional(z.boolean()),
     projectId: z.optional(z.string()),
     mediaId: z.optional(z.string()),
+    folderId: z.optional(z.string()),
     accountId: z.string().min(1)
 });
 
@@ -76,6 +77,12 @@ export const CreateProjectMediaUploadArgs = z.object({
      * media instead of creating new media
      */
     mediaId: z.optional(z.string()),
+    /**
+     * When folder id is set, the files will
+     * be uploaded to this folder inside the project.
+     * This field is ignored if `mediaId` is set.
+     */
+    folderId: z.optional(z.string()),
     files: CreateTransferFileArgs.array(),
     meta: z.optional(CreateTransferMeta)
 });

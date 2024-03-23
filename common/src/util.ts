@@ -40,3 +40,18 @@ export function getFolderPath(filePath: string) {
     const sepIndex = filePath.lastIndexOf('/');
     return sepIndex === -1 ? "" : filePath.substring(0, sepIndex);
 }
+
+export function splitFilePathAndName(filePath: string) {
+    const sepIndex = filePath.lastIndexOf('/');
+    if (sepIndex === -1) {
+        return {
+            folderPath: "",
+            fileName: filePath
+        }
+    } else {
+        return {
+            folderPath: filePath.substring(0, sepIndex),
+            fileName: filePath.substring(sepIndex + 1)
+        }
+    }
+}

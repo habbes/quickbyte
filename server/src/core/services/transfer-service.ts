@@ -43,6 +43,7 @@ export class TransferService {
                 name: `Media upload for ${project.name} - (${new Date().toDateString()})`,
                 projectId: project._id,
                 mediaId: args.mediaId,
+                folderId: args.folderId,
                 hidden: true,
                 accountId: project.accountId
             });
@@ -84,6 +85,7 @@ export class TransferService {
                 accountId: this.authContext.user.account._id,
                 hidden: args.hidden,
                 projectId: args.projectId,
+                folderId: args.folderId,
                 mediaId: args.mediaId,
                 status: 'progress',
                 expiresAt: new Date(Date.now() + validityInMillis),
