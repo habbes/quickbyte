@@ -6,10 +6,10 @@
     @rename="rename()"
     @delete="deleteMedia()"
   >
-      <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
-      <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
-      <MusicalNoteIcon v-else-if="mediaType === 'audio'" class="h-10 w-10"/>
-      <DocumentIcon v-else class="h-10 w-10"/>
+    <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
+    <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
+    <MusicalNoteIcon v-else-if="mediaType === 'audio'" class="h-10 w-10"/>
+    <DocumentIcon v-else class="h-10 w-10"/>
     <template #extraDetails>
       <div>
         {{ new Date(media._createdAt).toLocaleDateString() }}

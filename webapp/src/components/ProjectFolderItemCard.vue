@@ -6,9 +6,6 @@
     @rename="renameFolder()"
   >
     <FolderIcon class="h-10 w-10" />
-    <template #title>
-      {{ folder.name  }}
-    </template>
     <template #extraDetails>
       <div>
         {{ folder._createdAt.toLocaleDateString() }}
