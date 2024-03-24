@@ -48,7 +48,11 @@
         >
           Cancel
         </UiButton>
-        <UiButton primary :disabled="!selectedFolderId">
+        <UiButton
+          primary
+          :disabled="!selectedFolderId"
+          @click="moveItem()"
+        >
           Move
         </UiButton>
       </UiLayout>
@@ -58,7 +62,7 @@
 <script lang="ts" setup>
 import { ref, watch } from "vue";
 import { UiDialog, UiLayout, UiTextInput, UiButton } from "@/components/ui";
-import { trpcClient, wrapError } from "@/app-utils";
+import { showToast, trpcClient, wrapError } from "@/app-utils";
 import type { Folder, FolderWithPath, ProjectItem } from "@quickbyte/common";
 import { FolderIcon } from "@heroicons/vue/24/solid";
 
@@ -69,12 +73,17 @@ const props = defineProps<{
 
 defineExpose({ open, close });
 
+const emit = defineEmits<{
+  (e: 'move', movedItem: ProjectItem): unknown;
+}>();
+
 const dialog = ref<typeof UiDialog>();
 const folders = ref<FolderWithPath[]>([]);
 const selectedFolderId = ref<string>();
 const searchTerm = ref("");
 const loading = ref(false);
 
+// TODO: debounce/throttle this
 watch(searchTerm, async () => {
   await searchFolders();
 });
@@ -90,8 +99,6 @@ function searchFolders() {
       projectId: props.projectId,
       searchTerm: searchTerm.value
     });
-
-    console.log('folders', folders.value);
   }, {
     finally: () => loading.value = false
   });
@@ -108,5 +115,55 @@ function open() {
 
 function close() {
   dialog.value?.close();
+}
+
+function moveItem() {
+  return wrapError(async () => {
+    if (!selectedFolderId.value) {
+      return;
+    }
+
+    const targetFolder = folders.value.find(f => f._id === selectedFolderId.value);
+
+    if (props.item.type === 'folder') {
+      const movedFolder = await trpcClient.moveFolderToFolder.mutate({
+        projectId: props.item.item.projectId,
+        folderId: props.item.item._id,
+        targetFolderId: selectedFolderId.value
+      });
+
+      const updatedItem: ProjectItem = {
+        _id: movedFolder._id,
+        type: 'folder',
+        name: movedFolder.name,
+        item: movedFolder,
+        _createdAt: movedFolder._createdAt,
+        _updatedAt: movedFolder._updatedAt
+      };
+
+      emit('move', updatedItem);
+    }
+    else if (props.item.type === 'media') {
+      const movedMedia = await trpcClient.moveMediaToFolder.mutate({
+        projectId: props.item.item.projectId,
+        mediaId: props.item.item._id,
+        targetFolderId: selectedFolderId.value
+      });
+
+      const updatedItem: ProjectItem = {
+        _id: movedMedia._id,
+        type: 'media',
+        name: movedMedia.name,
+        item: movedMedia,
+        _createdAt: movedMedia._createdAt,
+        _updatedAt: movedMedia._updatedAt
+      };
+
+      emit('move', updatedItem);
+    }
+
+    
+    showToast(targetFolder ? `Successfully moved item to ${targetFolder.name}.` : "Successfully moved item to target folder.", 'info');
+  });
 }
 </script>
