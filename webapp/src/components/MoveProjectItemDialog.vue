@@ -163,7 +163,7 @@ function moveItem() {
     }
 
     
-    showToast(targetFolder ? `Successfully moved item to ${targetFolder.name}.` : "Successfully moved item to target folder.", 'info');
+    showToast(targetFolder ? `Successfully moved '${props.item.name}' to '${targetFolder.name}''.` : `Successfully moved '${props.item.name}' to target folder.`, 'info');
   });
 }
 </script>
