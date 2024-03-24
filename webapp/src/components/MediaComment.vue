@@ -19,7 +19,7 @@
       :htmlId="getHtmlId(reply)"
       :nestingLevel="1"
       :deletable="currentUserId === reply.author._id || currentRole === 'admin' || currentRole === 'owner'"
-      :editable="currentUserId === comment.author._id"
+      :editable="currentUserId === reply.author._id"
       @click="$emit('click', reply)"
       @reply="$emit('reply', $event, comment._id)"
       @delete="$emit('delete', $event)"
