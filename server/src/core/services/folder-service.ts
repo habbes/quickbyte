@@ -279,6 +279,7 @@ export class FolderService {
     async moveFolder(args: MoveFolderToFolderArgs): Promise<Folder> {
         const session = this.db.startSession();
         try {
+            session.startTransaction();
             // ensure target folder exists
             const targetFolder = await this.db.folders().findOne(
                 createFilterForDeleteableResource({

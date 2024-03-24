@@ -1,9 +1,9 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, MoveMediaToFolderArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
-import { Database } from "../db.js";
+import { createFilterForDeleteableResource, Database, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
 
 export interface MediaServiceConfig {
@@ -187,6 +187,58 @@ export class MediaService {
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
+        }
+    }
+
+    async moveMediaToFolder(args: MoveMediaToFolderArgs): Promise<Media> {
+        const session = this.db.startSession();
+        try {
+            session.startTransaction();
+
+            // ensure the folder exists
+            const targetFolder = await this.db.folders().findOne(
+                createFilterForDeleteableResource({
+                    _id: args.targetFolderId,
+                    projectId: args.projectId
+                }),
+                {
+                    session
+                }
+            );
+
+            if (!targetFolder) {
+                throw createResourceNotFoundError("The target folder does not exist.");
+            }
+
+            const result = await this.db.media().findOneAndUpdate(
+                createFilterForDeleteableResource({
+                    _id: args.mediaId,
+                    projectId: args.projectId
+                }),
+                {
+                    $set: {
+                        folderId: targetFolder._id,
+                        ...updateNowBy(this.authContext.user._id)
+                    }
+                }, {
+                    returnDocument: 'after',
+                    session
+                }
+            );
+
+            if (!result.value) {
+                throw createNotFoundError('media');
+            }
+
+            await session.commitTransaction();
+            return result.value;
+        } catch (e: any) {
+            await session.abortTransaction();
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+        finally {
+            await session.endSession();
         }
     }
 
