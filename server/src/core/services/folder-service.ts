@@ -1,5 +1,5 @@
 import { createFilterForDeleteableResource, Database } from "../db.js";
-import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs } from "@quickbyte/common";
+import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs, escapeRegExp } from "@quickbyte/common";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
@@ -322,6 +322,26 @@ export class FolderService {
             throw createAppError(e);
         } finally {
             await session.endSession();
+        }
+    }
+
+    async searchProjectFolders(args: SearchProjectFolderArgs): Promise<Folder[]> {
+        try {
+            const folders = await this.db.folders().find(
+                createFilterForDeleteableResource({
+                    projectId: args.projectId,
+                    // TODO: full regex search may not be efficient
+                    // consider restricting to a case-sensitive prefix scan
+                    // $text operator with appropriate indexes
+                    // or full-text-search?
+                    name: { $regex: escapeRegExp(args.searchTerm), $options: "i" }
+                })
+            ).toArray();
+
+            return folders;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
         }
     }
 

@@ -2,7 +2,7 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
 import { EmailHandler, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult } from '@quickbyte/common';
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, MoveMediaToFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -253,6 +253,45 @@ export class ProjectService {
                     folderId
                 }
             });
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async moveMediaToFolder(args: MoveMediaToFolderArgs): Promise<Media> {
+        try {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+
+            const result = await this.config.media.moveMediaToFolder(args);
+            return result;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async moveFolderToFolder(args: MoveFolderToFolderArgs): Promise<Folder> {
+        try {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+
+            const result = await this.config.folders.moveFolder(args);
+            return result;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async searchProjectFolders(args: SearchProjectFolderArgs): Promise<Folder[]> {
+        try {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
+
+            const result = await this.config.folders.searchProjectFolders(args);
+            return result;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

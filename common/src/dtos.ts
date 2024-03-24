@@ -284,3 +284,10 @@ export const MoveFolderToFolderArgs = z.object({
 });
 
 export type MoveFolderToFolderArgs = z.infer<typeof MoveFolderToFolderArgs>;
+
+export const SearchProjectFolderArgs = z.object({
+    projectId: z.string().min(1),
+    searchTerm: z.string()
+});
+
+export type SearchProjectFolderArgs = z.infer<typeof SearchProjectFolderArgs>;

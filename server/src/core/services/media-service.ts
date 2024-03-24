@@ -354,4 +354,4 @@ export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;
