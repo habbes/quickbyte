@@ -1,4 +1,4 @@
-import { number, z } from "zod";
+import { z } from "zod";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -269,3 +269,18 @@ export const FinalizeTransferArgs = z.object({
 
 export type FinalizeTransferArgs = z.infer<typeof FinalizeTransferArgs>;
 
+export const MoveMediaToFolderArgs = z.object({
+    projectId: z.string().min(1),
+    targetFolderId: z.string().min(1),
+    mediaId: z.string().min(1),
+});
+
+export type MoveMediaToFolderArgs = z.infer<typeof MoveMediaToFolderArgs>;
+
+export const MoveFolderToFolderArgs = z.object({
+    projectId: z.string().min(1),
+    targetFolderId: z.string().min(1),
+    folderId: z.string().min(1),
+});
+
+export type MoveFolderToFolderArgs = z.infer<typeof MoveFolderToFolderArgs>;

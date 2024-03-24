@@ -1,6 +1,6 @@
 import { createFilterForDeleteableResource, Database } from "../db.js";
-import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs } from "@quickbyte/common";
-import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
+import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs } from "@quickbyte/common";
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
 
@@ -272,6 +272,54 @@ export class FolderService {
             throw createAppError(e);
         }
         finally {
+            await session.endSession();
+        }
+    }
+
+    async moveFolder(args: MoveFolderToFolderArgs): Promise<Folder> {
+        const session = this.db.startSession();
+        try {
+            // ensure target folder exists
+            const targetFolder = await this.db.folders().findOne(
+                createFilterForDeleteableResource({
+                    _id: args.targetFolderId,
+                    projectId: args.projectId,
+                }), {
+                    session
+                }
+            );
+            
+            if (!targetFolder) {
+                throw createResourceNotFoundError("The specified target folder does not exist.");
+            }
+
+            const result = await this.db.folders().findOneAndUpdate(
+                createFilterForDeleteableResource({
+                    _id: args.folderId,
+                    projectId: args.projectId
+                }), {
+                    $set: {
+                        parentId: args.targetFolderId,
+                        _updatedAt: new Date(),
+                        _updatedBy: { type: 'user', _id: this.authContext.user._id }
+                    }
+                }, {
+                    session,
+                    returnDocument: 'after'
+                }
+            );
+
+            if (!result.value) {
+                throw createResourceNotFoundError("The specified folder does not exist.");
+            }
+
+            await session.commitTransaction();
+            return result.value;
+        } catch (e: any) {
+            await session.abortTransaction();
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        } finally {
             await session.endSession();
         }
     }
