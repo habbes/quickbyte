@@ -47,14 +47,14 @@ export class EventBus implements EventDispatcher, EventHandlerRegister {
                 // TODO: better logging and error management
                 // should send admin email
                 await this.config.alerts.sendNotification(
-                    `Error occurred while handling event: '${event}'`,
+                    `Error occurred while handling event: '${eventType}'`,
                     createServerErrorWithDetails([{
                         error: e,
                         details: event['data']
                     }])
                 );
 
-                console.error(`Error occurred while handling event: '${event}' with details: ${e.message}`);
+                console.error(`Error occurred while handling event: '${JSON.stringify(event)}' with details: ${e.message}`);
             }
         }
 
@@ -71,7 +71,7 @@ export function getEventType(event: Event): EventType {
     return eventType;
 }
 
-export type Event = TransferCompleteEvent | FolderDeletedEvent;
+export type Event = TransferCompleteEvent | FolderDeletedEvent | ProjectMemberRemovedEvent;
 
 export type TransferCompleteEvent = {
     type: 'transferComplete',
@@ -85,6 +85,14 @@ export type FolderDeletedEvent = {
     data: {
         projectId: string;
         folderId: string;
+    }
+}
+
+export type ProjectMemberRemovedEvent = {
+    type: 'projectMemberRemoved',
+    data: {
+        projectId: string;
+        memberId: string;
     }
 }
 

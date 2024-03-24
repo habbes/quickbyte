@@ -14,6 +14,7 @@ import { uploadRecoveryManager } from './recovery-manager';
 import { logger } from './logger';
 import { auth, showToast } from '.';
 import type { Router } from "vue-router";
+import { useProjectItemsQueryOptions } from "./project-item-query-options";
 
 // while the user we get from the server actually has account and subscription info of
 // the user's personal account, here I opted to user the basic User type instead of the
@@ -83,6 +84,15 @@ export async function initUserData(router: Router) {
     }
 }
 
+// We make this available in the store so that
+// the sorting options can persist throughout the session.
+// When the orders items in a certain way in the project media view, we want to
+// remember that when they move to another page and back.
+// Not sure if making this "global" is the best approach,
+// maybe we want to scope it to the project view only?
+// Not sure. Will evaluate usage and decide.
+const projectItemsQueryOptions = useProjectItemsQueryOptions()
+
 export async function getDeviceData() {
     deviceData.value = await getIpLocation();
     deviceData.value.userAgent = navigator.userAgent;
@@ -96,6 +106,7 @@ export async function clearData() {
     auth.clearLocalSession();
     clearPrefs();
     await uploadRecoveryManager.clearRecoveredTransfers();
+    projectItemsQueryOptions.reset();
 }
 
 export function tryUpdateAccountSubscription(subscription: SubscriptionAndPlan) {
@@ -136,6 +147,8 @@ interface DeviceData {
     userAgent?: string;
 }
 
+
+
 export const store = {
     user: user,
     providers,
@@ -150,5 +163,6 @@ export const store = {
     removeInvite,
     addProject,
     setCurrentAccount,
-    initialDataLoaded
+    initialDataLoaded,
+    projectItemsQueryOptions
 };

@@ -1,12 +1,15 @@
 type Task = () => Promise<void>;
+type ErrorCallback = (e: any) => unknown;
 
 export class ConcurrentTaskQueue {
     private queue: Queue = new Queue;
     private workers: Worker[] = [];
     
-    constructor(numWorkers: number) {
+    constructor(numWorkers: number, private readonly onError?: ErrorCallback) {
         for (let i = 0; i < numWorkers; i++) {
-            this.workers.push(new Worker(this.queue));
+            this.workers.push(new Worker(this.queue, (error: any) => {
+                this.onError && this.onError(error);
+            }));
         }
     }
 
@@ -36,7 +39,7 @@ class Worker {
     private isWorking = false;
     private status: 'pending'|'working'|'stopped'|'stopping' = 'pending';
 
-    constructor(private readonly queue: ConsumerQueue) {
+    constructor(private readonly queue: ConsumerQueue, private readonly onError?: ErrorCallback) {
         this.completionPromise = new Promise((resolve) => {
             this.resolvePromise = resolve;
         });
@@ -80,7 +83,11 @@ class Worker {
         while (!this.terminationRequested) {
             const task = this.queue.dequeue();
             if (task) {
-                await task();
+                try {
+                    await task();
+                } catch (e: any) {
+                    this.onError && this.onError(e);
+                }
             } else {
                 this.isWorking = false;
                 // queue is empty.

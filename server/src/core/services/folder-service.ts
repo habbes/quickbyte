@@ -1,6 +1,6 @@
 import { createFilterForDeleteableResource, Database } from "../db.js";
-import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs } from "@quickbyte/common";
-import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
+import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs, escapeRegExp } from "@quickbyte/common";
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
 
@@ -161,27 +161,7 @@ export class FolderService {
             }
 
             const folder = result[0];
-
-            // the results returned from $graphLookup are not
-            // guaranteed to be order. So let's manually
-            // sort the paths from leaf to root
-            const path: FolderPathEntry[] = [];
-
-            let current: Folder|undefined = folder;
-            while (current) {
-                path.push({ _id: current._id, name: current.name });
-                // since we expect the path to have a small number of entries,
-                // a linear search is probably better than creating a hashmap for folders
-                current = current.parentId ? folder.rawPath.find(p => p._id === current!.parentId) : undefined;
-            }
-
-            path.reverse();
-
-            const normalizedFolder = {
-                ...folder,
-                path
-            };
-
+            const normalizedFolder = normalizeFolderWithPath(folder);
             return normalizedFolder;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -273,6 +253,92 @@ export class FolderService {
         }
         finally {
             await session.endSession();
+        }
+    }
+
+    async moveFolder(args: MoveFolderToFolderArgs): Promise<Folder> {
+        const session = this.db.startSession();
+        try {
+            session.startTransaction();
+            // ensure target folder exists if provided
+            // if target folder is null, then move to project root
+            let targetFolder: Folder|null = null;
+            if (args.targetFolderId) {
+                targetFolder = await this.db.folders().findOne(
+                    createFilterForDeleteableResource({
+                        _id: args.targetFolderId,
+                        projectId: args.projectId,
+                    }), {
+                        session
+                    }
+                );
+                
+                if (!targetFolder) {
+                    throw createResourceNotFoundError("The specified target folder does not exist.");
+                }
+            }
+
+            const result = await this.db.folders().findOneAndUpdate(
+                createFilterForDeleteableResource({
+                    _id: args.folderId,
+                    projectId: args.projectId
+                }), {
+                    $set: {
+                        parentId: targetFolder ? targetFolder._id : null,
+                        _updatedAt: new Date(),
+                        _updatedBy: { type: 'user', _id: this.authContext.user._id }
+                    }
+                }, {
+                    session,
+                    returnDocument: 'after'
+                }
+            );
+
+            if (!result.value) {
+                throw createResourceNotFoundError("The specified folder does not exist.");
+            }
+
+            await session.commitTransaction();
+            return result.value;
+        } catch (e: any) {
+            await session.abortTransaction();
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    async searchProjectFolders(args: SearchProjectFolderArgs): Promise<FolderWithPath[]> {
+        try {
+            const rawFolders = await this.db.folders().aggregate<Folder & { rawPath: Folder[] }>([
+                {
+                    $match: createFilterForDeleteableResource({
+                        projectId: args.projectId,
+                        // TODO: full regex search may not be efficient
+                        // consider restricting to a case-sensitive prefix scan
+                        // $text operator with appropriate indexes
+                        // or full-text-search?
+                        name: { $regex: escapeRegExp(args.searchTerm), $options: "i" }
+                    })
+                },
+                {
+                    $graphLookup: {
+                        from: this.db.folders().collectionName,
+                        startWith: "$parentId",
+                        connectFromField: "parentId",
+                        connectToField: "_id",
+                        as: "rawPath"
+                    }
+                }
+            ]).toArray();
+
+            const normalizedFolders = rawFolders.map(f => normalizeFolderWithPath(f));
+
+            return normalizedFolders;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
         }
     }
 
@@ -387,6 +453,33 @@ function buildPathBranch(path: string, visitedNodes: Map<string, FolderNode>, pa
     }
 
     buildPathBranch(remainingPath, visitedNodes, node);
+}
+
+function normalizeFolderWithPath(folder: Folder & { rawPath: Folder[] }): FolderWithPath {
+    // the results returned from $graphLookup are not
+    // guaranteed to be order. So let's manually
+    // sort the paths from leaf to root
+    const path: FolderPathEntry[] = [];
+
+    let current: Folder|undefined = folder;
+    while (current) {
+        path.push({ _id: current._id, name: current.name });
+        // since we expect the path to have a small number of entries,
+        // a linear search is probably better than creating a hashmap for folders
+        current = current.parentId ? folder.rawPath.find(p => p._id === current!.parentId) : undefined;
+    }
+
+    path.reverse();
+
+    const normalizedFolder = {
+        ...folder,
+        path
+    };
+    
+    // @ts-ignore
+    delete normalizedFolder.rawPath;
+
+    return normalizedFolder;
 }
 
 export type IFolderService = FolderService;

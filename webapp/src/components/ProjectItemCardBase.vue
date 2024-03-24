@@ -42,6 +42,12 @@
                   <span>Rename</span>
                 </UiLayout>
               </UiMenuItem>
+              <UiMenuItem @click="$emit('move')">
+                <UiLayout horizontal itemsCenter gapSm>
+                  <ArrowRightCircleIcon class="w-4 h-4" />
+                  <span>Move to...</span>
+                </UiLayout>
+              </UiMenuItem>
               <UiMenuItem @click="$emit('delete')">
                 <UiLayout horizontal itemsCenter gapSm>
                   <TrashIcon class="w-4 h-4" />
@@ -56,7 +62,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { EllipsisVerticalIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/solid';
+import { EllipsisVerticalIcon, PencilIcon, TrashIcon, ArrowRightCircleIcon } from '@heroicons/vue/24/solid';
 import { UiMenu, UiMenuItem, UiLayout } from '@/components/ui';
 import type { RouterLinkProps } from 'vue-router';
 
@@ -68,5 +74,6 @@ defineProps<{
 defineEmits<{
   (e: 'rename'): void;
   (e: 'delete'): void;
+  (e: 'move'): void;
 }>();
 </script>

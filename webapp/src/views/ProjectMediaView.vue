@@ -132,6 +132,7 @@
             :item="item"
             @update="handleItemUpdate($event)"
             @delete="handleItemDelete($event)"
+            @move="handleItemMove($event)"
           />
         </div>
       </div>
@@ -156,18 +157,9 @@ import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
-import { UiMenu, UiMenuItem, UiMenuLabel, UiMenuSeparator, UiLayout, UiButton } from "@/components/ui";
+import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton } from "@/components/ui";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 import { injectFolderPathSetter } from "./project-utils";
-
-type SortDirection = 'asc' | 'desc';
-
-type QueryOptions = {
-  sortBy?: {
-    field: string,
-    direction: SortDirection
-  }
-};
 
 const headerHeight = layoutDimensions.projectMediaHeaderHeight;
 // tried different things to get the positioning to look right
@@ -181,43 +173,8 @@ const route = useRoute();
 const createFolderDialog = ref<typeof CreateFolderDialog>();
 const loading = ref(true);
 const searchTerm = ref('');
-const sortFields = [
-  {
-    field: '_createdAt',
-    displayName: 'Date Uploaded',
-    ascName: 'Oldest first',
-    descName: 'Newest first',
-    compare: (a: ProjectItem, b: ProjectItem) => {
-      return new Date(a._createdAt).getTime() - new Date(b._createdAt).getTime();
-    }
-  },
-  {
-    field: '_updatedAt',
-    displayName: 'Date modified',
-    ascName: 'Oldest first',
-    descName: 'Newest first',
-    compare: (a: ProjectItem, b: ProjectItem) => {
-      return new Date(a._updatedAt).getTime() - new Date(b._updatedAt).getTime();
-    }
-  },
-  {
-    field: 'name',
-    displayName: 'Name',
-    ascName: 'A-Z',
-    descName: 'Z-A',
-    compare: (a: ProjectItem, b: ProjectItem) => {
-      return a.name.localeCompare(b.name);
-    }
-  }
-];
-const queryOptions = ref<QueryOptions>();
-const selectedSortField = computed(() => {
-  if (!(queryOptions.value) || !(queryOptions.value.sortBy)) {
-    return;
-  }
 
-  return sortFields.find(f => f.field === queryOptions.value!.sortBy!.field);
-});
+const { sortFields, queryOptions, selectedSortField, selectSortField } = store.projectItemsQueryOptions;
 
 const project = ref<WithRole<Project>>();
 const {
@@ -347,6 +304,32 @@ function handleItemDelete(args: { type: ProjectItemType, itemId: string }) {
   items.value.splice(index, 1);
 }
 
+function handleItemMove(item: ProjectItem) {
+  const index = items.value.findIndex(i => i._id === item._id);
+  const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
+  
+  const isMovedToThisFolder =  (!itemFolderId && !currentFolder.value) || itemFolderId === currentFolder.value?._id;
+  if (index === -1 && isMovedToThisFolder) {
+    // the item is being moved to this folder, but is not in the list of items
+    // add it to the list
+    items.value.push(item);
+  }
+  else if (index !== -1 && isMovedToThisFolder) {
+    // the item is being moved to this folder, but is already
+    // in the list of item. 
+    // updated it
+    items.value[index] = Object.assign(items.value[index], item);
+  }
+  else if (index !== -1 && !isMovedToThisFolder) {
+    // the item is in the current list of items, but
+    // is moved to a different folder
+    // remove the item from the list
+    items.value.splice(index, 1);
+  }
+  // last possibility: item does not exist in the current list
+  // and is not being moved to this folder. Ignore it.
+}
+
 function handleCreatedFolder(newFolder: Folder) {
   const item: ProjectFolderItem = {
     _id: newFolder._id,
@@ -363,17 +346,6 @@ function handleCreatedFolder(newFolder: Folder) {
   }
 
   items.value.push(item);
-}
-
-function selectSortField(field: string, direction?: SortDirection) {
-  if (!queryOptions.value) {
-    queryOptions.value = {};
-  }
-
-  queryOptions.value.sortBy = {
-    field,
-    direction: direction || 'asc'
-  };
 }
 
 function createFolder() {
