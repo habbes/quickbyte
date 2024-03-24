@@ -1,5 +1,5 @@
-import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent } from "./services/index.js";
-import { createAppError, createInvalidAppStateError, createNotFoundError, rethrowIfAppError } from "./error.js";
+import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail } from "./services/index.js";
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, rethrowIfAppError } from "./error.js";
 import { Database, getProjectMembersById } from "./db/index.js";
 import { Media, Project, User } from "./models.js";
 import { BackgroundWorker } from "./background-worker.js";
@@ -10,6 +10,44 @@ export class GlobalEventHandler {
     registerEvents(eventBus: EventBus) {
         eventBus.on('transferComplete', (event) => this.handleTransferComplete(event));
         eventBus.on('folderDeleted', (event) => this.handleFolderDeleted(event));
+        eventBus.on('projectMemberRemoved', (event) => this.handleProjectMemberRemoved(event));
+    }
+
+    private async handleProjectMemberRemoved(event: Event): Promise<void> {
+        try {
+            const data = this.getEventData<ProjectMemberRemovedEvent>('projectMemberRemoved', event);
+            console.log(`Handling event: user '${data.memberId}' removed from project '${data.projectId}'`);
+            const user = await this.config.db.users().findOne({
+                _id: data.memberId,
+            }, {
+                projection: {
+                    name: 1,
+                    email: 1,
+                }
+            });
+            if (!user) {
+                throw createResourceNotFoundError("user");
+            }
+
+            const project = await this.config.db.projects().findOne({
+                _id: data.projectId
+            });
+            if (!project) {
+                throw createResourceNotFoundError("project")
+            }
+
+            console.log(`Sending email notification to '${user._id}' about removal from '${project._id}'`);
+            await this.config.email.sendEmail({
+                to: { name: user.name, email: user.email },
+                subject: `You have been removed from project ${project.name}`,
+                message: createYouHaveBeenemovedFromProjectNoticiationEmail({
+                    projectName: project.name
+                })
+            });
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 
     private async handleFolderDeleted(event: Event): Promise<void> {
@@ -23,7 +61,7 @@ export class GlobalEventHandler {
                 return;
             }
 
-            if (!folder.deleted) {
+            if (!folder?.deleted) {
                 console.log(`Folder ${data.folderId} found but not deleted. Aborting...`);
                 return;
             }

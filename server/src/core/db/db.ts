@@ -1,5 +1,5 @@
 import { Db, Filter, MongoClient } from 'mongodb';
-import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder, Deleteable, ParentDeleteable } from '../models.js';
+import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder, Deleteable, ParentDeleteable, Principal, PersistedModel } from '../models.js';
 import { Media } from '../models.js';
 
 export class Database {
@@ -69,4 +69,12 @@ export type DbUserInvite = UserInvite & { secret: string };
 
 export function createFilterForDeleteableResource<T extends Deleteable | ParentDeleteable>(filter: Filter<T>): Filter<T> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } };
+}
+
+export function updateNowBy(principal: string | Principal): Pick<PersistedModel, '_updatedAt'|'_updatedBy'> {
+    const _updatedBy: Principal = typeof principal === 'string' ? { _id: principal, type : 'user' } : principal;
+    return {
+        _updatedAt: new Date(),
+        _updatedBy
+    }
 }

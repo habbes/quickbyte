@@ -55,3 +55,8 @@ export function splitFilePathAndName(filePath: string) {
         }
     }
 }
+
+export function escapeRegExp(value: string) {
+    // see: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+}

@@ -1,9 +1,9 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, MoveMediaToFolderArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
-import { Database } from "../db.js";
+import { createFilterForDeleteableResource, Database, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
 
 export interface MediaServiceConfig {
@@ -113,7 +113,7 @@ export class MediaService {
             if (folderId) {
                 query.folderId = folderId;
             } else {
-                query.folderId = { $exists: false }
+                query.folderId = null;
             }
 
             const media = await this.collection.find(query).toArray();
@@ -187,6 +187,62 @@ export class MediaService {
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
+        }
+    }
+
+    async moveMediaToFolder(args: MoveMediaToFolderArgs): Promise<Media> {
+        const session = this.db.startSession();
+        try {
+            session.startTransaction();
+
+            // ensure the target folder exists if provided
+            // if not provided, move to project root
+            let targetFolder: Folder|null = null;
+            if (args.targetFolderId) {
+                targetFolder = await this.db.folders().findOne(
+                    createFilterForDeleteableResource({
+                        _id: args.targetFolderId,
+                        projectId: args.projectId
+                    }),
+                    {
+                        session
+                    }
+                );
+
+                if (!targetFolder) {
+                    throw createResourceNotFoundError("The target folder does not exist.");
+                }
+            }
+
+            const result = await this.db.media().findOneAndUpdate(
+                createFilterForDeleteableResource({
+                    _id: args.mediaId,
+                    projectId: args.projectId
+                }),
+                {
+                    $set: {
+                        folderId: targetFolder ? targetFolder._id : undefined,
+                        ...updateNowBy(this.authContext.user._id)
+                    }
+                }, {
+                    returnDocument: 'after',
+                    session
+                }
+            );
+
+            if (!result.value) {
+                throw createNotFoundError('media');
+            }
+
+            await session.commitTransaction();
+            return result.value;
+        } catch (e: any) {
+            await session.abortTransaction();
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+        finally {
+            await session.endSession();
         }
     }
 
@@ -302,4 +358,4 @@ export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;

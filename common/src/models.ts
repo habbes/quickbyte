@@ -268,7 +268,7 @@ export interface Media extends PersistedModel, Deleteable, ParentDeleteable {
     projectId: string;
     preferredVersionId: string;
     versions: MediaVersion[];
-    folderId?: string;
+    folderId?: string|null;
     // TODO: add file kind?
 }
 
