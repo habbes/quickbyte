@@ -5,6 +5,7 @@
     :link="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
     @rename="rename()"
     @delete="deleteMedia()"
+    @move="$emit('move')"
   >
     <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
     <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
@@ -46,6 +47,7 @@ const props = defineProps<{
 defineEmits<{
   (e: 'update', updatedMedia: Media): void;
   (e: 'delete', mediaId: string): void;
+  (e: 'move'): void;
 }>();
 
 const renameDialog = ref<typeof RenameMediaDialog>();

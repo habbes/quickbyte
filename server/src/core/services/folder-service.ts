@@ -161,27 +161,7 @@ export class FolderService {
             }
 
             const folder = result[0];
-
-            // the results returned from $graphLookup are not
-            // guaranteed to be order. So let's manually
-            // sort the paths from leaf to root
-            const path: FolderPathEntry[] = [];
-
-            let current: Folder|undefined = folder;
-            while (current) {
-                path.push({ _id: current._id, name: current.name });
-                // since we expect the path to have a small number of entries,
-                // a linear search is probably better than creating a hashmap for folders
-                current = current.parentId ? folder.rawPath.find(p => p._id === current!.parentId) : undefined;
-            }
-
-            path.reverse();
-
-            const normalizedFolder = {
-                ...folder,
-                path
-            };
-
+            const normalizedFolder = normalizeFolderWithPath(folder);
             return normalizedFolder;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -325,20 +305,33 @@ export class FolderService {
         }
     }
 
-    async searchProjectFolders(args: SearchProjectFolderArgs): Promise<Folder[]> {
+    async searchProjectFolders(args: SearchProjectFolderArgs): Promise<FolderWithPath[]> {
         try {
-            const folders = await this.db.folders().find(
-                createFilterForDeleteableResource({
-                    projectId: args.projectId,
-                    // TODO: full regex search may not be efficient
-                    // consider restricting to a case-sensitive prefix scan
-                    // $text operator with appropriate indexes
-                    // or full-text-search?
-                    name: { $regex: escapeRegExp(args.searchTerm), $options: "i" }
-                })
-            ).toArray();
+            const rawFolders = await this.db.folders().aggregate<Folder & { rawPath: Folder[] }>([
+                {
+                    $match: createFilterForDeleteableResource({
+                        projectId: args.projectId,
+                        // TODO: full regex search may not be efficient
+                        // consider restricting to a case-sensitive prefix scan
+                        // $text operator with appropriate indexes
+                        // or full-text-search?
+                        name: { $regex: escapeRegExp(args.searchTerm), $options: "i" }
+                    })
+                },
+                {
+                    $graphLookup: {
+                        from: this.db.folders().collectionName,
+                        startWith: "$parentId",
+                        connectFromField: "parentId",
+                        connectToField: "_id",
+                        as: "rawPath"
+                    }
+                }
+            ]).toArray();
 
-            return folders;
+            const normalizedFolders = rawFolders.map(f => normalizeFolderWithPath(f));
+
+            return normalizedFolders;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -456,6 +449,33 @@ function buildPathBranch(path: string, visitedNodes: Map<string, FolderNode>, pa
     }
 
     buildPathBranch(remainingPath, visitedNodes, node);
+}
+
+function normalizeFolderWithPath(folder: Folder & { rawPath: Folder[] }): FolderWithPath {
+    // the results returned from $graphLookup are not
+    // guaranteed to be order. So let's manually
+    // sort the paths from leaf to root
+    const path: FolderPathEntry[] = [];
+
+    let current: Folder|undefined = folder;
+    while (current) {
+        path.push({ _id: current._id, name: current.name });
+        // since we expect the path to have a small number of entries,
+        // a linear search is probably better than creating a hashmap for folders
+        current = current.parentId ? folder.rawPath.find(p => p._id === current!.parentId) : undefined;
+    }
+
+    path.reverse();
+
+    const normalizedFolder = {
+        ...folder,
+        path
+    };
+    
+    // @ts-ignore
+    delete normalizedFolder.rawPath;
+
+    return normalizedFolder;
 }
 
 export type IFolderService = FolderService;

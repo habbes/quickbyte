@@ -285,7 +285,7 @@ export class ProjectService {
         }
     }
 
-    async searchProjectFolders(args: SearchProjectFolderArgs): Promise<Folder[]> {
+    async searchProjectFolders(args: SearchProjectFolderArgs): Promise<FolderWithPath[]> {
         try {
             const project = await this.getByIdInternal(args.projectId);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);

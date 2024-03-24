@@ -5,6 +5,7 @@
     :link="{ name: 'project-media', params: { projectId: folder.projectId, folderId: folder._id } }"
     @rename="renameFolder()"
     @delete="deleteFolder()"
+    @move="$emit('move')"
   >
     <FolderIcon class="h-10 w-10" />
     <template #extraDetails>
@@ -39,6 +40,7 @@ const props = defineProps<{
 defineEmits<{
   (e: 'update', updatedFolder: Folder): void;
   (e: 'delete', deletedFolderId: string): void;
+  (e: 'move'): void;
 }>();
 
 const renameDialog = ref<typeof RenameFolderDialog>();
