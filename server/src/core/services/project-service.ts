@@ -1,7 +1,7 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
-import { EmailHandler, EventBus, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
+import { EmailHandler, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
 import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
@@ -407,7 +407,7 @@ export class ProjectService {
                 throw createNotFoundError("user");
             }
 
-            // You can remove the owner
+            // You cannot remove the owner
             if (user._id === project._createdBy._id) {
                 throw createOperationNotSupportedError("You cannot remove the project owner.");
             }
@@ -418,6 +418,13 @@ export class ProjectService {
             }
 
             await this.config.access.removeAccess(user._id, 'project', project._id);
+            this.config.eventBus.send({
+                type: 'projectMemberRemoved',
+                data: {
+                    projectId: project._id,
+                    memberId: user._id
+                }
+            });
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

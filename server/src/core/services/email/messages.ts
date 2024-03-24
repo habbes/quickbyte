@@ -75,7 +75,7 @@ ${error.error.stack}
 </pre>
 <h4>Additional details</h4>
 <pre>
-${ error.details }
+${ JSON.stringify(error.details, undefined, 2) }
 </pre>
 <div>
 `
@@ -252,4 +252,20 @@ Click <a href="${args.mediaUrl}">here to open the media</a>. Then click the drop
 between different versions.
 </p>
     `
+}
+
+export function createYouHaveBeenemovedFromProjectNoticiationEmail(
+    args:
+    {
+        projectName: string
+    }
+) {
+    return `
+<p>
+Hello,
+</p>
+<p>
+You have been removed from the project <b>${args.projectName}</b> on Quickbyte.
+</p>
+`;
 }
