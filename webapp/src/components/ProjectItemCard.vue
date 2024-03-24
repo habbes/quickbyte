@@ -17,6 +17,7 @@
     ref="moveDialog"
     :projectId="item.item.projectId"
     :item="item"
+    @move="$emit('move', $event)"
   />
 </template>
 <script lang="ts" setup>
@@ -46,6 +47,7 @@ defineProps<{
 defineEmits<{
   (e: 'update', args: UpdatedItemEvent): unknown;
   (e: 'delete', args: DeletedItemEvent): unknown;
+  (e: 'move', movedItem: ProjectItem): unknown;
 }>();
 
 const moveDialog = ref<typeof MoveProjectItemDialog>();

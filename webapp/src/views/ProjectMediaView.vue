@@ -132,6 +132,7 @@
             :item="item"
             @update="handleItemUpdate($event)"
             @delete="handleItemDelete($event)"
+            @move="handleItemMove($event)"
           />
         </div>
       </div>
@@ -345,6 +346,32 @@ function handleItemDelete(args: { type: ProjectItemType, itemId: string }) {
   if (index < 0) return;
 
   items.value.splice(index, 1);
+}
+
+function handleItemMove(item: ProjectItem) {
+  const index = items.value.findIndex(i => i._id === item._id);
+  const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
+  
+  const isMovedToThisFolder =  (!itemFolderId && !currentFolder.value) || itemFolderId === currentFolder.value?._id;
+  if (index === -1 && isMovedToThisFolder) {
+    // the item is being moved to this folder, but is not in the list of items
+    // add it to the list
+    items.value.push(item);
+  }
+  else if (index !== -1 && isMovedToThisFolder) {
+    // the item is being moved to this folder, but is already
+    // in the list of item. 
+    // updated it
+    items.value[index] = Object.assign(items.value[index], item);
+  }
+  else if (index !== -1 && !isMovedToThisFolder) {
+    // the item is in the current list of items, but
+    // is moved to a different folder
+    // remove the item from the list
+    items.value.splice(index, 1);
+  }
+  // last possibility: item does not exist in the current list
+  // and is not being moved to this folder. Ignore it.
 }
 
 function handleCreatedFolder(newFolder: Folder) {
