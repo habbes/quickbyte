@@ -271,7 +271,7 @@ export type FinalizeTransferArgs = z.infer<typeof FinalizeTransferArgs>;
 
 export const MoveMediaToFolderArgs = z.object({
     projectId: z.string().min(1),
-    targetFolderId: z.string().min(1),
+    targetFolderId: z.union([z.string().min(1), z.null()]),
     mediaId: z.string().min(1),
 });
 
@@ -279,7 +279,7 @@ export type MoveMediaToFolderArgs = z.infer<typeof MoveMediaToFolderArgs>;
 
 export const MoveFolderToFolderArgs = z.object({
     projectId: z.string().min(1),
-    targetFolderId: z.string().min(1),
+    targetFolderId: z.union([z.string().min(1), z.null()]),
     folderId: z.string().min(1),
 });
 

@@ -113,7 +113,7 @@ export class MediaService {
             if (folderId) {
                 query.folderId = folderId;
             } else {
-                query.folderId = { $exists: false }
+                query.folderId = null;
             }
 
             const media = await this.collection.find(query).toArray();
@@ -195,19 +195,23 @@ export class MediaService {
         try {
             session.startTransaction();
 
-            // ensure the folder exists
-            const targetFolder = await this.db.folders().findOne(
-                createFilterForDeleteableResource({
-                    _id: args.targetFolderId,
-                    projectId: args.projectId
-                }),
-                {
-                    session
-                }
-            );
+            // ensure the target folder exists if provided
+            // if not provided, move to project root
+            let targetFolder: Folder|null = null;
+            if (args.targetFolderId) {
+                targetFolder = await this.db.folders().findOne(
+                    createFilterForDeleteableResource({
+                        _id: args.targetFolderId,
+                        projectId: args.projectId
+                    }),
+                    {
+                        session
+                    }
+                );
 
-            if (!targetFolder) {
-                throw createResourceNotFoundError("The target folder does not exist.");
+                if (!targetFolder) {
+                    throw createResourceNotFoundError("The target folder does not exist.");
+                }
             }
 
             const result = await this.db.media().findOneAndUpdate(
@@ -217,7 +221,7 @@ export class MediaService {
                 }),
                 {
                     $set: {
-                        folderId: targetFolder._id,
+                        folderId: targetFolder ? targetFolder._id : undefined,
                         ...updateNowBy(this.authContext.user._id)
                     }
                 }, {

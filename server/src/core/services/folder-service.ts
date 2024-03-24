@@ -260,18 +260,22 @@ export class FolderService {
         const session = this.db.startSession();
         try {
             session.startTransaction();
-            // ensure target folder exists
-            const targetFolder = await this.db.folders().findOne(
-                createFilterForDeleteableResource({
-                    _id: args.targetFolderId,
-                    projectId: args.projectId,
-                }), {
-                    session
+            // ensure target folder exists if provided
+            // if target folder is null, then move to project root
+            let targetFolder: Folder|null = null;
+            if (args.targetFolderId) {
+                targetFolder = await this.db.folders().findOne(
+                    createFilterForDeleteableResource({
+                        _id: args.targetFolderId,
+                        projectId: args.projectId,
+                    }), {
+                        session
+                    }
+                );
+                
+                if (!targetFolder) {
+                    throw createResourceNotFoundError("The specified target folder does not exist.");
                 }
-            );
-            
-            if (!targetFolder) {
-                throw createResourceNotFoundError("The specified target folder does not exist.");
             }
 
             const result = await this.db.folders().findOneAndUpdate(
@@ -280,7 +284,7 @@ export class FolderService {
                     projectId: args.projectId
                 }), {
                     $set: {
-                        parentId: args.targetFolderId,
+                        parentId: targetFolder ? targetFolder._id : null,
                         _updatedAt: new Date(),
                         _updatedBy: { type: 'user', _id: this.authContext.user._id }
                     }

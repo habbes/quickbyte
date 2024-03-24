@@ -11,10 +11,28 @@
       />
       <div class="h-[200px]">
         <UiLayout verticalScroll class="h-full">
-          <UiLayout v-if="!loading && !searchTerm" class="text-gray-500">
+          <!-- <UiLayout v-if="!loading && !searchTerm" class="text-gray-500">
             Search for a folder to move the item to.
-          </UiLayout>
-          <UiLayout v-else-if="!loading" gapSm>
+          </UiLayout> -->
+          
+          <UiLayout gapSm>
+            <UiLayout
+              class="p-2 cursor-pointer"
+              :class="{
+                'bg-slate-100 rounded-md': selectedRoot
+              }"
+              @click="selectRoot()"
+            >
+              <UiLayout horizontal gapSm class="text-xs text-gray-700">
+                <HomeIcon class="h-4 w-4" />
+                Project root
+              </UiLayout>
+              <UiLayout>
+                <span class="text-xs truncate text-gray-400">
+                  /
+                </span>
+              </UiLayout>
+            </UiLayout>
             <UiLayout
               v-for="folder in folders"
               :key="folder._id"
@@ -22,7 +40,7 @@
               :class="{
                 'bg-slate-100 rounded-md': selectedFolderId === folder._id
               }"
-              @click="selectedFolderId = folder._id"
+              @click="selectFolder(folder._id)"
             >
               <UiLayout horizontal gapSm class="text-xs text-gray-700">
                 <FolderIcon class="h-4 w-4" />
@@ -35,7 +53,7 @@
               </UiLayout>
             </UiLayout>
           </UiLayout>
-          <UiLayout v-else>
+          <UiLayout v-if="loading" class="text-xs">
             Searching...
           </UiLayout>
         </UiLayout>
@@ -50,7 +68,7 @@
         </UiButton>
         <UiButton
           primary
-          :disabled="!selectedFolderId"
+          :disabled="!selectedFolderId && !selectedRoot"
           @click="moveItem()"
         >
           Move
@@ -63,8 +81,9 @@
 import { ref, watch } from "vue";
 import { UiDialog, UiLayout, UiTextInput, UiButton } from "@/components/ui";
 import { showToast, trpcClient, wrapError } from "@/app-utils";
-import type { Folder, FolderWithPath, ProjectItem } from "@quickbyte/common";
-import { FolderIcon } from "@heroicons/vue/24/solid";
+import type { FolderWithPath, ProjectItem } from "@quickbyte/common";
+import { FolderIcon, HomeIcon } from "@heroicons/vue/24/solid";
+import { ensure } from "@/core";
 
 const props = defineProps<{
   projectId: string,
@@ -80,8 +99,19 @@ const emit = defineEmits<{
 const dialog = ref<typeof UiDialog>();
 const folders = ref<FolderWithPath[]>([]);
 const selectedFolderId = ref<string>();
+const selectedRoot = ref(false);
 const searchTerm = ref("");
 const loading = ref(false);
+
+function selectFolder(folderId: string) {
+  selectedFolderId.value = folderId;
+  selectedRoot.value = false;
+}
+
+function selectRoot() {
+  selectedFolderId.value = undefined;
+  selectedRoot.value = true;
+}
 
 // TODO: debounce/throttle this
 watch(searchTerm, async () => {
@@ -91,6 +121,7 @@ watch(searchTerm, async () => {
 function searchFolders() {
   return wrapError(async () => {
     if (!searchTerm.value) {
+      folders.value = [];
       return;
     }
 
@@ -105,7 +136,7 @@ function searchFolders() {
 }
 
 function getFolderPath(folder: FolderWithPath) {
-  return folder.path.map(m => m.name).join("/");
+  return `/${folder.path.map(m => m.name).join("/")}`;
 }
 
 function open() {
@@ -119,17 +150,17 @@ function close() {
 
 function moveItem() {
   return wrapError(async () => {
-    if (!selectedFolderId.value) {
+    if (!selectedFolderId.value && !selectedRoot.value) {
       return;
     }
 
-    const targetFolder = folders.value.find(f => f._id === selectedFolderId.value);
-
+    const targetFolder = selectedRoot.value ? null : folders.value.find(f => f._id === selectedFolderId.value);
+  
     if (props.item.type === 'folder') {
       const movedFolder = await trpcClient.moveFolderToFolder.mutate({
         projectId: props.item.item.projectId,
         folderId: props.item.item._id,
-        targetFolderId: selectedFolderId.value
+        targetFolderId: selectedRoot.value ? null : ensure(selectedFolderId.value)
       });
 
       const updatedItem: ProjectItem = {
@@ -147,7 +178,7 @@ function moveItem() {
       const movedMedia = await trpcClient.moveMediaToFolder.mutate({
         projectId: props.item.item.projectId,
         mediaId: props.item.item._id,
-        targetFolderId: selectedFolderId.value
+        targetFolderId: selectedRoot.value ? null : ensure(selectedFolderId.value)
       });
 
       const updatedItem: ProjectItem = {
@@ -162,8 +193,7 @@ function moveItem() {
       emit('move', updatedItem);
     }
 
-    
-    showToast(targetFolder ? `Successfully moved '${props.item.name}' to '${targetFolder.name}''.` : `Successfully moved '${props.item.name}' to target folder.`, 'info');
+    showToast(targetFolder ? `Successfully moved '${props.item.name}' to '${targetFolder.name}''.` : `Successfully moved '${props.item.name}' to project root.`, 'info');
   });
 }
 </script>
