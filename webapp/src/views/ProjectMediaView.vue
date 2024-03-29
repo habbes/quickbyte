@@ -130,29 +130,37 @@
 
         <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
       </div>
-      <div
+      <DragSelect
         v-else
-        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
-        
+        :modelValue="selectedItemIds"
+        @update:modelValue="handleDragSelect($event)"
       >
-        <div
-          v-for="item in filteredItems"
-          :key="item._id"
-          class="w-full aspect-square"
-        >
-          <ProjectItemCard
-            :item="item"
-            :selected="isItemSelected(item._id)"
-            :showSelectCheckbox="selectedItemIds.size > 0"
-            :totalSelectedItems="selectedItemIds.size"
-            @update="handleItemUpdate($event)"
-            @delete="handleDeleteRequested($event)"
-            @move="handleMoveRequested($event)"
-            @toggleSelect="handleToggleSelect($event)"
-            @toggleInMultiSelect="handleToggleInMultiSelect($event)"
-          />
-        </div>
+      <div
+        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
+      >
+        
+        <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id">
+          <div
+            class="w-full aspect-square"
+          >
+            
+              <ProjectItemCard
+                :item="item"
+                :selected="isItemSelected(item._id)"
+                :showSelectCheckbox="selectedItemIds.size > 0"
+                :totalSelectedItems="selectedItemIds.size"
+                @update="handleItemUpdate($event)"
+                @delete="handleDeleteRequested($event)"
+                @move="handleMoveRequested($event)"
+                @toggleSelect="handleToggleSelect($event)"
+                @toggleInMultiSelect="handleToggleInMultiSelect($event)"
+              />
+          </div>
+            
+          
+        </DragSelectOption>
       </div>
+    </DragSelect>
     </UiLayout>
   </UiLayout>
   <CreateFolderDialog
@@ -191,6 +199,7 @@ import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
 import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox } from "@/components/ui";
+import { DragSelect, DragSelectOption } from "@coleqiu/vue-drag-select";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 import { injectFolderPathSetter } from "./project-utils";
 
@@ -494,6 +503,12 @@ function handleMultiSelectCheckboxStateChange(checked: boolean) {
     clearSelectedItems();
   } else {
     selectAllItems();
+  }
+}
+
+function handleDragSelect(dragSelected: Set<unknown>|Array<unknown>) {
+  for (let itemId of dragSelected) {
+    addToSelection(itemId as string);
   }
 }
 

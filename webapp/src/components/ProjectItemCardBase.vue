@@ -1,84 +1,81 @@
 <template>
-  <div class="h-full w-full flex flex-col border border-[#5e5e8b] rounded-sm"
-    :class="{ [`border-2 border-[#7d7da1]`]: selected }"
-    @dblclick="handleDoubleClick($event)"
-    >
-    <div class="h-full w-full flex flex-col">
-      <div class="flex-1 flex flex-col cursor-pointer" @click="handleClick($event)">
-        <div class="flex-1 bg-[#1c1b26] flex items-center justify-center relative">
-          <div
-            v-if="showSelectCheckbox"
-            class="absolute left-5 top-5 z-10"
-          >
-            <UiCheckbox
-              :checked="selected"
-              class="bg-white"
-              @update:checked="handleCheckboxChange()"
-              @click.stop
-            />
-            <!-- <input :checked="selected" @change="handleCheckboxChange()" type="checkbox" @click.stop/> -->
+  <UiContextMenu>
+    <div class="h-full w-full flex flex-col border border-[#5e5e8b] rounded-sm"
+      :class="{ [`border-2 border-[#7d7da1]`]: selected }"
+      @dblclick="handleDoubleClick($event)"
+      >
+      <div class="h-full w-full flex flex-col">
+        <div class="flex-1 flex flex-col cursor-pointer" @click="handleClick($event)">
+          <div class="flex-1 bg-[#1c1b26] flex items-center justify-center relative">
+            <div
+              v-if="showSelectCheckbox"
+              class="absolute left-5 top-5 z-10"
+            >
+              <UiCheckbox
+                :checked="selected"
+                class="bg-white"
+                @update:checked="handleCheckboxChange()"
+                @click.stop
+              />
+              <!-- <input :checked="selected" @change="handleCheckboxChange()" type="checkbox" @click.stop/> -->
+            </div>
+            <slot></slot>
           </div>
-          <slot></slot>
         </div>
-      </div>
-      <div
-        class="h-12 border-t border-t-[#5e5e8b] bg-[#38364e] flex justify-between flex-row items-center p-2 text-white overflow-hidden"
-        :title="name">
-        <div class="flex flex-col flex-1 gap-1 text-ellipsis whitespace-nowrap overflow-hidden">
-          <div class="flex-1 text-ellipsis whitespace-nowrap overflow-hidden">
-            <slot name="title">
-              <router-link
-                v-if="link"
-                :to="link"
-              >
-                {{ name }}
-              </router-link>
-              <span v-else>{{ name  }}</span>
+        <div
+          class="h-12 border-t border-t-[#5e5e8b] bg-[#38364e] flex justify-between flex-row items-center p-2 text-white overflow-hidden"
+          :title="name">
+          <div class="flex flex-col flex-1 gap-1 text-ellipsis whitespace-nowrap overflow-hidden">
+            <div class="flex-1 text-ellipsis whitespace-nowrap overflow-hidden">
+              <slot name="title">
+                <router-link
+                  v-if="link"
+                  :to="link"
+                >
+                  {{ name }}
+                </router-link>
+                <span v-else>{{ name  }}</span>
+              </slot>
+            </div>
+            <div class="text-xs text-gray-400 flex gap-3 items-center">
+              <slot name="extraDetails"></slot>
+            </div>
+          </div>
+          <div>
+            <slot name="menu">
+              <UiMenu>
+                <template #trigger>
+                  <EllipsisVerticalIcon class="h-5 w-5" />
+                </template>
+                <ProjectItemMenuItems
+                  :totalSelectedItems="totalSelectedItems"
+                  @rename="$emit('rename')"
+                  @move="$emit('move')"
+                  @delete="$emit('delete')"
+                />
+              </UiMenu>
             </slot>
           </div>
-          <div class="text-xs text-gray-400 flex gap-3 items-center">
-            <slot name="extraDetails"></slot>
-          </div>
-        </div>
-        <div>
-          <slot name="menu">
-            <UiMenu>
-              <template #trigger>
-                <EllipsisVerticalIcon class="h-5 w-5" />
-              </template>
-              <UiMenuItem v-if="!areMultipleItemsSelected" @click="$emit('rename')">
-                <UiLayout horizontal itemsCenter gapSm>
-                  <PencilIcon class="w-4 h-4" />
-                  <span>Rename</span>
-                </UiLayout>
-              </UiMenuItem>
-              <UiMenuItem @click="$emit('move')">
-                <UiLayout horizontal itemsCenter gapSm>
-                  <ArrowRightCircleIcon class="w-4 h-4" />
-                  <span v-if="!areMultipleItemsSelected">Move to...</span>
-                  <span v-else>Move {{ totalSelectedItems }} {{ pluralize('item', totalSelectedItems!) }} to...</span>
-                </UiLayout>
-              </UiMenuItem>
-              <UiMenuItem @click="$emit('delete')">
-                <UiLayout horizontal itemsCenter gapSm>
-                  <TrashIcon class="w-4 h-4" />
-                  <span v-if="!areMultipleItemsSelected">Delete</span>
-                  <span v-else>Delete {{ totalSelectedItems }} {{ pluralize('item', totalSelectedItems!) }}</span>
-                </UiLayout>
-              </UiMenuItem>
-            </UiMenu>
-          </slot>
         </div>
       </div>
     </div>
-  </div>
+    <template #menu>
+      <ProjectItemMenuItems
+        :totalSelectedItems="totalSelectedItems"
+        @rename="$emit('rename')"
+        @move="$emit('move')"
+        @delete="$emit('delete')"
+      />
+    </template>
+  </UiContextMenu>
 </template>
 <script lang="ts" setup>
-import { EllipsisVerticalIcon, PencilIcon, TrashIcon, ArrowRightCircleIcon } from '@heroicons/vue/24/solid';
-import { UiMenu, UiMenuItem, UiLayout, UiCheckbox } from '@/components/ui';
+import { EllipsisVerticalIcon } from '@heroicons/vue/24/solid';
+import { UiMenu, UiCheckbox, UiContextMenu } from '@/components/ui';
+import ProjectItemMenuItems from "./ProjectItemMenuItems.vue";
 import { useRouter } from 'vue-router';
 import type { RouterLinkProps } from 'vue-router';
-import { pluralize, throttle } from '@/core';
+import { throttle } from '@/core';
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -98,8 +95,6 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const areMultipleItemsSelected = computed(() =>
-  Boolean(props.totalSelectedItems && props.totalSelectedItems > 1));
 
 // we throttle the click event so that if two clicks
 // are triggered quickly, we handle that as a double click
@@ -126,7 +121,4 @@ function handleDoubleClick(event: MouseEvent) {
 
   router.push(props.link);
 }
-
-
-
 </script>

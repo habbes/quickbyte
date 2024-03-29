@@ -170,9 +170,10 @@ function moveItems() {
     emit('move', movedItems);
     close();
 
+    const movedItemsDescription = `${movedItems.length} ${pluralize('item', moveItems.length)}`
     showToast(targetFolder ?
-      `Successfully moved '${itemsDescription.value}' to '${targetFolder.name}''.`
-      : `Successfully moved '${itemsDescription.value}' to project root.`, 'info');
+      `Successfully moved ${movedItemsDescription} to '${targetFolder.name}''.`
+      : `Successfully moved ${movedItemsDescription} to project root.`, 'info');
   });
 }
 </script>
