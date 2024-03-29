@@ -82,11 +82,6 @@ export const appRouter = router({
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateMedia(input.projectId, input)),
     
-    deleteMedia: protectedProcedure
-    .input(DeleteMediaArgs)
-    .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).deleteMedia(input.projectId, input.id)),
-    
     createMediaComment: protectedProcedure
     .input(CreateMediaCommentArgs)
     .mutation(({ input, ctx }) =>
@@ -112,25 +107,10 @@ export const appRouter = router({
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateFolder(input.projectId, input)),
     
-    deleteFolder: protectedProcedure
-    .input(DeleteFolderArgs)
-    .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).deleteFolder(input.projectId, input.id)),
-    
     searchProjectFolders: protectedProcedure
     .input(SearchProjectFolderArgs)
     .query(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).searchProjectFolders(input)),
-    
-    moveFolderToFolder: protectedProcedure
-    .input(MoveFoldersToFolderArgs)
-    .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).moveFoldersToFolder(input)),
-    
-    moveMediaToFolder: protectedProcedure
-    .input(MoveMediaToFolderArgs)
-    .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).moveMediaToFolder(input)),
     
     moveProjectItemsToFolder: protectedProcedure
     .input(MoveProjectItemsToFolderArgs)

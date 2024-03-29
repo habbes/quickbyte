@@ -195,30 +195,6 @@ export class ProjectService {
         }
     }
 
-    /**
-     * 
-     * @param projectId 
-     * @param mediaId
-     * @deprecated use `deleteProjectItems` instead
-     */
-    async deleteMedia(projectId: string, mediaId: string): Promise<void> {
-        try {
-            const project = await this.getByIdInternal(projectId);
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner','admin', 'editor']);
-            // The following check ensures that someone may not delete a media they created when
-            // they are not longer part of a project
-            const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
-            // admin, owner or uploader can delete media
-            // we'll do the actual access verification in the called method
-            const isAdminOrOwner = role === 'admin' || role === 'owner';
-
-            await this.config.media.deleteMedia(projectId, mediaId, isAdminOrOwner);
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
     async createFolder(projectId: string, args: CreateFolderArgs): Promise<Folder> {
         try {
             const project = await this.getByIdInternal(projectId);
@@ -239,68 +215,6 @@ export class ProjectService {
 
             const folder = await this.config.folders.updateFolder(args);
             return folder;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
-    /**
-     * 
-     * @param projectId 
-     * @param folderId
-     * @depreacted use `deleteProjectItems` instead
-     */
-    async deleteFolder(projectId: string, folderId: string): Promise<void> {
-        try {
-            const project = await this.getByIdInternal(projectId);
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
-            // TODO: we should allow editor to delete a folder they created if it's empty
-
-            await this.config.folders.deleteFolder(projectId, folderId);
-            this.config.eventBus.send({
-                type: 'folderDeleted',
-                data: {
-                    projectId,
-                    folderId
-                }
-            });
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
-    /**
-     * 
-     * @param args
-     * @deprecated use `moveProjectItemsToFolder` instead
-     */
-    async moveMediaToFolder(args: MoveMediaToFolderArgs): Promise<Media[]> {
-        try {
-            const project = await this.getByIdInternal(args.projectId);
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
-
-            const result = await this.config.media.moveMediaToFolder(args);
-            return result;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
-    /**
-     * 
-     * @param args 
-     * @deprecated use `moveProjectItemsToFolder` instead
-     */
-    async moveFoldersToFolder(args: MoveFoldersToFolderArgs): Promise<Folder[]> {
-        try {
-            const project = await this.getByIdInternal(args.projectId);
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
-
-            const result = await this.config.folders.moveFolders(args);
-            return result;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -370,9 +284,9 @@ export class ProjectService {
 
             const [folderResult, mediaResult] = await Promise.all([
                 isAdminOrOwner?
-                    this.config.folders.deleteMultipleFolders(args.projectId, folderIds)
+                    this.config.folders.deleteFolders(args.projectId, folderIds)
                     : Promise.resolve({ deletedCount: 0 }),
-                this.config.media.deleteMultipleMedia(args.projectId, mediaIds, isAdminOrOwner)
+                this.config.media.deleteMedia(args.projectId, mediaIds, isAdminOrOwner)
             ]);
 
             const result = {

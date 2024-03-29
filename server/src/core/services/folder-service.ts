@@ -310,36 +310,7 @@ export class FolderService {
         }
     }
 
-    /**
-     * 
-     * @param projectId 
-     * @param folderId
-     * @deprecated use `deleteMultipleFolders` instead
-     */
-    async deleteFolder(projectId: string, folderId: string): Promise<void> {
-        try {
-            // permissions should be checked by the called (project-service)
-            const result = await this.db.folders().findOneAndUpdate(
-                createFilterForDeleteableResource({
-                    projectId,
-                    _id: folderId
-                }),
-                {
-                    $set: deleteNowBy(this.authContext.user._id)
-                }
-            );
-
-            if (!result.value) {
-                throw createResourceNotFoundError("folder");
-            }
-            // TODO: trigger job to mark all children with parentDeleted: true
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
-    async deleteMultipleFolders(projectId: string, folderIds: string[]): Promise<DeletionCountResult> {
+    async deleteFolders(projectId: string, folderIds: string[]): Promise<DeletionCountResult> {
         try {
             const result = await this.db.folders().updateMany(
                 createFilterForDeleteableResource({
@@ -359,8 +330,6 @@ export class FolderService {
             throw createAppError(e);
         }
     }
-
-
 
     private async createFolderNodes(args: CreateFolderTreeArgs, folderTree: FolderNode[], resultMap: Map<string, Folder>): Promise<void> {
         try {

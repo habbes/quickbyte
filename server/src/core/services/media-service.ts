@@ -250,40 +250,7 @@ export class MediaService {
         }
     }
 
-    /**
-     * 
-     * @param projectId 
-     * @param id 
-     * @param isOwnerOrAdmin 
-     * @deprecated use `deleteMultipleMedia` instead
-     */
-    async deleteMedia(projectId: string, id: string, isOwnerOrAdmin: boolean): Promise<void> {
-        try {
-            // if the user is a project owner or admin, then allow deleting
-            // otherwise, allow deleting only if the user is the author
-            const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
-            const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
-                projectId,
-                _id: id,
-                ...userAccessFilter
-            }), {
-                $set: {
-                    deleted: true,
-                    deletedAt: new Date(),
-                    deletedBy: { _id: this.authContext.user._id, type: 'user' }
-                }
-            });
-
-            if (!result.value) {
-                throw createResourceNotFoundError();
-            }
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
-    async deleteMultipleMedia(projectId: string, mediaIds: string[], isOwnerOrAdmin: boolean): Promise<DeletionCountResult> {
+    async deleteMedia(projectId: string, mediaIds: string[], isOwnerOrAdmin: boolean): Promise<DeletionCountResult> {
         try {
             // if the user is a project owner or admin, then allow deleting
             // otherwise, allow deleting only if the user is the author
@@ -393,4 +360,4 @@ export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'|'deleteMultipleMedia'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;
