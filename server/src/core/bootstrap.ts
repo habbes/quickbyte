@@ -42,8 +42,16 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const db = new Database(dbConn.db, dbConn.client);
     await db.initialize();
 
+    const backgroundWorker = new BackgroundWorker({
+        concurrency: config.backgroundWorkerConcurrency
+    });
+
     const storageProvider = new StorageHandlerProvider();
 
+    // TODO: the s3 handler is not registered as intended
+    // this configuration remains for backwards compatibility
+    // but we should port to a more robust configuration
+    // that supports different buckets in different regions
     const s3StorageHandler = new S3StorageHandler({
         availableRegions: ['eu-north-1'],
         accessKeyId: config.s3AccessKeyId,
@@ -100,7 +108,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     });
 
     const eventBus = new EventBus({
-        alerts: adminAlerts
+        alerts: adminAlerts,
+        workQueue: backgroundWorker
     });
     
     const plans = new PlanService({
@@ -157,10 +166,6 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const transactions = new UnauthenticatedTransactionService(db.db, {
         paymentHandlers: paymentHandlers,
         plans: plans
-    });
-
-    const backgroundWorker = new BackgroundWorker({
-        concurrency: config.backgroundWorkerConcurrency
     });
 
     const globalEventHandler = new GlobalEventHandler({

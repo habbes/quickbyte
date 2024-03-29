@@ -1,6 +1,6 @@
-import { createFilterForDeleteableResource, Database } from "../db.js";
-import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs, escapeRegExp } from "@quickbyte/common";
-import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, rethrowIfAppError } from "../error.js";
+import { createFilterForDeleteableResource, Database, deleteNowBy } from "../db.js";
+import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFoldersToFolderArgs, SearchProjectFolderArgs, escapeRegExp, DeletionCountResult } from "@quickbyte/common";
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
 
@@ -190,39 +190,7 @@ export class FolderService {
     }
 
     async updateFolder(args: UpdateFolderArgs): Promise<Folder> {
-        const session = this.db.startSession();
         try {
-            session.startTransaction();
-            const original = await this.db.folders().findOne(
-                createFilterForDeleteableResource({
-                _id: args.id,
-                projectId: args.projectId,
-                }),
-                {
-                    session
-                }
-            );
-
-            if (!original) {
-                throw createNotFoundError("folder");
-            }
-            
-            // we have to check for conflicts manually since we have not set up
-            // a unique index for that
-            const duplicate = await this.db.folders().findOne(
-                createFilterForDeleteableResource({
-                    projectId: args.projectId,
-                    name: args.name,
-                    parentId: original.parentId
-                }),
-                {
-                    session
-                }
-            );
-
-            if (duplicate) {
-                throw createResourceConflictError("A folder with the specified name already exists in this path.");
-            }
 
             const result = await this.db.folders().findOneAndUpdate(createFilterForDeleteableResource({
                 _id: args.id,
@@ -235,28 +203,24 @@ export class FolderService {
                 }
             }, {
                 returnDocument: 'after',
-                session
             });
 
             if (!result.value) {
                 throw createAppError(`Could not update folder '${args.id}': ${result.lastErrorObject}`, 'dbError');
             }
 
-            await session.commitTransaction();
-
             return result.value;
         }
         catch (e: any) {
-            await session.abortTransaction();
+            if (isMongoDuplicateKeyError(e)) {
+                throw createResourceConflictError("A folder with the specified name already exists in this path.");
+            }
             rethrowIfAppError(e);
             throw createAppError(e);
         }
-        finally {
-            await session.endSession();
-        }
     }
 
-    async moveFolder(args: MoveFolderToFolderArgs): Promise<Folder> {
+    async moveFolders(args: MoveFoldersToFolderArgs): Promise<Folder[]> {
         const session = this.db.startSession();
         try {
             session.startTransaction();
@@ -278,9 +242,9 @@ export class FolderService {
                 }
             }
 
-            const result = await this.db.folders().findOneAndUpdate(
+            const result = await this.db.folders().updateMany(
                 createFilterForDeleteableResource({
-                    _id: args.folderId,
+                    _id: { $in: args.folderIds },
                     projectId: args.projectId
                 }), {
                     $set: {
@@ -289,17 +253,21 @@ export class FolderService {
                         _updatedBy: { type: 'user', _id: this.authContext.user._id }
                     }
                 }, {
-                    session,
-                    returnDocument: 'after'
+                    session
                 }
             );
 
-            if (!result.value) {
-                throw createResourceNotFoundError("The specified folder does not exist.");
-            }
+            const updatedFolders = await this.db.folders().find(
+                createFilterForDeleteableResource({
+                    _id: { $in: args.folderIds },
+                    projectId: args.projectId
+                }), {
+                    session
+                }
+            ).toArray();
 
             await session.commitTransaction();
-            return result.value;
+            return updatedFolders;
         } catch (e: any) {
             await session.abortTransaction();
             rethrowIfAppError(e);
@@ -342,27 +310,21 @@ export class FolderService {
         }
     }
 
-    async deleteFolder(projectId: string, folderId: string): Promise<void> {
+    async deleteFolders(projectId: string, folderIds: string[]): Promise<DeletionCountResult> {
         try {
-            // permissions should be checked by the called (project-service)
-            const result = await this.db.folders().findOneAndUpdate(
+            const result = await this.db.folders().updateMany(
                 createFilterForDeleteableResource({
                     projectId,
-                    _id: folderId
+                    _id: { $in: folderIds }
                 }),
                 {
-                    $set: {
-                        deleteAt: new Date(),
-                        deleted: true,
-                        deletedBy: { type: 'user', _id: this.authContext.user._id }
-                    }
+                    $set: deleteNowBy(this.authContext.user._id)
                 }
             );
 
-            if (!result.value) {
-                throw createResourceNotFoundError("folder");
-            }
-            // TODO: trigger job to mark all children with parentDeleted: true
+            return {
+                deletedCount: result.modifiedCount
+            };
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

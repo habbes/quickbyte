@@ -3,9 +3,14 @@
     :id="media._id"
     :name="media.name"
     :link="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
+    :selected="selected"
+    :showSelectCheckbox="showSelectCheckbox"
+    :totalSelectedItems="totalSelectedItems"
     @rename="rename()"
-    @delete="deleteMedia()"
+    @delete="$emit('delete', media._id)"
     @move="$emit('move')"
+    @toggleSelect="$emit('toggleSelect')"
+    @toggleInMultiSelect="$emit('toggleInMultiSelect')"
   >
     <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
     <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
@@ -25,11 +30,6 @@
     :media="media"
     @rename="$emit('update', $event)"
   />
-  <DeleteMediaDialog
-    ref="deleteDialog"
-    :media="media"
-    @delete="$emit('delete', $event)"
-  />
 </template>
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
@@ -37,28 +37,28 @@ import type { Media } from '@/core';
 import { DocumentIcon, PlayIcon, PhotoIcon, MusicalNoteIcon } from '@heroicons/vue/24/solid';
 import { getMediaType } from '@/core/media-types';
 import RenameMediaDialog from '@/components/RenameMediaDialog.vue';
-import DeleteMediaDialog from '@/components/DeleteMediaDialog.vue';
 import ProjectItemCardBase from './ProjectItemCardBase.vue';
 
 const props = defineProps<{
-  media: Media
+  media: Media,
+  selected?: boolean,
+  showSelectCheckbox?: boolean,
+  totalSelectedItems?: number,
 }>();
 
 defineEmits<{
   (e: 'update', updatedMedia: Media): void;
   (e: 'delete', mediaId: string): void;
   (e: 'move'): void;
+  (e: 'toggleSelect'): void;
+  (e: 'toggleInMultiSelect'): void;
 }>();
 
 const renameDialog = ref<typeof RenameMediaDialog>();
-const deleteDialog = ref<typeof DeleteMediaDialog>();
 const mediaType = computed(() => getMediaType(props.media.name));
 
 function rename() {
   renameDialog.value?.open();
 }
 
-function deleteMedia() {
-  deleteDialog.value?.open();
-}
 </script>

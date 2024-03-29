@@ -1,9 +1,9 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, MoveMediaToFolderArgs } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
-import { createFilterForDeleteableResource, Database, updateNowBy } from "../db.js";
+import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
 
 export interface MediaServiceConfig {
@@ -190,7 +190,7 @@ export class MediaService {
         }
     }
 
-    async moveMediaToFolder(args: MoveMediaToFolderArgs): Promise<Media> {
+    async moveMediaToFolder(args: MoveMediaToFolderArgs): Promise<Media[]> {
         const session = this.db.startSession();
         try {
             session.startTransaction();
@@ -214,9 +214,9 @@ export class MediaService {
                 }
             }
 
-            const result = await this.db.media().findOneAndUpdate(
+            const result = await this.db.media().updateMany(
                 createFilterForDeleteableResource({
-                    _id: args.mediaId,
+                    _id: { $in: args.mediaIds },
                     projectId: args.projectId
                 }),
                 {
@@ -225,17 +225,21 @@ export class MediaService {
                         ...updateNowBy(this.authContext.user._id)
                     }
                 }, {
-                    returnDocument: 'after',
                     session
                 }
             );
 
-            if (!result.value) {
-                throw createNotFoundError('media');
-            }
+            const updatedMedia = await this.db.media().find(
+                createFilterForDeleteableResource({
+                    _id: { $in: args.mediaIds },
+                    projectId: args.projectId
+                }), {
+                    session
+                }
+            ).toArray();
 
             await session.commitTransaction();
-            return result.value;
+            return updatedMedia;
         } catch (e: any) {
             await session.abortTransaction();
             rethrowIfAppError(e);
@@ -246,25 +250,23 @@ export class MediaService {
         }
     }
 
-    async deleteMedia(projectId: string, id: string, isOwnerOrAdmin: boolean): Promise<void> {
+    async deleteMedia(projectId: string, mediaIds: string[], isOwnerOrAdmin: boolean): Promise<DeletionCountResult> {
         try {
             // if the user is a project owner or admin, then allow deleting
             // otherwise, allow deleting only if the user is the author
             const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
-            const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
-                projectId,
-                _id: id,
-                ...userAccessFilter
-            }), {
-                $set: {
-                    deleted: true,
-                    deletedAt: new Date(),
-                    deletedBy: { _id: this.authContext.user._id, type: 'user' }
+            const result = await this.collection.updateMany(
+                createFilterForDeleteableResource({
+                    projectId,
+                    _id: { $in: mediaIds },
+                    ...userAccessFilter
+                }), {
+                    $set: deleteNowBy(this.authContext.user._id)
                 }
-            });
+            );
 
-            if (!result.value) {
-                throw createResourceNotFoundError();
+            return {
+                deletedCount: result.modifiedCount
             }
         } catch (e: any) {
             rethrowIfAppError(e);
