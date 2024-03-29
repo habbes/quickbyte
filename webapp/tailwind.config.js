@@ -19,6 +19,11 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        Inter: 'Inter',
+        Orbit: 'Orbit',
+        Roboto: 'Roboto'
+      },
       keyframes: {
         "accordion-down": {
           from: { height: 0 },
@@ -35,5 +40,12 @@ module.exports = {
       },
     },
   },
-  plugins: [animate],
+  plugins: [
+    animate,
+    require("daisyui")
+  ],
+  // TODO: remove after we get rid of daisyui
+  daisyui: {
+    themes: ['light', 'dark']
+  }
 }
