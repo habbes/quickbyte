@@ -3,7 +3,7 @@ import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, Update
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
-import { createFilterForDeleteableResource, Database, updateNowBy } from "../db.js";
+import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
 
 export interface MediaServiceConfig {
@@ -266,6 +266,23 @@ export class MediaService {
             if (!result.value) {
                 throw createResourceNotFoundError();
             }
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async deleteMultipleMedia(projectId: string, mediaIds: string[]): Promise<void> {
+        try {
+            const result = await this.collection.updateMany(
+                createFilterForDeleteableResource({
+                    projectId,
+                    _id: { $in: mediaIds }
+                }), {
+                    $set: deleteNowBy(this.authContext.user._id)
+                }
+            );  
+            
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

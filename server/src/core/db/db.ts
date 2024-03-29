@@ -83,3 +83,12 @@ export function updateNowBy(principal: string | Principal): Pick<PersistedModel,
         _updatedBy
     }
 }
+
+export function deleteNowBy(principal: string | Principal): Deleteable {
+    const deletedBy: Principal = typeof principal === 'string' ? { _id: principal, type : 'user' } : principal;
+    return {
+        deleted: true,
+        deletedAt: new Date(),
+        deletedBy
+    };
+}
