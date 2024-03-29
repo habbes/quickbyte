@@ -43,13 +43,14 @@
         </UiLayout>
         
       </RequireRole>
+
+      <!-- start sort dropdown -->
       <UiLayout title="Sort items">
         <UiMenu>
           <template #trigger>
             <UiLayout :fixedHeight="`${headerHeight}px`">
               <ArrowsUpDownIcon class="h-full w-7  cursor-pointer" />
             </UiLayout>
-            
           </template>
           <div v-if="queryOptions?.sortBy && selectedSortField">
             <UiMenuLabel>Order</UiMenuLabel>
@@ -92,7 +93,18 @@
             </UiMenuItem>
           </div>
         </UiMenu>
-        
+      </UiLayout>
+      <!-- end sort dropdown -->
+
+      <UiLayout
+        :title="multiSelectCheckBoxTitle"
+        v-if="selectedItemIds.size > 0"
+      >
+        <UiCheckbox
+          class="bg-white data-[state=checked]:bg-white data-[state=checked]:text-slate-900"
+          :checked="multiSelectCheckBoxState"
+          @update:checked="handleMultiSelectCheckboxStateChange($event)"
+        />
       </UiLayout>
       
     </UiLayout>
@@ -178,7 +190,7 @@ import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
-import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton } from "@/components/ui";
+import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox } from "@/components/ui";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 import { injectFolderPathSetter } from "./project-utils";
 
@@ -217,6 +229,17 @@ const items = ref<ProjectItem[]>([]);
 const currentFolder = ref<FolderWithPath|undefined>();
 const selectedItemIds = ref<Set<string>>(new Set());
 const selectedItems = computed(() => items.value.filter(item => isItemSelected(item._id)));
+const multiSelectCheckBoxState = computed<'indeterminate'|boolean>(() => {
+  const state = items.value.length === 0 ? false
+  : selectedItemIds.value.size === items.value.length ? true
+  : selectedItemIds.value.size === 0 ? false
+  : 'indeterminate';
+  return state;
+});
+const multiSelectCheckBoxTitle = computed(() => {
+  return selectedItemIds.value.size === items.value.length ?
+    'Click to clear selection' : 'Click to select all';
+});
 
 const {
   media: newMedia,
@@ -354,6 +377,12 @@ function clearSelectedItems() {
   selectedItemIds.value.clear();
 }
 
+function selectAllItems() {
+  for (let item of items.value) {
+    selectedItemIds.value.add(item._id);
+  }
+}
+
 function handleToggleSelect(args: { type: ProjectItemType, itemId: string }) {
   toggleItemSelection(args.itemId);
 }
@@ -458,6 +487,14 @@ function handleCreatedFolder(newFolder: Folder) {
 
 function createFolder() {
   createFolderDialog.value?.open();
+}
+
+function handleMultiSelectCheckboxStateChange(checked: boolean) {
+  if (!checked) {
+    clearSelectedItems();
+  } else {
+    selectAllItems();
+  }
 }
 
 async function loadData(to: RouteLocationNormalizedLoaded) {
