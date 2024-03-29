@@ -1,5 +1,5 @@
 import { createFilterForDeleteableResource, Database, deleteNowBy } from "../db.js";
-import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs, escapeRegExp } from "@quickbyte/common";
+import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs, escapeRegExp, DeletionCountResult } from "@quickbyte/common";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
@@ -323,6 +323,27 @@ export class FolderService {
                 throw createResourceNotFoundError("folder");
             }
             // TODO: trigger job to mark all children with parentDeleted: true
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async deleteMultipleFolders(projectId: string, folderIds: string[]): Promise<DeletionCountResult> {
+        try {
+            const result = await this.db.folders().updateMany(
+                createFilterForDeleteableResource({
+                    projectId,
+                    _id: { $in: folderIds }
+                }),
+                {
+                    $set: deleteNowBy(this.authContext.user._id)
+                }
+            );
+
+            return {
+                deletedCount: result.modifiedCount
+            };
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

@@ -1,5 +1,5 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, MoveMediaToFolderArgs } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, MoveMediaToFolderArgs, DeletionCountResult } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
@@ -272,7 +272,7 @@ export class MediaService {
         }
     }
 
-    async deleteMultipleMedia(projectId: string, mediaIds: string[]): Promise<void> {
+    async deleteMultipleMedia(projectId: string, mediaIds: string[]): Promise<DeletionCountResult> {
         try {
             const result = await this.collection.updateMany(
                 createFilterForDeleteableResource({
@@ -281,8 +281,11 @@ export class MediaService {
                 }), {
                     $set: deleteNowBy(this.authContext.user._id)
                 }
-            );  
-            
+            );
+
+            return {
+                deletedCount: result.modifiedCount
+            }
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -375,4 +378,4 @@ export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'|'deleteMultipleMedia'>;

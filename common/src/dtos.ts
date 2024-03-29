@@ -291,3 +291,15 @@ export const SearchProjectFolderArgs = z.object({
 });
 
 export type SearchProjectFolderArgs = z.infer<typeof SearchProjectFolderArgs>;
+
+export const DeleteProjectItemsArgs = z.object({
+    projectId: z.string().min(1),
+    items: z.array(
+        z.object({
+            id: z.string().min(1),
+            type: z.enum(['folder', 'media'])
+        })
+    )
+});
+
+export type DeleteProjectItemsArgs = z.infer<typeof DeleteProjectItemsArgs>;

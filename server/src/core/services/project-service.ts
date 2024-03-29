@@ -2,7 +2,7 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
 import { EmailHandler, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, MoveMediaToFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs } from '@quickbyte/common';
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, MoveMediaToFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -279,6 +279,29 @@ export class ProjectService {
 
             const result = await this.config.folders.moveFolder(args);
             return result;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async deleteProjectItems(args: DeleteProjectItemsArgs): Promise<DeletionCountResult> {
+        try {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
+
+            const items = args.items;
+            const folderIds = items.filter(i => i.type === 'folder').map(i => i.id);
+            const mediaIds = items.filter(i => i.type === 'media').map(i => i.id);
+
+            const [folderResult, mediaResult] = await Promise.all([
+                this.config.folders.deleteMultipleFolders(args.projectId, folderIds),
+                this.config.media.deleteMultipleMedia(args.projectId, mediaIds)
+            ]);
+
+            return {
+                deletedCount: folderResult.deletedCount + mediaResult.deletedCount
+            }
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
