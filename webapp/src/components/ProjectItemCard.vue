@@ -4,6 +4,7 @@
     :media="item.item"
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
+    :totalSelectedItems="totalSelectedItems"
     @update="$emit('update', { type: 'media', item: $event })"
     @delete="$emit('delete', { type: 'media', itemId: $event })"
     @move="$emit('move', { type: 'media', itemId: item._id })"
@@ -15,6 +16,7 @@
     :folder="item.item"
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
+    :totalSelectedItems="totalSelectedItems"
     @update="$emit('update', { type: 'folder', item: $event })"
     @delete="$emit('delete', { type: 'folder', itemId: $event })"
     @move="$emit('move', { type: 'folder', itemId: item._id })"
@@ -44,6 +46,7 @@ defineProps<{
   item: ProjectItem,
   selected?: boolean,
   showSelectCheckbox?: boolean,
+  totalSelectedItems?: number,
 }>();
 
 defineEmits<{

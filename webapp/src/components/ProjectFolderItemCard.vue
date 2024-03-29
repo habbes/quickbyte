@@ -5,6 +5,7 @@
     :link="{ name: 'project-media', params: { projectId: folder.projectId, folderId: folder._id } }"
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
+    :totalSelectedItems="totalSelectedItems"
     @rename="renameFolder()"
     @delete="$emit('delete', folder._id)"
     @move="$emit('move')"
@@ -35,6 +36,7 @@ const props = defineProps<{
   folder: Folder,
   selected?: boolean,
   showSelectCheckbox?: boolean;
+  totalSelectedItems?: number;
 }>();
 
 defineEmits<{

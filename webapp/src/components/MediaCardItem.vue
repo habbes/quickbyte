@@ -5,6 +5,7 @@
     :link="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
+    :totalSelectedItems="totalSelectedItems"
     @rename="rename()"
     @delete="$emit('delete', media._id)"
     @move="$emit('move')"
@@ -42,6 +43,7 @@ const props = defineProps<{
   media: Media,
   selected?: boolean,
   showSelectCheckbox?: boolean,
+  totalSelectedItems?: number,
 }>();
 
 defineEmits<{

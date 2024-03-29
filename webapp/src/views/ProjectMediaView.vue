@@ -132,6 +132,7 @@
             :item="item"
             :selected="isItemSelected(item._id)"
             :showSelectCheckbox="selectedItemIds.size > 0"
+            :totalSelectedItems="selectedItemIds.size"
             @update="handleItemUpdate($event)"
             @delete="handleDeleteRequested($event)"
             @move="handleMoveRequested($event)"

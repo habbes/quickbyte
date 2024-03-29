@@ -46,7 +46,7 @@
               <template #trigger>
                 <EllipsisVerticalIcon class="h-5 w-5" />
               </template>
-              <UiMenuItem @click="$emit('rename')">
+              <UiMenuItem v-if="!areMultipleItemsSelected" @click="$emit('rename')">
                 <UiLayout horizontal itemsCenter gapSm>
                   <PencilIcon class="w-4 h-4" />
                   <span>Rename</span>
@@ -55,13 +55,15 @@
               <UiMenuItem @click="$emit('move')">
                 <UiLayout horizontal itemsCenter gapSm>
                   <ArrowRightCircleIcon class="w-4 h-4" />
-                  <span>Move to...</span>
+                  <span v-if="!areMultipleItemsSelected">Move to...</span>
+                  <span v-else>Move {{ totalSelectedItems }} {{ pluralize('item', totalSelectedItems!) }} to...</span>
                 </UiLayout>
               </UiMenuItem>
               <UiMenuItem @click="$emit('delete')">
                 <UiLayout horizontal itemsCenter gapSm>
                   <TrashIcon class="w-4 h-4" />
-                  <span>Delete</span>
+                  <span v-if="!areMultipleItemsSelected">Delete</span>
+                  <span v-else>Delete {{ totalSelectedItems }} {{ pluralize('item', totalSelectedItems!) }}</span>
                 </UiLayout>
               </UiMenuItem>
             </UiMenu>
@@ -76,13 +78,15 @@ import { EllipsisVerticalIcon, PencilIcon, TrashIcon, ArrowRightCircleIcon } fro
 import { UiMenu, UiMenuItem, UiLayout, UiCheckbox } from '@/components/ui';
 import { useRouter } from 'vue-router';
 import type { RouterLinkProps } from 'vue-router';
-import { throttle } from '@/core';
+import { pluralize, throttle } from '@/core';
+import { computed } from 'vue';
 
 const props = defineProps<{
   name: string;
   link?: RouterLinkProps["to"];
   selected?: boolean;
   showSelectCheckbox?: boolean;
+  totalSelectedItems?: number;
 }>();
 
 const emit = defineEmits<{
@@ -94,6 +98,8 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const areMultipleItemsSelected = computed(() =>
+  Boolean(props.totalSelectedItems && props.totalSelectedItems > 1));
 
 // we throttle the click event so that if two clicks
 // are triggered quickly, we handle that as a double click
