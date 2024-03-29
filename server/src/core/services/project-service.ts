@@ -299,9 +299,21 @@ export class ProjectService {
                 this.config.media.deleteMultipleMedia(args.projectId, mediaIds)
             ]);
 
-            return {
+            const result = {
                 deletedCount: folderResult.deletedCount + mediaResult.deletedCount
+            };
+
+            for (let folderId of folderIds) {
+                this.config.eventBus.send({
+                    type: 'folderDeleted',
+                    data: {
+                        folderId,
+                        projectId: args.projectId
+                    }
+                })
             }
+
+            return result;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
