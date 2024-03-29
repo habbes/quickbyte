@@ -48,6 +48,10 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
 
     const storageProvider = new StorageHandlerProvider();
 
+    // TODO: the s3 handler is not registered as intended
+    // this configuration remains for backwards compatibility
+    // but we should port to a more robust configuration
+    // that supports different buckets in different regions
     const s3StorageHandler = new S3StorageHandler({
         availableRegions: ['eu-north-1'],
         accessKeyId: config.s3AccessKeyId,

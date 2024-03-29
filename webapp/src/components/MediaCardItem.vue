@@ -6,7 +6,7 @@
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
     @rename="rename()"
-    @delete="deleteMedia()"
+    @delete="$emit('delete', media._id)"
     @move="$emit('move')"
     @toggleSelect="$emit('toggleSelect')"
     @toggleInMultiSelect="$emit('toggleInMultiSelect')"
@@ -29,11 +29,6 @@
     :media="media"
     @rename="$emit('update', $event)"
   />
-  <DeleteMediaDialog
-    ref="deleteDialog"
-    :media="media"
-    @delete="$emit('delete', $event)"
-  />
 </template>
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
@@ -41,7 +36,6 @@ import type { Media } from '@/core';
 import { DocumentIcon, PlayIcon, PhotoIcon, MusicalNoteIcon } from '@heroicons/vue/24/solid';
 import { getMediaType } from '@/core/media-types';
 import RenameMediaDialog from '@/components/RenameMediaDialog.vue';
-import DeleteMediaDialog from '@/components/DeleteMediaDialog.vue';
 import ProjectItemCardBase from './ProjectItemCardBase.vue';
 
 const props = defineProps<{
@@ -59,14 +53,10 @@ defineEmits<{
 }>();
 
 const renameDialog = ref<typeof RenameMediaDialog>();
-const deleteDialog = ref<typeof DeleteMediaDialog>();
 const mediaType = computed(() => getMediaType(props.media.name));
 
 function rename() {
   renameDialog.value?.open();
 }
 
-function deleteMedia() {
-  deleteDialog.value?.open();
-}
 </script>

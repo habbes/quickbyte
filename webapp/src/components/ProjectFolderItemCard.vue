@@ -6,7 +6,7 @@
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
     @rename="renameFolder()"
-    @delete="deleteFolder()"
+    @delete="$emit('delete', folder._id)"
     @move="$emit('move')"
     @toggleSelect="$emit('toggleSelect')"
     @toggleInMultiSelect="$emit('toggleInMultiSelect')"
@@ -23,18 +23,12 @@
     :folder="folder"
     @rename="$emit('update', $event)"
    />
-   <DeleteFolderDialog
-    ref="deleteDialog"
-    :folder="folder"
-    @delete="$emit('delete', $event)"
-  ></DeleteFolderDialog>
 </template>
 <script lang="ts" setup>
 import { ref } from "vue";
 import type { Folder } from "@quickbyte/common";
 import ProjectItemCardBase from './ProjectItemCardBase.vue';
 import RenameFolderDialog from "./RenameFolderDialog.vue";
-import DeleteFolderDialog from "./DeleteFolderDialog.vue";
 import { FolderIcon } from '@heroicons/vue/24/solid';
 
 const props = defineProps<{
@@ -52,13 +46,8 @@ defineEmits<{
 }>();
 
 const renameDialog = ref<typeof RenameFolderDialog>();
-const deleteDialog = ref<typeof DeleteFolderDialog>();
 
 function renameFolder() {
   renameDialog.value?.open();
-}
-
-function deleteFolder() {
-  deleteDialog.value?.open();
 }
 </script>

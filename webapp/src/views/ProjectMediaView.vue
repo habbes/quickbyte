@@ -149,15 +149,24 @@
     :projectId="project._id"
     :parentId="currentFolder?._id"
   />
+  <DeleteProjectItemsDialog
+    v-if="project"
+    ref="deleteItemsDialog"
+    :projectId="project._id"
+    :items="selectedItems"
+    @delete="handleItemsDeleted($event)"
+  />
+  
 </template>
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize } from '@/core';
 import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
 import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
+import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
@@ -175,6 +184,7 @@ const contentHeight = getRemainingContentHeightCss(
 const updateCurrentFolderPath = injectFolderPathSetter();
 const route = useRoute();
 const createFolderDialog = ref<typeof CreateFolderDialog>();
+const deleteItemsDialog = ref<typeof DeleteProjectItemsDialog>();
 const loading = ref(true);
 const searchTerm = ref('');
 
@@ -197,6 +207,7 @@ const { isOverDropZone } = useDropZone(dropzone);
 const items = ref<ProjectItem[]>([]);
 const currentFolder = ref<FolderWithPath|undefined>();
 const selectedItemIds = ref<Set<string>>(new Set());
+const selectedItems = computed(() => items.value.filter(item => isItemSelected(item._id)));
 
 const {
   media: newMedia,
@@ -204,7 +215,6 @@ const {
   startTransfer
 } = useFileTransfer();
 
-// TODO handle folders
 watch([newMedia], () => {
   newMedia.value?.filter(m => {
     if (currentFolder.value) {
@@ -358,10 +368,24 @@ function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'me
 }
 
 function handleItemDelete(args: { type: ProjectItemType, itemId: string }) {
-  const index = items.value.findIndex(m => m._id === args.itemId);
-  if (index < 0) return;
+  if (!isItemSelected(args.itemId)) {
+    addToSelection(args.itemId);
+  }
 
-  items.value.splice(index, 1);
+  nextTick(() => deleteItemsDialog.value?.open());
+}
+
+function handleItemsDeleted(
+  { requestedItems }:
+  { deletedCount: number, requestedItems: Array<{ _id: string, type: ProjectItemType }>}
+) {
+  for (let deletedItem of requestedItems) {
+    const index = items.value.findIndex(item => item._id === deletedItem._id && item.type === deletedItem.type);
+    if (index === -1) return;
+
+    unselectItem(deletedItem._id);
+    items.value.splice(index, 1);
+  }
 }
 
 function handleItemMove(item: ProjectItem) {
