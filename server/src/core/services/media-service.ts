@@ -233,7 +233,9 @@ export class MediaService {
                 createFilterForDeleteableResource({
                     _id: { $in: args.mediaIds },
                     projectId: args.projectId
-                })
+                }), {
+                    session
+                }
             ).toArray();
 
             await session.commitTransaction();

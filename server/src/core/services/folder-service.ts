@@ -261,7 +261,9 @@ export class FolderService {
                 createFilterForDeleteableResource({
                     _id: { $in: args.folderIds },
                     projectId: args.projectId
-                })
+                }), {
+                    session
+                }
             ).toArray();
 
             await session.commitTransaction();

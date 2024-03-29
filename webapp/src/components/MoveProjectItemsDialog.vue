@@ -1,7 +1,7 @@
 <template>
   <UiDialog
     ref="dialog"
-    :title="`Move ${item.name} to...`"
+    :title="`Move ${itemsDescription} to...`"
   >
     <UiLayout gapSm>
       <UiTextInput
@@ -69,7 +69,7 @@
         <UiButton
           primary
           :disabled="!selectedFolderId && !selectedRoot"
-          @click="moveItem()"
+          @click="moveItems()"
         >
           Move
         </UiButton>
@@ -78,22 +78,22 @@
   </UiDialog>
 </template>
 <script lang="ts" setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { UiDialog, UiLayout, UiTextInput, UiButton } from "@/components/ui";
 import { showToast, trpcClient, wrapError } from "@/app-utils";
 import type { FolderWithPath, ProjectItem } from "@quickbyte/common";
 import { FolderIcon, HomeIcon } from "@heroicons/vue/24/solid";
-import { ensure } from "@/core";
+import { ensure, pluralize, debounce } from "@/core";
 
 const props = defineProps<{
   projectId: string,
-  item: ProjectItem
+  items: ProjectItem[]
 }>();
 
 defineExpose({ open, close });
 
 const emit = defineEmits<{
-  (e: 'move', movedItem: ProjectItem): unknown;
+  (e: 'move', movedItems: ProjectItem[]): unknown;
 }>();
 
 const dialog = ref<typeof UiDialog>();
@@ -102,6 +102,10 @@ const selectedFolderId = ref<string>();
 const selectedRoot = ref(false);
 const searchTerm = ref("");
 const loading = ref(false);
+const itemsDescription = computed(() =>
+  props.items.length === 1 ?
+  props.items[0].name
+  : `${props.items.length} ${pluralize('item', props.items.length)}`);
 
 function selectFolder(folderId: string) {
   selectedFolderId.value = folderId;
@@ -113,10 +117,9 @@ function selectRoot() {
   selectedRoot.value = true;
 }
 
-// TODO: debounce/throttle this
-watch(searchTerm, async () => {
+watch(searchTerm, debounce(async () => {
   await searchFolders();
-});
+}, 100));
 
 function searchFolders() {
   return wrapError(async () => {
@@ -140,6 +143,8 @@ function getFolderPath(folder: FolderWithPath) {
 }
 
 function open() {
+  if (!props.items.length) return;
+
   searchTerm.value = "";
   dialog.value?.open();
 }
@@ -148,52 +153,26 @@ function close() {
   dialog.value?.close();
 }
 
-function moveItem() {
+function moveItems() {
   return wrapError(async () => {
     if (!selectedFolderId.value && !selectedRoot.value) {
       return;
     }
 
     const targetFolder = selectedRoot.value ? null : folders.value.find(f => f._id === selectedFolderId.value);
-  
-    if (props.item.type === 'folder') {
-      const movedFolder = await trpcClient.moveFolderToFolder.mutate({
-        projectId: props.item.item.projectId,
-        folderId: props.item.item._id,
-        targetFolderId: selectedRoot.value ? null : ensure(selectedFolderId.value)
-      });
+    
+    const movedItems = await trpcClient.moveProjectItemsToFolder.mutate({
+      projectId: props.projectId,
+      targetFolderId: selectedRoot.value ? null : ensure(selectedFolderId.value),
+      items: props.items.map(item => ({ id: item._id, type: item.type }))
+    });
 
-      const updatedItem: ProjectItem = {
-        _id: movedFolder._id,
-        type: 'folder',
-        name: movedFolder.name,
-        item: movedFolder,
-        _createdAt: movedFolder._createdAt,
-        _updatedAt: movedFolder._updatedAt
-      };
+    emit('move', movedItems);
+    close();
 
-      emit('move', updatedItem);
-    }
-    else if (props.item.type === 'media') {
-      const movedMedia = await trpcClient.moveMediaToFolder.mutate({
-        projectId: props.item.item.projectId,
-        mediaId: props.item.item._id,
-        targetFolderId: selectedRoot.value ? null : ensure(selectedFolderId.value)
-      });
-
-      const updatedItem: ProjectItem = {
-        _id: movedMedia._id,
-        type: 'media',
-        name: movedMedia.name,
-        item: movedMedia,
-        _createdAt: movedMedia._createdAt,
-        _updatedAt: movedMedia._updatedAt
-      };
-
-      emit('move', updatedItem);
-    }
-
-    showToast(targetFolder ? `Successfully moved '${props.item.name}' to '${targetFolder.name}''.` : `Successfully moved '${props.item.name}' to project root.`, 'info');
+    showToast(targetFolder ?
+      `Successfully moved '${itemsDescription.value}' to '${targetFolder.name}''.`
+      : `Successfully moved '${itemsDescription.value}' to project root.`, 'info');
   });
 }
 </script>

@@ -133,8 +133,8 @@
             :selected="isItemSelected(item._id)"
             :showSelectCheckbox="selectedItemIds.size > 0"
             @update="handleItemUpdate($event)"
-            @delete="handleItemDelete($event)"
-            @move="handleItemMove($event)"
+            @delete="handleDeleteRequested($event)"
+            @move="handleMoveRequested($event)"
             @toggleSelect="handleToggleSelect($event)"
             @toggleInMultiSelect="handleToggleInMultiSelect($event)"
           />
@@ -156,7 +156,13 @@
     :items="selectedItems"
     @delete="handleItemsDeleted($event)"
   />
-  
+  <MoveProjectItemsDialog
+    v-if="project"
+    ref="moveItemsDialog"
+    :projectId="project._id"
+    :items="selectedItems"
+    @move="handleItemsMoved($event)"
+  />
 </template>
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch } from 'vue';
@@ -167,6 +173,7 @@ import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFo
 import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue';
+import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
@@ -185,6 +192,7 @@ const updateCurrentFolderPath = injectFolderPathSetter();
 const route = useRoute();
 const createFolderDialog = ref<typeof CreateFolderDialog>();
 const deleteItemsDialog = ref<typeof DeleteProjectItemsDialog>();
+const moveItemsDialog = ref<typeof MoveProjectItemsDialog>();
 const loading = ref(true);
 const searchTerm = ref('');
 
@@ -345,12 +353,12 @@ function clearSelectedItems() {
   selectedItemIds.value.clear();
 }
 
-function handleToggleSelect(itemId: string) {
-  toggleItemSelection(itemId);
+function handleToggleSelect(args: { type: ProjectItemType, itemId: string }) {
+  toggleItemSelection(args.itemId);
 }
 
-function handleToggleInMultiSelect(itemId: string) {
-  toggleItemInMultiSelect(itemId);
+function handleToggleInMultiSelect(args: { type: ProjectItemType, itemId: string }) {
+  toggleItemInMultiSelect(args.itemId);
 }
 
 function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
@@ -367,7 +375,7 @@ function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'me
   });
 }
 
-function handleItemDelete(args: { type: ProjectItemType, itemId: string }) {
+function handleDeleteRequested(args: { type: ProjectItemType, itemId: string }) {
   if (!isItemSelected(args.itemId)) {
     addToSelection(args.itemId);
   }
@@ -388,7 +396,21 @@ function handleItemsDeleted(
   }
 }
 
-function handleItemMove(item: ProjectItem) {
+function handleMoveRequested(args: { type: ProjectItemType, itemId: string }) {
+  if (!isItemSelected(args.itemId)) {
+    addToSelection(args.itemId);
+  }
+
+  nextTick(() => moveItemsDialog.value?.open());
+}
+
+function handleItemsMoved(items: ProjectItem[]) {
+  for (let item of items) {
+    handleItemMoved(item);
+  }
+}
+
+function handleItemMoved(item: ProjectItem) {
   const index = items.value.findIndex(i => i._id === item._id);
   const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
   
@@ -409,6 +431,7 @@ function handleItemMove(item: ProjectItem) {
     // is moved to a different folder
     // remove the item from the list
     items.value.splice(index, 1);
+    unselectItem(item._id);
   }
   // last possibility: item does not exist in the current list
   // and is not being moved to this folder. Ignore it.
