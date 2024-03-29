@@ -1,6 +1,6 @@
 import { createFilterForDeleteableResource, Database } from "../db.js";
 import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs, escapeRegExp } from "@quickbyte/common";
-import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, rethrowIfAppError } from "../error.js";
+import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
 
@@ -190,39 +190,7 @@ export class FolderService {
     }
 
     async updateFolder(args: UpdateFolderArgs): Promise<Folder> {
-        const session = this.db.startSession();
         try {
-            session.startTransaction();
-            const original = await this.db.folders().findOne(
-                createFilterForDeleteableResource({
-                _id: args.id,
-                projectId: args.projectId,
-                }),
-                {
-                    session
-                }
-            );
-
-            if (!original) {
-                throw createNotFoundError("folder");
-            }
-            
-            // we have to check for conflicts manually since we have not set up
-            // a unique index for that
-            const duplicate = await this.db.folders().findOne(
-                createFilterForDeleteableResource({
-                    projectId: args.projectId,
-                    name: args.name,
-                    parentId: original.parentId
-                }),
-                {
-                    session
-                }
-            );
-
-            if (duplicate) {
-                throw createResourceConflictError("A folder with the specified name already exists in this path.");
-            }
 
             const result = await this.db.folders().findOneAndUpdate(createFilterForDeleteableResource({
                 _id: args.id,
@@ -235,24 +203,20 @@ export class FolderService {
                 }
             }, {
                 returnDocument: 'after',
-                session
             });
 
             if (!result.value) {
                 throw createAppError(`Could not update folder '${args.id}': ${result.lastErrorObject}`, 'dbError');
             }
 
-            await session.commitTransaction();
-
             return result.value;
         }
         catch (e: any) {
-            await session.abortTransaction();
+            if (isMongoDuplicateKeyError(e)) {
+                throw createResourceConflictError("A folder with the specified name already exists in this path.");
+            }
             rethrowIfAppError(e);
             throw createAppError(e);
-        }
-        finally {
-            await session.endSession();
         }
     }
 
@@ -352,6 +316,7 @@ export class FolderService {
                 }),
                 {
                     $set: {
+                        // TODO: this should have ben deletedAt
                         deleteAt: new Date(),
                         deleted: true,
                         deletedBy: { type: 'user', _id: this.authContext.user._id }

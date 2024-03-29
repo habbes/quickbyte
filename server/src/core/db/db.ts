@@ -46,10 +46,15 @@ export class Database {
         await this.folders().createIndex({ projectId: 1 });
         await this.folders().createIndex({ projectId: 1, parentId: 1 });
         await this.folders().createIndex({ projectId: 1, name: 1 });
-        // would like to prevent two folders at the same path in the same project to have the same name,
-        // however, this restrictions should not count for folders that have been soft-deleted
-        // Not sure how to create such a partial index without changing the schema, so for now that will
-        // be handled in code
+        await this.folders().createIndex(
+            { projectId: 1, name: 1, parentId: 1 },
+            { 
+                name: 'unique_folder_name_in_parent',
+                unique: true,
+                partialFilterExpression: { deletedBy: { $eq: null }, parentDeleted: { $eq: null } }
+            }
+        );
+        
         await this.media().createIndex("folderId", { partialFilterExpression: { folderId: { $exists: true } } });
     }
 
