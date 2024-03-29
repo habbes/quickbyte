@@ -5,7 +5,13 @@
     >
     <div class="h-full w-full flex flex-col">
       <div class="flex-1 flex flex-col cursor-pointer" @click="handleClick($event)">
-        <div class="flex-1 bg-[#1c1b26] flex items-center justify-center">
+        <div class="flex-1 bg-[#1c1b26] flex items-center justify-center relative">
+          <div
+            v-if="showSelectCheckbox"
+            class="absolute left-5 top-5 z-10"
+          >
+            <input :checked="selected" @change="handleCheckboxChange()" type="checkbox" @click.stop/>
+          </div>
           <slot></slot>
         </div>
       </div>
@@ -70,6 +76,7 @@ const props = defineProps<{
   name: string;
   link?: RouterLinkProps["to"];
   selected?: boolean;
+  showSelectCheckbox?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -77,17 +84,28 @@ const emit = defineEmits<{
   (e: 'delete'): void;
   (e: 'move'): void;
   (e: 'toggleSelect'): void;
+  (e: 'toggleInMultiSelect'): void;
 }>();
 
 const router = useRouter();
 
-function onClick(event: MouseEvent) {
-  emit('toggleSelect');
-}
-
+// we throttle the click event so that if two clicks
+// are triggered quickly, we handle that as a double click
+// instead of handling it as two separate clicks
 const handleClick = throttle((event: MouseEvent) => {
-  emit('toggleSelect');
-}, 250)
+  // cmd+click on macos, ctrl+click on other OS
+  // add to selection
+  if (event.metaKey || event.ctrlKey) {
+    emit('toggleInMultiSelect');
+  }
+  else {
+    emit('toggleSelect');
+  }
+}, 250);
+
+function handleCheckboxChange() {
+  emit('toggleInMultiSelect');
+}
 
 function handleDoubleClick(event: MouseEvent) {
   if (!props.link) {
@@ -96,5 +114,7 @@ function handleDoubleClick(event: MouseEvent) {
 
   router.push(props.link);
 }
+
+
 
 </script>

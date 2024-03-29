@@ -3,19 +3,23 @@
     v-if="item.type === 'media'"
     :media="item.item"
     :selected="selected"
+    :showSelectCheckbox="showSelectCheckbox"
     @update="$emit('update', { type: 'media', item: $event })"
     @delete="$emit('delete', { type: 'media', itemId: $event })"
     @move="moveItem()"
     @toggleSelect="$emit('toggleSelect', item._id)"
+    @toggleInMultiSelect="$emit('toggleInMultiSelect', item._id)"
   />
   <ProjectFolderItemCard
     v-if="item.type === 'folder'"
     :folder="item.item"
     :selected="selected"
+    :showSelectCheckbox="showSelectCheckbox"
     @update="$emit('update', { type: 'folder', item: $event })"
     @delete="$emit('delete', { type: 'folder', itemId: $event })"
     @move="moveItem()"
     @toggleSelect="$emit('toggleSelect', item._id)"
+    @toggleInMultiSelect="$emit('toggleInMultiSelect', item._id)"
   />
   <MoveProjectItemDialog
     ref="moveDialog"
@@ -48,6 +52,7 @@ type DeletedItemEvent = {
 defineProps<{
   item: ProjectItem,
   selected?: boolean,
+  showSelectCheckbox?: boolean,
 }>();
 
 defineEmits<{
@@ -55,6 +60,7 @@ defineEmits<{
   (e: 'delete', args: DeletedItemEvent): unknown;
   (e: 'move', movedItem: ProjectItem): unknown;
   (e: 'toggleSelect', itemId: string): unknown;
+  (e: 'toggleInMultiSelect', itemId: string): unknown;
 }>();
 
 const moveDialog = ref<typeof MoveProjectItemDialog>();

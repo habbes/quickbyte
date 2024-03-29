@@ -131,10 +131,12 @@
           <ProjectItemCard
             :item="item"
             :selected="isItemSelected(item._id)"
+            :showSelectCheckbox="selectedItemIds.size > 0"
             @update="handleItemUpdate($event)"
             @delete="handleItemDelete($event)"
             @move="handleItemMove($event)"
             @toggleSelect="handleToggleSelect($event)"
+            @toggleInMultiSelect="handleToggleInMultiSelect($event)"
           />
         </div>
       </div>
@@ -296,7 +298,7 @@ function isItemSelected(itemId: string) {
  * @param itemId
  */
 function selectItem(itemId: string) {
-  selectedItemIds.value.clear();
+  clearSelectedItems();
   selectedItemIds.value.add(itemId);
 }
 
@@ -305,6 +307,14 @@ function toggleItemSelection(itemId: string) {
     unselectItem(itemId);
   } else {
     selectItem(itemId);
+  }
+}
+
+function toggleItemInMultiSelect(itemId: string) {
+  if (isItemSelected(itemId)) {
+    unselectItem(itemId);
+  } else {
+    addToSelection(itemId);
   }
 }
 
@@ -327,6 +337,10 @@ function clearSelectedItems() {
 
 function handleToggleSelect(itemId: string) {
   toggleItemSelection(itemId);
+}
+
+function handleToggleInMultiSelect(itemId: string) {
+  toggleItemInMultiSelect(itemId);
 }
 
 function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {

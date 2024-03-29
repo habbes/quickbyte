@@ -4,10 +4,12 @@
     :name="media.name"
     :link="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
     :selected="selected"
+    :showSelectCheckbox="showSelectCheckbox"
     @rename="rename()"
     @delete="deleteMedia()"
     @move="$emit('move')"
     @toggleSelect="$emit('toggleSelect')"
+    @toggleInMultiSelect="$emit('toggleInMultiSelect')"
   >
     <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
     <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
@@ -44,7 +46,8 @@ import ProjectItemCardBase from './ProjectItemCardBase.vue';
 
 const props = defineProps<{
   media: Media,
-  selected?: boolean
+  selected?: boolean,
+  showSelectCheckbox?: boolean,
 }>();
 
 defineEmits<{
@@ -52,6 +55,7 @@ defineEmits<{
   (e: 'delete', mediaId: string): void;
   (e: 'move'): void;
   (e: 'toggleSelect'): void;
+  (e: 'toggleInMultiSelect'): void;
 }>();
 
 const renameDialog = ref<typeof RenameMediaDialog>();

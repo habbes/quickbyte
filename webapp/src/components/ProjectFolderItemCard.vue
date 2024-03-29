@@ -4,10 +4,12 @@
     :name="folder.name"
     :link="{ name: 'project-media', params: { projectId: folder.projectId, folderId: folder._id } }"
     :selected="selected"
+    :showSelectCheckbox="showSelectCheckbox"
     @rename="renameFolder()"
     @delete="deleteFolder()"
     @move="$emit('move')"
     @toggleSelect="$emit('toggleSelect')"
+    @toggleInMultiSelect="$emit('toggleInMultiSelect')"
   >
     <FolderIcon class="h-10 w-10" />
     <template #extraDetails>
@@ -38,6 +40,7 @@ import { FolderIcon } from '@heroicons/vue/24/solid';
 const props = defineProps<{
   folder: Folder,
   selected?: boolean,
+  showSelectCheckbox?: boolean;
 }>();
 
 defineEmits<{
@@ -45,6 +48,7 @@ defineEmits<{
   (e: 'delete', deletedFolderId: string): void;
   (e: 'move'): void;
   (e: 'toggleSelect'): void;
+  (e: 'toggleInMultiSelect'): void;
 }>();
 
 const renameDialog = ref<typeof RenameFolderDialog>();
