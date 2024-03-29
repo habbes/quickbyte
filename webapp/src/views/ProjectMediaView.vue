@@ -1,5 +1,6 @@
 <template>
   <UiLayout fill>
+    <!-- start header -->
     <UiLayout
       horizontal
       innerSpace
@@ -96,6 +97,7 @@
       </UiLayout>
       <!-- end sort dropdown -->
 
+      <!-- multi-selection checkbox -->
       <UiLayout
         :title="multiSelectCheckBoxTitle"
         v-if="selectedItemIds.size > 0"
@@ -106,8 +108,12 @@
           @update:checked="handleMultiSelectCheckboxStateChange($event)"
         />
       </UiLayout>
-      
+      <!-- end multi-selection checkbox -->
     </UiLayout>
+    <!-- end header -->
+
+    <!-- start content -->
+    <UiContextMenu>
     <UiLayout ref="dropzone" v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
       :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
     >
@@ -162,6 +168,51 @@
       </div>
     </DragSelect>
     </UiLayout>
+    <template #menu v-if="project">
+      <RequireRole :accepted="['owner', 'admin', 'editor']" :current="project.role">
+        <UiMenuItem @click="openFilePicker()">
+          <UiLayout horizontal itemsCenter gapSm>
+            <DocumentArrowUpIcon class="h-5 w-5" /> Upload files
+          </UiLayout>
+        </UiMenuItem>
+        <UiMenuItem v-if="directoryPickerSupported" @click="openDirectoryPicker()">
+          <UiLayout horizontal itemsCenter gapSm>
+            <CloudArrowUpIcon class="h-5 w-5" /> Upload folder
+          </UiLayout>
+        </UiMenuItem>
+        <UiMenuSeparator />
+        <UiMenuItem @click="createFolder()">
+          <UiLayout horizontal itemsCenter gapSm>
+            <FolderPlusIcon class="h-5 w-5" /> Create folder
+          </UiLayout>
+        </UiMenuItem>
+        <template v-if="selectedItemIds.size > 0">
+          <UiMenuSeparator />
+          <UiMenuItem @click="handleMoveRequested()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <ArrowRightCircleIcon class="w-5 h-5" />
+              <span>Move {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }} to...</span>
+            </UiLayout>
+          </UiMenuItem>
+          <UiMenuItem @click="handleDeleteRequested()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <TrashIcon class="w-5 h-5" />
+              <span>Delete {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
+            </UiLayout>
+          </UiMenuItem>
+        </template>
+        <UiMenuSeparator />
+      </RequireRole>
+      <UiMenuItem>
+        <router-link :to="{ name: 'project-settings', params: { projectId: project._id } }">
+          <UiLayout horizontal itemsCenter gapSm>
+            <Cog8ToothIcon class="h-5 w-5" /> Project settings
+          </UiLayout>
+        </router-link>
+      </UiMenuItem>
+    </template>
+  </UiContextMenu>
+    <!--end content -->
   </UiLayout>
   <CreateFolderDialog
     v-if="project"
@@ -191,14 +242,14 @@ import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize } from '@/core';
 import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
-import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon, Cog8ToothIcon, TrashIcon, ArrowRightCircleIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue';
 import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
-import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox } from "@/components/ui";
+import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox, UiContextMenu, UiMenuSeparator } from "@/components/ui";
 import { DragSelect, DragSelectOption } from "@coleqiu/vue-drag-select";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 import { injectFolderPathSetter } from "./project-utils";
@@ -414,8 +465,8 @@ function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'me
   });
 }
 
-function handleDeleteRequested(args: { type: ProjectItemType, itemId: string }) {
-  if (!isItemSelected(args.itemId)) {
+function handleDeleteRequested(args?: { type: ProjectItemType, itemId: string }) {
+  if (args && !isItemSelected(args.itemId)) {
     addToSelection(args.itemId);
   }
 
@@ -435,8 +486,8 @@ function handleItemsDeleted(
   }
 }
 
-function handleMoveRequested(args: { type: ProjectItemType, itemId: string }) {
-  if (!isItemSelected(args.itemId)) {
+function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
+  if (args && !isItemSelected(args.itemId)) {
     addToSelection(args.itemId);
   }
 
