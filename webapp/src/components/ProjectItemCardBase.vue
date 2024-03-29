@@ -1,15 +1,13 @@
 <template>
-  <div class="h-full w-full flex flex-col border border-[#5e5e8b] rounded-sm">
+  <div class="h-full w-full flex flex-col border border-[#5e5e8b] rounded-sm"
+    :class="{ [`border-2 border-[#7d7da1]`]: selected }"
+    @dblclick="handleDoubleClick($event)"
+    >
     <div class="h-full w-full flex flex-col">
-      <div class="flex-1 flex flex-col">
-        <router-link
-          v-if="link"
-          :to="link"
-          class="flex-1 bg-[#1c1b26] flex items-center justify-center"
-        >
+      <div class="flex-1 flex flex-col cursor-pointer" @click="handleClick($event)">
+        <div class="flex-1 bg-[#1c1b26] flex items-center justify-center">
           <slot></slot>
-        </router-link>
-        <slot v-else></slot>
+        </div>
       </div>
       <div
         class="h-12 border-t border-t-[#5e5e8b] bg-[#38364e] flex justify-between flex-row items-center p-2 text-white overflow-hidden"
@@ -64,16 +62,39 @@
 <script lang="ts" setup>
 import { EllipsisVerticalIcon, PencilIcon, TrashIcon, ArrowRightCircleIcon } from '@heroicons/vue/24/solid';
 import { UiMenu, UiMenuItem, UiLayout } from '@/components/ui';
+import { useRouter } from 'vue-router';
 import type { RouterLinkProps } from 'vue-router';
+import { throttle } from '@/core';
 
-defineProps<{
+const props = defineProps<{
   name: string;
   link?: RouterLinkProps["to"];
+  selected?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'rename'): void;
   (e: 'delete'): void;
   (e: 'move'): void;
+  (e: 'toggleSelect'): void;
 }>();
+
+const router = useRouter();
+
+function onClick(event: MouseEvent) {
+  emit('toggleSelect');
+}
+
+const handleClick = throttle((event: MouseEvent) => {
+  emit('toggleSelect');
+}, 250)
+
+function handleDoubleClick(event: MouseEvent) {
+  if (!props.link) {
+    return;
+  }
+
+  router.push(props.link);
+}
+
 </script>

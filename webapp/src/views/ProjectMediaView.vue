@@ -130,9 +130,11 @@
         >
           <ProjectItemCard
             :item="item"
+            :selected="isItemSelected(item._id)"
             @update="handleItemUpdate($event)"
             @delete="handleItemDelete($event)"
             @move="handleItemMove($event)"
+            @toggleSelect="handleToggleSelect($event)"
           />
         </div>
       </div>
@@ -192,6 +194,7 @@ const { isOverDropZone } = useDropZone(dropzone);
 
 const items = ref<ProjectItem[]>([]);
 const currentFolder = ref<FolderWithPath|undefined>();
+const selectedItemIds = ref<Set<string>>(new Set());
 
 const {
   media: newMedia,
@@ -282,6 +285,49 @@ onFilesSelected(async (files, directories) => {
     folderId: currentFolder.value?._id
   });
 });
+
+function isItemSelected(itemId: string) {
+  return selectedItemIds.value.has(itemId);
+}
+
+/**
+ * Selects the single item, unselecting
+ * any currently selected items.
+ * @param itemId
+ */
+function selectItem(itemId: string) {
+  selectedItemIds.value.clear();
+  selectedItemIds.value.add(itemId);
+}
+
+function toggleItemSelection(itemId: string) {
+  if (isItemSelected(itemId)) {
+    unselectItem(itemId);
+  } else {
+    selectItem(itemId);
+  }
+}
+
+/**
+ * Selects the specified item without
+ * unselecting other currently selected item
+ * @param itemId 
+ */
+function addToSelection(itemId: string) {
+  selectedItemIds.value.add(itemId);
+}
+
+function unselectItem(itemId: string) {
+  selectedItemIds.value.delete(itemId);
+}
+
+function clearSelectedItems() {
+  selectedItemIds.value.clear();
+}
+
+function handleToggleSelect(itemId: string) {
+  toggleItemSelection(itemId);
+}
 
 function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
   // TODO: handle folder update

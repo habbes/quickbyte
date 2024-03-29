@@ -3,9 +3,11 @@
     :id="folder._id"
     :name="folder.name"
     :link="{ name: 'project-media', params: { projectId: folder.projectId, folderId: folder._id } }"
+    :selected="selected"
     @rename="renameFolder()"
     @delete="deleteFolder()"
     @move="$emit('move')"
+    @toggleSelect="$emit('toggleSelect')"
   >
     <FolderIcon class="h-10 w-10" />
     <template #extraDetails>
@@ -34,13 +36,15 @@ import DeleteFolderDialog from "./DeleteFolderDialog.vue";
 import { FolderIcon } from '@heroicons/vue/24/solid';
 
 const props = defineProps<{
-  folder: Folder
+  folder: Folder,
+  selected?: boolean,
 }>();
 
 defineEmits<{
   (e: 'update', updatedFolder: Folder): void;
   (e: 'delete', deletedFolderId: string): void;
   (e: 'move'): void;
+  (e: 'toggleSelect'): void;
 }>();
 
 const renameDialog = ref<typeof RenameFolderDialog>();
