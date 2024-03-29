@@ -224,6 +224,7 @@ export class FolderService {
         const session = this.db.startSession();
         try {
             session.startTransaction();
+            let folderIds = args.folderIds;
             // ensure target folder exists if provided
             // if target folder is null, then move to project root
             let targetFolder: Folder|null = null;
@@ -240,11 +241,14 @@ export class FolderService {
                 if (!targetFolder) {
                     throw createResourceNotFoundError("The specified target folder does not exist.");
                 }
+
+                // we don't want to make a folder its own parent
+                folderIds = folderIds.filter(id => id !== args.targetFolderId);
             }
 
             const result = await this.db.folders().updateMany(
                 createFilterForDeleteableResource({
-                    _id: { $in: args.folderIds },
+                    _id: { $in: folderIds },
                     projectId: args.projectId
                 }), {
                     $set: {
@@ -259,7 +263,7 @@ export class FolderService {
 
             const updatedFolders = await this.db.folders().find(
                 createFilterForDeleteableResource({
-                    _id: { $in: args.folderIds },
+                    _id: { $in: folderIds },
                     projectId: args.projectId
                 }), {
                     session

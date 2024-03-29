@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import * as Sentry from "@sentry/vue";
-
+import VueDragSelect from "@coleqiu/vue-drag-select";
 import './styles/style.css'
 import App from './App.vue'
 import { router } from './router'
@@ -11,6 +11,7 @@ import { initGoogleAuth } from './app-utils/google-auth';
 initGoogleAuth(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 const app = createApp(App)
 app.use(VueSmoothScroll)
+app.use(VueDragSelect)
 
 Sentry.init({
     app,
