@@ -43,13 +43,14 @@
         </UiLayout>
         
       </RequireRole>
+
+      <!-- start sort dropdown -->
       <UiLayout title="Sort items">
         <UiMenu>
           <template #trigger>
             <UiLayout :fixedHeight="`${headerHeight}px`">
               <ArrowsUpDownIcon class="h-full w-7  cursor-pointer" />
             </UiLayout>
-            
           </template>
           <div v-if="queryOptions?.sortBy && selectedSortField">
             <UiMenuLabel>Order</UiMenuLabel>
@@ -92,7 +93,18 @@
             </UiMenuItem>
           </div>
         </UiMenu>
-        
+      </UiLayout>
+      <!-- end sort dropdown -->
+
+      <UiLayout
+        :title="multiSelectCheckBoxTitle"
+        v-if="selectedItemIds.size > 0"
+      >
+        <UiCheckbox
+          class="bg-white data-[state=checked]:bg-white data-[state=checked]:text-slate-900"
+          :checked="multiSelectCheckBoxState"
+          @update:checked="handleMultiSelectCheckboxStateChange($event)"
+        />
       </UiLayout>
       
     </UiLayout>
@@ -130,9 +142,14 @@
         >
           <ProjectItemCard
             :item="item"
+            :selected="isItemSelected(item._id)"
+            :showSelectCheckbox="selectedItemIds.size > 0"
+            :totalSelectedItems="selectedItemIds.size"
             @update="handleItemUpdate($event)"
-            @delete="handleItemDelete($event)"
-            @move="handleItemMove($event)"
+            @delete="handleDeleteRequested($event)"
+            @move="handleMoveRequested($event)"
+            @toggleSelect="handleToggleSelect($event)"
+            @toggleInMultiSelect="handleToggleInMultiSelect($event)"
           />
         </div>
       </div>
@@ -145,19 +162,35 @@
     :projectId="project._id"
     :parentId="currentFolder?._id"
   />
+  <DeleteProjectItemsDialog
+    v-if="project"
+    ref="deleteItemsDialog"
+    :projectId="project._id"
+    :items="selectedItems"
+    @delete="handleItemsDeleted($event)"
+  />
+  <MoveProjectItemsDialog
+    v-if="project"
+    ref="moveItemsDialog"
+    :projectId="project._id"
+    :items="selectedItems"
+    @move="handleItemsMoved($event)"
+  />
 </template>
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize } from '@/core';
 import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
 import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
+import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue';
+import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
-import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton } from "@/components/ui";
+import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox } from "@/components/ui";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 import { injectFolderPathSetter } from "./project-utils";
 
@@ -171,6 +204,8 @@ const contentHeight = getRemainingContentHeightCss(
 const updateCurrentFolderPath = injectFolderPathSetter();
 const route = useRoute();
 const createFolderDialog = ref<typeof CreateFolderDialog>();
+const deleteItemsDialog = ref<typeof DeleteProjectItemsDialog>();
+const moveItemsDialog = ref<typeof MoveProjectItemsDialog>();
 const loading = ref(true);
 const searchTerm = ref('');
 
@@ -192,6 +227,19 @@ const { isOverDropZone } = useDropZone(dropzone);
 
 const items = ref<ProjectItem[]>([]);
 const currentFolder = ref<FolderWithPath|undefined>();
+const selectedItemIds = ref<Set<string>>(new Set());
+const selectedItems = computed(() => items.value.filter(item => isItemSelected(item._id)));
+const multiSelectCheckBoxState = computed<'indeterminate'|boolean>(() => {
+  const state = items.value.length === 0 ? false
+  : selectedItemIds.value.size === items.value.length ? true
+  : selectedItemIds.value.size === 0 ? false
+  : 'indeterminate';
+  return state;
+});
+const multiSelectCheckBoxTitle = computed(() => {
+  return selectedItemIds.value.size === items.value.length ?
+    'Click to clear selection' : 'Click to select all';
+});
 
 const {
   media: newMedia,
@@ -199,7 +247,6 @@ const {
   startTransfer
 } = useFileTransfer();
 
-// TODO handle folders
 watch([newMedia], () => {
   newMedia.value?.filter(m => {
     if (currentFolder.value) {
@@ -283,6 +330,67 @@ onFilesSelected(async (files, directories) => {
   });
 });
 
+function isItemSelected(itemId: string) {
+  return selectedItemIds.value.has(itemId);
+}
+
+/**
+ * Selects the single item, unselecting
+ * any currently selected items.
+ * @param itemId
+ */
+function selectItem(itemId: string) {
+  clearSelectedItems();
+  selectedItemIds.value.add(itemId);
+}
+
+function toggleItemSelection(itemId: string) {
+  if (isItemSelected(itemId)) {
+    unselectItem(itemId);
+  } else {
+    selectItem(itemId);
+  }
+}
+
+function toggleItemInMultiSelect(itemId: string) {
+  if (isItemSelected(itemId)) {
+    unselectItem(itemId);
+  } else {
+    addToSelection(itemId);
+  }
+}
+
+/**
+ * Selects the specified item without
+ * unselecting other currently selected item
+ * @param itemId 
+ */
+function addToSelection(itemId: string) {
+  selectedItemIds.value.add(itemId);
+}
+
+function unselectItem(itemId: string) {
+  selectedItemIds.value.delete(itemId);
+}
+
+function clearSelectedItems() {
+  selectedItemIds.value.clear();
+}
+
+function selectAllItems() {
+  for (let item of items.value) {
+    selectedItemIds.value.add(item._id);
+  }
+}
+
+function handleToggleSelect(args: { type: ProjectItemType, itemId: string }) {
+  toggleItemSelection(args.itemId);
+}
+
+function handleToggleInMultiSelect(args: { type: ProjectItemType, itemId: string }) {
+  toggleItemInMultiSelect(args.itemId);
+}
+
 function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
   // TODO: handle folder update
   const index = items.value.findIndex(m => m._id === update.item._id && m.type === update.type);
@@ -297,14 +405,42 @@ function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'me
   });
 }
 
-function handleItemDelete(args: { type: ProjectItemType, itemId: string }) {
-  const index = items.value.findIndex(m => m._id === args.itemId);
-  if (index < 0) return;
+function handleDeleteRequested(args: { type: ProjectItemType, itemId: string }) {
+  if (!isItemSelected(args.itemId)) {
+    addToSelection(args.itemId);
+  }
 
-  items.value.splice(index, 1);
+  nextTick(() => deleteItemsDialog.value?.open());
 }
 
-function handleItemMove(item: ProjectItem) {
+function handleItemsDeleted(
+  { requestedItems }:
+  { deletedCount: number, requestedItems: Array<{ _id: string, type: ProjectItemType }>}
+) {
+  for (let deletedItem of requestedItems) {
+    const index = items.value.findIndex(item => item._id === deletedItem._id && item.type === deletedItem.type);
+    if (index === -1) return;
+
+    unselectItem(deletedItem._id);
+    items.value.splice(index, 1);
+  }
+}
+
+function handleMoveRequested(args: { type: ProjectItemType, itemId: string }) {
+  if (!isItemSelected(args.itemId)) {
+    addToSelection(args.itemId);
+  }
+
+  nextTick(() => moveItemsDialog.value?.open());
+}
+
+function handleItemsMoved(items: ProjectItem[]) {
+  for (let item of items) {
+    handleItemMoved(item);
+  }
+}
+
+function handleItemMoved(item: ProjectItem) {
   const index = items.value.findIndex(i => i._id === item._id);
   const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
   
@@ -325,6 +461,7 @@ function handleItemMove(item: ProjectItem) {
     // is moved to a different folder
     // remove the item from the list
     items.value.splice(index, 1);
+    unselectItem(item._id);
   }
   // last possibility: item does not exist in the current list
   // and is not being moved to this folder. Ignore it.
@@ -350,6 +487,14 @@ function handleCreatedFolder(newFolder: Folder) {
 
 function createFolder() {
   createFolderDialog.value?.open();
+}
+
+function handleMultiSelectCheckboxStateChange(checked: boolean) {
+  if (!checked) {
+    clearSelectedItems();
+  } else {
+    selectAllItems();
+  }
 }
 
 async function loadData(to: RouteLocationNormalizedLoaded) {

@@ -254,12 +254,6 @@ export const UpdateFolderArgs = z.object({
 
 export type UpdateFolderArgs = z.infer<typeof UpdateFolderArgs>;
 
-export const DeleteFolderArgs = z.object({
-    projectId: z.string().min(1),
-    id: z.string().min(1)
-});
-
-export type DeleteFolderArgs = z.infer<typeof DeleteFolderArgs>;
 
 export const FinalizeTransferArgs = z.object({
     transferId: z.string().min(1),
@@ -272,18 +266,20 @@ export type FinalizeTransferArgs = z.infer<typeof FinalizeTransferArgs>;
 export const MoveMediaToFolderArgs = z.object({
     projectId: z.string().min(1),
     targetFolderId: z.union([z.string().min(1), z.null()]),
-    mediaId: z.string().min(1),
+    mediaIds: z.array(z.string().min(1)).min(1),
 });
 
 export type MoveMediaToFolderArgs = z.infer<typeof MoveMediaToFolderArgs>;
 
-export const MoveFolderToFolderArgs = z.object({
+export const MoveFoldersToFolderArgs = z.object({
     projectId: z.string().min(1),
     targetFolderId: z.union([z.string().min(1), z.null()]),
-    folderId: z.string().min(1),
+    folderIds: z.array(
+        z.string().min(1)
+    ).min(1)
 });
 
-export type MoveFolderToFolderArgs = z.infer<typeof MoveFolderToFolderArgs>;
+export type MoveFoldersToFolderArgs = z.infer<typeof MoveFoldersToFolderArgs>;
 
 export const SearchProjectFolderArgs = z.object({
     projectId: z.string().min(1),
@@ -291,3 +287,28 @@ export const SearchProjectFolderArgs = z.object({
 });
 
 export type SearchProjectFolderArgs = z.infer<typeof SearchProjectFolderArgs>;
+
+export const MoveProjectItemsToFolderArgs = z.object({
+    projectId: z.string().min(1),
+    items: z.array(
+        z.object({
+            id: z.string().min(1),
+            type: z.enum(['folder', 'media'])
+        })
+    ).min(1),
+    targetFolderId: z.union([z.string().min(1), z.null()]),
+});
+
+export type MoveProjectItemsToFolderArgs = z.infer<typeof MoveProjectItemsToFolderArgs>;
+
+export const DeleteProjectItemsArgs = z.object({
+    projectId: z.string().min(1),
+    items: z.array(
+        z.object({
+            id: z.string().min(1),
+            type: z.enum(['folder', 'media'])
+        })
+    ).min(1)
+});
+
+export type DeleteProjectItemsArgs = z.infer<typeof DeleteProjectItemsArgs>;

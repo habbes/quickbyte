@@ -2,7 +2,7 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
 import { EmailHandler, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, MoveMediaToFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs } from '@quickbyte/common';
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -195,24 +195,6 @@ export class ProjectService {
         }
     }
 
-    async deleteMedia(projectId: string, mediaId: string): Promise<void> {
-        try {
-            const project = await this.getByIdInternal(projectId);
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner','admin', 'editor']);
-            // The following check ensures that someone may not delete a media they created when
-            // they are not longer part of a project
-            const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
-            // admin, owner or uploader can delete media
-            // we'll do the actual access verification in the called method
-            const isAdminOrOwner = role === 'admin' || role === 'owner';
-
-            await this.config.media.deleteMedia(projectId, mediaId, isAdminOrOwner);
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
     async createFolder(projectId: string, args: CreateFolderArgs): Promise<Folder> {
         try {
             const project = await this.getByIdInternal(projectId);
@@ -239,32 +221,46 @@ export class ProjectService {
         }
     }
 
-    async deleteFolder(projectId: string, folderId: string): Promise<void> {
-        try {
-            const project = await this.getByIdInternal(projectId);
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin']);
-            // TODO: we should allow editor to delete a folder they created if it's empty
-
-            await this.config.folders.deleteFolder(projectId, folderId);
-            this.config.eventBus.send({
-                type: 'folderDeleted',
-                data: {
-                    projectId,
-                    folderId
-                }
-            });
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
-    async moveMediaToFolder(args: MoveMediaToFolderArgs): Promise<Media> {
+    async moveProjectItemsToFolder(args: MoveProjectItemsToFolderArgs): Promise<ProjectItem[]> {
         try {
             const project = await this.getByIdInternal(args.projectId);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
 
-            const result = await this.config.media.moveMediaToFolder(args);
+            const folderIds = args.items.filter(item => item.type === 'folder').map(item => item.id);
+            const mediaIds = args.items.filter(item => item.type === 'media').map(item => item.id);
+
+            const [folders, media] = await Promise.all([
+                this.config.folders.moveFolders({
+                    projectId: args.projectId,
+                    folderIds,
+                    targetFolderId: args.targetFolderId
+                }),
+                this.config.media.moveMediaToFolder({
+                    projectId: args.projectId,
+                    mediaIds,
+                    targetFolderId: args.targetFolderId
+                })
+            ]);
+
+            const result = [
+                ...folders.map<ProjectItem>(f => ({
+                    _id: f._id,
+                    name: f.name,
+                    item: f,
+                    type: 'folder',
+                    _createdAt: f._createdAt,
+                    _updatedAt: f._updatedAt
+                })),
+                ...media.map<ProjectItem>(m => ({
+                    _id: m._id,
+                    name: m.name,
+                    item: m,
+                    type: 'media',
+                    _createdAt: m._createdAt,
+                    _updatedAt: m._updatedAt
+                }))
+            ];
+
             return result;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -272,12 +268,47 @@ export class ProjectService {
         }
     }
 
-    async moveFolderToFolder(args: MoveFolderToFolderArgs): Promise<Folder> {
+    async deleteProjectItems(args: DeleteProjectItemsArgs): Promise<DeletionCountResult> {
         try {
             const project = await this.getByIdInternal(args.projectId);
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+            const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+            // admin or owner can delete any media or folder
+            // editor can delete only media they created, but cannot delete folders
+            // (because folders might contain media created by others)
+            // for editors, we'll do the actual access verification in the called `deleteMultipleMedia` method
+            const isAdminOrOwner = role === 'admin' || role === 'owner';
 
-            const result = await this.config.folders.moveFolder(args);
+            const items = args.items;
+            const folderIds = items.filter(i => i.type === 'folder').map(i => i.id);
+            const mediaIds = items.filter(i => i.type === 'media').map(i => i.id);
+
+            const [folderResult, mediaResult] = await Promise.all([
+                isAdminOrOwner?
+                    this.config.folders.deleteFolders(args.projectId, folderIds)
+                    : Promise.resolve({ deletedCount: 0 }),
+                this.config.media.deleteMedia(args.projectId, mediaIds, isAdminOrOwner)
+            ]);
+
+            const result = {
+                deletedCount: folderResult.deletedCount + mediaResult.deletedCount
+            };
+
+            if (folderResult.deletedCount > 0) {
+                // we're not sure of all input folders were
+                // actually deleted. It's the responsibility
+                // of the event handler to check the status
+                // of the provided folder id before processing
+                for (let folderId of folderIds) {
+                    this.config.eventBus.send({
+                        type: 'folderDeleted',
+                        data: {
+                            folderId,
+                            projectId: args.projectId
+                        }
+                    })
+                }
+            }
+
             return result;
         } catch (e: any) {
             rethrowIfAppError(e);

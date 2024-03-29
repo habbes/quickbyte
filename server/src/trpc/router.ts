@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs, CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs, CreateProjectMediaUploadArgs, CreateShareableTransferArgs, FinalizeTransferArgs, DeleteFolderArgs, SearchProjectFolderArgs, MoveFolderToFolderArgs, MoveMediaToFolderArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs, CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs, CreateProjectMediaUploadArgs, CreateShareableTransferArgs, FinalizeTransferArgs, SearchProjectFolderArgs, DeleteProjectItemsArgs, MoveProjectItemsToFolderArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -82,11 +82,6 @@ export const appRouter = router({
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateMedia(input.projectId, input)),
     
-    deleteMedia: protectedProcedure
-    .input(DeleteMediaArgs)
-    .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).deleteMedia(input.projectId, input.id)),
-    
     createMediaComment: protectedProcedure
     .input(CreateMediaCommentArgs)
     .mutation(({ input, ctx }) =>
@@ -112,25 +107,20 @@ export const appRouter = router({
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateFolder(input.projectId, input)),
     
-    deleteFolder: protectedProcedure
-    .input(DeleteFolderArgs)
-    .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).deleteFolder(input.projectId, input.id)),
-    
     searchProjectFolders: protectedProcedure
     .input(SearchProjectFolderArgs)
     .query(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).searchProjectFolders(input)),
     
-    moveFolderToFolder: protectedProcedure
-    .input(MoveFolderToFolderArgs)
+    moveProjectItemsToFolder: protectedProcedure
+    .input(MoveProjectItemsToFolderArgs)
     .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).moveFolderToFolder(input)),
+        ctx.app.accounts.projects(ctx.auth).moveProjectItemsToFolder(input)),
     
-    moveMediaToFolder: protectedProcedure
-    .input(MoveMediaToFolderArgs)
+    deleteProjectItems: protectedProcedure
+    .input(DeleteProjectItemsArgs)
     .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).moveMediaToFolder(input)),
+        ctx.app.accounts.projects(ctx.auth).deleteProjectItems(input)),
     
     createTransfer: protectedProcedure
     .input(CreateShareableTransferArgs)

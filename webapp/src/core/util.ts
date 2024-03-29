@@ -10,7 +10,7 @@ const BYTES_PER_TB = 1024 * BYTES_PER_GB;
 /**
  * Utility function that does nothing
  */
-export function noop() {};
+export function noop() { };
 
 export function humanizeSize(bytes: number): string {
     if (bytes < BYTES_PER_KB) {
@@ -43,13 +43,13 @@ export function humanizeSize(bytes: number): string {
 export function formatTimestampDuration(timestamp: number): string {
     // Convert milliseconds to seconds
     const seconds = Math.floor(timestamp);
-  
+
     // Calculate minutes and remaining seconds
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-  
+
     if (minutes < 60) {
-    // Format the duration as MM:SS
+        // Format the duration as MM:SS
         return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
     }
 
@@ -256,4 +256,72 @@ interface RegionPingResult {
 interface RegionInfo {
     id: string;
     pingUrl: string;
+}
+
+
+type ClickHandler = (e: MouseEvent) => unknown;
+export function splitClickAndDoubleClickHandler(onClick: ClickHandler, onDblClick: ClickHandler) {
+    let clickCount = 0;
+    let timeout: any = undefined;
+    // the problem with this approach is that if the delay is
+    // shorter than the user can register two clicks, we can't properly
+    // detect double-clicks
+    // if the delay is too long, the user notices a lag when single-clicking.
+    // Find the right balance is not easy, and may not work for all users
+    // Consider an alternative approach:
+    // - handle single click immediately but ignore the next click that occurs within a delay
+    // - register @click and @dblClick event handlers separately
+    // - this can work for scenarios where it's okay for both a click and double click to be handled
+    // at the "same time", but not okay to process the click event twice during a double click.
+    const MAX_DBL_CLICK_DELAY = 200;
+
+    return (event: MouseEvent) => {
+        // we want to handle click and double-click events
+        // separately.
+        // If add both click and dblclick event listeners,
+        // each click of the double click event will also trigger
+        // the click handler, so we'll have 3 triggers.
+        // To avoid that, we listen to click events and wait
+        // a delay to see if another click happens
+        clickCount++;
+        let timer: any = undefined;
+        if (clickCount === 1) {
+            // first click, wait to see if another
+            // click will occur shortly
+            timer = setTimeout(() => {
+                // no other click occurred, consider a single-click event
+                clickCount = 0;
+                onClick(event);
+                console.log('single click');
+            }, MAX_DBL_CLICK_DELAY);
+        } else if (clickCount === 2) {
+            // another click occurred before the deadline
+            // handle as double click and reset
+            console.log('double click');
+            clearTimeout(timeout);
+            clickCount = 0;
+            onDblClick(event);
+        }
+    }
+}
+
+export function throttle<T extends any[]>(fn: (...args: T) => unknown, delay: number) {
+    let lastCall = 0;
+    return (...args: Parameters<typeof fn>) => {
+        const now = Date.now();
+        if (now - lastCall >= delay) {
+            fn(...args);
+            lastCall = now;
+        }
+    }
+}
+
+export function debounce<T extends any[]>(fn: (...args: T) => unknown, delay: number) {
+    let timeoutId: any;
+    return function (...args: Parameters<typeof fn>) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            fn(...args);
+        }, delay);
+    };
 }

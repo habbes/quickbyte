@@ -461,3 +461,7 @@ export interface UploadMediaResult {
     folders?: Folder[],
     transfer: CreateTransferResult
 }
+
+export interface DeletionCountResult {
+    deletedCount: number;
+}
