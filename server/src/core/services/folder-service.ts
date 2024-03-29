@@ -1,4 +1,4 @@
-import { createFilterForDeleteableResource, Database } from "../db.js";
+import { createFilterForDeleteableResource, Database, deleteNowBy } from "../db.js";
 import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs, escapeRegExp } from "@quickbyte/common";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
@@ -315,12 +315,7 @@ export class FolderService {
                     _id: folderId
                 }),
                 {
-                    $set: {
-                        // TODO: this should have ben deletedAt
-                        deleteAt: new Date(),
-                        deleted: true,
-                        deletedBy: { type: 'user', _id: this.authContext.user._id }
-                    }
+                    $set: deleteNowBy(this.authContext.user._id)
                 }
             );
 
@@ -333,6 +328,8 @@ export class FolderService {
             throw createAppError(e);
         }
     }
+
+
 
     private async createFolderNodes(args: CreateFolderTreeArgs, folderTree: FolderNode[], resultMap: Map<string, Folder>): Promise<void> {
         try {
