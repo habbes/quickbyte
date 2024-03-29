@@ -10,7 +10,13 @@
             v-if="showSelectCheckbox"
             class="absolute left-5 top-5 z-10"
           >
-            <input :checked="selected" @change="handleCheckboxChange()" type="checkbox" @click.stop/>
+            <UiCheckbox
+              :checked="selected"
+              class="bg-white"
+              @update:checked="handleCheckboxChange()"
+              @click.stop
+            />
+            <!-- <input :checked="selected" @change="handleCheckboxChange()" type="checkbox" @click.stop/> -->
           </div>
           <slot></slot>
         </div>
@@ -67,7 +73,7 @@
 </template>
 <script lang="ts" setup>
 import { EllipsisVerticalIcon, PencilIcon, TrashIcon, ArrowRightCircleIcon } from '@heroicons/vue/24/solid';
-import { UiMenu, UiMenuItem, UiLayout } from '@/components/ui';
+import { UiMenu, UiMenuItem, UiLayout, UiCheckbox } from '@/components/ui';
 import { useRouter } from 'vue-router';
 import type { RouterLinkProps } from 'vue-router';
 import { throttle } from '@/core';
