@@ -254,12 +254,6 @@ export const UpdateFolderArgs = z.object({
 
 export type UpdateFolderArgs = z.infer<typeof UpdateFolderArgs>;
 
-export const DeleteFolderArgs = z.object({
-    projectId: z.string().min(1),
-    id: z.string().min(1)
-});
-
-export type DeleteFolderArgs = z.infer<typeof DeleteFolderArgs>;
 
 export const FinalizeTransferArgs = z.object({
     transferId: z.string().min(1),
