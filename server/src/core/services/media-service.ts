@@ -190,7 +190,7 @@ export class MediaService {
         }
     }
 
-    async moveMediaToFolder(args: MoveMediaToFolderArgs): Promise<Media> {
+    async moveMediaToFolder(args: MoveMediaToFolderArgs): Promise<Media[]> {
         const session = this.db.startSession();
         try {
             session.startTransaction();
@@ -214,9 +214,9 @@ export class MediaService {
                 }
             }
 
-            const result = await this.db.media().findOneAndUpdate(
+            const result = await this.db.media().updateMany(
                 createFilterForDeleteableResource({
-                    _id: args.mediaId,
+                    _id: { $in: args.mediaIds },
                     projectId: args.projectId
                 }),
                 {
@@ -225,17 +225,19 @@ export class MediaService {
                         ...updateNowBy(this.authContext.user._id)
                     }
                 }, {
-                    returnDocument: 'after',
                     session
                 }
             );
 
-            if (!result.value) {
-                throw createNotFoundError('media');
-            }
+            const updatedMedia = await this.db.media().find(
+                createFilterForDeleteableResource({
+                    _id: { $in: args.mediaIds },
+                    projectId: args.projectId
+                })
+            ).toArray();
 
             await session.commitTransaction();
-            return result.value;
+            return updatedMedia;
         } catch (e: any) {
             await session.abortTransaction();
             rethrowIfAppError(e);
@@ -246,6 +248,13 @@ export class MediaService {
         }
     }
 
+    /**
+     * 
+     * @param projectId 
+     * @param id 
+     * @param isOwnerOrAdmin 
+     * @deprecated use `deleteMultipleMedia` instead
+     */
     async deleteMedia(projectId: string, id: string, isOwnerOrAdmin: boolean): Promise<void> {
         try {
             // if the user is a project owner or admin, then allow deleting
@@ -272,12 +281,16 @@ export class MediaService {
         }
     }
 
-    async deleteMultipleMedia(projectId: string, mediaIds: string[]): Promise<DeletionCountResult> {
+    async deleteMultipleMedia(projectId: string, mediaIds: string[], isOwnerOrAdmin: boolean): Promise<DeletionCountResult> {
         try {
+            // if the user is a project owner or admin, then allow deleting
+            // otherwise, allow deleting only if the user is the author
+            const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
             const result = await this.collection.updateMany(
                 createFilterForDeleteableResource({
                     projectId,
-                    _id: { $in: mediaIds }
+                    _id: { $in: mediaIds },
+                    ...userAccessFilter
                 }), {
                     $set: deleteNowBy(this.authContext.user._id)
                 }

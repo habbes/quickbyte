@@ -1,5 +1,5 @@
 import { createFilterForDeleteableResource, Database, deleteNowBy } from "../db.js";
-import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFolderToFolderArgs, SearchProjectFolderArgs, escapeRegExp, DeletionCountResult } from "@quickbyte/common";
+import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPathEntry, FolderWithPath, UpdateFolderArgs, MoveFoldersToFolderArgs, SearchProjectFolderArgs, escapeRegExp, DeletionCountResult } from "@quickbyte/common";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
@@ -220,7 +220,7 @@ export class FolderService {
         }
     }
 
-    async moveFolder(args: MoveFolderToFolderArgs): Promise<Folder> {
+    async moveFolders(args: MoveFoldersToFolderArgs): Promise<Folder[]> {
         const session = this.db.startSession();
         try {
             session.startTransaction();
@@ -242,9 +242,9 @@ export class FolderService {
                 }
             }
 
-            const result = await this.db.folders().findOneAndUpdate(
+            const result = await this.db.folders().updateMany(
                 createFilterForDeleteableResource({
-                    _id: args.folderId,
+                    _id: { $in: args.folderIds },
                     projectId: args.projectId
                 }), {
                     $set: {
@@ -253,17 +253,19 @@ export class FolderService {
                         _updatedBy: { type: 'user', _id: this.authContext.user._id }
                     }
                 }, {
-                    session,
-                    returnDocument: 'after'
+                    session
                 }
             );
 
-            if (!result.value) {
-                throw createResourceNotFoundError("The specified folder does not exist.");
-            }
+            const updatedFolders = await this.db.folders().find(
+                createFilterForDeleteableResource({
+                    _id: { $in: args.folderIds },
+                    projectId: args.projectId
+                })
+            ).toArray();
 
             await session.commitTransaction();
-            return result.value;
+            return updatedFolders;
         } catch (e: any) {
             await session.abortTransaction();
             rethrowIfAppError(e);
@@ -306,6 +308,12 @@ export class FolderService {
         }
     }
 
+    /**
+     * 
+     * @param projectId 
+     * @param folderId
+     * @deprecated use `deleteMultipleFolders` instead
+     */
     async deleteFolder(projectId: string, folderId: string): Promise<void> {
         try {
             // permissions should be checked by the called (project-service)

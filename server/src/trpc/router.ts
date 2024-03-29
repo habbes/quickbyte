@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs, CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs, CreateProjectMediaUploadArgs, CreateShareableTransferArgs, FinalizeTransferArgs, DeleteFolderArgs, SearchProjectFolderArgs, MoveFolderToFolderArgs, MoveMediaToFolderArgs, DeleteProjectItemsArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs, CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs, CreateProjectMediaUploadArgs, CreateShareableTransferArgs, FinalizeTransferArgs, DeleteFolderArgs, SearchProjectFolderArgs, MoveFoldersToFolderArgs, MoveMediaToFolderArgs, DeleteProjectItemsArgs, MoveProjectItemsToFolderArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -123,14 +123,19 @@ export const appRouter = router({
         ctx.app.accounts.projects(ctx.auth).searchProjectFolders(input)),
     
     moveFolderToFolder: protectedProcedure
-    .input(MoveFolderToFolderArgs)
+    .input(MoveFoldersToFolderArgs)
     .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).moveFolderToFolder(input)),
+        ctx.app.accounts.projects(ctx.auth).moveFoldersToFolder(input)),
     
     moveMediaToFolder: protectedProcedure
     .input(MoveMediaToFolderArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).moveMediaToFolder(input)),
+    
+    moveProjectItemsToFolder: protectedProcedure
+    .input(MoveProjectItemsToFolderArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).moveProjectItemsToFolder(input)),
     
     deleteProjectItems: protectedProcedure
     .input(DeleteProjectItemsArgs)
