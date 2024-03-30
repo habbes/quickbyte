@@ -1,6 +1,6 @@
 import { Axios } from 'axios';
-import { FileOptimizationStatus, FileOptimizeResult, getFileName, TransferFile } from "@quickbyte/common";
-import { PlaybackOptimizer } from "./types.js";
+import { PlaybackPackagingStatus, PlaybackPackagingResult, getFileName, TransferFile } from "@quickbyte/common";
+import { PlaybackPackager } from "./types.js";
 import { StorageHandlerProvider, getDownloadUrl } from "../storage/index.js";
 
 interface CloudflareConfig {
@@ -11,7 +11,7 @@ interface CloudflareConfig {
 
 // see: https://developers.cloudflare.com/stream/get-started/
 
-export class CloudflarePlaybackHandler implements PlaybackOptimizer {
+export class CloudflarePlaybackPackager implements PlaybackPackager {
     private client: Axios;
 
     constructor(private config: CloudflareConfig) {
@@ -24,7 +24,11 @@ export class CloudflarePlaybackHandler implements PlaybackOptimizer {
         });;
     }
 
-    async optimizeFile(file: TransferFile): Promise<FileOptimizeResult> {
+    canPackage(file: TransferFile): boolean {
+        throw new Error('Method not implemented.');
+    }
+
+    async optimizeFile(file: TransferFile): Promise<PlaybackPackagingResult> {
         console.log(`Cloudflare creating encoding job for file '${file._id}`);
         const storageHandler = this.config.storageProviders.getHandler(file.provider);
         const INTERVAL = 2 * 24 * 60 * 60 * 1000; // 2 days
@@ -47,8 +51,8 @@ export class CloudflarePlaybackHandler implements PlaybackOptimizer {
         return result;
     }
 
-    async getOptimizationMetadata(file: TransferFile): Promise<FileOptimizeResult> {
-        const response = await this.client.get<CloudflareStreamUploadResult>(`stream/${file.playbackOptimizationId}`);
+    async getOptimizationMetadata(file: TransferFile): Promise<PlaybackPackagingResult> {
+        const response = await this.client.get<CloudflareStreamUploadResult>(`stream/${file.playbackPackagingId}`);
         const data = response.data;
 
         const result = convertToQuickbyteResult(data);
@@ -61,8 +65,8 @@ export class CloudflarePlaybackHandler implements PlaybackOptimizer {
     }
 }
 
-function convertToQuickbyteResult(data: CloudflareStreamUploadResult): FileOptimizeResult {
-    const result: FileOptimizeResult = {
+function convertToQuickbyteResult(data: CloudflareStreamUploadResult): PlaybackPackagingResult {
+    const result: PlaybackPackagingResult = {
         providerId: data.result.uid,
         status: convertToQuickbyteStatus(data.result.status.state),
         metatada: data
@@ -79,7 +83,7 @@ function convertToQuickbyteResult(data: CloudflareStreamUploadResult): FileOptim
     return result;
 }
 
-function convertToQuickbyteStatus(sourceStatus: EncodingState): FileOptimizationStatus {
+function convertToQuickbyteStatus(sourceStatus: EncodingState): PlaybackPackagingStatus {
     if (sourceStatus === 'error') {
         return 'error'
     }

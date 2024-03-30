@@ -173,12 +173,12 @@ export interface TransferFile extends PersistedModel {
     // TODO: this should be required, but was introduced later
     // we should update all existing transfer files with an account id
     accountId?: string;
-    playbackOptimizationProvider?: string;
-    playbackOptimizationId?: string;
-    playbackOptimizationStatus?: FileOptimizationStatus;
-    playbackOptimizationError?: string;
-    playbackOptimizationHandler?: string;
-    playbackOptimizationMetadata?: Record<string, any>;
+    playbackPackagingProvider?: string;
+    playbackPackagingId?: string;
+    playbackPackagingStatus?: PlaybackPackagingStatus;
+    playbackPackagingError?: string;
+    playbackPackagingErrorReason?: PlaybackPackagingErrorReason;
+    playbackPackagingMetadata?: Record<string, any>;
 }
 
 export interface Upload extends PersistedModel {
@@ -196,21 +196,16 @@ export interface DownloadRequest extends PersistedModel {
     filesRequested?: string[];
 }
 
-export interface StartOptimizeFileResult {
-    status: FileOptimizationStatus;
-    providerId?: string;
-}
-
-export interface FileOptimizeResult {
+export interface PlaybackPackagingResult {
     providerId: string;
-    status: FileOptimizationStatus;
-    errorReason?: FileOptimizeErrorReason;
+    status: PlaybackPackagingStatus;
+    errorReason?: PlaybackPackagingErrorReason;
     error?: string;
     metatada: Record<any, any>;
 }
 
-export type FileOptimizationStatus = 'pending'|'progress'|'error'|'success';
-export type FileOptimizeErrorReason = 'notMedia'|'serviceError';
+export type PlaybackPackagingStatus = 'pending'|'progress'|'error'|'success';
+export type PlaybackPackagingErrorReason = 'notMedia'|'serviceError';
 
 
 export interface Transaction extends PersistedModel {
