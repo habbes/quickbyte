@@ -173,6 +173,12 @@ export interface TransferFile extends PersistedModel {
     // TODO: this should be required, but was introduced later
     // we should update all existing transfer files with an account id
     accountId?: string;
+    playbackOptimizationProvider?: string;
+    playbackOptimizationId?: string;
+    playbackOptimizationStatus?: FileOptimizationStatus;
+    playbackOptimizationError?: string;
+    playbackOptimizationHandler?: string;
+    playbackOptimizationMetadata?: Record<string, any>;
 }
 
 export interface Upload extends PersistedModel {
@@ -189,6 +195,22 @@ export interface DownloadRequest extends PersistedModel {
     downloadAllZip?: string;
     filesRequested?: string[];
 }
+
+export interface StartOptimizeFileResult {
+    status: FileOptimizationStatus;
+    providerId?: string;
+}
+
+export interface FileOptimizeResult {
+    providerId: string;
+    status: FileOptimizationStatus;
+    errorReason?: FileOptimizeErrorReason;
+    error?: string;
+    metatada: Record<any, any>;
+}
+
+export type FileOptimizationStatus = 'pending'|'progress'|'error'|'success';
+export type FileOptimizeErrorReason = 'notMedia'|'serviceError';
 
 
 export interface Transaction extends PersistedModel {
@@ -464,4 +486,13 @@ export interface UploadMediaResult {
 
 export interface DeletionCountResult {
     deletedCount: number;
+}
+
+export function getBlobName(file: TransferFile) {
+    return `${file.transferId}/${file._id}`;
+}
+
+export function getFileName(file: TransferFile) {
+    const fileName = file.name.split('/').at(-1) || file._id;
+    return fileName;
 }

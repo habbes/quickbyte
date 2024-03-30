@@ -1,4 +1,5 @@
 export * from './storage/index.js';
+export * from './playback-optimization/index.js';
 export * from './account-service.js';
 export * from './auth-service.js';
 export * from './transfer-service.js';
