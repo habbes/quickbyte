@@ -1,18 +1,25 @@
 import { Axios } from 'axios';
 import { PlaybackPackagingStatus, PlaybackPackagingResult, getFileName, TransferFile } from "@quickbyte/common";
-import { PlaybackPackager } from "./types.js";
+import { PackagingEventHandlingResult, PlaybackPackager } from "./types.js";
 import { StorageHandlerProvider, getDownloadUrl } from "../storage/index.js";
+import { createAppError } from '../../error';
+import { IAlertService } from "../admin-alerts-service.js";
+import { createHmac } from "node:crypto";
+import { Request } from "express";
 
 interface CloudflareConfig {
     accountId: string;
     apiToken: string;
-    storageProviders: StorageHandlerProvider
+    storageProviders: StorageHandlerProvider;
+    webhookUrl: string;
+    alerts: IAlertService;
 }
 
 // see: https://developers.cloudflare.com/stream/get-started/
 
 export class CloudflarePlaybackPackager implements PlaybackPackager {
     private client: Axios;
+    private webhookSecret: string;
 
     constructor(private config: CloudflareConfig) {
         this.client = new Axios({
@@ -24,11 +31,30 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
         });;
     }
 
+    async initialize() {
+        // Cloudflare does not seem provide a means to create webhooks in the dashboard
+        // Further, it only allows creating one webhook per account.
+        // Since I may share accounts between dev, preview and staging (to save costs), it's easier
+        // to register a webhook dynamically. But that also means only one
+        // environment can receive webhooks at a time
+        // see: https://developers.cloudflare.com/stream/manage-video-library/using-webhooks/
+        const response = await this.client.put<CreateWebhookResult>('stream/webhook', {
+            notificationUrl: this.config.webhookUrl
+        });
+
+        const webhook = response.data;
+        if (!webhook.success) {
+            throw createAppError(`Failed to register Cloudflare webhook: ${JSON.stringify(webhook)}`);
+        }
+
+        this.webhookSecret = webhook.result.secret;
+    }
+
     canPackage(file: TransferFile): boolean {
         throw new Error('Method not implemented.');
     }
 
-    async optimizeFile(file: TransferFile): Promise<PlaybackPackagingResult> {
+    async startPackagingFile(file: TransferFile): Promise<PlaybackPackagingResult> {
         console.log(`Cloudflare creating encoding job for file '${file._id}`);
         const storageHandler = this.config.storageProviders.getHandler(file.provider);
         const INTERVAL = 2 * 24 * 60 * 60 * 1000; // 2 days
@@ -51,7 +77,7 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
         return result;
     }
 
-    async getOptimizationMetadata(file: TransferFile): Promise<PlaybackPackagingResult> {
+    async getPackagingInfo(file: TransferFile): Promise<PlaybackPackagingResult> {
         const response = await this.client.get<CloudflareStreamUploadResult>(`stream/${file.playbackPackagingId}`);
         const data = response.data;
 
@@ -60,8 +86,72 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
         return result;
     }
 
-    handleServiceEvent(event: unknown): Promise<void> {
-        throw new Error("Method not implemented.");
+    async handleServiceEvent(request: Request): Promise<PackagingEventHandlingResult> {
+        console.log('Processing Cloudflare webhook...');
+        if (!this.isWebhookValid(request)) {
+            const body = request.body;
+            await this.config.alerts.sendNotification(
+                'Cloudflare webhook triggered with invalid signature.',
+                `<p>Cloudflare webhook triggered with invalid signature</p><p>${JSON.stringify(body)}</p>`
+            );
+    
+            return {
+                handled: false
+            }
+        }
+        
+        const body = request.body as WebhookPayload;
+        if (body.uid) {
+            return {
+                handled: true,
+                providerId: body.uid
+            }
+        }
+
+        return {
+            handled: true
+        };
+    }
+
+    private isWebhookValid(request: Request): boolean {
+        // https://developers.cloudflare.com/stream/manage-video-library/using-webhooks/#verify-webhook-authenticity
+        const signatureHeader = request.headers['Webhook-signature'] as string;
+        if (!signatureHeader) {
+            console.error('Cloudflare webhook does not contain signature');
+            return false;
+        }
+
+        const [timePart, sigPart] = signatureHeader.split(',');
+        if (!timePart) {
+            console.error('Cloudflare webhook signature does not contain timestamp');
+            return false;
+        }
+
+        const [timeKey, time] = timePart.split('=');
+        if (timeKey !== 'time' || !time) {
+            console.error('Cloudflare webhook signature contains malformed timestamp');
+            return false;
+        }
+
+        if (!sigPart) {
+            console.error('Cloudflare webhook signature header does not container signature');
+            return false;
+        }
+        const [sigKey, signature] = sigPart.split('=');
+        if (sigKey !== 'sig1' || !signature) {
+            console.error('Cloudflare signature header contains malformed signature');
+            return false;
+        }
+
+        const body = JSON.stringify(request.body);
+        const payload = `${time}.${body}`;
+        const hash = createHmac('sha256', this.webhookSecret).update(payload).digest('hex');
+        if (hash !== signature) {
+            console.error('Cloudflare webhook signature is invalid.');
+            return false;
+        }
+
+        return true;
     }
 }
 
@@ -141,6 +231,7 @@ interface Playback {
 }
 
 interface Status {
+    // https://developers.cloudflare.com/stream/manage-video-library/using-webhooks/#error-codes
     errorReasonCode?: string;
     pctComplete?: number;
     errorReasonText?: string;
@@ -157,4 +248,21 @@ interface CloudflareMessage {
 interface CloudflareError {
     code: number;
     message: string;
+}
+
+interface CreateWebhookResult {
+    result: {
+        notificationUrl: string;
+        modified: string;
+        secret: string;
+    };
+    success: boolean;
+    errors: Array<{ code: number, message: string }>;
+    messages: Array<{ code: number, message: string }>
+}
+
+// see: https://developers.cloudflare.com/stream/manage-video-library/using-webhooks
+interface WebhookPayload {
+    uid: string;
+    readyToStream: boolean;
 }
