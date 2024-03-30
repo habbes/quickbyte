@@ -60,3 +60,7 @@ export function escapeRegExp(value: string) {
     // see: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
 }
+
+export function getFileExtension(fileName: string) {
+    return fileName.split('.').at(-1);
+}

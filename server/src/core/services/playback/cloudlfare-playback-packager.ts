@@ -1,5 +1,5 @@
 import { Axios } from 'axios';
-import { PlaybackPackagingStatus, PlaybackPackagingResult, getFileName, TransferFile } from "@quickbyte/common";
+import { PlaybackPackagingStatus, PlaybackPackagingResult, getFileName, TransferFile, getFileExtension, getMediaType } from "@quickbyte/common";
 import { PackagingEventHandlingResult, PlaybackPackager } from "./types.js";
 import { StorageHandlerProvider, getDownloadUrl } from "../storage/index.js";
 import { createAppError } from '../../error';
@@ -15,11 +15,17 @@ interface CloudflareConfig {
     alerts: IAlertService;
 }
 
+export const CLOUDFLARE_STREAM_PACKAGER = 'cloudflareStream';
+
 // see: https://developers.cloudflare.com/stream/get-started/
 
 export class CloudflarePlaybackPackager implements PlaybackPackager {
     private client: Axios;
     private webhookSecret: string;
+
+    name() {
+        return CLOUDFLARE_STREAM_PACKAGER;
+    }
 
     constructor(private config: CloudflareConfig) {
         this.client = new Axios({
@@ -51,7 +57,8 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
     }
 
     canPackage(file: TransferFile): boolean {
-        throw new Error('Method not implemented.');
+        const mediaType = getMediaType(file.name);
+        return mediaType === 'video';
     }
 
     async startPackagingFile(file: TransferFile): Promise<PlaybackPackagingResult> {
