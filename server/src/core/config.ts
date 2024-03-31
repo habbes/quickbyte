@@ -110,8 +110,9 @@ export interface AppConfig {
     emailAnnouncementPassword: string;
     backgroundWorkerConcurrency: number;
     // cloudflare
-    clouldflareAccountId: string;
-    clouldflareStreamApiToken: string;
+    cloudflareAccountId: string;
+    cloudflareStreamApiToken: string;
+    cloudflareCustomerCode: string;
     /**
      * The fully qualified URL where this server is running from
      */
@@ -160,8 +161,9 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
         googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
         emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD"),
-        clouldflareAccountId: getRequiredEnv(env, 'CLOUDFLARE_ACCOUNT_ID'),
-        clouldflareStreamApiToken: getRequiredEnv(env, 'CLOULDFLARE_STREAM_API_TOKEN'),
+        cloudflareAccountId: getRequiredEnv(env, 'CLOUDFLARE_ACCOUNT_ID'),
+        cloudflareStreamApiToken: getRequiredEnv(env, 'CLOULDFLARE_STREAM_API_TOKEN'),
+        cloudflareCustomerCode: getRequiredEnv(env, 'CLOUDFLARE_CUSTOMER_CODE'),
         backgroundWorkerConcurrency: (env.BACKGROUND_WORKER_CONCURRENCY && Number(env.BACKGROUND_WORKER_CONCURRENCY)) || 5
     }
 }

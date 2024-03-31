@@ -1,5 +1,5 @@
 import { Axios } from 'axios';
-import { PlaybackPackagingStatus, PlaybackPackagingResult, getFileName, TransferFile, getFileExtension, getMediaType } from "@quickbyte/common";
+import { PlaybackPackagingStatus, PlaybackPackagingResult, getFileName, TransferFile, getFileExtension, getMediaType, PlaybackUrls } from "@quickbyte/common";
 import { PackagingEventHandlingResult, PlaybackPackager } from "./types.js";
 import { StorageHandlerProvider, getDownloadUrl } from "../storage/index.js";
 import { createAppError, createInvalidAppStateError } from '../../error.js';
@@ -11,6 +11,7 @@ import { EventDispatcher } from '../event-bus/event-bus.js';
 interface CloudflareConfig {
     accountId: string;
     apiToken: string;
+    customerCode: string;
     storageProviders: StorageHandlerProvider;
     webhookUrl: string;
     alerts: IAlertService;
@@ -24,6 +25,7 @@ export const CLOUDFLARE_STREAM_PACKAGER = 'cloudflareStream';
 export class CloudflarePlaybackPackager implements PlaybackPackager {
     private client: Axios;
     private webhookSecret?: string;
+    private customerSubdomain: string;
 
     name() {
         return CLOUDFLARE_STREAM_PACKAGER;
@@ -36,7 +38,9 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
                 Authorization: `Bearer ${config.apiToken}`,
                 "Content-Type": "application/json",
             }
-        });;
+        });
+
+        this.customerSubdomain = `customer-${this.config.customerCode}.cloudflarestream.com`;
     }
 
     async initialize() {
@@ -93,6 +97,24 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
         const result = convertToQuickbyteResult(data);
 
         return result;
+    }
+
+    async getPlaybackUrls(file: TransferFile): Promise<PlaybackUrls> {
+        if (file.playbackPackagingProvider === this.name()) {
+            throw createInvalidAppStateError(`File ${file._id} was not packaged with cloudflare. Current packager is: '${file.playbackPackagingProvider}'`);
+        }
+
+        if (!file.playbackPackagingId) {
+            throw createInvalidAppStateError(`File ${file._id} does not have a packaging id.`);
+        }
+
+        // see: https://developers.cloudflare.com/stream/viewing-videos/using-own-player/#fetch-hls-and-dash-manifests
+
+        return {
+            hlsManifestUrl: `${this.customerSubdomain}/${file.playbackPackagingId}/manifest/video.m3u8`,
+            dashManifestUrl: `${this.customerSubdomain}/${file.playbackPackagingId}/manifest/video.mpd`,
+            thumbnailUrl: `${this.customerSubdomain}/${file.playbackPackagingId}/thumbnails/thumbnail.jpg`
+        }
     }
 
     async handleServiceEvent(request: Request): Promise<PackagingEventHandlingResult> {

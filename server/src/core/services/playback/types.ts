@@ -1,4 +1,4 @@
-import { TransferFile, PlaybackPackagingResult } from '@quickbyte/common';
+import { TransferFile, PlaybackPackagingResult, PlaybackUrls } from '@quickbyte/common';
 
 export interface PlaybackPackager {
     name(): string;
@@ -6,6 +6,7 @@ export interface PlaybackPackager {
     startPackagingFile(file: TransferFile): Promise<PlaybackPackagingResult>;
     getPackagingInfo(file: TransferFile): Promise<PlaybackPackagingResult>;
     handleServiceEvent(event: unknown): Promise<PackagingEventHandlingResult>
+    getPlaybackUrls(file: TransferFile): Promise<PlaybackUrls>;
 }
 
 export interface PackagingEventHandlingResult {

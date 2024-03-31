@@ -1,3 +1,5 @@
+import { TransferFile } from "./models.js";
+
 export async function executeTasksInBatches<TSource, TResult>(
     source: TSource[],
     createTask: (s: TSource) => Promise<TResult>,
@@ -63,4 +65,13 @@ export function escapeRegExp(value: string) {
 
 export function getFileExtension(fileName: string) {
     return fileName.split('.').at(-1);
+}
+
+export function getBlobName(file: TransferFile) {
+    return `${file.transferId}/${file._id}`;
+}
+
+export function getFileName(file: TransferFile) {
+    const fileName = file.name.split('/').at(-1) || file._id;
+    return fileName;
 }

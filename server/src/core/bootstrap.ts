@@ -118,8 +118,9 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
 
     const playbacPackagerRegistry = new PlaybackPackagerRegistry();
     const cloudflarePackager = new CloudflarePlaybackPackager({
-        accountId: config.clouldflareAccountId,
-        apiToken: config.clouldflareStreamApiToken,
+        accountId: config.cloudflareAccountId,
+        apiToken: config.cloudflareStreamApiToken,
+        customerCode: config.cloudflareCustomerCode,
         storageProviders: storageProvider,
         alerts: adminAlerts,
         webhookUrl: `${config.serverUrl}/webhooks/cloudflare`,

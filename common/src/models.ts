@@ -483,11 +483,9 @@ export interface DeletionCountResult {
     deletedCount: number;
 }
 
-export function getBlobName(file: TransferFile) {
-    return `${file.transferId}/${file._id}`;
-}
-
-export function getFileName(file: TransferFile) {
-    const fileName = file.name.split('/').at(-1) || file._id;
-    return fileName;
+export interface PlaybackUrls {
+    hlsManifestUrl?: string;
+    dashManifestUrl?: string;
+    thumbnailUrl?: string;
+    posterUrl?: string;
 }
