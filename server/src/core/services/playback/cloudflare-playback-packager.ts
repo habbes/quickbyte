@@ -6,6 +6,7 @@ import { createAppError, createInvalidAppStateError } from '../../error.js';
 import { IAlertService } from "../admin-alerts-service.js";
 import { createHmac } from "node:crypto";
 import { Request } from "express";
+import { EventDispatcher } from '../event-bus/event-bus.js';
 
 interface CloudflareConfig {
     accountId: string;
@@ -13,6 +14,7 @@ interface CloudflareConfig {
     storageProviders: StorageHandlerProvider;
     webhookUrl: string;
     alerts: IAlertService;
+    events: EventDispatcher;
 }
 
 export const CLOUDFLARE_STREAM_PACKAGER = 'cloudflareStream';
@@ -109,6 +111,15 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
         
         const body = request.body as WebhookPayload;
         if (body.uid) {
+            // We should update the file record or notify the file to be updated
+            this.config.events.send({
+                type: 'filePlaybackPackagingUpdated',
+                data: {
+                    packager: this.name(),
+                    packagerId: body.uid
+                }
+            });
+
             return {
                 handled: true,
                 providerId: body.uid

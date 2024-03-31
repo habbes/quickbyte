@@ -2,10 +2,11 @@ import { Collection, UpdateFilter } from "mongodb";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, createValidationError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
-import { ITransactionService } from "./index.js";
+import { IPlaybackPackagerProvider, ITransactionService } from "./index.js";
 import { Database } from "../db.js";
 import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
+import { wrapError } from "../utils.js";
 
 const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
 const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
@@ -426,6 +427,49 @@ export class TransferDownloadService {
             throw createAppError(e);
         }
     }
+}
+
+export async function updateFilePackagingMetadata(
+    packagerName: string,
+    packagingId: string,
+    context: {
+        packagerProvider: IPlaybackPackagerProvider,
+        db: Database
+    }): Promise<TransferFile>
+{
+    return wrapError(async () => {
+        const packager = context.packagerProvider.getPackager(packagerName);
+        const file = await context.db.files().findOne({
+            playbackPackagingProvider: packagerName,
+            playbackPackagingId: packagingId
+        });
+
+        if (!file) {
+            throw createResourceNotFoundError(`File not found with packager ${packagerName} and packagingId ${packagingId}`);
+        }
+
+        const info = await packager.getPackagingInfo(file);
+        const updateResult = await context.db.files().findOneAndUpdate({
+            _id: file._id
+        }, {
+            $set: {
+                playbackPackagingProvider: packager.name(),
+                playbackPackagingId: info.providerId,
+                playbackPackagingStatus: info.status,
+                playbackPackagingError: info.error,
+                playbackPackagingErrorReason: info.errorReason,
+                playbackPackagingMetadata: info.metatada
+            }
+        }, {
+            returnDocument: 'after'
+        });
+
+        if (!updateResult.value) {
+            throw createAppError(`Failed to update file ${file._id} with packaging status.`);
+        }
+
+        return updateResult.value;
+    });
 }
 
 // TODO: I don't think there's much gain in passing around

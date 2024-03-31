@@ -110,21 +110,23 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         emailRecipient: config.systemEmailRecipient
     });
 
+    const eventBus = new EventBus({
+        alerts: adminAlerts,
+        workQueue: backgroundWorker
+    });
+    
+
     const playbacPackagerRegistry = new PlaybackPackagerRegistry();
     const cloudflarePackager = new CloudflarePlaybackPackager({
         accountId: config.clouldflareAccountId,
         apiToken: config.clouldflareStreamApiToken,
         storageProviders: storageProvider,
         alerts: adminAlerts,
-        webhookUrl: `${config.serverUrl}/webhooks/cloudflare`
+        webhookUrl: `${config.serverUrl}/webhooks/cloudflare`,
+        events: eventBus
     });
     playbacPackagerRegistry.registerHandler(cloudflarePackager);
 
-    const eventBus = new EventBus({
-        alerts: adminAlerts,
-        workQueue: backgroundWorker
-    });
-    
     const plans = new PlanService({
         paystackPlanCodes: {
             starterMonthly: config.paystackStarterMonthlyPlan,
@@ -185,7 +187,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         email: emailHandler,
         db: db,
         links: links,
-        backgroundWorker
+        backgroundWorker,
+        playbackPackagers: playbacPackagerRegistry
     });
     globalEventHandler.registerEvents(eventBus);
 
