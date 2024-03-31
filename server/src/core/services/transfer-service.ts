@@ -3,10 +3,11 @@ import { createAppError, createInvalidAppStateError, createNotFoundError, create
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
 import { IPlaybackPackagerProvider, ITransactionService } from "./index.js";
-import { Database } from "../db.js";
-import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult } from "@quickbyte/common";
+import { Database, updateNowBy } from "../db.js";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult, PlaybackPackagingResult } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
 import { wrapError } from "../utils.js";
+import { BackgroundWorker } from "../background-worker.js";
 
 const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
 const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
@@ -429,6 +430,68 @@ export class TransferDownloadService {
     }
 }
 
+export async function queueTransferFilesForPackaging(
+    transferId: string,
+    context: {
+        db: Database,
+        packagers: IPlaybackPackagerProvider,
+        queue: BackgroundWorker
+    }
+) {
+    return wrapError(async () => {
+        const files = await context.db.files().find({ transferId }).toArray();
+        for (let file of files) {
+            if (file.playbackPackagingId) {
+                continue;
+            }
+
+            context.queue.queueJob(() => tryStartPackagingFile(
+                file._id,
+                {
+                    packagers: context.packagers,
+                    db: context.db
+                }
+            ));
+        }
+    });
+}
+
+export async function tryStartPackagingFile(
+    fileId: string,
+    context: {
+        packagers: IPlaybackPackagerProvider,
+        db: Database
+    }
+) {
+    return wrapError(async () => {
+        const file = await context.db.files().findOne({
+            _id: fileId
+        });
+
+        if (!file) {
+            throw createNotFoundError('file');
+        }
+
+        const packager = context.packagers.tryFindPackagerForFile(file);
+        if (!packager) {
+            console.warn(`Could not find packager for file id '${file._id}', name: '${file.name}'. Ignoring file...`);
+            return;
+        }
+
+        const packagingResult = await packager.startPackagingFile(file);
+        const updateResult = await setFilePackagingInfoById(
+            file._id,
+            packager.name(),
+            packagingResult,
+            {
+                db: context.db
+            }
+        );
+        
+        return updateResult;
+    });
+}
+
 export async function updateFilePackagingMetadata(
     packagerName: string,
     packagingId: string,
@@ -449,27 +512,40 @@ export async function updateFilePackagingMetadata(
         }
 
         const info = await packager.getPackagingInfo(file);
-        const updateResult = await context.db.files().findOneAndUpdate({
-            _id: file._id
-        }, {
-            $set: {
-                playbackPackagingProvider: packager.name(),
-                playbackPackagingId: info.providerId,
-                playbackPackagingStatus: info.status,
-                playbackPackagingError: info.error,
-                playbackPackagingErrorReason: info.errorReason,
-                playbackPackagingMetadata: info.metatada
-            }
-        }, {
-            returnDocument: 'after'
-        });
-
-        if (!updateResult.value) {
-            throw createAppError(`Failed to update file ${file._id} with packaging status.`);
-        }
-
-        return updateResult.value;
+        const updateResult = await setFilePackagingInfoById(file._id, packager.name(), info, { db: context.db });
+        return updateResult;
     });
+}
+
+async function setFilePackagingInfoById(
+    fileId: string,
+    packagerName: string,
+    info: PlaybackPackagingResult,
+    context: {
+        db: Database
+    }
+) {
+    const updateResult = await context.db.files().findOneAndUpdate({
+        _id: fileId
+    }, {
+        $set: {
+            playbackPackagingProvider: packagerName,
+            playbackPackagingId: info.providerId,
+            playbackPackagingStatus: info.status,
+            playbackPackagingError: info.error,
+            playbackPackagingErrorReason: info.errorReason,
+            playbackPackagingMetadata: info.metatada,
+            ...updateNowBy({ type: 'system', _id: 'system' })
+        }
+    }, {
+        returnDocument: 'after'
+    });
+
+    if (!updateResult.value) {
+        throw createAppError(`Failed to update file ${fileId} with packaging status ${info.status}.`);
+    }
+
+    return updateResult.value;
 }
 
 // TODO: I don't think there's much gain in passing around

@@ -1,4 +1,4 @@
-import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider } from "./services/index.js";
+import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging } from "./services/index.js";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, rethrowIfAppError } from "./error.js";
 import { Database, getProjectMembersById } from "./db/index.js";
 import { Media, Project, User } from "./models.js";
@@ -89,6 +89,12 @@ export class GlobalEventHandler {
             const transfer = data.transfer;
             // currently we only care about transfers tied to project uploads
             console.log(`Handle transferComplete event for '${transfer._id}'`);
+            console.log(`Queuing transfer ${transfer._id} files for packaging...`);
+            await queueTransferFilesForPackaging(
+                transfer._id,
+                { db: this.config.db, queue: this.config.backgroundWorker, packagers: this.config.playbackPackagers }
+            );
+
             if (!transfer.projectId) {
                 console.log('Transfer has not project. Skip...');
                 return;
