@@ -2,7 +2,7 @@ import { Axios } from 'axios';
 import { PlaybackPackagingStatus, PlaybackPackagingResult, getFileName, TransferFile, getFileExtension, getMediaType } from "@quickbyte/common";
 import { PackagingEventHandlingResult, PlaybackPackager } from "./types.js";
 import { StorageHandlerProvider, getDownloadUrl } from "../storage/index.js";
-import { createAppError } from '../../error';
+import { createAppError, createInvalidAppStateError } from '../../error.js';
 import { IAlertService } from "../admin-alerts-service.js";
 import { createHmac } from "node:crypto";
 import { Request } from "express";
@@ -21,7 +21,7 @@ export const CLOUDFLARE_STREAM_PACKAGER = 'cloudflareStream';
 
 export class CloudflarePlaybackPackager implements PlaybackPackager {
     private client: Axios;
-    private webhookSecret: string;
+    private webhookSecret?: string;
 
     name() {
         return CLOUDFLARE_STREAM_PACKAGER;
@@ -121,6 +121,9 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
     }
 
     private isWebhookValid(request: Request): boolean {
+        if (!this.webhookSecret) {
+            throw createInvalidAppStateError('Cloudflare webhook secret not initialized during validation. Please call intialize() method during startup.');
+        }
         // https://developers.cloudflare.com/stream/manage-video-library/using-webhooks/#verify-webhook-authenticity
         const signatureHeader = request.headers['Webhook-signature'] as string;
         if (!signatureHeader) {

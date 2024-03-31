@@ -27,6 +27,9 @@ LinkGenerator,
 EventBus,
 EmailAnnouncementService,
 S3StorageHandler,
+PlaybackPackagerRegistry,
+CloudflarePlaybackPackager,
+IPlaybackPackagerProvider,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -107,6 +110,16 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         emailRecipient: config.systemEmailRecipient
     });
 
+    const playbacPackagerRegistry = new PlaybackPackagerRegistry();
+    const cloudflarePackager = new CloudflarePlaybackPackager({
+        accountId: config.clouldflareAccountId,
+        apiToken: config.clouldflareStreamApiToken,
+        storageProviders: storageProvider,
+        alerts: adminAlerts,
+        webhookUrl: `${config.serverUrl}/webhooks/cloudflare`
+    });
+    playbacPackagerRegistry.registerHandler(cloudflarePackager);
+
     const eventBus = new EventBus({
         alerts: adminAlerts,
         workQueue: backgroundWorker
@@ -183,6 +196,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
 
     return {
         storageProvider,
+        playbackPackagerProvider: playbacPackagerRegistry,
         accounts,
         auth,
         downloads,
@@ -195,6 +209,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
 
 export interface AppServices {
     storageProvider: IStorageHandlerProvider;
+    playbackPackagerProvider: IPlaybackPackagerProvider;
     accounts: IAccountService;
     auth: IAuthService;
     downloads: ITransferDownloadService;

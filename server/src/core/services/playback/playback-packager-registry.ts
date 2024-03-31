@@ -4,22 +4,18 @@ import { TransferFile } from '@quickbyte/common';
 
 export class PlaybackPackagerRegistry {
     private providers: Map<string, PlaybackPackager> = new Map<string, PlaybackPackager>();
-    private defaultPackagerName: string;
 
-    registerHandler(provider: PlaybackPackager, setDefault: boolean = false) {
+    registerHandler(provider: PlaybackPackager) {
         this.providers.set(provider.name(), provider);
-        if (!this.defaultPackagerName || setDefault) {
-            this.defaultPackagerName = provider.name();
-        }
-
     }
 
     getPackager(name: string): PlaybackPackager {
-        if (!(name in this.providers)) {
+        const packager = this.providers.get(name);
+        if (!packager) {
             throw createAppError(`Unknown playback packager '${name}'`);
         }
 
-        return this.providers.get(name);
+        return packager;
     }
 
     tryFindPackagerForFile(file: TransferFile): PlaybackPackager|undefined {
@@ -39,3 +35,5 @@ export class PlaybackPackagerRegistry {
         throw createAppError(`Could not find suitable packager for file with id: '${file._id}' name: '${file.name}'`);
     }
 }
+
+export type IPlaybackPackagerProvider = Pick<PlaybackPackagerRegistry, 'getPackager'|'tryFindPackagerForFile'|'getPackagerForFile'>;

@@ -109,6 +109,13 @@ export interface AppConfig {
     // used to authorize API for sending email announcement to users
     emailAnnouncementPassword: string;
     backgroundWorkerConcurrency: number;
+    // cloudflare
+    clouldflareAccountId: string;
+    clouldflareStreamApiToken: string;
+    /**
+     * The fully qualified URL where this server is running from
+     */
+    serverUrl: string;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -149,9 +156,12 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         paystackStarterMonthlyPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_MONTHLY_PLAN'),
         paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN'),
         webappBaseUrl: getRequiredEnv(env, 'WEBAPP_BASE_URL'),
+        serverUrl: getRequiredEnv(env, 'SERVER_URL'),
         googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
         googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
         emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD"),
+        clouldflareAccountId: getRequiredEnv(env, 'CLOUDFLARE_ACCOUNT_ID'),
+        clouldflareStreamApiToken: getRequiredEnv(env, 'CLOULDFLARE_STREAM_API_TOKEN'),
         backgroundWorkerConcurrency: (env.BACKGROUND_WORKER_CONCURRENCY && Number(env.BACKGROUND_WORKER_CONCURRENCY)) || 5
     }
 }
