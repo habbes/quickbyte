@@ -113,6 +113,10 @@ export interface AppConfig {
     cloudflareAccountId: string;
     cloudflareStreamApiToken: string;
     cloudflareCustomerCode: string;
+    // mux
+    muxTokenId: string;
+    muxTokenSecret: string;
+    muxWebhookSecret: string;
     /**
      * The fully qualified URL where this server is running from
      */
@@ -164,6 +168,9 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         cloudflareAccountId: getRequiredEnv(env, 'CLOUDFLARE_ACCOUNT_ID'),
         cloudflareStreamApiToken: getRequiredEnv(env, 'CLOUDFLARE_STREAM_API_TOKEN'),
         cloudflareCustomerCode: getRequiredEnv(env, 'CLOUDFLARE_CUSTOMER_CODE'),
+        muxTokenId: getRequiredEnv(env, 'MUX_TOKEN_ID'),
+        muxTokenSecret: getRequiredEnv(env, 'MUX_TOKEN_SECRET'),
+        muxWebhookSecret: getRequiredEnv(env, 'MUX_WEBHOOK_SECRET'),
         backgroundWorkerConcurrency: (env.BACKGROUND_WORKER_CONCURRENCY && Number(env.BACKGROUND_WORKER_CONCURRENCY)) || 5
     }
 }

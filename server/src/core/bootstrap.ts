@@ -30,6 +30,7 @@ S3StorageHandler,
 PlaybackPackagerRegistry,
 CloudflarePlaybackPackager,
 IPlaybackPackagerProvider,
+MuxPlaybackPackager,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -117,6 +118,18 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     
 
     const playbacPackagerRegistry = new PlaybackPackagerRegistry();
+
+    // playback packager should be registered in order of preference
+    // because the first one to support a file will be selected
+    const muxPlaybackPackager = new MuxPlaybackPackager({
+        tokenId: config.muxTokenId,
+        tokenSecret: config.muxTokenSecret,
+        webhookSecret: config.muxTokenSecret,
+        storageHandlers: storageProvider,
+        events: eventBus
+    });
+    playbacPackagerRegistry.registerHandler(muxPlaybackPackager);
+
     const cloudflarePackager = new CloudflarePlaybackPackager({
         accountId: config.cloudflareAccountId,
         apiToken: config.cloudflareStreamApiToken,
