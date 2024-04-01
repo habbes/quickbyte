@@ -123,7 +123,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         customerCode: config.cloudflareCustomerCode,
         storageProviders: storageProvider,
         alerts: adminAlerts,
-        webhookUrl: `${config.serverUrl}/webhooks/cloudflare`,
+        webhookUrl: `${config.serverUrl}/webhooks/cloudflare/stream`,
         events: eventBus
     });
     playbacPackagerRegistry.registerHandler(cloudflarePackager);

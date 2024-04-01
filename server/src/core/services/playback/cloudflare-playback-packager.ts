@@ -50,11 +50,11 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
         // to register a webhook dynamically. But that also means only one
         // environment can receive webhooks at a time
         // see: https://developers.cloudflare.com/stream/manage-video-library/using-webhooks/
-        const response = await this.client.put<CreateWebhookResult>('stream/webhook', {
+        const response = await this.client.put<string>('stream/webhook', {
             notificationUrl: this.config.webhookUrl
         });
 
-        const webhook = response.data;
+        const webhook = JSON.parse(response.data) as CreateWebhookResult;
         if (!webhook.success) {
             throw createAppError(`Failed to register Cloudflare webhook: ${JSON.stringify(webhook)}`);
         }
@@ -72,28 +72,30 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
         const storageHandler = this.config.storageProviders.getHandler(file.provider);
         const INTERVAL = 2 * 24 * 60 * 60 * 1000; // 2 days
         const expiresAt = new Date(Date.now() + INTERVAL);
-        const downloadUrl = getDownloadUrl(storageHandler, file, expiresAt);
+        const downloadUrl = await getDownloadUrl(storageHandler, file, expiresAt);
         // see: https://developers.cloudflare.com/api/operations/stream-videos-upload-videos-from-a-url
-        const response = await this.client.post<CloudflareStreamUploadResult>(
-            'stream/copy',
-            {
-                url: downloadUrl,
-                meta: {
-                    name: getFileName(file),
-                    quickbyteId: file._id,
-                }
+        const args = {
+            url: downloadUrl,
+            meta: {
+                name: getFileName(file),
+                quickbyteId: file._id,
             }
-        );
+        };
 
-        const cloudflareResult = response.data;
+        const response = await this.client.post<string>(
+            'stream/copy',
+            JSON.stringify(args)
+        );
+        
+        console.log('Cloudflare response', response.data);
+        const cloudflareResult = JSON.parse(response.data) as CloudflareStreamUploadResult;
         const result = convertToQuickbyteResult(cloudflareResult);
-        console.log(`cloudflare created encoding ${result.providerId} for file ${file._id}`);
         return result;
     }
 
     async getPackagingInfo(file: TransferFile): Promise<PlaybackPackagingResult> {
-        const response = await this.client.get<CloudflareStreamUploadResult>(`stream/${file.playbackPackagingId}`);
-        const data = response.data;
+        const response = await this.client.get<string>(`stream/${file.playbackPackagingId}`);
+        const data = JSON.parse(response.data) as CloudflareStreamUploadResult;
 
         const result = convertToQuickbyteResult(data);
 
@@ -101,7 +103,7 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
     }
 
     async getPlaybackUrls(file: TransferFile): Promise<PlaybackUrls> {
-        if (file.playbackPackagingProvider === this.name()) {
+        if (file.playbackPackagingProvider !== this.name()) {
             throw createInvalidAppStateError(`File ${file._id} was not packaged with cloudflare. Current packager is: '${file.playbackPackagingProvider}'`);
         }
 
@@ -111,11 +113,13 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
 
         // see: https://developers.cloudflare.com/stream/viewing-videos/using-own-player/#fetch-hls-and-dash-manifests
 
-        return {
-            hlsManifestUrl: `${this.customerSubdomain}/${file.playbackPackagingId}/manifest/video.m3u8`,
-            dashManifestUrl: `${this.customerSubdomain}/${file.playbackPackagingId}/manifest/video.mpd`,
-            thumbnailUrl: `${this.customerSubdomain}/${file.playbackPackagingId}/thumbnails/thumbnail.jpg`
-        }
+        const urls =  {
+            hlsManifestUrl: `https://${this.customerSubdomain}/${file.playbackPackagingId}/manifest/video.m3u8`,
+            dashManifestUrl: `https://${this.customerSubdomain}/${file.playbackPackagingId}/manifest/video.mpd`,
+            thumbnailUrl: `https://${this.customerSubdomain}/${file.playbackPackagingId}/thumbnails/thumbnail.jpg`
+        };
+
+        return urls;
     }
 
     async handleServiceEvent(request: Request): Promise<PackagingEventHandlingResult> {

@@ -7,7 +7,7 @@ export function createCloudflareWebhooks(services: AppServices): Router {
 
     const packager = services.playbackPackagerProvider.getPackager(CLOUDFLARE_STREAM_PACKAGER);
 
-    routes.post('/', wrapResponse(async (req) =>
+    routes.post('/stream', wrapResponse(async (req) =>
         packager.handleServiceEvent(req)));
 
     return routes;
