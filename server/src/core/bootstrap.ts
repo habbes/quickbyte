@@ -160,7 +160,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         invites,
         access: accessHandler,
         links,
-        eventBus
+        eventBus,
+        playbackPackagers: playbacPackagerRegistry
     });
 
     const auth = new AuthService(db, {

@@ -87,6 +87,7 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
 
         const cloudflareResult = response.data;
         const result = convertToQuickbyteResult(cloudflareResult);
+        console.log(`cloudflare created encoding ${result.providerId} for file ${file._id}`);
         return result;
     }
 

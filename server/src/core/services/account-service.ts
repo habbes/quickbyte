@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription, LinkGenerator } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription, LinkGenerator, IPlaybackPackagerProvider } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
@@ -19,6 +19,7 @@ export interface AccountServiceConfig {
     access: IAccessHandler;
     links: LinkGenerator;
     eventBus: EventDispatcher;
+    playbackPackagers: IPlaybackPackagerProvider;
 }
 
 export class AccountService {
@@ -194,7 +195,8 @@ export class AccountService {
         return new TransferService(this.db, authContext, {
             eventBus: this.config.eventBus,
             providerRegistry: this.config.storageHandlers,
-            transactions: this.transactions(authContext)
+            transactions: this.transactions(authContext),
+            packagers: this.config.playbackPackagers
         });
     }
 

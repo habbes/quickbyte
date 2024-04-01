@@ -15,6 +15,7 @@ const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
 
 export interface TransferServiceConfig {
     providerRegistry: IStorageHandlerProvider,
+    packagers: IPlaybackPackagerProvider,
     transactions: ITransactionService,
     eventBus: EventDispatcher
 }
@@ -299,7 +300,7 @@ export class TransferService {
             }
 
             const provider = this.config.providerRegistry.getHandler(file.provider);
-            const downloadableFile = createMediaDownloadFile(provider, file);
+            const downloadableFile = createMediaDownloadFile(provider, this.config.packagers, file);
 
             return downloadableFile;
 
@@ -315,7 +316,7 @@ export class TransferService {
 
             const downloadableFilesTasks = files.map(file => {
                 const provider = this.config.providerRegistry.getHandler(file.provider);
-                return createMediaDownloadFile(provider, file);
+                return createMediaDownloadFile(provider, this.config.packagers, file);
             });
 
             const downloadableFiles = await Promise.all(downloadableFilesTasks);
@@ -599,7 +600,7 @@ async function createDownloadFile(provider: IStorageHandler, transfer: Transfer,
     };
 }
 
-async function createMediaDownloadFile(provider: IStorageHandler, file: TransferFile): Promise<DownloadTransferFileResult> {
+async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPlaybackPackagerProvider, file: TransferFile): Promise<DownloadTransferFileResult> {
     if (!file.accountId) {
         throw createInvalidAppStateError(`Media file '${file._id}' is not tied to an account`);
     }
@@ -612,7 +613,7 @@ async function createMediaDownloadFile(provider: IStorageHandler, file: Transfer
     const fileName = file.name.split('/').at(-1) || file._id;
     const downloadUrl = await provider.getBlobDownloadUrl(file.region, file.accountId, blobName, expiryDate, fileName);
 
-    return {
+    let downlodableFile: DownloadTransferFileResult = {
         _id: file._id,
         transferId: file.transferId,
         name: file.name,
@@ -621,6 +622,16 @@ async function createMediaDownloadFile(provider: IStorageHandler, file: Transfer
         downloadUrl,
         accountId: file.accountId
     }
+
+    if (file.playbackPackagingProvider) {
+        const packager = packagers.getPackager(file.playbackPackagingProvider);
+        if (packager) {
+            const playbackUrls = await packager.getPlaybackUrls(file);
+            downlodableFile = { ...downlodableFile, ...playbackUrls };
+        }
+    }
+
+    return downlodableFile;
 
 }
 
