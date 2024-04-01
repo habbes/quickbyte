@@ -42,7 +42,8 @@ module.exports = {
   },
   plugins: [
     animate,
-    require("daisyui")
+    require("daisyui"),
+    require('vidstack/tailwind.cjs')
   ],
   // TODO: remove after we get rid of daisyui
   daisyui: {

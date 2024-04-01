@@ -162,7 +162,7 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
         emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD"),
         cloudflareAccountId: getRequiredEnv(env, 'CLOUDFLARE_ACCOUNT_ID'),
-        cloudflareStreamApiToken: getRequiredEnv(env, 'CLOULDFLARE_STREAM_API_TOKEN'),
+        cloudflareStreamApiToken: getRequiredEnv(env, 'CLOUDFLARE_STREAM_API_TOKEN'),
         cloudflareCustomerCode: getRequiredEnv(env, 'CLOUDFLARE_CUSTOMER_CODE'),
         backgroundWorkerConcurrency: (env.BACKGROUND_WORKER_CONCURRENCY && Number(env.BACKGROUND_WORKER_CONCURRENCY)) || 5
     }

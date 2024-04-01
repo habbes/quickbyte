@@ -8,6 +8,8 @@ import VueSmoothScroll from 'vue3-smooth-scroll'
 import 'aos/dist/aos.css';
 import { initGoogleAuth } from './app-utils/google-auth';
 
+// @ts-ignore
+window.VIDEOJS_NO_DYNAMIC_STYLE = true
 initGoogleAuth(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 const app = createApp(App)
 app.use(VueSmoothScroll)
