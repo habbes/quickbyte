@@ -2,7 +2,7 @@ import { Collection, UpdateFilter } from "mongodb";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, createValidationError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
-import { IPlaybackPackagerProvider, ITransactionService } from "./index.js";
+import { IPlaybackPackagerProvider, ITransactionService, PlaybackPackager } from "./index.js";
 import { Database, updateNowBy } from "../db.js";
 import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult, PlaybackPackagingResult } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
@@ -300,7 +300,7 @@ export class TransferService {
             }
 
             const provider = this.config.providerRegistry.getHandler(file.provider);
-            const downloadableFile = createMediaDownloadFile(provider, this.config.packagers, file);
+            const downloadableFile = createMediaDownloadFile(provider, this.config.packagers, this.db, file);
 
             return downloadableFile;
 
@@ -316,7 +316,7 @@ export class TransferService {
 
             const downloadableFilesTasks = files.map(file => {
                 const provider = this.config.providerRegistry.getHandler(file.provider);
-                return createMediaDownloadFile(provider, this.config.packagers, file);
+                return createMediaDownloadFile(provider, this.config.packagers, this.db,  file);
             });
 
             const downloadableFiles = await Promise.all(downloadableFilesTasks);
@@ -367,7 +367,7 @@ export class TransferDownloadService {
 
             const provider = this.providerRegistry.getHandler(transfer.provider);
             const downloadableFiles = await Promise.all(
-                files.map(file => createDownloadFile(provider, transfer, file))
+                files.map(file => createDownloadFile(provider,  transfer, file))
             );
 
             return {
@@ -512,10 +512,27 @@ export async function updateFilePackagingMetadata(
             throw createResourceNotFoundError(`File not found with packager ${packagerName} and packagingId ${packagingId}`);
         }
 
+        const result = await updateFilePackagingInfoInternal(file, packager, { db: context.db });
+        return result;
+    });
+}
+
+async function updateFilePackagingInfoInternal(
+    file: TransferFile,
+    packager: PlaybackPackager,
+    context: { db: Database }
+) {
+    return wrapError(async () => {
+        if (file.playbackPackagingProvider !== packager.name()) {
+            throw createInvalidAppStateError(
+                `Attempting to set packing info for file '${file._id}' with packager ${packager.name()} but it was packaged with ${file.playbackPackagingProvider}`
+            );
+        }
+
         const info = await packager.getPackagingInfo(file);
         const updateResult = await setFilePackagingInfoById(file._id, packager.name(), info, { db: context.db });
         return updateResult;
-    });
+    })
 }
 
 async function setFilePackagingInfoById(
@@ -600,7 +617,7 @@ async function createDownloadFile(provider: IStorageHandler, transfer: Transfer,
     };
 }
 
-async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPlaybackPackagerProvider, file: TransferFile): Promise<DownloadTransferFileResult> {
+async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPlaybackPackagerProvider, db: Database, file: TransferFile): Promise<DownloadTransferFileResult> {
     if (!file.accountId) {
         throw createInvalidAppStateError(`Media file '${file._id}' is not tied to an account`);
     }
@@ -626,6 +643,10 @@ async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPl
     if (file.playbackPackagingProvider) {
         const packager = packagers.getPackager(file.playbackPackagingProvider);
         if (packager) {
+            if (file.playbackPackagingStatus !== 'error' && file.playbackPackagingStatus !== 'success') {
+                await updateFilePackagingInfoInternal(file, packager, { db: db });
+            }
+
             const playbackUrls = await packager.getPlaybackUrls(file);
             downlodableFile = { ...downlodableFile, ...playbackUrls };
         }

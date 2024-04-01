@@ -50,14 +50,17 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
         // to register a webhook dynamically. But that also means only one
         // environment can receive webhooks at a time
         // see: https://developers.cloudflare.com/stream/manage-video-library/using-webhooks/
-        const response = await this.client.put<string>('stream/webhook', {
+        console.log('Initializing cloudflare webhook');
+        const response = await this.client.put<string>('stream/webhook', JSON.stringify({
             notificationUrl: this.config.webhookUrl
-        });
+        }));
 
         const webhook = JSON.parse(response.data) as CreateWebhookResult;
         if (!webhook.success) {
             throw createAppError(`Failed to register Cloudflare webhook: ${JSON.stringify(webhook)}`);
         }
+
+        console.log(`Cloudflare webhook initialized`);
 
         this.webhookSecret = webhook.result.secret;
     }
@@ -86,8 +89,7 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
             'stream/copy',
             JSON.stringify(args)
         );
-        
-        console.log('Cloudflare response', response.data);
+
         const cloudflareResult = JSON.parse(response.data) as CloudflareStreamUploadResult;
         const result = convertToQuickbyteResult(cloudflareResult);
         return result;
@@ -163,7 +165,7 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
             throw createInvalidAppStateError('Cloudflare webhook secret not initialized during validation. Please call intialize() method during startup.');
         }
         // https://developers.cloudflare.com/stream/manage-video-library/using-webhooks/#verify-webhook-authenticity
-        const signatureHeader = request.headers['Webhook-signature'] as string;
+        const signatureHeader = request.header('Webhook-Signature') as string;
         if (!signatureHeader) {
             console.error('Cloudflare webhook does not contain signature');
             return false;
@@ -190,6 +192,10 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
             console.error('Cloudflare signature header contains malformed signature');
             return false;
         }
+
+        // TODO: The signature validation doesn't work. I think the issue is that trying to stringify
+        // the already parsed body might not return the exact original request body text, leading
+        // to a signature mismatch. I should fix this if I enable cloudflare again.
 
         const body = JSON.stringify(request.body);
         const payload = `${time}.${body}`;

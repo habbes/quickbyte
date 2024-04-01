@@ -126,6 +126,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         webhookUrl: `${config.serverUrl}/webhooks/cloudflare/stream`,
         events: eventBus
     });
+    await cloudflarePackager.initialize();
     playbacPackagerRegistry.registerHandler(cloudflarePackager);
 
     const plans = new PlanService({
