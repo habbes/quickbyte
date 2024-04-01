@@ -23,9 +23,10 @@
         ></media-poster> -->
         <!-- <source src="https://customer-1xicr7n9ub9ffyh3.cloudflarestream.com/7fdb982510292dcbdda7cef8740ac2dc/manifest/video.m3u8" />
         <source src="https://customer-1xicr7n9ub9ffyh3.cloudflarestream.com/7fdb982510292dcbdda7cef8740ac2dc/manifest/video.mpd" /> -->
-        <source
-          :src="src"
-          :type="getMimeTypeFromFilename(fileName)"
+        <source v-for="src in sources"
+          :key="src.url"
+          :src="src.url"
+          :type="src.type"
         />
       </media-provider>
       <media-video-layout>
@@ -46,9 +47,10 @@
       >
         <!-- <source src="https://customer-1xicr7n9ub9ffyh3.cloudflarestream.com/7fdb982510292dcbdda7cef8740ac2dc/manifest/video.m3u8" />
         <source src="https://customer-1xicr7n9ub9ffyh3.cloudflarestream.com/7fdb982510292dcbdda7cef8740ac2dc/manifest/video.mpd" /> -->
-        <source
-          :src="src"
-          :type="getMimeTypeFromFilename(fileName)"
+        <source v-for="src in sources"
+          :key="src.url"
+          :src="src.url"
+          :type="src.type"
         />
       </audio>
     </div>
@@ -127,21 +129,23 @@
 <script lang="ts" setup>
 import 'vidstack/bundle';
 import { type MediaPlayer } from 'vidstack';
-import { formatTimestampDuration, type Comment, type TimedComment } from '@/core';
+import { formatTimestampDuration, type TimedComment } from '@/core';
 import { ref, computed, watch } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
 import { logger } from '@/app-utils';
-import { getMimeTypeFromFilename } from '@/core/media-types';
 import { nextTick } from 'process';
-import { onMounted } from 'vue';
+
+type MediaSource = {
+  url: string;
+  type?: string;
+}
 
 const props = defineProps<{
-  src: string;
+  sources: MediaSource[];
   comments?: TimedComment[];
   selectedCommentId?: string;
   mediaType: 'video'|'audio';
-  fileName: string;
   versionId?: string;
 }>();
 

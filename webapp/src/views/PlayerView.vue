@@ -80,12 +80,11 @@
               v-if="file && (mediaType === 'video' || mediaType === 'audio')"
               ref="videoPlayer"
               :mediaType="mediaType"
-              :src="file.downloadUrl"
+              :sources="sources"
               @seeked="handleSeek()"
               :comments="timedComments"
               :selectedCommentId="selectedCommentId"
               @clickComment="handleVideoCommentClicked($event)"
-              :fileName="file.name"
               :versionId="selectedVersionId"
               @playBackError="handleMediaPlayBackError($event)"
             />
@@ -122,7 +121,7 @@ import MediaPlayer from '@/components/MediaPlayer.vue';
 import ImageViewer from '@/components/ImageViewer.vue';
 import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
 import MediaComment from "@/components/MediaComment.vue";
-import { getMediaType } from "@/core/media-types";
+import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
 
 // had difficulties getting the scrollbar on the comments panel to work
@@ -171,6 +170,28 @@ const commentInputText = ref<string>();
 const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
 const user = store.user;
 const project = computed(() => store.projects.value.find(p => p._id === route.params.projectId));
+const sources = computed(() => {
+  if (!media.value) return;
+  const _src = [];
+  if (media.value.file.hlsManifestUrl) {
+    _src.push({
+      url: media.value.file.hlsManifestUrl
+    });
+  }
+  if (media.value.file.dashManifestUrl) {
+    _src.push({
+      url: media.value.file.dashManifestUrl
+    });
+  }
+  if (media.value.file.downloadUrl) {
+    _src.push({
+      url: media.value.file.downloadUrl,
+      type: getMimeTypeFromFilename(media.value.file.name)
+    });
+  }
+
+  return _src;
+});
 
 // we display all the timestamped comments before
 // all non-timestamped comments
@@ -214,7 +235,10 @@ onMounted(async () => {
   const queriedVersionId = Array.isArray(route.query.version) ? route.query.version[0] : route.query.version;
 
   try {
-    media.value = await apiClient.getProjectMediumById(account._id, route.params.projectId as string, route.params.mediaId as string);
+    media.value = await trpcClient.getProjectMediaById.query({
+      projectId: route.params.projectId as string,
+      mediaId: route.params.mediaId as string
+    });
     selectedVersionId.value = queriedVersionId && media.value.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : media.value.preferredVersionId;
     comments.value = media.value.comments;
     if (queriedCommentId) {

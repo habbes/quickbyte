@@ -312,3 +312,10 @@ export const DeleteProjectItemsArgs = z.object({
 });
 
 export type DeleteProjectItemsArgs = z.infer<typeof DeleteProjectItemsArgs>;
+
+export const GetProjectMediaByIdArgs = z.object({
+    projectId: z.string().min(1),
+    mediaId: z.string().min(1)
+});
+
+export type GetProjectMediaByIdArgs = z.infer<typeof GetProjectMediaByIdArgs>;

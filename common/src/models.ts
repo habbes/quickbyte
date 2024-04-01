@@ -346,9 +346,9 @@ export type WithChildren<T> = T & {
 
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
 
-export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> {
+export type DownloadTransferFileResult = Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> & {
     downloadUrl: string;
-}
+} & PlaybackUrls;
 
 export interface MediaWithFileAndComments extends Media {
     versions: MediaVersionWithFile[];
