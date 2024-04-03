@@ -572,6 +572,7 @@ async function loadData(to: RouteLocationNormalizedLoaded) {
   try {
     const result = await trpcClient.getProjectItems.query({ projectId: project.value._id, folderId: folderId });
     items.value = result.items;
+    selectedItemIds.value.clear();
     currentFolder.value = result.folder;
     updateCurrentFolderPath && updateCurrentFolderPath(result.folder?.path || []);
   } catch (e: any) {

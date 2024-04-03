@@ -377,7 +377,7 @@ function handleCommentMouseLeave() {
 }
 </script>
 <style scoped>
-/* Hide Vidstack's playback controls before we have custom ones */
+/* Hide Vidstack's playback controls because we use custom ones */
 .vds-time-slider {
   display: none;
 }
