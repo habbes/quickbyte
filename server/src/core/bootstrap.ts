@@ -124,7 +124,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const muxPlaybackPackager = new MuxPlaybackPackager({
         tokenId: config.muxTokenId,
         tokenSecret: config.muxTokenSecret,
-        webhookSecret: config.muxTokenSecret,
+        webhookSecret: config.muxWebhookSecret,
         storageHandlers: storageProvider,
         events: eventBus
     });
