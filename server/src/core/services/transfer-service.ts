@@ -643,17 +643,22 @@ async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPl
     if (file.playbackPackagingProvider) {
         const packager = packagers.getPackager(file.playbackPackagingProvider);
         if (packager) {
+            let status = file.playbackPackagingStatus;
             if (file.playbackPackagingStatus !== 'error' && file.playbackPackagingStatus !== 'success') {
-                await updateFilePackagingInfoInternal(file, packager, { db: db });
+                const updatedFile = await updateFilePackagingInfoInternal(file, packager, { db: db });
+                status = updatedFile.playbackPackagingStatus;
             }
 
             const playbackUrls = await packager.getPlaybackUrls(file);
-            downlodableFile = { ...downlodableFile, ...playbackUrls };
+            downlodableFile = {
+                ...downlodableFile,
+                ...playbackUrls,
+                playbackPackagingStatus: status
+            };
         }
     }
 
     return downlodableFile;
-
 }
 
 export interface GetTransferResult extends Transfer {

@@ -348,6 +348,7 @@ export type FileKind = 'video'|'image'|'audio'|'document'|'other';
 
 export type DownloadTransferFileResult = Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> & {
     downloadUrl: string;
+    playbackPackagingStatus?: PlaybackPackagingStatus;
 } & PlaybackUrls;
 
 export interface MediaWithFileAndComments extends Media {

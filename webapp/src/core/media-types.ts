@@ -82,6 +82,13 @@ export function getMimeTypeFromFilename(filename: string): string {
         return getImageMimeType(ext);
     }
 
+    switch (ext) {
+        // hls
+        case 'm3u8': return 'application/x-mpegurl';
+        // DASH
+        case 'mpd': return 'application/dash+xml';
+    }
+
     // unknown media type
     return `application/${ext}`;
 }

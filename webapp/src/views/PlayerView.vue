@@ -208,11 +208,24 @@ const isMediaOptimized = computed(() =>
     : true
 );
 
-watch(isMediaOptimized, () => {
-  if (isMediaOptimized.value === false) {
-    showToast('This media is not optimized. Playback experience may suffer.', 'info')
+watch([isMediaOptimized, file], () => {
+  if (!file.value) return;
+  if (!file.value?.playbackPackagingStatus) {
+    // If packaging status is not available, this file has not yet
+    // been scheduled for encoding. Offer user option to encode
+    if (isMediaOptimized.value === false) {
+      showToast('This media is not optimized. Playback experience may be degraded.', 'info')
+    }
   }
-})
+  else if (file.value.playbackPackagingStatus === 'error') {
+    logger.warn(`User attempting to play file with failed encoding file id: '${file.value._id}', filename '${file.value.name}'`);
+    showToast('Media encoding failed for this file. Playback experience may be degraded.', 'info');
+  }
+  else if (file.value.playbackPackagingStatus !== 'success') {
+    // Encoding in progress.
+    showToast('This media is being optimized for playback. You may experience suboptimal playback experience until the process is complete.', 'info');
+  }
+});
 
 // we display all the timestamped comments before
 // all non-timestamped comments

@@ -6,6 +6,7 @@
     <media-player
       ref="player"
       view-type="video"
+      stream-type="on-demand"
       playsinline
       @can-play="handleCanPlay()"
       @play="isPlaying = true"
@@ -31,6 +32,7 @@
       <media-player
         ref="player"
         view-type="audio"
+        stream-type="on-demand"
         playsinline
         @can-play="handleCanPlay()"
         @play="isPlaying = true"
@@ -39,7 +41,6 @@
         @time-update="handleTimeUpdate()"
         @progress="handleProgress($event)"
         @seeked="$emit('seeked')"
-       
       >
         <media-provider>
           <source v-for="src in sources"
@@ -163,6 +164,7 @@ defineExpose({
 
 const player = ref<MediaPlayer>();
 const progressBar = ref<HTMLDivElement>();
+
 const isPlaying = ref(false);
 const playTime = ref(0);
 const playPercentage = computed(() => {
