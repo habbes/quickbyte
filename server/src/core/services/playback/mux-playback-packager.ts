@@ -81,18 +81,17 @@ export class MuxPlaybackPackager implements PlaybackPackager {
         // see: https://docs.mux.com/core/listen-for-webhooks
         const request = event as Request;
         const headers = request.headers;
-        const body = JSON.stringify(request.body);
-        // TODO: fix signature verification
-        // try {
-        //     this.client.webhooks.verifySignature(body, headers, this.config.webhookSecret);
-        // } catch (e: any) {
-        //     console.error('Invalid mux webhook signature', e);
-        //     return {
-        //         handled: true
-        //     }
-        // }
 
-        const data = request.body as MuxEvent;
+        try {
+            this.client.webhooks.verifySignature(request.body, headers, this.config.webhookSecret);
+        } catch (e: any) {
+            console.error('Invalid mux webhook signature', e);
+            return {
+                handled: true
+            }
+        }
+
+        const data = JSON.parse(request.body) as MuxEvent;
         console.log(`Processing mux event ${data.type}`);
         if (data.type !== 'video.asset.ready' && data.type !== 'video.asset.errored' && data.object?.type !== 'asset') {
             console.log('Ignoring event...');

@@ -127,10 +127,9 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
     async handleServiceEvent(request: Request): Promise<PackagingEventHandlingResult> {
         console.log('Processing Cloudflare webhook...');
         if (!this.isWebhookValid(request)) {
-            const body = request.body;
             await this.config.alerts.sendNotification(
                 'Cloudflare webhook triggered with invalid signature.',
-                `<p>Cloudflare webhook triggered with invalid signature</p><p>${JSON.stringify(body)}</p>`
+                `<p>Cloudflare webhook triggered with invalid signature</p><p>${request.body}</p>`
             );
     
             return {
@@ -138,7 +137,7 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
             }
         }
         
-        const body = request.body as WebhookPayload;
+        const body = JSON.parse(request.body) as WebhookPayload;
         if (body.uid) {
             // We should update the file record or notify the file to be updated
             this.config.events.send({
@@ -197,7 +196,7 @@ export class CloudflarePlaybackPackager implements PlaybackPackager {
         // the already parsed body might not return the exact original request body text, leading
         // to a signature mismatch. I should fix this if I enable cloudflare again.
 
-        const body = JSON.stringify(request.body);
+        const body = request.body;
         const payload = `${time}.${body}`;
         const hash = createHmac('sha256', this.webhookSecret).update(payload).digest('hex');
         if (hash !== signature) {
