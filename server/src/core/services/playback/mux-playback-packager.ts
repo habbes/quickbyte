@@ -134,7 +134,6 @@ export class MuxPlaybackPackager implements PlaybackPackager {
                 `Attempting to get packaging info of file '${file._id}' without a packaging id`
             );
         }
-
         const asset = await this.client.video.assets.retrieve(file.playbackPackagingId);
         if (!asset.playback_ids || !asset.playback_ids.length) {
             console.warn(
@@ -143,7 +142,12 @@ export class MuxPlaybackPackager implements PlaybackPackager {
             return {};
         }
 
-        console.log('asset', asset);
+        if (asset.status !== 'ready') {
+            // If we return playback urls when the asset is not ready, the player will throw errors attempting to play the hls source.
+            // So we don't return the playback urls, that way the player can fall back to using the download url.
+            console.log(`Attempting to get playback url of file that is not ready '${file._id}' asset '${file.playbackPackagingId}'. Cannot generate playback urls.`);
+            return {};
+        }
 
         const playbackId = asset.playback_ids[0];
         

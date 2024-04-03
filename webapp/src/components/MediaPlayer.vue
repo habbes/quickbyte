@@ -19,7 +19,7 @@
         <source v-for="src in sources"
           :key="src.url"
           :src="src.url"
-          :type="src.type"
+          :type="src.mimeType"
         />
       </media-provider>
       <media-video-layout>
@@ -39,12 +39,13 @@
         @time-update="handleTimeUpdate()"
         @progress="handleProgress($event)"
         @seeked="$emit('seeked')"
+       
       >
         <media-provider>
           <source v-for="src in sources"
             :key="src.url"
             :src="src.url"
-            :type="src.type"
+            :type="src.mimeType"
           />
         </media-provider>
         <media-audio-layout>
@@ -135,8 +136,9 @@ import { nextTick } from 'process';
 
 type MediaSource = {
   url: string;
-  type?: string;
-}
+  type: 'hls'|'dash'|'raw';
+  mimeType?: string;
+};
 
 const props = defineProps<{
   sources: MediaSource[];

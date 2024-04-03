@@ -110,7 +110,7 @@
    />
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick } from "vue"
+import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store, trpcClient } from "@/app-utils";
 import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
@@ -123,6 +123,12 @@ import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.
 import MediaComment from "@/components/MediaComment.vue";
 import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
+
+type MediaSource = {
+  url: string;
+  mimeType?: string;
+  type: 'hls'|'dash'|'raw'
+};
 
 // had difficulties getting the scrollbar on the comments panel to work
 // properly using overflow: auto css, so I resorted to hardcoding dimensions
@@ -170,28 +176,43 @@ const commentInputText = ref<string>();
 const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
 const user = store.user;
 const project = computed(() => store.projects.value.find(p => p._id === route.params.projectId));
-const sources = computed(() => {
-  if (!media.value) return;
-  const _src = [];
-  if (media.value.file.hlsManifestUrl) {
+const sources = computed<MediaSource[]>(() => {
+  if (!media.value) return [];
+  if (!file.value) return [];
+  const _src = [] as MediaSource[];
+  if (file.value.hlsManifestUrl) {
     _src.push({
-      url: media.value.file.hlsManifestUrl
+      url: file.value.hlsManifestUrl,
+      type: 'hls'
     });
   }
-  if (media.value.file.dashManifestUrl) {
+  if (file.value.dashManifestUrl) {
     _src.push({
-      url: media.value.file.dashManifestUrl
+      url: file.value.dashManifestUrl,
+      type: 'dash'
     });
   }
-  if (media.value.file.downloadUrl) {
+  if (file.value.downloadUrl) {
     _src.push({
-      url: media.value.file.downloadUrl,
-      type: getMimeTypeFromFilename(media.value.file.name)
+      url: file.value.downloadUrl,
+      mimeType: getMimeTypeFromFilename(file.value.name),
+      type: 'raw'
     });
   }
 
   return _src;
 });
+const isMediaOptimized = computed(() => 
+  mediaType.value === 'video' || mediaType.value === 'audio' ?
+    sources.value.some(s => s.type === 'hls' || s.type === 'dash')
+    : true
+);
+
+watch(isMediaOptimized, () => {
+  if (isMediaOptimized.value === false) {
+    showToast('This media is not optimized. Playback experience may suffer.', 'info')
+  }
+})
 
 // we display all the timestamped comments before
 // all non-timestamped comments
