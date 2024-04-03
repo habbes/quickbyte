@@ -110,9 +110,10 @@ export interface AppConfig {
     emailAnnouncementPassword: string;
     backgroundWorkerConcurrency: number;
     // cloudflare
-    cloudflareAccountId: string;
-    cloudflareStreamApiToken: string;
-    cloudflareCustomerCode: string;
+    // TODO: consider removing if we don't add cloudflare stream integration by June 2024
+    cloudflareAccountId?: string;
+    cloudflareStreamApiToken?: string;
+    cloudflareCustomerCode?: string;
     // mux
     muxTokenId: string;
     muxTokenSecret: string;
@@ -165,9 +166,10 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
         googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
         emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD"),
-        cloudflareAccountId: getRequiredEnv(env, 'CLOUDFLARE_ACCOUNT_ID'),
-        cloudflareStreamApiToken: getRequiredEnv(env, 'CLOUDFLARE_STREAM_API_TOKEN'),
-        cloudflareCustomerCode: getRequiredEnv(env, 'CLOUDFLARE_CUSTOMER_CODE'),
+        // TODO: Consider removing these if don't add cloudflare integration by June 2024
+        cloudflareAccountId: env.CLOUDFLARE_ACCOUNT_ID,
+        cloudflareStreamApiToken: env.CLOUDFLARE_STREAM_API_TOKEN,
+        cloudflareCustomerCode: env.CLOUDFLARE_CUSTOMER_CODE,
         muxTokenId: getRequiredEnv(env, 'MUX_TOKEN_ID'),
         muxTokenSecret: getRequiredEnv(env, 'MUX_TOKEN_SECRET'),
         muxWebhookSecret: getRequiredEnv(env, 'MUX_WEBHOOK_SECRET'),

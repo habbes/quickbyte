@@ -28,7 +28,6 @@ EventBus,
 EmailAnnouncementService,
 S3StorageHandler,
 PlaybackPackagerRegistry,
-CloudflarePlaybackPackager,
 IPlaybackPackagerProvider,
 MuxPlaybackPackager,
 } from "./services/index.js";
@@ -129,18 +128,6 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         events: eventBus
     });
     playbacPackagerRegistry.registerHandler(muxPlaybackPackager);
-
-    const cloudflarePackager = new CloudflarePlaybackPackager({
-        accountId: config.cloudflareAccountId,
-        apiToken: config.cloudflareStreamApiToken,
-        customerCode: config.cloudflareCustomerCode,
-        storageProviders: storageProvider,
-        alerts: adminAlerts,
-        webhookUrl: `${config.serverUrl}/webhooks/cloudflare/stream`,
-        events: eventBus
-    });
-    await cloudflarePackager.initialize();
-    playbacPackagerRegistry.registerHandler(cloudflarePackager);
 
     const plans = new PlanService({
         paystackPlanCodes: {
