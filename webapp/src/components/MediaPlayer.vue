@@ -16,13 +16,6 @@
       @seeked="$emit('seeked')"
     >
       <media-provider>
-        <!-- <media-poster
-          class="vds-poster"
-          src="https://files.vidstack.io/sprite-fight/poster.webp"
-          alt="Girl walks into campfire with gnomes surrounding her friend ready for their next meal!"
-        ></media-poster> -->
-        <!-- <source src="https://customer-1xicr7n9ub9ffyh3.cloudflarestream.com/7fdb982510292dcbdda7cef8740ac2dc/manifest/video.m3u8" />
-        <source src="https://customer-1xicr7n9ub9ffyh3.cloudflarestream.com/7fdb982510292dcbdda7cef8740ac2dc/manifest/video.mpd" /> -->
         <source v-for="src in sources"
           :key="src.url"
           :src="src.url"
@@ -33,26 +26,30 @@
       </media-video-layout>
     </media-player>
     </div>
-    <div v-else class="bg-black p-10 flex items-center justify-center">
+    <div v-else class="bg-black p-10 flex flex-col items-center justify-center">
       <MusicalNoteIcon class="h-24 w-24 text-white" />
-      <audio
+      <media-player
         ref="player"
-        controlslist="nodownload"
-        @seeked="$emit('seeked')"
+        view-type="audio"
+        playsinline
+        @can-play="handleCanPlay()"
         @play="isPlaying = true"
         @pause="isPlaying = false"
         @timeupdate="handleTimeUpdate()"
-        @canplay="handleCanPlay()"
+        @time-update="handleTimeUpdate()"
         @progress="handleProgress($event)"
+        @seeked="$emit('seeked')"
       >
-        <!-- <source src="https://customer-1xicr7n9ub9ffyh3.cloudflarestream.com/7fdb982510292dcbdda7cef8740ac2dc/manifest/video.m3u8" />
-        <source src="https://customer-1xicr7n9ub9ffyh3.cloudflarestream.com/7fdb982510292dcbdda7cef8740ac2dc/manifest/video.mpd" /> -->
-        <source v-for="src in sources"
-          :key="src.url"
-          :src="src.url"
-          :type="src.type"
-        />
-      </audio>
+        <media-provider>
+          <source v-for="src in sources"
+            :key="src.url"
+            :src="src.url"
+            :type="src.type"
+          />
+        </media-provider>
+        <media-audio-layout>
+        </media-audio-layout>
+      </media-player>
     </div>
     <div
       ref="progressBar"
@@ -385,6 +382,10 @@ function handleCommentMouseLeave() {
   display: none;
 }
 .vds-video-layout {
+  display: none;
+}
+
+.vds-audio-layout {
   display: none;
 }
 </style>

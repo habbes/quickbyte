@@ -143,6 +143,8 @@ export class MuxPlaybackPackager implements PlaybackPackager {
             return {};
         }
 
+        console.log('asset', asset);
+
         const playbackId = asset.playback_ids[0];
         
         // Couldn't find any infor on MPEG-DASH support on Mux's website
