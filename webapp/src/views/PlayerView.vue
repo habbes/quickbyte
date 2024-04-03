@@ -214,7 +214,7 @@ watch([isMediaOptimized, file], () => {
     // If packaging status is not available, this file has not yet
     // been scheduled for encoding. Offer user option to encode
     if (isMediaOptimized.value === false) {
-      showToast('This media is not optimized. Playback experience may be degraded.', 'info')
+      showToast('This media is not optimized or upload did not complete. Playback experience may be degraded.', 'info')
     }
   }
   else if (file.value.playbackPackagingStatus === 'error') {
@@ -223,7 +223,7 @@ watch([isMediaOptimized, file], () => {
   }
   else if (file.value.playbackPackagingStatus !== 'success') {
     // Encoding in progress.
-    showToast('This media is being optimized for playback. You may experience suboptimal playback experience until the process is complete.', 'info');
+    showToast('This media is being optimized for playback. Playback experience may be suboptimal until the process is complete.', 'info');
   }
 });
 

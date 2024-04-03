@@ -473,6 +473,17 @@ export async function tryStartPackagingFile(
             throw createNotFoundError('file');
         }
 
+        if (file.playbackPackagingId) {
+            console.warn(
+                `Attempting to package file '${file._id}' that has already been packaged by '${file.playbackPackagingProvider}' with packaging id '${file.playbackPackagingId}' and status '${file.playbackPackagingStatus}'. Aborting...`
+            );
+            return file;
+
+            // TODO: it may be possible that we want to package a file that has already been scheduled for packaging, for example
+            // if we want to change the packager, or if the initial process had some issue, etc. We can revisit
+            // this logic when we need to implement support for such scenarios.
+        }
+
         const packager = context.packagers.tryFindPackagerForFile(file);
         if (!packager) {
             console.warn(`Could not find packager for file id '${file._id}', name: '${file.name}'. Ignoring file...`);
@@ -655,6 +666,38 @@ async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPl
                 ...playbackUrls,
                 playbackPackagingStatus: status
             };
+        }
+    }
+    else {
+        // we should only try to package when we're sure upload is complete otherwise
+        // packaging (and playback) will fail
+        const transfer = await db.transfers().findOne({ _id: file.transferId });
+        if (!transfer) {
+            throw createInvalidAppStateError(`Could not find transfer '${file.transferId}' of file '${file._id}'`);
+        }
+        // TODO: checking for transfer status is problematic
+        // first, it's a separate db request, which adds to the request's latency
+        // second, it's possible that the file upload has completed but the overall
+        // transfer is still in progress
+        // it's possible that the file upload is complete but the transfer may never complete
+        // because we depend on the client sending a finalize request to mark the transfer as
+        // complete. We should do a better job of tracking per-file upload status and readiness.
+        if (transfer.status === 'completed') {
+            // if no packager is assigned to the file, then it was probably uploaded
+            // before the encoding feature was rolled out. Let's schedule it
+            // for packaging
+            const updatedFile = await tryStartPackagingFile(file._id, { db, packagers});
+            // TODO: it's possible that this file has not been packaged because it's not a supported media file
+            // (e.g. not an audio or video file). In which case, we'll always try to package and abort each
+            // time the file is requested for download. We can avoid this by storing a field in the db
+            // indicating that a file was found not supported by media. We should probably also
+            // index files by extension and media type
+
+            if (updatedFile) {
+                downlodableFile = { ...downlodableFile, playbackPackagingStatus: updatedFile.playbackPackagingStatus };
+            }
+        } else {
+            console.warn(`Skipping packaging attempt for file '${file._id}' because transfer '${transfer._id}' is not complete. Status is '${transfer.status}'`);
         }
     }
 
