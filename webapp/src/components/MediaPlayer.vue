@@ -5,9 +5,9 @@
     >
     <media-player
       ref="player"
-      :viewType="mediaType"
-      :streamType="'on-demand'"
-      playsInline
+      :viewType="mediaType as any"
+      :streamType="'on-demand' as any"
+      :playsInline="true as any"
       @can-play="handleCanPlay()"
       @play="isPlaying = true"
       @pause="isPlaying = false"
@@ -31,9 +31,9 @@
       <MusicalNoteIcon class="h-24 w-24 text-white" />
       <media-player
         ref="player"
-        :viewType="mediaType"
-        :streamType="'on-demand'"
-        playsInline
+        :viewType="mediaType as any"
+        :streamType="'on-demand' as any"
+        :playsInline="true as any"
         @can-play="handleCanPlay()"
         @play="isPlaying = true"
         @pause="isPlaying = false"
