@@ -3,6 +3,9 @@
     <div v-if="mediaType === 'video'"
       class="bg-black max-h-full"
     >
+    <!-- Getting type errors due to the props passed to the media-player.
+      Ignoring the errors until I figure out what the causes them.
+    -->
     <!-- @vue-ignore -->
     <media-player
       ref="player"
@@ -30,6 +33,9 @@
     </div>
     <div v-else class="bg-black p-10 flex flex-col items-center justify-center">
       <MusicalNoteIcon class="h-24 w-24 text-white" />
+      <!-- Getting type errors due to the props passed to the media-player.
+        Ignoring the errors until I figure out what the causes them.
+      -->
       <!-- @vue-ignore -->
       <media-player
         ref="player"
