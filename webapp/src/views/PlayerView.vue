@@ -76,7 +76,7 @@
       <!-- player container -->
       <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]">
           <div class="h-full max-h-full sm:h-[90%] w-full flex sm:items-center">
-            <MediaPlayer
+            <AVPlayer
               v-if="file && (mediaType === 'video' || mediaType === 'audio')"
               ref="videoPlayer"
               :mediaType="mediaType"
@@ -117,7 +117,7 @@ import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAutho
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
-import MediaPlayer from '@/components/MediaPlayer.vue';
+import AVPlayer from '@/components/AVPlayer.vue';
 import ImageViewer from '@/components/ImageViewer.vue';
 import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
 import MediaComment from "@/components/MediaComment.vue";
@@ -146,7 +146,7 @@ const commentsListStyles = {} /* = {
 }; */
 
 
-const videoPlayer = ref<typeof MediaPlayer>();
+const videoPlayer = ref<typeof AVPlayer>();
 const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
@@ -179,6 +179,7 @@ const project = computed(() => store.projects.value.find(p => p._id === route.pa
 const sources = computed<MediaSource[]>(() => {
   if (!media.value) return [];
   if (!file.value) return [];
+
   const _src = [] as MediaSource[];
   if (file.value.hlsManifestUrl) {
     _src.push({
@@ -264,6 +265,7 @@ const timedComments = computed<WithChildren<TimedCommentWithAuthor>[]>(() =>
 
 onMounted(async () => {
   if (!store.currentAccount.value) return;
+
   const account = ensure(store.currentAccount.value);
   const queriedCommentId = Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment;
   const queriedVersionId = Array.isArray(route.query.version) ? route.query.version[0] : route.query.version;
@@ -273,6 +275,7 @@ onMounted(async () => {
       projectId: route.params.projectId as string,
       mediaId: route.params.mediaId as string
     });
+
     selectedVersionId.value = queriedVersionId && media.value.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : media.value.preferredVersionId;
     comments.value = media.value.comments;
     if (queriedCommentId) {
@@ -281,6 +284,7 @@ onMounted(async () => {
         handleVideoCommentClicked(comment);
       }
     }
+
   }
   catch (e: any) {
     error.value = e;
