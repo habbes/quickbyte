@@ -1,4 +1,5 @@
-import { Express } from 'express';
+import { Express, Router } from 'express';
+import cors from 'cors';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { AppServices } from '../core/index.js';
 import { createContextFactory } from './context.js';
@@ -6,7 +7,9 @@ import { appRouter } from './router.js';
 import { handleTrpcError } from './trpc-error.js';
 
 export function mountTrpc(server: Express, trpcRoot: string, services: AppServices) {
-    server.use(trpcRoot, createExpressMiddleware({
+    const trpcExpressRouter = Router();
+    trpcExpressRouter.use(cors());
+    trpcExpressRouter.use("/", createExpressMiddleware({
         router: appRouter,
         createContext: createContextFactory(services),
         onError({ error, ctx }) {
@@ -17,4 +20,6 @@ export function mountTrpc(server: Express, trpcRoot: string, services: AppServic
             return handleTrpcError(error, ctx);
         },
     }));
+
+    server.use(trpcRoot, trpcExpressRouter);
 }

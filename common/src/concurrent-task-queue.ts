@@ -1,4 +1,4 @@
-type Task = () => Promise<void>;
+type Task = () => Promise<unknown>;
 type ErrorCallback = (e: any) => unknown;
 
 export class ConcurrentTaskQueue {

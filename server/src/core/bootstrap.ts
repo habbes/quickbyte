@@ -27,6 +27,9 @@ LinkGenerator,
 EventBus,
 EmailAnnouncementService,
 S3StorageHandler,
+PlaybackPackagerRegistry,
+IPlaybackPackagerProvider,
+MuxPlaybackPackager,
 } from "./services/index.js";
 import { SmsHandler } from "./services/sms/types.js";
 import { LocalSmsHandler } from "./services/sms/local-sms-handler.js";
@@ -112,6 +115,20 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         workQueue: backgroundWorker
     });
     
+
+    const playbacPackagerRegistry = new PlaybackPackagerRegistry();
+
+    // playback packager should be registered in order of preference
+    // because the first one to support a file will be selected
+    const muxPlaybackPackager = new MuxPlaybackPackager({
+        tokenId: config.muxTokenId,
+        tokenSecret: config.muxTokenSecret,
+        webhookSecret: config.muxWebhookSecret,
+        storageHandlers: storageProvider,
+        events: eventBus
+    });
+    playbacPackagerRegistry.registerHandler(muxPlaybackPackager);
+
     const plans = new PlanService({
         paystackPlanCodes: {
             starterMonthly: config.paystackStarterMonthlyPlan,
@@ -144,7 +161,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         invites,
         access: accessHandler,
         links,
-        eventBus
+        eventBus,
+        playbackPackagers: playbacPackagerRegistry
     });
 
     const auth = new AuthService(db, {
@@ -172,7 +190,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         email: emailHandler,
         db: db,
         links: links,
-        backgroundWorker
+        backgroundWorker,
+        playbackPackagers: playbacPackagerRegistry
     });
     globalEventHandler.registerEvents(eventBus);
 
@@ -183,6 +202,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
 
     return {
         storageProvider,
+        playbackPackagerProvider: playbacPackagerRegistry,
         accounts,
         auth,
         downloads,
@@ -195,6 +215,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
 
 export interface AppServices {
     storageProvider: IStorageHandlerProvider;
+    playbackPackagerProvider: IPlaybackPackagerProvider;
     accounts: IAccountService;
     auth: IAuthService;
     downloads: ITransferDownloadService;

@@ -16,9 +16,7 @@ async function startServer() {
         const server = createServer(config);
 
         const appServices = await bootstrapApp(config);
-        
-        server.use(express.json());
-        server.use(cors());
+
         server.use(injectServices(appServices));
         mountApi(server, "/api", appServices);
         mountTrpc(server, "/trpc", appServices);

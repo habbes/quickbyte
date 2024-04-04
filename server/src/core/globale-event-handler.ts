@@ -1,8 +1,9 @@
-import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail } from "./services/index.js";
+import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging } from "./services/index.js";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, rethrowIfAppError } from "./error.js";
 import { Database, getProjectMembersById } from "./db/index.js";
 import { Media, Project, User } from "./models.js";
 import { BackgroundWorker } from "./background-worker.js";
+import { wrapError } from "./utils.js";
 
 export class GlobalEventHandler {
     constructor(private config: GlobalEventHandlerConfig) {}
@@ -11,6 +12,7 @@ export class GlobalEventHandler {
         eventBus.on('transferComplete', (event) => this.handleTransferComplete(event));
         eventBus.on('folderDeleted', (event) => this.handleFolderDeleted(event));
         eventBus.on('projectMemberRemoved', (event) => this.handleProjectMemberRemoved(event));
+        eventBus.on('filePlaybackPackagingUpdated', (event) => this.handleFilePlaybackPackagingUpdated(event));
     }
 
     private async handleProjectMemberRemoved(event: Event): Promise<void> {
@@ -87,6 +89,12 @@ export class GlobalEventHandler {
             const transfer = data.transfer;
             // currently we only care about transfers tied to project uploads
             console.log(`Handle transferComplete event for '${transfer._id}'`);
+            console.log(`Queuing transfer ${transfer._id} files for packaging...`);
+            await queueTransferFilesForPackaging(
+                transfer._id,
+                { db: this.config.db, queue: this.config.backgroundWorker, packagers: this.config.playbackPackagers }
+            );
+
             if (!transfer.projectId) {
                 console.log('Transfer has not project. Skip...');
                 return;
@@ -187,6 +195,21 @@ export class GlobalEventHandler {
         
     }
 
+    private async handleFilePlaybackPackagingUpdated(event: Event): Promise<void> {
+        await wrapError(async () => {
+            const data = this.getEventData<FilePlaybackPackagingUpdatedEvent>("filePlaybackPackagingUpdated", event);
+            console.log(`Handling filePlaybackPackagingUpdated event for package '${data.packagerId}' of packager '${data.packager}'`);
+            await updateFilePackagingMetadata(
+                data.packager,
+                data.packagerId,
+                {
+                    packagerProvider: this.config.playbackPackagers,
+                    db: this.config.db
+                }
+            );
+        });
+    }
+
     private getEventData<TEvent extends Event>(expectedType: TEvent['type'], event: Event): TEvent['data'] {
         const actualType = getEventType(event);
         if (expectedType !== actualType) {
@@ -201,7 +224,8 @@ export interface GlobalEventHandlerConfig {
     db: Database;
     email: EmailHandler;
     links: LinkGenerator;
-    backgroundWorker: BackgroundWorker
+    backgroundWorker: BackgroundWorker;
+    playbackPackagers: IPlaybackPackagerProvider;
 }
 
 async function queueDeletedFolderCleanupTask(parentFolderIds: string[], projectId: string, worker: BackgroundWorker, db: Database) {

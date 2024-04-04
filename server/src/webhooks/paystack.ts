@@ -9,7 +9,7 @@ export function createPaystackWebhooks(services: AppServices, secretKey: string)
     routes.use(verificationEventOrigin(secretKey));
 
     routes.post('/', wrapResponse(async (req) =>
-        req.services.transactions.handlePaystackEvent(req.body, req.services)))
+        req.services.transactions.handlePaystackEvent(JSON.parse(req.body), req.services)))
 
     return routes;
 }
@@ -29,6 +29,6 @@ function verificationEventOrigin(secretKey: string) {
 
 function isRequestPaystackVerified(req: Request, secretKey: string) {
     // see: https://paystack.com/docs/payments/webhooks/#verify-event-origin
-    const hash = createHmac('sha512', secretKey).update(JSON.stringify(req.body)).digest('hex');
+    const hash = createHmac('sha512', secretKey).update(req.body).digest('hex');
     return hash === req.headers['x-paystack-signature'];
 }

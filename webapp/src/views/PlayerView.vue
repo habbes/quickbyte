@@ -80,12 +80,11 @@
               v-if="file && (mediaType === 'video' || mediaType === 'audio')"
               ref="videoPlayer"
               :mediaType="mediaType"
-              :src="file.downloadUrl"
+              :sources="sources"
               @seeked="handleSeek()"
               :comments="timedComments"
               :selectedCommentId="selectedCommentId"
               @clickComment="handleVideoCommentClicked($event)"
-              :fileName="file.name"
               :versionId="selectedVersionId"
               @playBackError="handleMediaPlayBackError($event)"
             />
@@ -111,7 +110,7 @@
    />
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick } from "vue"
+import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store, trpcClient } from "@/app-utils";
 import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
@@ -122,8 +121,14 @@ import MediaPlayer from '@/components/MediaPlayer.vue';
 import ImageViewer from '@/components/ImageViewer.vue';
 import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
 import MediaComment from "@/components/MediaComment.vue";
-import { getMediaType } from "@/core/media-types";
+import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
+
+type MediaSource = {
+  url: string;
+  mimeType?: string;
+  type: 'hls'|'dash'|'raw'
+};
 
 // had difficulties getting the scrollbar on the comments panel to work
 // properly using overflow: auto css, so I resorted to hardcoding dimensions
@@ -171,6 +176,56 @@ const commentInputText = ref<string>();
 const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
 const user = store.user;
 const project = computed(() => store.projects.value.find(p => p._id === route.params.projectId));
+const sources = computed<MediaSource[]>(() => {
+  if (!media.value) return [];
+  if (!file.value) return [];
+  const _src = [] as MediaSource[];
+  if (file.value.hlsManifestUrl) {
+    _src.push({
+      url: file.value.hlsManifestUrl,
+      type: 'hls'
+    });
+  }
+  if (file.value.dashManifestUrl) {
+    _src.push({
+      url: file.value.dashManifestUrl,
+      type: 'dash'
+    });
+  }
+  if (file.value.downloadUrl) {
+    _src.push({
+      url: file.value.downloadUrl,
+      mimeType: getMimeTypeFromFilename(file.value.name),
+      type: 'raw'
+    });
+  }
+
+  return _src;
+});
+const isMediaOptimized = computed(() => 
+  mediaType.value === 'video' || mediaType.value === 'audio' ?
+    sources.value.some(s => s.type === 'hls' || s.type === 'dash')
+    : true
+);
+
+watch([isMediaOptimized, file], () => {
+  if (!file.value) return;
+  if (!file.value?.playbackPackagingStatus) {
+    // If packaging status is not available, this file has not yet
+    // been scheduled for encoding. Offer user option to encode
+    if (isMediaOptimized.value === false) {
+      showToast('This media is not optimized or upload did not complete. Playback experience may be degraded.', 'info')
+    }
+  }
+  else if (file.value.playbackPackagingStatus === 'error') {
+    logger.warn(`User attempting to play file with failed encoding file id: '${file.value._id}', filename '${file.value.name}'`);
+    showToast('Media encoding failed for this file. Playback experience may be degraded.', 'info');
+  }
+  else if (file.value.playbackPackagingStatus !== 'success') {
+    // Encoding in progress.
+    showToast('This media is being optimized for playback. Playback experience may be suboptimal until the process is complete.', 'info');
+  }
+});
 
 // we display all the timestamped comments before
 // all non-timestamped comments
@@ -214,7 +269,10 @@ onMounted(async () => {
   const queriedVersionId = Array.isArray(route.query.version) ? route.query.version[0] : route.query.version;
 
   try {
-    media.value = await apiClient.getProjectMediumById(account._id, route.params.projectId as string, route.params.mediaId as string);
+    media.value = await trpcClient.getProjectMediaById.query({
+      projectId: route.params.projectId as string,
+      mediaId: route.params.mediaId as string
+    });
     selectedVersionId.value = queriedVersionId && media.value.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : media.value.preferredVersionId;
     comments.value = media.value.comments;
     if (queriedCommentId) {
