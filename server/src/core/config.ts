@@ -118,10 +118,6 @@ export interface AppConfig {
     muxTokenId: string;
     muxTokenSecret: string;
     muxWebhookSecret: string;
-    /**
-     * The fully qualified URL where this server is running from
-     */
-    serverUrl: string;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -162,7 +158,6 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         paystackStarterMonthlyPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_MONTHLY_PLAN'),
         paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN'),
         webappBaseUrl: getRequiredEnv(env, 'WEBAPP_BASE_URL'),
-        serverUrl: getRequiredEnv(env, 'SERVER_URL'),
         googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
         googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
         emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD"),
