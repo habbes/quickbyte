@@ -9,8 +9,8 @@
     <!-- @vue-ignore -->
     <media-player
       ref="player"
-      :viewType="mediaType"
-      :streamType="'on-demand'"
+      view-type="video"
+      stream-type="on-demand"
       playsInline
       @can-play="handleCanPlay()"
       @play="isPlaying = true"
@@ -39,8 +39,8 @@
       <!-- @vue-ignore -->
       <media-player
         ref="player"
-        :viewType="mediaType"
-        :streamType="'on-demand'"
+        view-type="audio"
+        stream-type="on-demand"
         playsInline
         @can-play="handleCanPlay()"
         @play="isPlaying = true"
@@ -73,6 +73,7 @@
     >
       <div class="absolute h-2 w-full bg-[#24141f]"></div>
       <div
+        v-if="bufferedSegments"
         v-for="segment in bufferedSegments"
         :key="segment.key"
         class="absolute h-2 bg-slate-500"
@@ -185,6 +186,7 @@ const playPercentage = computed(() => {
 const buffered = ref<TimeRanges>();
 const bufferedSegments = computed(() => {
   if (!buffered.value || !player.value) return [];
+
   const segments = [];
   for (let i = 0; i < buffered.value.length; i++) {
     const start = buffered.value.start(i);
