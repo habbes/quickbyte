@@ -109,6 +109,15 @@ export interface AppConfig {
     // used to authorize API for sending email announcement to users
     emailAnnouncementPassword: string;
     backgroundWorkerConcurrency: number;
+    // cloudflare
+    // TODO: consider removing if we don't add cloudflare stream integration by June 2024
+    cloudflareAccountId?: string;
+    cloudflareStreamApiToken?: string;
+    cloudflareCustomerCode?: string;
+    // mux
+    muxTokenId: string;
+    muxTokenSecret: string;
+    muxWebhookSecret: string;
 }
 
 export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
@@ -152,6 +161,13 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
         googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
         emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD"),
+        // TODO: Consider removing these if don't add cloudflare integration by June 2024
+        cloudflareAccountId: env.CLOUDFLARE_ACCOUNT_ID,
+        cloudflareStreamApiToken: env.CLOUDFLARE_STREAM_API_TOKEN,
+        cloudflareCustomerCode: env.CLOUDFLARE_CUSTOMER_CODE,
+        muxTokenId: getRequiredEnv(env, 'MUX_TOKEN_ID'),
+        muxTokenSecret: getRequiredEnv(env, 'MUX_TOKEN_SECRET'),
+        muxWebhookSecret: getRequiredEnv(env, 'MUX_WEBHOOK_SECRET'),
         backgroundWorkerConcurrency: (env.BACKGROUND_WORKER_CONCURRENCY && Number(env.BACKGROUND_WORKER_CONCURRENCY)) || 5
     }
 }

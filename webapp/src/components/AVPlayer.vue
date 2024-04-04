@@ -1,45 +1,69 @@
 <template>
   <div class="w-full h-full max-h-full">
-    <!-- we wrap the video in a black container in case the video can't fill the width due the aspect ration -->
     <div v-if="mediaType === 'video'"
       class="bg-black max-h-full"
     >
-      <video
-        ref="player"
-        playsinline
-        controlslist="nodownload"
-        @seeked="$emit('seeked')"
-        @play="isPlaying = true"
-        @pause="isPlaying = false"
-        @timeupdate="handleTimeUpdate()"
-        @canplay="handleCanPlay()"
-        class="max-h-[250px] sm:max-h-max sm:h-[calc(100dvh-208px)] w-auto m-auto"
-      >
-        <source
-          :src="src"
-          :type="getMimeTypeFromFilename(fileName)"
+    <!-- Getting type errors due to the props passed to the media-player.
+      Ignoring the errors until I figure out what the causes them.
+    -->
+    <!-- @vue-ignore -->
+    <media-player
+      ref="player"
+      view-type="video"
+      stream-type="on-demand"
+      playsInline
+      @can-play="handleCanPlay()"
+      @play="isPlaying = true"
+      @pause="isPlaying = false"
+      @timeupdate="handleTimeUpdate()"
+      @time-update="handleTimeUpdate()"
+      @progress="handleProgress($event)"
+      @seeked="$emit('seeked')"
+    >
+      <media-provider>
+        <source v-for="src in sources"
+          :key="src.url"
+          :src="src.url"
+          :type="src.mimeType"
         />
-      </video>
+      </media-provider>
+      <media-video-layout>
+      </media-video-layout>
+    </media-player>
     </div>
-    <div v-else class="bg-black p-10 flex items-center justify-center">
+    <div v-else class="bg-black p-10 flex flex-col items-center justify-center">
       <MusicalNoteIcon class="h-24 w-24 text-white" />
-      <audio
+      <!-- Getting type errors due to the props passed to the media-player.
+        Ignoring the errors until I figure out what the causes them.
+      -->
+      <!-- @vue-ignore -->
+      <media-player
         ref="player"
-        controlslist="nodownload"
-        @seeked="$emit('seeked')"
+        view-type="audio"
+        stream-type="on-demand"
+        playsInline
+        @can-play="handleCanPlay()"
         @play="isPlaying = true"
         @pause="isPlaying = false"
         @timeupdate="handleTimeUpdate()"
-        @canplay="handleCanPlay()"
+        @time-update="handleTimeUpdate()"
+        @progress="handleProgress($event)"
+        @seeked="$emit('seeked')"
       >
-        <source
-          :src="src"
-          :type="getMimeTypeFromFilename(fileName)"
-        />
-      </audio>
+        <media-provider>
+          <source v-for="src in sources"
+            :key="src.url"
+            :src="src.url"
+            :type="src.mimeType"
+          />
+        </media-provider>
+        <media-audio-layout>
+        </media-audio-layout>
+      </media-player>
     </div>
     <div
       ref="progressBar"
+      data-progress-bar="true"
       class="relative h-2 border-x-[0.5px] border-x-black cursor-pointer w-full"
       
       @mouseenter="handleProgressBarMouseEnter($event)"
@@ -48,7 +72,15 @@
       @click="handleProgressBarClick($event)"
     >
       <div class="absolute h-2 w-full bg-[#24141f]"></div>
+      <div
+        v-if="bufferedSegments"
+        v-for="segment in bufferedSegments"
+        :key="segment.key"
+        class="absolute h-2 bg-slate-500"
+        :style="{ left: `${segment.startPct}%`, width: `${segment.lengthPct}%`}"
+      ></div>
       <div class="absolute h-2 bg-blue-400" :style="{ width: `${playPercentage}%`}"></div>
+      
       <div v-if="seekingHoverPosition !== undefined" class="absolute h-2 w-[2px] bg-white" :style="{ left: `${seekingHoverPosition}px`}"></div>
       <div
         v-if="seekingHoverTime !== undefined"
@@ -57,7 +89,7 @@
       >
         {{ formatTimestampDuration(seekingHoverTime) }}
       </div>
-      <div
+      <div @click.stop
         v-if="hoveredComment"
         class="absolute bottom-[20px] bg-gray-800 rounded-md px-5 py-2 text-ellipsis text-xs max-w-[200px] h-12 overflow-hidden translate-x-[-50%]"
         :style="{ left: `${getPositionFromTime(hoveredComment.timestamp)}px`}"
@@ -103,20 +135,26 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { formatTimestampDuration, type Comment, type TimedComment } from '@/core';
+import 'vidstack/bundle';
+import { type MediaPlayer } from 'vidstack';
+import { formatTimestampDuration, type TimedComment } from '@/core';
 import { ref, computed, watch } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
 import { logger } from '@/app-utils';
-import { getMimeTypeFromFilename } from '@/core/media-types';
 import { nextTick } from 'process';
 
+type MediaSource = {
+  url: string;
+  type: 'hls'|'dash'|'raw';
+  mimeType?: string;
+};
+
 const props = defineProps<{
-  src: string;
+  sources: MediaSource[];
   comments?: TimedComment[];
   selectedCommentId?: string;
   mediaType: 'video'|'audio';
-  fileName: string;
   versionId?: string;
 }>();
 
@@ -133,8 +171,9 @@ defineExpose({
   getCurrentTime
 });
 
-const player = ref<HTMLMediaElement>();
+const player = ref<MediaPlayer>();
 const progressBar = ref<HTMLDivElement>();
+
 const isPlaying = ref(false);
 const playTime = ref(0);
 const playPercentage = computed(() => {
@@ -142,6 +181,30 @@ const playPercentage = computed(() => {
   const current = playTime.value;
   const total = player.value.duration;
   return 100 * current/total;
+});
+
+const buffered = ref<TimeRanges>();
+const bufferedSegments = computed(() => {
+  if (!buffered.value || !player.value) return [];
+
+  const segments = [];
+  for (let i = 0; i < buffered.value.length; i++) {
+    const start = buffered.value.start(i);
+    const end = buffered.value.end(i);
+    const length = end - start;
+    const segment = {
+      key: `${start}-${end}`,
+      start,
+      startPct: 100 * start / player.value.duration,
+      end,
+      endPct: 100 * end /player.value.duration,
+      length,
+      lengthPct: 100 * length / player.value.duration
+    };
+    segments.push(segment);
+  }
+
+  return segments;
 });
 
 const hoveredCommentId = ref<string>();
@@ -174,7 +237,7 @@ watch(props, (curr, prev) => {
   
   nextTick(() => {
     if (!player.value) return;
-    player.value.src = curr.src;
+    // player.value.src = curr.src;
     // seek to the same time where the previous version was playing
     // at.
     // TODO: this updates the timestamp but does not update the 
@@ -246,34 +309,31 @@ function handleTimeUpdate() {
 }
 
 function handleProgressBarClick(event: MouseEvent) {
-  const mouseX = event.offsetX;
-  const newTime = getTimeFromPosition(mouseX);
+  if (!progressBar.value) return;
+  // this event may have been triggered by one of the
+  // progress bar's children. So we use the
+  // progress bar's position as a reference instead of relying on event.offsetX
+  
+  const offsetX = progressBar.value?.getBoundingClientRect().x;
+  const relativeMouseX = Math.max(event.clientX - offsetX, 0);
+  const newTime = getTimeFromPosition(relativeMouseX);
   return seek(newTime);
 }
 
 function handleProgressBarMouseEnter(event: MouseEvent) {
   if (!progressBar.value) return;
   if (!player.value) return;
-  logger.log('mouse enter', event.offsetX);
-  if (event.offsetX < 3) return;
-  logger.log('offset', event.offsetX);
-  seekingHoverPosition.value = event.offsetX;
+  const offsetX = progressBar.value?.getBoundingClientRect().x;
+  const relativeMouseX = Math.max(event.clientX - offsetX, 0);
+  seekingHoverPosition.value = relativeMouseX;
 }
 
 function handleProgressBarMouseMove(event: MouseEvent) {
   if (!progressBar.value) return;
   if (!player.value) return;
-  // TODO: for some reason event.offsetX in the handleProgressBarClick
-  // handler reports incorrect values (close to 0) when the
-  // mouse move event handler is active. So I'm disabling it temporarily
-  // until I figure out the problem
-  return;
-  // TODO: sometimes the offsetX jumps to 0-2 even when the mouse is
-  // in the middle of the progress bar, this causes
-  // flickering of the seek indicator. So for now
-  // we ignore offsetX 0-2.
-  if (event.offsetX < 3) return;
-  seekingHoverPosition.value = event.offsetX;
+  const offsetX = progressBar.value?.getBoundingClientRect().x;
+  const relativeMouseX = Math.max(event.clientX - offsetX, 0);
+  seekingHoverPosition.value = relativeMouseX;
 }
 
 function handleProgressBarMouseLeave() {
@@ -284,6 +344,16 @@ function handleCanPlay() {
   if (!player.value) return;
   duration.value = player.value.duration || 0;
   volume.value = player.value.volume;
+}
+
+function handleProgress(event: any) {
+  if (event.detail?.buffered) {
+    buffered.value = event.detail.buffered;
+    // @ts-ignore
+  } else if (player.value?.buffered) {
+    // @ts-ignore
+    buffered.value = player.value?.buffered;
+  }
 }
 
 function getTimeFromPosition(seekPosition: number): number {
@@ -320,3 +390,16 @@ function handleCommentMouseLeave() {
   hoveredCommentId.value = undefined;
 }
 </script>
+<style scoped>
+/* Hide Vidstack's playback controls because we use custom ones */
+.vds-time-slider {
+  display: none;
+}
+.vds-video-layout {
+  display: none;
+}
+
+.vds-audio-layout {
+  display: none;
+}
+</style>

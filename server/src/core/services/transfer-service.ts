@@ -2,10 +2,12 @@ import { Collection, UpdateFilter } from "mongodb";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, createValidationError, rethrowIfAppError } from '../error.js';
 import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
-import { ITransactionService } from "./index.js";
-import { Database } from "../db.js";
-import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult } from "@quickbyte/common";
+import { IPlaybackPackagerProvider, ITransactionService, PlaybackPackager } from "./index.js";
+import { Database, updateNowBy } from "../db.js";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult, PlaybackPackagingResult } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
+import { wrapError } from "../utils.js";
+import { BackgroundWorker } from "../background-worker.js";
 
 const DAYS_TO_MILLIS = 24 * 60 * 60 * 1000;
 const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
@@ -13,6 +15,7 @@ const DOWNLOAD_LINK_EXPIRY_INTERVAL_MILLIS = 7 * DAYS_TO_MILLIS; // 7 days
 
 export interface TransferServiceConfig {
     providerRegistry: IStorageHandlerProvider,
+    packagers: IPlaybackPackagerProvider,
     transactions: ITransactionService,
     eventBus: EventDispatcher
 }
@@ -297,7 +300,7 @@ export class TransferService {
             }
 
             const provider = this.config.providerRegistry.getHandler(file.provider);
-            const downloadableFile = createMediaDownloadFile(provider, file);
+            const downloadableFile = createMediaDownloadFile(provider, this.config.packagers, this.db, file);
 
             return downloadableFile;
 
@@ -313,7 +316,7 @@ export class TransferService {
 
             const downloadableFilesTasks = files.map(file => {
                 const provider = this.config.providerRegistry.getHandler(file.provider);
-                return createMediaDownloadFile(provider, file);
+                return createMediaDownloadFile(provider, this.config.packagers, this.db,  file);
             });
 
             const downloadableFiles = await Promise.all(downloadableFilesTasks);
@@ -364,7 +367,7 @@ export class TransferDownloadService {
 
             const provider = this.providerRegistry.getHandler(transfer.provider);
             const downloadableFiles = await Promise.all(
-                files.map(file => createDownloadFile(provider, transfer, file))
+                files.map(file => createDownloadFile(provider,  transfer, file))
             );
 
             return {
@@ -428,6 +431,152 @@ export class TransferDownloadService {
     }
 }
 
+export async function queueTransferFilesForPackaging(
+    transferId: string,
+    context: {
+        db: Database,
+        packagers: IPlaybackPackagerProvider,
+        queue: BackgroundWorker
+    }
+) {
+    return wrapError(async () => {
+        const files = await context.db.files().find({ transferId }).toArray();
+        for (let file of files) {
+            if (file.playbackPackagingId) {
+                continue;
+            }
+
+            context.queue.queueJob(() => tryStartPackagingFile(
+                file._id,
+                {
+                    packagers: context.packagers,
+                    db: context.db
+                }
+            ));
+        }
+    });
+}
+
+export async function tryStartPackagingFile(
+    fileId: string,
+    context: {
+        packagers: IPlaybackPackagerProvider,
+        db: Database
+    }
+) {
+    return wrapError(async () => {
+        const file = await context.db.files().findOne({
+            _id: fileId
+        });
+
+        if (!file) {
+            throw createNotFoundError('file');
+        }
+
+        if (file.playbackPackagingId) {
+            console.warn(
+                `Attempting to package file '${file._id}' that has already been packaged by '${file.playbackPackagingProvider}' with packaging id '${file.playbackPackagingId}' and status '${file.playbackPackagingStatus}'. Aborting...`
+            );
+            return file;
+
+            // TODO: it may be possible that we want to package a file that has already been scheduled for packaging, for example
+            // if we want to change the packager, or if the initial process had some issue, etc. We can revisit
+            // this logic when we need to implement support for such scenarios.
+        }
+
+        const packager = context.packagers.tryFindPackagerForFile(file);
+        if (!packager) {
+            console.warn(`Could not find packager for file id '${file._id}', name: '${file.name}'. Ignoring file...`);
+            return;
+        }
+
+        const packagingResult = await packager.startPackagingFile(file);
+        const updateResult = await setFilePackagingInfoById(
+            file._id,
+            packager.name(),
+            packagingResult,
+            {
+                db: context.db
+            }
+        );
+        
+        return updateResult;
+    });
+}
+
+export async function updateFilePackagingMetadata(
+    packagerName: string,
+    packagingId: string,
+    context: {
+        packagerProvider: IPlaybackPackagerProvider,
+        db: Database
+    }): Promise<TransferFile>
+{
+    return wrapError(async () => {
+        const packager = context.packagerProvider.getPackager(packagerName);
+        const file = await context.db.files().findOne({
+            playbackPackagingProvider: packagerName,
+            playbackPackagingId: packagingId
+        });
+
+        if (!file) {
+            throw createResourceNotFoundError(`File not found with packager ${packagerName} and packagingId ${packagingId}`);
+        }
+
+        const result = await updateFilePackagingInfoInternal(file, packager, { db: context.db });
+        return result;
+    });
+}
+
+async function updateFilePackagingInfoInternal(
+    file: TransferFile,
+    packager: PlaybackPackager,
+    context: { db: Database }
+) {
+    return wrapError(async () => {
+        if (file.playbackPackagingProvider !== packager.name()) {
+            throw createInvalidAppStateError(
+                `Attempting to set packing info for file '${file._id}' with packager ${packager.name()} but it was packaged with ${file.playbackPackagingProvider}`
+            );
+        }
+
+        const info = await packager.getPackagingInfo(file);
+        const updateResult = await setFilePackagingInfoById(file._id, packager.name(), info, { db: context.db });
+        return updateResult;
+    })
+}
+
+async function setFilePackagingInfoById(
+    fileId: string,
+    packagerName: string,
+    info: PlaybackPackagingResult,
+    context: {
+        db: Database
+    }
+) {
+    const updateResult = await context.db.files().findOneAndUpdate({
+        _id: fileId
+    }, {
+        $set: {
+            playbackPackagingProvider: packagerName,
+            playbackPackagingId: info.providerId,
+            playbackPackagingStatus: info.status,
+            playbackPackagingError: info.error,
+            playbackPackagingErrorReason: info.errorReason,
+            playbackPackagingMetadata: info.metatada,
+            ...updateNowBy({ type: 'system', _id: 'system' })
+        }
+    }, {
+        returnDocument: 'after'
+    });
+
+    if (!updateResult.value) {
+        throw createAppError(`Failed to update file ${fileId} with packaging status ${info.status}.`);
+    }
+
+    return updateResult.value;
+}
+
 // TODO: I don't think there's much gain in passing around
 // an interface instead of the actual service class since
 // we'll only have on implementation anyway.
@@ -479,7 +628,7 @@ async function createDownloadFile(provider: IStorageHandler, transfer: Transfer,
     };
 }
 
-async function createMediaDownloadFile(provider: IStorageHandler, file: TransferFile): Promise<DownloadTransferFileResult> {
+async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPlaybackPackagerProvider, db: Database, file: TransferFile): Promise<DownloadTransferFileResult> {
     if (!file.accountId) {
         throw createInvalidAppStateError(`Media file '${file._id}' is not tied to an account`);
     }
@@ -492,7 +641,7 @@ async function createMediaDownloadFile(provider: IStorageHandler, file: Transfer
     const fileName = file.name.split('/').at(-1) || file._id;
     const downloadUrl = await provider.getBlobDownloadUrl(file.region, file.accountId, blobName, expiryDate, fileName);
 
-    return {
+    let downlodableFile: DownloadTransferFileResult = {
         _id: file._id,
         transferId: file.transferId,
         name: file.name,
@@ -502,6 +651,57 @@ async function createMediaDownloadFile(provider: IStorageHandler, file: Transfer
         accountId: file.accountId
     }
 
+    if (file.playbackPackagingProvider) {
+        const packager = packagers.getPackager(file.playbackPackagingProvider);
+        if (packager) {
+            let status = file.playbackPackagingStatus;
+            if (file.playbackPackagingStatus !== 'error' && file.playbackPackagingStatus !== 'success') {
+                const updatedFile = await updateFilePackagingInfoInternal(file, packager, { db: db });
+                status = updatedFile.playbackPackagingStatus;
+            }
+
+            const playbackUrls = await packager.getPlaybackUrls(file);
+            downlodableFile = {
+                ...downlodableFile,
+                ...playbackUrls,
+                playbackPackagingStatus: status
+            };
+        }
+    }
+    else {
+        // we should only try to package when we're sure upload is complete otherwise
+        // packaging (and playback) will fail
+        const transfer = await db.transfers().findOne({ _id: file.transferId });
+        if (!transfer) {
+            throw createInvalidAppStateError(`Could not find transfer '${file.transferId}' of file '${file._id}'`);
+        }
+        // TODO: checking for transfer status is problematic
+        // first, it's a separate db request, which adds to the request's latency
+        // second, it's possible that the file upload has completed but the overall
+        // transfer is still in progress
+        // it's possible that the file upload is complete but the transfer may never complete
+        // because we depend on the client sending a finalize request to mark the transfer as
+        // complete. We should do a better job of tracking per-file upload status and readiness.
+        if (transfer.status === 'completed') {
+            // if no packager is assigned to the file, then it was probably uploaded
+            // before the encoding feature was rolled out. Let's schedule it
+            // for packaging
+            const updatedFile = await tryStartPackagingFile(file._id, { db, packagers});
+            // TODO: it's possible that this file has not been packaged because it's not a supported media file
+            // (e.g. not an audio or video file). In which case, we'll always try to package and abort each
+            // time the file is requested for download. We can avoid this by storing a field in the db
+            // indicating that a file was found not supported by media. We should probably also
+            // index files by extension and media type
+
+            if (updatedFile) {
+                downlodableFile = { ...downlodableFile, playbackPackagingStatus: updatedFile.playbackPackagingStatus };
+            }
+        } else {
+            console.warn(`Skipping packaging attempt for file '${file._id}' because transfer '${transfer._id}' is not complete. Status is '${transfer.status}'`);
+        }
+    }
+
+    return downlodableFile;
 }
 
 export interface GetTransferResult extends Transfer {

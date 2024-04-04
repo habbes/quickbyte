@@ -9,6 +9,7 @@
       "@/*": ["./src/*"],
       "@quickbyte/common/*": ["../common/src/*"],
       "@quickbyte/server/*": ["../server/src/*"]
-    }
+    },
+    "types": ["vidstack/vue"]
   }
 }

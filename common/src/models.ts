@@ -173,6 +173,12 @@ export interface TransferFile extends PersistedModel {
     // TODO: this should be required, but was introduced later
     // we should update all existing transfer files with an account id
     accountId?: string;
+    playbackPackagingProvider?: string;
+    playbackPackagingId?: string;
+    playbackPackagingStatus?: PlaybackPackagingStatus;
+    playbackPackagingError?: string;
+    playbackPackagingErrorReason?: PlaybackPackagingErrorReason;
+    playbackPackagingMetadata?: Record<string, any>;
 }
 
 export interface Upload extends PersistedModel {
@@ -189,6 +195,17 @@ export interface DownloadRequest extends PersistedModel {
     downloadAllZip?: string;
     filesRequested?: string[];
 }
+
+export interface PlaybackPackagingResult {
+    providerId: string;
+    status: PlaybackPackagingStatus;
+    errorReason?: PlaybackPackagingErrorReason;
+    error?: string;
+    metatada: Record<any, any>;
+}
+
+export type PlaybackPackagingStatus = 'pending'|'progress'|'error'|'success';
+export type PlaybackPackagingErrorReason = 'notMedia'|'serviceError';
 
 
 export interface Transaction extends PersistedModel {
@@ -329,9 +346,10 @@ export type WithChildren<T> = T & {
 
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
 
-export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> {
+export type DownloadTransferFileResult = Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> & {
     downloadUrl: string;
-}
+    playbackPackagingStatus?: PlaybackPackagingStatus;
+} & PlaybackUrls;
 
 export interface MediaWithFileAndComments extends Media {
     versions: MediaVersionWithFile[];
@@ -464,4 +482,11 @@ export interface UploadMediaResult {
 
 export interface DeletionCountResult {
     deletedCount: number;
+}
+
+export interface PlaybackUrls {
+    hlsManifestUrl?: string;
+    dashManifestUrl?: string;
+    thumbnailUrl?: string;
+    posterUrl?: string;
 }
