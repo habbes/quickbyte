@@ -3,11 +3,12 @@
     <div v-if="mediaType === 'video'"
       class="bg-black max-h-full"
     >
+    <!-- @vue-ignore -->
     <media-player
       ref="player"
-      :viewType="mediaType as any"
-      :streamType="'on-demand' as any"
-      :playsInline="true as any"
+      :viewType="mediaType"
+      :streamType="'on-demand'"
+      playsInline
       @can-play="handleCanPlay()"
       @play="isPlaying = true"
       @pause="isPlaying = false"
@@ -29,11 +30,12 @@
     </div>
     <div v-else class="bg-black p-10 flex flex-col items-center justify-center">
       <MusicalNoteIcon class="h-24 w-24 text-white" />
+      <!-- @vue-ignore -->
       <media-player
         ref="player"
-        :viewType="mediaType as any"
-        :streamType="'on-demand' as any"
-        :playsInline="true as any"
+        :viewType="mediaType"
+        :streamType="'on-demand'"
+        playsInline
         @can-play="handleCanPlay()"
         @play="isPlaying = true"
         @pause="isPlaying = false"
