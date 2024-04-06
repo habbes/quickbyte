@@ -3,9 +3,12 @@
     <div class="h-full w-full flex flex-col border border-[#5e5e8b] rounded-sm"
       :class="{ [`border-2 border-[#7d7da1]`]: selected }"
       @dblclick="handleDoubleClick($event)"
-      >
+    >
       <div class="h-full w-full flex flex-col">
-        <div class="flex-1 flex flex-col cursor-pointer" @click="handleClick($event)">
+        <div class="flex-1 flex flex-col cursor-pointer"
+          @mousedown.left="handleMouseDown($event)"
+          @mouseup.left="handleMouseUp($event)"
+        >
           <div class="flex-1 bg-[#1c1b26] flex items-center justify-center relative">
             <div
               v-if="showSelectCheckbox"
@@ -15,9 +18,10 @@
                 :checked="selected"
                 class="bg-white"
                 @update:checked="handleCheckboxChange()"
+                @mousedown.left.stop
+                @mouseup.left.stop
                 @click.stop
               />
-              <!-- <input :checked="selected" @change="handleCheckboxChange()" type="checkbox" @click.stop/> -->
             </div>
             <slot></slot>
           </div>
@@ -96,29 +100,67 @@ const emit = defineEmits<{
 
 const router = useRouter();
 
-// we throttle the click event so that if two clicks
-// are triggered quickly, we handle that as a double click
-// instead of handling it as two separate clicks
-const handleClick = throttle((event: MouseEvent) => {
-  // cmd+click on macos, ctrl+click on other OS
-  // add to selection
-  if (event.metaKey || event.ctrlKey) {
-    emit('toggleInMultiSelect');
+let clickStart = 0;
+const LONG_CLICK_THRESHOLD = 500;
+function handleMouseDown(event: MouseEvent) {
+  clickStart = Date.now();
+}
+
+function handleMouseUp(event: MouseEvent) {
+  const duration = Date.now() - clickStart;
+  if (duration <= LONG_CLICK_THRESHOLD) {
+    // click
+    handleClick(event);
   }
   else {
-    emit('toggleSelect');
+    // long click
+    handleLongClick(event);
   }
-}, 250);
+}
 
 function handleCheckboxChange() {
   emit('toggleInMultiSelect');
 }
 
-function handleDoubleClick(event: MouseEvent) {
+function handleClick(event: MouseEvent) {
+  // a (short) click event opens the item
+  // but if there's meta/ctrl key
+  // or if there are other items currently
+  // select, we trick click as select
+  if (event.metaKey || event.ctrlKey) {
+    emit('toggleInMultiSelect');
+    return;
+  }
+
+  if (props.totalSelectedItems && props.totalSelectedItems > 0) {
+    emit('toggleInMultiSelect');
+    return;
+  }
+
   if (!props.link) {
     return;
   }
 
   router.push(props.link);
 }
+
+function handleDoubleClick(event: MouseEvent) {
+  // double click always opens the item
+  if (!props.link) {
+    return;
+  }
+
+  router.push(props.link);
+}
+
+function handleLongClick(event: MouseEvent) {
+  // long click triggers selection
+  if (event.metaKey || event.ctrlKey) {
+    emit('toggleInMultiSelect');
+    return;
+  }
+
+  emit('toggleSelect');
+}
+
 </script>

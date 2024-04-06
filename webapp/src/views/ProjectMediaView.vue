@@ -136,37 +136,43 @@
 
         <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
       </div>
-      <DragSelect
+      <!-- the DragSelect seems to capture and interfere with
+      click events from the project item-->
+      <!-- <DragSelect
         v-else
         :modelValue="selectedItemIds"
         @update:modelValue="handleDragSelect($event)"
-      >
-      <div
-        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
-      >
-        
-        <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id">
-          <div
-            class="w-full aspect-square"
-          >
-            
-              <ProjectItemCard
-                :item="item"
-                :selected="isItemSelected(item._id)"
-                :showSelectCheckbox="selectedItemIds.size > 0"
-                :totalSelectedItems="selectedItemIds.size"
-                @update="handleItemUpdate($event)"
-                @delete="handleDeleteRequested($event)"
-                @move="handleMoveRequested($event)"
-                @toggleSelect="handleToggleSelect($event)"
-                @toggleInMultiSelect="handleToggleInMultiSelect($event)"
-              />
-          </div>
-            
+        :clickOptionToSelect="false"
+      > -->
+        <div
+          v-else
+          class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
+        >
           
-        </DragSelectOption>
-      </div>
-    </DragSelect>
+          <!-- <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id"> -->
+            <div
+              class="w-full aspect-square"
+              v-for="item in filteredItems"
+              :key="item._id"
+            >
+              
+                <ProjectItemCard
+                  :item="item"
+                  :selected="isItemSelected(item._id)"
+                  :showSelectCheckbox="selectedItemIds.size > 0"
+                  :totalSelectedItems="selectedItemIds.size"
+                  @update="handleItemUpdate($event)"
+                  @delete="handleDeleteRequested($event)"
+                  @move="handleMoveRequested($event)"
+                  @toggleSelect="handleToggleSelect($event)"
+                  @toggleInMultiSelect="handleToggleInMultiSelect($event)"
+                />
+            </div>
+              
+            
+          <!-- </DragSelectOption> -->
+        </div>
+      <!-- </DragSelect> -->
     </UiLayout>
     <template #menu v-if="project">
       <RequireRole :accepted="['owner', 'admin', 'editor']" :current="project.role">

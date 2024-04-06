@@ -19,10 +19,22 @@
         <span v-else>Delete {{ totalSelectedItems }} {{ pluralize('item', totalSelectedItems!) }}</span>
       </UiLayout>
     </UiMenuItem>
+    <UiMenuItem v-if="totalSelectedItems">
+      <UiLayout horizontal itemsCenter gapSm>
+        <DocumentPlusIcon class="w-4 h-4" />
+        Select all
+      </UiLayout>
+    </UiMenuItem>
+    <UiMenuItem v-if="totalSelectedItems">
+      <UiLayout horizontal itemsCenter gapSm>
+        <DocumentMinusIcon class="w-4 h-4" />
+        Unselect all
+      </UiLayout>
+    </UiMenuItem>
 </template>
 <script lang="ts" setup>
-import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
-import { EllipsisVerticalIcon, PencilIcon, TrashIcon, ArrowRightCircleIcon } from '@heroicons/vue/24/solid';
+import { UiMenu, UiMenuItem, UiMenuSeparator, UiLayout } from "@/components/ui";
+import { EllipsisVerticalIcon, PencilIcon, TrashIcon, ArrowRightCircleIcon, DocumentPlusIcon, DocumentMinusIcon } from '@heroicons/vue/24/outline';
 import { computed } from "vue";
 import { pluralize } from "@/core";
 
