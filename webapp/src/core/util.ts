@@ -292,16 +292,53 @@ export function splitClickAndDoubleClickHandler(onClick: ClickHandler, onDblClic
                 // no other click occurred, consider a single-click event
                 clickCount = 0;
                 onClick(event);
-                console.log('single click');
             }, MAX_DBL_CLICK_DELAY);
         } else if (clickCount === 2) {
             // another click occurred before the deadline
             // handle as double click and reset
-            console.log('double click');
             clearTimeout(timeout);
             clickCount = 0;
             onDblClick(event);
         }
+    }
+}
+
+/**
+ * Utility helper for detecting and distinguishing between short and long events,
+ * e.g. between short clicks or taps and long presses.
+ * Returns a set of handler functions that should be registered to the
+ * target element's start events (e.g. mousedown, touchstart) and stop events (mouseup, touchend). The utility
+ * will take care of calling either the onShortEvent or onLongEvent handler
+ * passed as arguments based on a configuration delay threshold
+ * @param onShortEvent 
+ * @param onLongEvent 
+ * @param options 
+ */
+export function splitShortAndLongEventHandler<TEvent>(
+    onShortEvent: (event: TEvent) => unknown,
+    onLongEvent: (event: TEvent) => unknown,
+    options?: { longClickThreshold?: number }
+) {
+    let clickStart = 0;
+    const longClickThreshold = options?.longClickThreshold || 500;
+
+    function handleEventStart(event: TEvent) {
+        clickStart = Date.now();
+    }
+
+    function handleEventEnd(event: TEvent) {
+        const duration = Date.now() - clickStart;
+        if (duration <= longClickThreshold) {
+            onShortEvent(event);
+        }
+        else {
+            onLongEvent(event);
+        }
+    }
+
+    return {
+        handleEventStart,
+        handleEventEnd
     }
 }
 

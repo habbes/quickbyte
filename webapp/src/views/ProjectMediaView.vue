@@ -136,37 +136,51 @@
 
         <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
       </div>
+      <!--
+        The DragSelect captures clicks on the DragSelectOption and interferes with
+        click events from the ProjectItemCard, that's why we disable
+        the clickOptionToSelect and draggableOnOption props.
+        The downside is that you have to trag from outside a ProjectItemCard
+        to effectively drag-select elements. If you drag from inside a ProjectItemCard,
+        the item from which you started dragging will not be included in the selection.
+        I think that's a lesser evil.
+      -->
       <DragSelect
         v-else
         :modelValue="selectedItemIds"
         @update:modelValue="handleDragSelect($event)"
+        :clickOptionToSelect="false"
+        :draggableOnOption="false"
       >
-      <div
-        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
-      >
-        
-        <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id">
-          <div
-            class="w-full aspect-square"
-          >
-            
-              <ProjectItemCard
-                :item="item"
-                :selected="isItemSelected(item._id)"
-                :showSelectCheckbox="selectedItemIds.size > 0"
-                :totalSelectedItems="selectedItemIds.size"
-                @update="handleItemUpdate($event)"
-                @delete="handleDeleteRequested($event)"
-                @move="handleMoveRequested($event)"
-                @toggleSelect="handleToggleSelect($event)"
-                @toggleInMultiSelect="handleToggleInMultiSelect($event)"
-              />
-          </div>
-            
+        <div
           
-        </DragSelectOption>
-      </div>
-    </DragSelect>
+          class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
+        >
+          
+          <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id">
+            <div
+              class="w-full aspect-square"
+            >
+              
+                <ProjectItemCard
+                  :item="item"
+                  :selected="isItemSelected(item._id)"
+                  :showSelectCheckbox="selectedItemIds.size > 0"
+                  :totalSelectedItems="selectedItemIds.size"
+                  @update="handleItemUpdate($event)"
+                  @delete="handleDeleteRequested($event)"
+                  @move="handleMoveRequested($event)"
+                  @toggleSelect="handleToggleSelect($event)"
+                  @toggleInMultiSelect="handleToggleInMultiSelect($event)"
+                  @selectAll="handleSelectAll()"
+                  @unselectAll="handleUnselectAll()"
+                />
+            </div>
+              
+            
+          </DragSelectOption>
+        </div>
+      </DragSelect>
     </UiLayout>
     <template #menu v-if="project">
       <RequireRole :accepted="['owner', 'admin', 'editor']" :current="project.role">
@@ -198,6 +212,20 @@
             <UiLayout horizontal itemsCenter gapSm>
               <TrashIcon class="w-5 h-5" />
               <span>Delete {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
+            </UiLayout>
+          </UiMenuItem>
+          <UiMenuSeparator />
+          <UiMenuItem @click="handleSelectAll()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <DocumentPlusIcon class="w-5 h-5" />
+              <span>Select all</span>
+            </UiLayout>
+          </UiMenuItem>
+          <UiMenuSeparator />
+          <UiMenuItem @click="handleUnselectAll()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <DocumentMinusIcon class="w-5 h-5" />
+              <span>Unselect all</span>
             </UiLayout>
           </UiMenuItem>
         </template>
@@ -242,7 +270,8 @@ import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize } from '@/core';
 import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
-import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon, Cog8ToothIcon, TrashIcon, ArrowRightCircleIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon, Cog8ToothIcon, TrashIcon, ArrowRightCircleIcon,
+  DocumentPlusIcon, DocumentMinusIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue';
 import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
@@ -555,6 +584,14 @@ function handleMultiSelectCheckboxStateChange(checked: boolean) {
   } else {
     selectAllItems();
   }
+}
+
+function handleSelectAll() {
+  selectAllItems();
+}
+
+function handleUnselectAll() {
+  clearSelectedItems();
 }
 
 function handleDragSelect(dragSelected: Set<unknown>|Array<unknown>) {
