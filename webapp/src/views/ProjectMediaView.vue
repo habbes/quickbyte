@@ -136,24 +136,30 @@
 
         <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
       </div>
-      <!-- the DragSelect seems to capture and interfere with
-      click events from the project item-->
-      <!-- <DragSelect
+      <!--
+        The DragSelect captures clicks on the DragSelectOption and interferes with
+        click events from the ProjectItemCard, that's why we disable
+        the clickOptionToSelect and draggableOnOption props.
+        The downside is that you have to trag from outside a ProjectItemCard
+        to effectively drag-select elements. If you drag from inside a ProjectItemCard,
+        the item from which you started dragging will not be included in the selection.
+        I think that's a lesser evil.
+      -->
+      <DragSelect
         v-else
         :modelValue="selectedItemIds"
         @update:modelValue="handleDragSelect($event)"
         :clickOptionToSelect="false"
-      > -->
+        :draggableOnOption="false"
+      >
         <div
-          v-else
+          
           class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
         >
           
-          <!-- <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id"> -->
+          <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id">
             <div
               class="w-full aspect-square"
-              v-for="item in filteredItems"
-              :key="item._id"
             >
               
                 <ProjectItemCard
@@ -172,9 +178,9 @@
             </div>
               
             
-          <!-- </DragSelectOption> -->
+          </DragSelectOption>
         </div>
-      <!-- </DragSelect> -->
+      </DragSelect>
     </UiLayout>
     <template #menu v-if="project">
       <RequireRole :accepted="['owner', 'admin', 'editor']" :current="project.role">
