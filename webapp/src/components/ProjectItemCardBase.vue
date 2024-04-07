@@ -8,6 +8,8 @@
         <div class="flex-1 flex flex-col cursor-pointer"
           @mousedown.left="handleMouseDown($event)"
           @mouseup.left="handleMouseUp($event)"
+          @touchstart.prevent.stop="handleMouseDown($event)"
+          @touchend.prevent.stop="handleMouseUp($event)"
         >
           <div class="flex-1 bg-[#1c1b26] flex items-center justify-center relative">
             <div
@@ -83,6 +85,7 @@ import { UiMenu, UiCheckbox, UiContextMenu } from '@/components/ui';
 import ProjectItemMenuItems from "./ProjectItemMenuItems.vue";
 import { useRouter } from 'vue-router';
 import type { RouterLinkProps } from 'vue-router';
+import { splitShortAndLongEventHandler } from '@/core';
 
 const props = defineProps<{
   name: string;
@@ -104,29 +107,19 @@ const emit = defineEmits<{
 
 const router = useRouter();
 
-let clickStart = 0;
-const LONG_CLICK_THRESHOLD = 500;
-function handleMouseDown(event: MouseEvent) {
-  clickStart = Date.now();
-}
-
-function handleMouseUp(event: MouseEvent) {
-  const duration = Date.now() - clickStart;
-  if (duration <= LONG_CLICK_THRESHOLD) {
-    // click
-    handleClick(event);
-  }
-  else {
-    // long click
-    handleLongClick(event);
-  }
-}
+const {
+  handleEventStart: handleMouseDown,
+  handleEventEnd: handleMouseUp
+} = splitShortAndLongEventHandler<MouseEvent|TouchEvent>(
+  handleClick,
+  handleLongClick
+);
 
 function handleCheckboxChange() {
   emit('toggleInMultiSelect');
 }
 
-function handleClick(event: MouseEvent) {
+function handleClick(event: MouseEvent|TouchEvent) {
   // a (short) click event opens the item
   // but if there's meta/ctrl key
   // or if there are other items currently
@@ -157,7 +150,7 @@ function handleDoubleClick(event: MouseEvent) {
   router.push(props.link);
 }
 
-function handleLongClick(event: MouseEvent) {
+function handleLongClick(event: MouseEvent|TouchEvent) {
   // long click triggers selection
   if (event.metaKey || event.ctrlKey) {
     emit('toggleInMultiSelect');

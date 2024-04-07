@@ -208,7 +208,7 @@ export class ApiClient {
 
     private async makeRequest<TResult>(endpoint: string, method: string = 'GET', body: any = undefined, auth: boolean = true): Promise<TResult> {
         const url = `${this.config.baseUrl}/${endpoint}`;
-        console.log('url', url);
+
         const headers: Record<string, string> = {};
         const options: RequestInit = {
             method,
