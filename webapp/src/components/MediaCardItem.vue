@@ -11,6 +11,8 @@
     @move="$emit('move')"
     @toggleSelect="$emit('toggleSelect')"
     @toggleInMultiSelect="$emit('toggleInMultiSelect')"
+    @selectAll="$emit('selectAll')"
+    @unselectAll="$emit('unselectAll')"
   >
     <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
     <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
@@ -52,6 +54,8 @@ defineEmits<{
   (e: 'move'): void;
   (e: 'toggleSelect'): void;
   (e: 'toggleInMultiSelect'): void;
+  (e: 'selectAll'): void;
+  (e: 'unselectAll'): void;
 }>();
 
 const renameDialog = ref<typeof RenameMediaDialog>();

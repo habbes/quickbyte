@@ -56,6 +56,8 @@
                   @rename="$emit('rename')"
                   @move="$emit('move')"
                   @delete="$emit('delete')"
+                  @selectAll="$emit('selectAll')"
+                  @unselectAll="$emit('unselectAll')"
                 />
               </UiMenu>
             </slot>
@@ -69,6 +71,8 @@
         @rename="$emit('rename')"
         @move="$emit('move')"
         @delete="$emit('delete')"
+        @selectAll="$emit('selectAll')"
+        @unselectAll="$emit('unselectAll')"
       />
     </template>
   </UiContextMenu>
@@ -79,8 +83,6 @@ import { UiMenu, UiCheckbox, UiContextMenu } from '@/components/ui';
 import ProjectItemMenuItems from "./ProjectItemMenuItems.vue";
 import { useRouter } from 'vue-router';
 import type { RouterLinkProps } from 'vue-router';
-import { throttle } from '@/core';
-import { computed } from 'vue';
 
 const props = defineProps<{
   name: string;
@@ -96,6 +98,8 @@ const emit = defineEmits<{
   (e: 'move'): void;
   (e: 'toggleSelect'): void;
   (e: 'toggleInMultiSelect'): void;
+  (e: 'selectAll'): void;
+  (e: 'unselectAll'): void;
 }>();
 
 const router = useRouter();

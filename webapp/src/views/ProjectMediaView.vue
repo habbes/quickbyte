@@ -166,6 +166,8 @@
                   @move="handleMoveRequested($event)"
                   @toggleSelect="handleToggleSelect($event)"
                   @toggleInMultiSelect="handleToggleInMultiSelect($event)"
+                  @selectAll="handleSelectAll()"
+                  @unselectAll="handleUnselectAll()"
                 />
             </div>
               
@@ -561,6 +563,14 @@ function handleMultiSelectCheckboxStateChange(checked: boolean) {
   } else {
     selectAllItems();
   }
+}
+
+function handleSelectAll() {
+  selectAllItems();
+}
+
+function handleUnselectAll() {
+  clearSelectedItems();
 }
 
 function handleDragSelect(dragSelected: Set<unknown>|Array<unknown>) {
