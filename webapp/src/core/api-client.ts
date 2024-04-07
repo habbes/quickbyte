@@ -13,8 +13,7 @@ export class ApiClient {
     }
     
     async getProviders(): Promise<StorageProvider[]> {
-        const res = await fetch(`${this.config.baseUrl}/providers`, { mode: 'cors' });
-        const data = await res.json();
+        const data = await this.makeRequest<StorageProvider[]>('providers');
         return data;
     }
 
@@ -209,6 +208,7 @@ export class ApiClient {
 
     private async makeRequest<TResult>(endpoint: string, method: string = 'GET', body: any = undefined, auth: boolean = true): Promise<TResult> {
         const url = `${this.config.baseUrl}/${endpoint}`;
+        console.log('url', url);
         const headers: Record<string, string> = {};
         const options: RequestInit = {
             method,
