@@ -19,10 +19,28 @@
         <span v-else>Delete {{ totalSelectedItems }} {{ pluralize('item', totalSelectedItems!) }}</span>
       </UiLayout>
     </UiMenuItem>
+    <UiMenuItem
+      @click="$emit('selectAll')"
+      v-if="totalSelectedItems"
+    >
+      <UiLayout horizontal itemsCenter gapSm>
+        <DocumentPlusIcon class="w-4 h-4" />
+        Select all
+      </UiLayout>
+    </UiMenuItem>
+    <UiMenuItem
+      @click="$emit('unselectAll')"
+      v-if="totalSelectedItems"
+    >
+      <UiLayout horizontal itemsCenter gapSm>
+        <DocumentMinusIcon class="w-4 h-4" />
+        Unselect all
+      </UiLayout>
+    </UiMenuItem>
 </template>
 <script lang="ts" setup>
-import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
-import { EllipsisVerticalIcon, PencilIcon, TrashIcon, ArrowRightCircleIcon } from '@heroicons/vue/24/solid';
+import { UiMenuItem, UiLayout } from "@/components/ui";
+import { PencilIcon, TrashIcon, ArrowRightCircleIcon, DocumentPlusIcon, DocumentMinusIcon } from '@heroicons/vue/24/outline';
 import { computed } from "vue";
 import { pluralize } from "@/core";
 
@@ -34,6 +52,8 @@ defineEmits<{
   (e: 'rename'): unknown;
   (e: 'delete'): unknown;
   (e: 'move'): unknown;
+  (e: 'selectAll'): unknown;
+  (e: 'unselectAll'): unknown;
 }>();
 
 const areMultipleItemsSelected = computed(() =>

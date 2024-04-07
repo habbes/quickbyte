@@ -3,9 +3,14 @@
     <div class="h-full w-full flex flex-col border border-[#5e5e8b] rounded-sm"
       :class="{ [`border-2 border-[#7d7da1]`]: selected }"
       @dblclick="handleDoubleClick($event)"
-      >
+    >
       <div class="h-full w-full flex flex-col">
-        <div class="flex-1 flex flex-col cursor-pointer" @click="handleClick($event)">
+        <div class="flex-1 flex flex-col cursor-pointer"
+          @mousedown.left="handleMouseDown($event)"
+          @mouseup.left="handleMouseUp($event)"
+          @touchstart.prevent.stop="handleMouseDown($event)"
+          @touchend.prevent.stop="handleMouseUp($event)"
+        >
           <div class="flex-1 bg-[#1c1b26] flex items-center justify-center relative">
             <div
               v-if="showSelectCheckbox"
@@ -15,9 +20,10 @@
                 :checked="selected"
                 class="bg-white"
                 @update:checked="handleCheckboxChange()"
+                @mousedown.left.stop
+                @mouseup.left.stop
                 @click.stop
               />
-              <!-- <input :checked="selected" @change="handleCheckboxChange()" type="checkbox" @click.stop/> -->
             </div>
             <slot></slot>
           </div>
@@ -52,6 +58,8 @@
                   @rename="$emit('rename')"
                   @move="$emit('move')"
                   @delete="$emit('delete')"
+                  @selectAll="$emit('selectAll')"
+                  @unselectAll="$emit('unselectAll')"
                 />
               </UiMenu>
             </slot>
@@ -65,6 +73,8 @@
         @rename="$emit('rename')"
         @move="$emit('move')"
         @delete="$emit('delete')"
+        @selectAll="$emit('selectAll')"
+        @unselectAll="$emit('unselectAll')"
       />
     </template>
   </UiContextMenu>
@@ -75,8 +85,7 @@ import { UiMenu, UiCheckbox, UiContextMenu } from '@/components/ui';
 import ProjectItemMenuItems from "./ProjectItemMenuItems.vue";
 import { useRouter } from 'vue-router';
 import type { RouterLinkProps } from 'vue-router';
-import { throttle } from '@/core';
-import { computed } from 'vue';
+import { splitShortAndLongEventHandler } from '@/core';
 
 const props = defineProps<{
   name: string;
@@ -92,33 +101,63 @@ const emit = defineEmits<{
   (e: 'move'): void;
   (e: 'toggleSelect'): void;
   (e: 'toggleInMultiSelect'): void;
+  (e: 'selectAll'): void;
+  (e: 'unselectAll'): void;
 }>();
 
 const router = useRouter();
 
-// we throttle the click event so that if two clicks
-// are triggered quickly, we handle that as a double click
-// instead of handling it as two separate clicks
-const handleClick = throttle((event: MouseEvent) => {
-  // cmd+click on macos, ctrl+click on other OS
-  // add to selection
-  if (event.metaKey || event.ctrlKey) {
-    emit('toggleInMultiSelect');
-  }
-  else {
-    emit('toggleSelect');
-  }
-}, 250);
+const {
+  handleEventStart: handleMouseDown,
+  handleEventEnd: handleMouseUp
+} = splitShortAndLongEventHandler<MouseEvent|TouchEvent>(
+  handleClick,
+  handleLongClick
+);
 
 function handleCheckboxChange() {
   emit('toggleInMultiSelect');
 }
 
-function handleDoubleClick(event: MouseEvent) {
+function handleClick(event: MouseEvent|TouchEvent) {
+  // a (short) click event opens the item
+  // but if there's meta/ctrl key
+  // or if there are other items currently
+  // select, we trick click as select
+  if (event.metaKey || event.ctrlKey) {
+    emit('toggleInMultiSelect');
+    return;
+  }
+
+  if (props.totalSelectedItems && props.totalSelectedItems > 0) {
+    emit('toggleInMultiSelect');
+    return;
+  }
+
   if (!props.link) {
     return;
   }
 
   router.push(props.link);
 }
+
+function handleDoubleClick(event: MouseEvent) {
+  // double click always opens the item
+  if (!props.link) {
+    return;
+  }
+
+  router.push(props.link);
+}
+
+function handleLongClick(event: MouseEvent|TouchEvent) {
+  // long click triggers selection
+  if (event.metaKey || event.ctrlKey) {
+    emit('toggleInMultiSelect');
+    return;
+  }
+
+  emit('toggleSelect');
+}
+
 </script>

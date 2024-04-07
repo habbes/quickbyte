@@ -11,6 +11,8 @@
     @move="$emit('move')"
     @toggleSelect="$emit('toggleSelect')"
     @toggleInMultiSelect="$emit('toggleInMultiSelect')"
+    @selectAll="$emit('selectAll')"
+    @unselectAll="$emit('unselectAll')"
   >
     <FolderIcon class="h-10 w-10" />
     <template #extraDetails>
@@ -45,6 +47,8 @@ defineEmits<{
   (e: 'move'): void;
   (e: 'toggleSelect'): void;
   (e: 'toggleInMultiSelect'): void;
+  (e: 'selectAll'): void;
+  (e: 'unselectAll'): void;
 }>();
 
 const renameDialog = ref<typeof RenameFolderDialog>();
