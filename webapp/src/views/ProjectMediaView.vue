@@ -208,6 +208,20 @@
               <span>Delete {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
             </UiLayout>
           </UiMenuItem>
+          <UiMenuSeparator />
+          <UiMenuItem @click="handleSelectAll()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <DocumentPlusIcon class="w-5 h-5" />
+              <span>Select all</span>
+            </UiLayout>
+          </UiMenuItem>
+          <UiMenuSeparator />
+          <UiMenuItem @click="handleUnselectAll()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <DocumentMinusIcon class="w-5 h-5" />
+              <span>Unselect all</span>
+            </UiLayout>
+          </UiMenuItem>
         </template>
         <UiMenuSeparator />
       </RequireRole>
@@ -250,7 +264,8 @@ import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize } from '@/core';
 import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
-import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon, Cog8ToothIcon, TrashIcon, ArrowRightCircleIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon, Cog8ToothIcon, TrashIcon, ArrowRightCircleIcon,
+  DocumentPlusIcon, DocumentMinusIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue';
 import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
