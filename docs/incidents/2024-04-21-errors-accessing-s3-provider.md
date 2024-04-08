@@ -8,7 +8,7 @@ This document provides a detailed report of the incident, including the root cau
 
 On Thursday March 14th at 9:56AM EAT, I received an email from `info@quickbyte.io` notifying me server errors. This email was triggered by the Admin alerts background job that sends the configured admin email alerts when server error (status code 500) have occurred within the last 5 minutes. Here's the content of the email:
 
-Subject: **Quickbyte - Quickbyte Admin Alert: Server errors occurred in9 the last 5 minutes.**
+Subject: **Quickbyte - Quickbyte Admin Alert: Server errors occurred in the last 5 minutes.**
 
 Content:
 
@@ -85,3 +85,28 @@ Content:
 At 10:37AM I sent the same email to the 2 other collaborators on the affected project. I had not considered sending them an email earlier on, but I realized it would be better to notify them since I didn't know which user actually faced the issue. But I had informed them of the failure detection when I sent the first email. This is something that needs to be improvement for future incident announcements since I was manually sending the emails from my mail client.
 
 ## Root cause
+
+Due to the suboptimal [download speeds](https://github.com/habbes/quickbyte/issues/239) I've observed from Quickbyte I wanted to add support for Amazon S3 as an alternative to the Azure storage provider in hopes of improving direct download speeds. I created a couple of PRs to advance this work:
+
+- https://github.com/habbes/quickbyte/pull/247
+- https://github.com/habbes/quickbyte/pull/256
+
+I implemented most of the code to support Amazon S3, including multi-part uploads and downloads, upload recovery etc. The only thing that was missing was to automate the infrastructure provisioning using Terraform in the same way I do it for Azure. However, S3 terraform provider doesn't provide a convenient dynamic way for provisioning buckets in multiple regions. So paused this work and said I'd do it later. But up to this point I had tested the feature against some test bucket which I had "temporarily" hardcoded in the code.
+
+Since I had mingled some other features in the S3 integration PRs, and since the S3 PRs were taking longer than I thought, I decided to merge the PRs so that I can get the other features shipped. But I would "disable" S3 from being selected by the client.
+
+Unfortunately, it seems like in one of those merged PRs, I exposed the S3 feature in production as the preferred provider by the client and one account used it to upload files. But I was not aware that the feature was exposed.
+
+When I merged the [second S3 PR](https://github.com/habbes/quickbyte/pull/256), I "disabled" S3 support by skipping its registration in the `StorageProviderRegistry`. And this PR was pushed to prod. This means that that the system no longer knew how to resolve the `s3` provider, even though there were files in the database that stored with the `s3` provider from a previous PR. **The system was no in an invalid state**.
+
+Now, the next time the files that were uploaded with the `s3` provider were requested by the user, the server could not find the `s3` provider in the registry and throw an error. This error triggered the email
+
+## Next steps
+
+The patch I created re-enabled s3, but the s3 bucket being used was meant for testing and it's a risk to keep the files there. The files should be transferred to an storage account or bucket meant for production, whether on s3, azure or some other provider we support:
+
+- https://github.com/habbes/quickbyte/issues/320
+
+
+While I had sent updates to affected customers, I also want to send an incident report both to internal customers (via email) as well as the general public (social media post). I think this would promote trust and transparency with customers and also show that we do take incidents seriously (given that it was detected and mitigated before customers raised the alarm).
+
