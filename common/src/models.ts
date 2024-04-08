@@ -13,6 +13,10 @@ export interface Deleteable {
     deletedAt?: Date;
 }
 
+export interface ParentDeleteable {
+    parentDeleted?: boolean;
+}
+
 export type Principal = {
     type: 'user',
     _id: string;
@@ -136,6 +140,16 @@ export interface Transfer extends PersistedModel {
      * to the media
      */
     mediaId?: string;
+    /**
+     * If this transfer is adding files to a project,
+     * an optional folderId specifies which folder
+     * to store the media items into. Essentially the path
+     * to this folder is prefixed to the the paths of the files being uploaded.
+     * If the folder does not exist, it will be ignored.
+     * This field is ignore when `mediaId` is set because versions
+     * of a media item are tied to the media item.
+     */
+    folderId?: string;
 }
 
 export interface DbTransfer extends Transfer {
@@ -159,6 +173,12 @@ export interface TransferFile extends PersistedModel {
     // TODO: this should be required, but was introduced later
     // we should update all existing transfer files with an account id
     accountId?: string;
+    playbackPackagingProvider?: string;
+    playbackPackagingId?: string;
+    playbackPackagingStatus?: PlaybackPackagingStatus;
+    playbackPackagingError?: string;
+    playbackPackagingErrorReason?: PlaybackPackagingErrorReason;
+    playbackPackagingMetadata?: Record<string, any>;
 }
 
 export interface Upload extends PersistedModel {
@@ -175,6 +195,17 @@ export interface DownloadRequest extends PersistedModel {
     downloadAllZip?: string;
     filesRequested?: string[];
 }
+
+export interface PlaybackPackagingResult {
+    providerId: string;
+    status: PlaybackPackagingStatus;
+    errorReason?: PlaybackPackagingErrorReason;
+    error?: string;
+    metatada: Record<any, any>;
+}
+
+export type PlaybackPackagingStatus = 'pending'|'progress'|'error'|'success';
+export type PlaybackPackagingErrorReason = 'notMedia'|'serviceError';
 
 
 export interface Transaction extends PersistedModel {
@@ -233,13 +264,55 @@ export interface Project extends PersistedModel {
     accountId: string;
 }
 
-export interface Media extends PersistedModel {
+export interface Folder extends PersistedModel, Deleteable, ParentDeleteable {
+    name: string;
+    projectId: string;
+    parentId?: string|null;
+}
+
+export interface FolderWithPath extends Folder {
+    path: FolderPathEntry[];
+}
+
+export interface FolderPathEntry {
+    name: string;
+    _id: string;
+}
+
+export interface Media extends PersistedModel, Deleteable, ParentDeleteable {
     name: string;
     description?: string;
     projectId: string;
     preferredVersionId: string;
     versions: MediaVersion[];
+    folderId?: string|null;
     // TODO: add file kind?
+}
+
+export type ProjectItem = ProjectFolderItem | ProjectMediaItem;
+
+export interface BaseProjectItem {
+    _id: string;
+    name: string;
+    _createdAt: Date;
+    _updatedAt: Date;
+}
+
+export interface ProjectFolderItem extends BaseProjectItem {
+    type: "folder";
+    item: Folder;
+}
+
+export interface ProjectMediaItem extends BaseProjectItem {
+    type: "media";
+    item: Media
+}
+
+export type ProjectItemType = "folder"|"media";
+
+export interface GetProjectItemsResult {
+    folder?: FolderWithPath;
+    items: ProjectItem[];
 }
 
 export interface MediaVersion extends PersistedModel {
@@ -273,9 +346,10 @@ export type WithChildren<T> = T & {
 
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
 
-export interface DownloadTransferFileResult extends Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> {
+export type DownloadTransferFileResult = Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> & {
     downloadUrl: string;
-}
+    playbackPackagingStatus?: PlaybackPackagingStatus;
+} & PlaybackUrls;
 
 export interface MediaWithFileAndComments extends Media {
     versions: MediaVersionWithFile[];
@@ -390,4 +464,29 @@ export type UserAndToken = {
     user: UserWithAccount;
 } | {
     user: FullUser
+}
+
+export interface CreateTransferFileResult extends TransferFile {
+    uploadUrl: string;
+}
+
+export interface CreateTransferResult extends Transfer {
+    files: CreateTransferFileResult[]
+}
+
+export interface UploadMediaResult {
+    media: Media[],
+    folders?: Folder[],
+    transfer: CreateTransferResult
+}
+
+export interface DeletionCountResult {
+    deletedCount: number;
+}
+
+export interface PlaybackUrls {
+    hlsManifestUrl?: string;
+    dashManifestUrl?: string;
+    thumbnailUrl?: string;
+    posterUrl?: string;
 }

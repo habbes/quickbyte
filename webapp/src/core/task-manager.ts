@@ -1,5 +1,5 @@
 import { ref, reactive, type Ref, readonly } from "vue";
-import type { Transfer } from "./types.js";
+import type { Transfer } from "@quickbyte/common";
 
 
 export class TaskManager {

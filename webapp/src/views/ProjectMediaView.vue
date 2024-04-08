@@ -1,5 +1,6 @@
 <template>
   <UiLayout fill>
+    <!-- start header -->
     <UiLayout
       horizontal
       innerSpace
@@ -12,22 +13,45 @@
         <UiSearchInput v-model="searchTerm" placeholder="Search files" />
       </UiLayout>
       <RequireRole v-if="project" :accepted="['admin', 'owner', 'editor']" :current="project.role">
-        <UiButton
-            title="Upload files"
-            @click="openFilePicker()"
-            primary
-            lg
-          >
-          <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">Upload media</span>
-        </UiButton>
+        <UiLayout title="Add items">
+          <UiMenu>
+            <template #trigger>
+              <UiButton
+                title="Add new items to the project"
+                primary
+                lg
+              >
+              <PlusIcon class="h-5 w-5" /><span class="hidden sm:inline">New</span>
+            </UiButton>
+            
+            </template>
+            <UiMenuItem @click="openFilePicker()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <DocumentArrowUpIcon class="h-5 w-5" /> Upload files
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuItem v-if="directoryPickerSupported" @click="openDirectoryPicker()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <CloudArrowUpIcon class="h-5 w-5" /> Upload folder
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuItem @click="createFolder()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <FolderPlusIcon class="h-5 w-5" /> Create folder
+              </UiLayout>
+            </UiMenuItem>
+          </UiMenu>
+        </UiLayout>
+        
       </RequireRole>
+
+      <!-- start sort dropdown -->
       <UiLayout title="Sort items">
         <UiMenu>
           <template #trigger>
             <UiLayout :fixedHeight="`${headerHeight}px`">
               <ArrowsUpDownIcon class="h-full w-7  cursor-pointer" />
             </UiLayout>
-            
           </template>
           <div v-if="queryOptions?.sortBy && selectedSortField">
             <UiMenuLabel>Order</UiMenuLabel>
@@ -70,10 +94,26 @@
             </UiMenuItem>
           </div>
         </UiMenu>
-        
       </UiLayout>
-      
+      <!-- end sort dropdown -->
+
+      <!-- multi-selection checkbox -->
+      <UiLayout
+        :title="multiSelectCheckBoxTitle"
+        v-if="selectedItemIds.size > 0"
+      >
+        <UiCheckbox
+          class="bg-white data-[state=checked]:bg-white data-[state=checked]:text-slate-900"
+          :checked="multiSelectCheckBoxState"
+          @update:checked="handleMultiSelectCheckboxStateChange($event)"
+        />
+      </UiLayout>
+      <!-- end multi-selection checkbox -->
     </UiLayout>
+    <!-- end header -->
+
+    <!-- start content -->
+    <UiContextMenu>
     <UiLayout ref="dropzone" v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
       :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
     >
@@ -89,56 +129,159 @@
         </div>
         <div class="absolute w-full h-full bg-black opacity-75"></div>
       </div>
-      <div v-if="media.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
+      <div v-if="items.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
         <div class="text-center">
-          You have no media in this project. Upload some files using the button below.
+          You have no media in this {{ currentFolder ? 'folder' : 'project' }}. Upload some files using the button below.
         </div>
 
         <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
       </div>
-      <div
+      <!--
+        The DragSelect captures clicks on the DragSelectOption and interferes with
+        click events from the ProjectItemCard, that's why we disable
+        the clickOptionToSelect and draggableOnOption props.
+        The downside is that you have to trag from outside a ProjectItemCard
+        to effectively drag-select elements. If you drag from inside a ProjectItemCard,
+        the item from which you started dragging will not be included in the selection.
+        I think that's a lesser evil.
+      -->
+      <DragSelect
         v-else
-        class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
-        
+        :modelValue="selectedItemIds"
+        @update:modelValue="handleDragSelect($event)"
+        :clickOptionToSelect="false"
+        :draggableOnOption="false"
       >
         <div
-          v-for="medium in filteredMedia"
-          :key="medium._id"
-          class="w-full aspect-square"
+          
+          class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
         >
-          <MediaCardItem
-            :media="medium"
-            @update="handleMediaUpdate($event)"
-            @delete="handleMediaDeletion($event)"
-          />
+          
+          <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id">
+            <div
+              class="w-full aspect-square"
+            >
+              
+                <ProjectItemCard
+                  :item="item"
+                  :selected="isItemSelected(item._id)"
+                  :showSelectCheckbox="selectedItemIds.size > 0"
+                  :totalSelectedItems="selectedItemIds.size"
+                  @update="handleItemUpdate($event)"
+                  @delete="handleDeleteRequested($event)"
+                  @move="handleMoveRequested($event)"
+                  @toggleSelect="handleToggleSelect($event)"
+                  @toggleInMultiSelect="handleToggleInMultiSelect($event)"
+                  @selectAll="handleSelectAll()"
+                  @unselectAll="handleUnselectAll()"
+                />
+            </div>
+              
+            
+          </DragSelectOption>
         </div>
-      </div>
+      </DragSelect>
     </UiLayout>
+    <template #menu v-if="project">
+      <RequireRole :accepted="['owner', 'admin', 'editor']" :current="project.role">
+        <UiMenuItem @click="openFilePicker()">
+          <UiLayout horizontal itemsCenter gapSm>
+            <DocumentArrowUpIcon class="h-5 w-5" /> Upload files
+          </UiLayout>
+        </UiMenuItem>
+        <UiMenuItem v-if="directoryPickerSupported" @click="openDirectoryPicker()">
+          <UiLayout horizontal itemsCenter gapSm>
+            <CloudArrowUpIcon class="h-5 w-5" /> Upload folder
+          </UiLayout>
+        </UiMenuItem>
+        <UiMenuSeparator />
+        <UiMenuItem @click="createFolder()">
+          <UiLayout horizontal itemsCenter gapSm>
+            <FolderPlusIcon class="h-5 w-5" /> Create folder
+          </UiLayout>
+        </UiMenuItem>
+        <template v-if="selectedItemIds.size > 0">
+          <UiMenuSeparator />
+          <UiMenuItem @click="handleMoveRequested()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <ArrowRightCircleIcon class="w-5 h-5" />
+              <span>Move {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }} to...</span>
+            </UiLayout>
+          </UiMenuItem>
+          <UiMenuItem @click="handleDeleteRequested()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <TrashIcon class="w-5 h-5" />
+              <span>Delete {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
+            </UiLayout>
+          </UiMenuItem>
+          <UiMenuSeparator />
+          <UiMenuItem @click="handleSelectAll()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <DocumentPlusIcon class="w-5 h-5" />
+              <span>Select all</span>
+            </UiLayout>
+          </UiMenuItem>
+          <UiMenuSeparator />
+          <UiMenuItem @click="handleUnselectAll()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <DocumentMinusIcon class="w-5 h-5" />
+              <span>Unselect all</span>
+            </UiLayout>
+          </UiMenuItem>
+        </template>
+        <UiMenuSeparator />
+      </RequireRole>
+      <UiMenuItem>
+        <router-link :to="{ name: 'project-settings', params: { projectId: project._id } }">
+          <UiLayout horizontal itemsCenter gapSm>
+            <Cog8ToothIcon class="h-5 w-5" /> Project settings
+          </UiLayout>
+        </router-link>
+      </UiMenuItem>
+    </template>
+  </UiContextMenu>
+    <!--end content -->
   </UiLayout>
+  <CreateFolderDialog
+    v-if="project"
+    ref="createFolderDialog"
+    @createFolder="handleCreatedFolder($event)"
+    :projectId="project._id"
+    :parentId="currentFolder?._id"
+  />
+  <DeleteProjectItemsDialog
+    v-if="project"
+    ref="deleteItemsDialog"
+    :projectId="project._id"
+    :items="selectedItems"
+    @delete="handleItemsDeleted($event)"
+  />
+  <MoveProjectItemsDialog
+    v-if="project"
+    ref="moveItemsDialog"
+    :projectId="project._id"
+    :items="selectedItems"
+    @move="handleItemsMoved($event)"
+  />
 </template>
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import { onBeforeRouteUpdate, useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { apiClient, showToast, store, logger, useFilePicker, useFileTransfer } from '@/app-utils';
-import { ensure, pluralize, type Media } from '@/core';
-import type { WithRole, Project } from "@quickbyte/common";
-import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon } from '@heroicons/vue/24/outline'
-import MediaCardItem from '@/components/MediaCardItem.vue';
+import { computed, nextTick, ref, watch } from 'vue';
+import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
+import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
+import { ensure, pluralize } from '@/core';
+import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
+import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon, Cog8ToothIcon, TrashIcon, ArrowRightCircleIcon,
+  DocumentPlusIcon, DocumentMinusIcon } from '@heroicons/vue/24/outline'
+import ProjectItemCard from '@/components/ProjectItemCard.vue';
+import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue';
+import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
-import UiLayout from '@/components/ui/UiLayout.vue';
+import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
-import UiButton from '@/components/ui/UiButton.vue';
-import { UiMenu, UiMenuItem, UiMenuLabel, UiMenuSeparator } from "@/components/ui/menu";
+import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox, UiContextMenu, UiMenuSeparator } from "@/components/ui";
+import { DragSelect, DragSelectOption } from "@coleqiu/vue-drag-select";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
-
-type SortDirection = 'asc' | 'desc';
-
-type QueryOptions = {
-  sortBy?: {
-    field: string,
-    direction: SortDirection
-  }
-};
+import { injectFolderPathSetter } from "./project-utils";
 
 const headerHeight = layoutDimensions.projectMediaHeaderHeight;
 // tried different things to get the positioning to look right
@@ -147,50 +290,21 @@ const contentHeight = getRemainingContentHeightCss(
   contentOffset
 );
 
+const updateCurrentFolderPath = injectFolderPathSetter();
 const route = useRoute();
+const createFolderDialog = ref<typeof CreateFolderDialog>();
+const deleteItemsDialog = ref<typeof DeleteProjectItemsDialog>();
+const moveItemsDialog = ref<typeof MoveProjectItemsDialog>();
 const loading = ref(true);
 const searchTerm = ref('');
-const sortFields = [
-  {
-    field: '_createdAt',
-    displayName: 'Date Uploaded',
-    ascName: 'Oldest first',
-    descName: 'Newest first',
-    compare: (a: Media, b: Media) => {
-      return new Date(a._createdAt).getTime() - new Date(b._createdAt).getTime();
-    }
-  },
-  {
-    field: '_updatedAt',
-    displayName: 'Date modified',
-    ascName: 'Oldest first',
-    descName: 'Newest first',
-    compare: (a: Media, b: Media) => {
-      return new Date(a._updatedAt).getTime() - new Date(b._updatedAt).getTime();
-    }
-  },
-  {
-    field: 'name',
-    displayName: 'Name',
-    ascName: 'A-Z',
-    descName: 'Z-A',
-    compare: (a: Media, b: Media) => {
-      return a.name.localeCompare(b.name);
-    }
-  }
-];
-const queryOptions = ref<QueryOptions>();
-const selectedSortField = computed(() => {
-  if (!(queryOptions.value) || !(queryOptions.value.sortBy)) {
-    return;
-  }
 
-  return sortFields.find(f => f.field === queryOptions.value!.sortBy!.field);
-});
+const { sortFields, queryOptions, selectedSortField, selectSortField } = store.projectItemsQueryOptions;
 
 const project = ref<WithRole<Project>>();
 const {
   openFilePicker,
+  directoryPickerSupported,
+  openDirectoryPicker,
   onFilesSelected,
   onError,
   reset,
@@ -200,25 +314,78 @@ const {
 const dropzone = ref<HTMLDivElement>();
 const { isOverDropZone } = useDropZone(dropzone);
 
-const media = ref<Media[]>([]);
+const items = ref<ProjectItem[]>([]);
+const currentFolder = ref<FolderWithPath|undefined>();
+const selectedItemIds = ref<Set<string>>(new Set());
+const selectedItems = computed(() => items.value.filter(item => isItemSelected(item._id)));
+const multiSelectCheckBoxState = computed<'indeterminate'|boolean>(() => {
+  const state = items.value.length === 0 ? false
+  : selectedItemIds.value.size === items.value.length ? true
+  : selectedItemIds.value.size === 0 ? false
+  : 'indeterminate';
+  return state;
+});
+const multiSelectCheckBoxTitle = computed(() => {
+  return selectedItemIds.value.size === items.value.length ?
+    'Click to clear selection' : 'Click to select all';
+});
+
 const {
   media: newMedia,
+  folders: newFolders,
   startTransfer
 } = useFileTransfer();
 
 watch([newMedia], () => {
-  if (newMedia.value?.length) {
-    media.value = media.value.concat(newMedia.value);
-  }
-})
+  newMedia.value?.filter(m => {
+    if (currentFolder.value) {
+      return currentFolder.value._id === m.folderId
+    } else {
+      return !m.folderId;
+    }
+  }).map<ProjectItem>(m => ({
+    _id: m._id,
+    name: m.name,
+    type: 'media',
+    _createdAt: m._createdAt,
+    _updatedAt: m._updatedAt,
+    item: m
+  })).forEach(item => items.value.push(item))
+});
 
-const filteredMedia = computed(() => {
-  if (!searchTerm.value && !queryOptions.value) return media.value;
+watch([newFolders], () => {
+  // we only care about direct children of the current folder,
+  // or top-level folders if we're not inside a folder
+  const relevantFolders = newFolders.value?.filter(f =>
+    currentFolder.value ? f.parentId === currentFolder.value._id : !f.parentId);
+  
+    const folderItems = relevantFolders?.map<ProjectItem>(f => ({
+      _id: f._id,
+      name: f.name,
+      type: 'folder',
+      item: f,
+      _createdAt: f._createdAt,
+      _updatedAt: f._updatedAt
+    }));
 
-  let result = [...media.value];
+    folderItems?.forEach(item => {
+      const currentIndex = items.value.findIndex(f => f.type === item.type && f._id === item._id);
+      if (currentIndex !== -1) {
+        items.value[currentIndex] = Object.assign(items.value[currentIndex], item);
+        return;
+      }
+
+      items.value.push(item);
+    });
+});
+
+const filteredItems = computed(() => {
+  if (!searchTerm.value && !queryOptions.value) return items.value;
+
+  let result = [...items.value];
   if (searchTerm) {
     const regex = new RegExp(searchTerm.value, 'i');
-    result = media.value.filter(m => regex.test(m.name));
+    result = items.value.filter(m => regex.test(m.name));
   }
   if (selectedSortField.value) {
     if (queryOptions.value!.sortBy?.direction === 'asc') {
@@ -247,55 +414,204 @@ onFilesSelected(async (files, directories) => {
   await startTransfer({
     files: files,
     directories: directories,
-    projectId: ensure(route.params.projectId) as string
+    projectId: ensure(route.params.projectId) as string,
+    folderId: currentFolder.value?._id
   });
 });
 
-function handleMediaUpdate(updatedMedia: Media) {
-  const index = media.value.findIndex(m => m._id === updatedMedia._id);
+function isItemSelected(itemId: string) {
+  return selectedItemIds.value.has(itemId);
+}
+
+/**
+ * Selects the single item, unselecting
+ * any currently selected items.
+ * @param itemId
+ */
+function selectItem(itemId: string) {
+  clearSelectedItems();
+  selectedItemIds.value.add(itemId);
+}
+
+function toggleItemSelection(itemId: string) {
+  if (isItemSelected(itemId)) {
+    unselectItem(itemId);
+  } else {
+    selectItem(itemId);
+  }
+}
+
+function toggleItemInMultiSelect(itemId: string) {
+  if (isItemSelected(itemId)) {
+    unselectItem(itemId);
+  } else {
+    addToSelection(itemId);
+  }
+}
+
+/**
+ * Selects the specified item without
+ * unselecting other currently selected item
+ * @param itemId 
+ */
+function addToSelection(itemId: string) {
+  selectedItemIds.value.add(itemId);
+}
+
+function unselectItem(itemId: string) {
+  selectedItemIds.value.delete(itemId);
+}
+
+function clearSelectedItems() {
+  selectedItemIds.value.clear();
+}
+
+function selectAllItems() {
+  for (let item of items.value) {
+    selectedItemIds.value.add(item._id);
+  }
+}
+
+function handleToggleSelect(args: { type: ProjectItemType, itemId: string }) {
+  toggleItemSelection(args.itemId);
+}
+
+function handleToggleInMultiSelect(args: { type: ProjectItemType, itemId: string }) {
+  toggleItemInMultiSelect(args.itemId);
+}
+
+function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
+  // TODO: handle folder update
+  const index = items.value.findIndex(m => m._id === update.item._id && m.type === update.type);
   if (index < 0) return;
   
-  const original = media.value[index];
+  const original = items.value[index];
 
-  media.value[index] = Object.assign(original, updatedMedia);
+  items.value[index] = Object.assign(original, {
+    name: update.item.name,
+    _updatedAt: update.item._updatedAt,
+    item: update.item
+  });
 }
 
-function handleMediaDeletion(mediaId: string) {
-  const index = media.value.findIndex(m => m._id === mediaId);
-  if (index < 0) return;
-
-  media.value.splice(index, 1);
-}
-
-function selectSortField(field: string, direction?: SortDirection) {
-  if (!queryOptions.value) {
-    queryOptions.value = {};
+function handleDeleteRequested(args?: { type: ProjectItemType, itemId: string }) {
+  if (args && !isItemSelected(args.itemId)) {
+    addToSelection(args.itemId);
   }
 
-  queryOptions.value.sortBy = {
-    field,
-    direction: direction || 'asc'
-  };
+  nextTick(() => deleteItemsDialog.value?.open());
 }
 
-// onMounted callback is not called when navigating from one
-// media page to another (i.e. when the route is the same
-// but params have changed) because the same component is reused
-// onBeforeRouteUpdate callback is called when the route params
-// changed and the component is reused, but is not called
-// when the component is mounted.
-// So to handle both scenarios I pass the same callback to
-// both methods.
-// I feel like there should be a better way of dealing
-// with this.
+function handleItemsDeleted(
+  { requestedItems }:
+  { deletedCount: number, requestedItems: Array<{ _id: string, type: ProjectItemType }>}
+) {
+  for (let deletedItem of requestedItems) {
+    const index = items.value.findIndex(item => item._id === deletedItem._id && item.type === deletedItem.type);
+    if (index === -1) return;
+
+    unselectItem(deletedItem._id);
+    items.value.splice(index, 1);
+  }
+}
+
+function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
+  if (args && !isItemSelected(args.itemId)) {
+    addToSelection(args.itemId);
+  }
+
+  nextTick(() => moveItemsDialog.value?.open());
+}
+
+function handleItemsMoved(items: ProjectItem[]) {
+  for (let item of items) {
+    handleItemMoved(item);
+  }
+}
+
+function handleItemMoved(item: ProjectItem) {
+  const index = items.value.findIndex(i => i._id === item._id);
+  const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
+  
+  const isMovedToThisFolder =  (!itemFolderId && !currentFolder.value) || itemFolderId === currentFolder.value?._id;
+  if (index === -1 && isMovedToThisFolder) {
+    // the item is being moved to this folder, but is not in the list of items
+    // add it to the list
+    items.value.push(item);
+  }
+  else if (index !== -1 && isMovedToThisFolder) {
+    // the item is being moved to this folder, but is already
+    // in the list of item. 
+    // updated it
+    items.value[index] = Object.assign(items.value[index], item);
+  }
+  else if (index !== -1 && !isMovedToThisFolder) {
+    // the item is in the current list of items, but
+    // is moved to a different folder
+    // remove the item from the list
+    items.value.splice(index, 1);
+    unselectItem(item._id);
+  }
+  // last possibility: item does not exist in the current list
+  // and is not being moved to this folder. Ignore it.
+}
+
+function handleCreatedFolder(newFolder: Folder) {
+  const item: ProjectFolderItem = {
+    _id: newFolder._id,
+    _createdAt: newFolder._createdAt,
+    _updatedAt: newFolder._updatedAt,
+    type: 'folder',
+    name: newFolder.name,
+    item: newFolder
+  };
+
+  // if it already exists, then no need to add it
+  if (items.value.findIndex(f => f._id === item._id) >= 0) {
+    return;
+  }
+
+  items.value.push(item);
+}
+
+function createFolder() {
+  createFolderDialog.value?.open();
+}
+
+function handleMultiSelectCheckboxStateChange(checked: boolean) {
+  if (!checked) {
+    clearSelectedItems();
+  } else {
+    selectAllItems();
+  }
+}
+
+function handleSelectAll() {
+  selectAllItems();
+}
+
+function handleUnselectAll() {
+  clearSelectedItems();
+}
+
+function handleDragSelect(dragSelected: Set<unknown>|Array<unknown>) {
+  for (let itemId of dragSelected) {
+    addToSelection(itemId as string);
+  }
+}
+
 async function loadData(to: RouteLocationNormalizedLoaded) {
   const projectId = ensure(to.params.projectId) as string;
-  const account = ensure(store.currentAccount.value);
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
+  const folderId = to.params.folderId as string || undefined;
   loading.value = true;
 
   try {
-    media.value = await apiClient.getProjectMedia(account._id, projectId);
+    const result = await trpcClient.getProjectItems.query({ projectId: project.value._id, folderId: folderId });
+    items.value = result.items;
+    selectedItemIds.value.clear();
+    currentFolder.value = result.folder;
+    updateCurrentFolderPath && updateCurrentFolderPath(result.folder?.path || []);
   } catch (e: any) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
@@ -305,6 +621,5 @@ async function loadData(to: RouteLocationNormalizedLoaded) {
   }
 }
 
-onMounted(async () => await loadData(route));
-onBeforeRouteUpdate(loadData);
+watch(route, async () => await loadData(route), { immediate: true });
 </script>

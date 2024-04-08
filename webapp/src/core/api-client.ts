@@ -1,5 +1,5 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, CreateProjectArgs, Media, MediaWithFile, Comment } from './types.js'
-import type { SubscriptionAndPlan, WithRole, Project, MediaWithFileAndComments, RoleType } from "@quickbyte/common";
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, CreateProjectArgs, Media, Comment } from './types.js'
+import type { SubscriptionAndPlan, WithRole, Project, MediaWithFileAndComments, RoleType, UploadMediaResult, CreateTransferResult } from "@quickbyte/common";
 
 export interface ApiClientConfig {
     baseUrl: string;
@@ -13,8 +13,7 @@ export class ApiClient {
     }
     
     async getProviders(): Promise<StorageProvider[]> {
-        const res = await fetch(`${this.config.baseUrl}/providers`, { mode: 'cors' });
-        const data = await res.json();
+        const data = await this.makeRequest<StorageProvider[]>('providers');
         return data;
     }
 
@@ -209,6 +208,7 @@ export class ApiClient {
 
     private async makeRequest<TResult>(endpoint: string, method: string = 'GET', body: any = undefined, auth: boolean = true): Promise<TResult> {
         const url = `${this.config.baseUrl}/${endpoint}`;
+
         const headers: Record<string, string> = {};
         const options: RequestInit = {
             method,
@@ -322,10 +322,6 @@ export interface CreateTransferFileArgs {
     size: number;
 }
 
-export interface CreateTransferResult extends Transfer {
-    files: CreateTransferFileResult[]
-}
-
 export type GetTransferResult = CreateTransferResult;
 
 export interface CreateTransferFileResult extends TransferFile {
@@ -375,6 +371,7 @@ export interface SubscriptionManagementResult {
 
 export interface CreateProjectMediaUploadArgs {
     mediaId?: string;
+    folderId?: string;
     provider: string;
     region: string;
     files: CreateTransferFileArgs[];
@@ -386,11 +383,6 @@ interface CreateTransferMeta {
     countryCode?: string;
     state?: string;
     userAgent?: string;
-}
-
-export interface UploadMediaResult {
-    media: Media[],
-    transfer: CreateTransferResult
 }
 
 export interface CreateMediaCommentArgs {

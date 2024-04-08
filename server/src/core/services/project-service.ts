@@ -1,22 +1,25 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
-import { CreateTransferResult, EmailHandler, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs } from '@quickbyte/common';
+import { EmailHandler, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
+import { IFolderService } from "./folder-service.js";
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
     transfers: ITransferService;
     media: IMediaService;
+    folders: IFolderService;
     invites: IInviteService;
     access: IAccessHandler;
     links: LinkGenerator,
     email: EmailHandler,
+    eventBus: EventDispatcher,
 }
 
 export class ProjectService {
@@ -28,7 +31,7 @@ export class ProjectService {
 
     async createProject(args: CreateProjectArgs): Promise<WithRole<Project>> {
         try {
-            const sub = await this.config.transactions.tryGetActiveSubscription();
+            const sub = await this.config.transactions.tryGetActiveSubscription(this.authContext.user.account._id);
             if (!sub) {
                 throw createSubscriptionRequiredError();
             }
@@ -98,10 +101,11 @@ export class ProjectService {
             const project = await this.getByIdInternal(id);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'editor']);
             const transfer = await this.config.transfers.createProjectMediaUpload(project, args);
-            const media = await this.config.media.uploadMedia(transfer);
+            const { media, folders } = await this.config.media.uploadMedia(transfer);
 
             return {
                 media,
+                folders,
                 transfer
             };
         } catch (e: any) {
@@ -118,6 +122,49 @@ export class ProjectService {
             const media = await this.config.media.getProjectMedia(id);
             return media;
         } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async getItems(id: string, args: GetProjectItemsArgs): Promise<GetProjectItemsResult> {
+        try {
+            const project = await this.getByIdInternal(id);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
+
+            const media = await this.config.media.getProjectMediaByFolder(id, args.folderId);
+            const folders = await this.config.folders.getFoldersByParent(id, args.folderId);
+
+            let folder: FolderWithPath|undefined = undefined;
+            if (args.folderId) {
+                folder = await this.config.folders.getProjectFolderWithPath(id, args.folderId);
+            }
+
+            const items: ProjectItem[] = [
+                ...folders.map<ProjectItem>(f => ({
+                    _id: f._id,
+                    name: f.name,
+                    type: 'folder',
+                    _createdAt: f._createdAt,
+                    _updatedAt: f._updatedAt,
+                    item: f
+                })),
+                ...media.map<ProjectItem>(m => ({
+                    _id: m._id,
+                    name: m.name,
+                    type: 'media',
+                    _createdAt: m._createdAt,
+                    _updatedAt: m._updatedAt,
+                    item: m
+                })),
+            ];
+
+            return {
+                folder,
+                items
+            }
+        }
+        catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
@@ -148,18 +195,134 @@ export class ProjectService {
         }
     }
 
-    async deleteMedia(projectId: string, mediaId: string): Promise<void> {
+    async createFolder(projectId: string, args: CreateFolderArgs): Promise<Folder> {
+        try {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+
+            const folder = await this.config.folders.createFolder(args);
+            return folder;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async updateFolder(projectId: string, args: UpdateFolderArgs): Promise<Folder> {
         try {
             const project = await this.getByIdInternal(projectId);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner','admin', 'editor']);
-            // The following check ensures that someone may not delete a media they created when
-            // they are not longer part of a project
-            const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
-            // admin, owner or uploader can delete media
-            // we'll do the actual access verification in the called method
+
+            const folder = await this.config.folders.updateFolder(args);
+            return folder;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async moveProjectItemsToFolder(args: MoveProjectItemsToFolderArgs): Promise<ProjectItem[]> {
+        try {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+
+            const folderIds = args.items.filter(item => item.type === 'folder').map(item => item.id);
+            const mediaIds = args.items.filter(item => item.type === 'media').map(item => item.id);
+
+            const [folders, media] = await Promise.all([
+                this.config.folders.moveFolders({
+                    projectId: args.projectId,
+                    folderIds,
+                    targetFolderId: args.targetFolderId
+                }),
+                this.config.media.moveMediaToFolder({
+                    projectId: args.projectId,
+                    mediaIds,
+                    targetFolderId: args.targetFolderId
+                })
+            ]);
+
+            const result = [
+                ...folders.map<ProjectItem>(f => ({
+                    _id: f._id,
+                    name: f.name,
+                    item: f,
+                    type: 'folder',
+                    _createdAt: f._createdAt,
+                    _updatedAt: f._updatedAt
+                })),
+                ...media.map<ProjectItem>(m => ({
+                    _id: m._id,
+                    name: m.name,
+                    item: m,
+                    type: 'media',
+                    _createdAt: m._createdAt,
+                    _updatedAt: m._updatedAt
+                }))
+            ];
+
+            return result;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async deleteProjectItems(args: DeleteProjectItemsArgs): Promise<DeletionCountResult> {
+        try {
+            const project = await this.getByIdInternal(args.projectId);
+            const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+            // admin or owner can delete any media or folder
+            // editor can delete only media they created, but cannot delete folders
+            // (because folders might contain media created by others)
+            // for editors, we'll do the actual access verification in the called `deleteMultipleMedia` method
             const isAdminOrOwner = role === 'admin' || role === 'owner';
 
-            await this.config.media.deleteMedia(projectId, mediaId, isAdminOrOwner);
+            const items = args.items;
+            const folderIds = items.filter(i => i.type === 'folder').map(i => i.id);
+            const mediaIds = items.filter(i => i.type === 'media').map(i => i.id);
+
+            const [folderResult, mediaResult] = await Promise.all([
+                isAdminOrOwner?
+                    this.config.folders.deleteFolders(args.projectId, folderIds)
+                    : Promise.resolve({ deletedCount: 0 }),
+                this.config.media.deleteMedia(args.projectId, mediaIds, isAdminOrOwner)
+            ]);
+
+            const result = {
+                deletedCount: folderResult.deletedCount + mediaResult.deletedCount
+            };
+
+            if (folderResult.deletedCount > 0) {
+                // we're not sure of all input folders were
+                // actually deleted. It's the responsibility
+                // of the event handler to check the status
+                // of the provided folder id before processing
+                for (let folderId of folderIds) {
+                    this.config.eventBus.send({
+                        type: 'folderDeleted',
+                        data: {
+                            folderId,
+                            projectId: args.projectId
+                        }
+                    })
+                }
+            }
+
+            return result;
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
+    async searchProjectFolders(args: SearchProjectFolderArgs): Promise<FolderWithPath[]> {
+        try {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
+
+            const result = await this.config.folders.searchProjectFolders(args);
+            return result;
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -314,7 +477,7 @@ export class ProjectService {
                 throw createNotFoundError("user");
             }
 
-            // You can remove the owner
+            // You cannot remove the owner
             if (user._id === project._createdBy._id) {
                 throw createOperationNotSupportedError("You cannot remove the project owner.");
             }
@@ -325,6 +488,13 @@ export class ProjectService {
             }
 
             await this.config.access.removeAccess(user._id, 'project', project._id);
+            this.config.eventBus.send({
+                type: 'projectMemberRemoved',
+                data: {
+                    projectId: project._id,
+                    memberId: user._id
+                }
+            });
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);
@@ -440,9 +610,4 @@ export interface InviteUserArgs {
     users: { email: string }[];
     message?: string;
     role: RoleType;
-}
-
-export interface UploadMediaResult {
-    media: Media[],
-    transfer: CreateTransferResult
 }

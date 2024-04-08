@@ -1,4 +1,4 @@
-import { number, z } from "zod";
+import { z } from "zod";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -62,12 +62,14 @@ export const CreateTransferArgs = CreateShareableTransferArgs.extend({
     hidden: z.optional(z.boolean()),
     projectId: z.optional(z.string()),
     mediaId: z.optional(z.string()),
+    folderId: z.optional(z.string()),
     accountId: z.string().min(1)
 });
 
 export type CreateTransferArgs = z.infer<typeof CreateTransferArgs>;
 
 export const CreateProjectMediaUploadArgs = z.object({
+    projectId: z.string(),
     provider: z.string().min(1),
     region: z.string().min(1),
     /**
@@ -76,6 +78,12 @@ export const CreateProjectMediaUploadArgs = z.object({
      * media instead of creating new media
      */
     mediaId: z.optional(z.string()),
+    /**
+     * When folder id is set, the files will
+     * be uploaded to this folder inside the project.
+     * This field is ignored if `mediaId` is set.
+     */
+    folderId: z.optional(z.string()),
     files: CreateTransferFileArgs.array(),
     meta: z.optional(CreateTransferMeta)
 });
@@ -212,3 +220,102 @@ export const RemoveProjectMemberArgs = z.object({
 });
 
 export type RemoveProjectMemberArgs = z.infer<typeof RemoveProjectMemberArgs>;
+
+export const CreateFolderArgs = z.object({
+    projectId: z.string().min(1),
+    name: z.string().min(1),
+    parentId: z.optional(z.string().min(1))
+});
+
+export type CreateFolderArgs = z.infer<typeof CreateFolderArgs>;
+
+export const CreateFolderTreeArgs = z.object({
+    projectId: z.string().min(1),
+    paths: z.array(z.string().min(1)),
+});
+
+export type CreateFolderTreeArgs = z.infer<typeof CreateFolderTreeArgs>;
+
+export const GetProjectItemsArgs = z.object({
+    projectId: z.string().min(1),
+    folderId: z.optional(z.string().min(1))
+});
+
+export type GetProjectItemsArgs = z.infer<typeof GetProjectItemsArgs>;
+
+export const UpdateFolderArgs = z.object({
+    projectId: z.string().min(1),
+    id: z.string().min(1),
+    // Right now the name is required cause it's the only
+    // thing that can be updated.
+    // If we have other properties, we can make this optional
+    name: z.string().min(1)
+});
+
+export type UpdateFolderArgs = z.infer<typeof UpdateFolderArgs>;
+
+
+export const FinalizeTransferArgs = z.object({
+    transferId: z.string().min(1),
+    duration: z.number().gte(0),
+    recovered: z.optional(z.boolean())
+});
+
+export type FinalizeTransferArgs = z.infer<typeof FinalizeTransferArgs>;
+
+export const MoveMediaToFolderArgs = z.object({
+    projectId: z.string().min(1),
+    targetFolderId: z.union([z.string().min(1), z.null()]),
+    mediaIds: z.array(z.string().min(1)).min(1),
+});
+
+export type MoveMediaToFolderArgs = z.infer<typeof MoveMediaToFolderArgs>;
+
+export const MoveFoldersToFolderArgs = z.object({
+    projectId: z.string().min(1),
+    targetFolderId: z.union([z.string().min(1), z.null()]),
+    folderIds: z.array(
+        z.string().min(1)
+    ).min(1)
+});
+
+export type MoveFoldersToFolderArgs = z.infer<typeof MoveFoldersToFolderArgs>;
+
+export const SearchProjectFolderArgs = z.object({
+    projectId: z.string().min(1),
+    searchTerm: z.string()
+});
+
+export type SearchProjectFolderArgs = z.infer<typeof SearchProjectFolderArgs>;
+
+export const MoveProjectItemsToFolderArgs = z.object({
+    projectId: z.string().min(1),
+    items: z.array(
+        z.object({
+            id: z.string().min(1),
+            type: z.enum(['folder', 'media'])
+        })
+    ).min(1),
+    targetFolderId: z.union([z.string().min(1), z.null()]),
+});
+
+export type MoveProjectItemsToFolderArgs = z.infer<typeof MoveProjectItemsToFolderArgs>;
+
+export const DeleteProjectItemsArgs = z.object({
+    projectId: z.string().min(1),
+    items: z.array(
+        z.object({
+            id: z.string().min(1),
+            type: z.enum(['folder', 'media'])
+        })
+    ).min(1)
+});
+
+export type DeleteProjectItemsArgs = z.infer<typeof DeleteProjectItemsArgs>;
+
+export const GetProjectMediaByIdArgs = z.object({
+    projectId: z.string().min(1),
+    mediaId: z.string().min(1)
+});
+
+export type GetProjectMediaByIdArgs = z.infer<typeof GetProjectMediaByIdArgs>;

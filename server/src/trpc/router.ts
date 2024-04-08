@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, DeleteMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs, CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs, CreateProjectMediaUploadArgs, CreateShareableTransferArgs, FinalizeTransferArgs, SearchProjectFolderArgs, DeleteProjectItemsArgs, MoveProjectItemsToFolderArgs, GetProjectMediaByIdArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -67,15 +67,25 @@ export const appRouter = router({
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateProject(input.id, input)),
     
+    getProjectItems: protectedProcedure
+    .input(GetProjectItemsArgs)
+    .query(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).getItems(input.projectId, input)),
+    
+    getProjectMediaById: protectedProcedure
+    .input(GetProjectMediaByIdArgs)
+    .query(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).getMediumById(input.projectId, input.mediaId)),
+    
+    uploadProjectMedia: protectedProcedure
+    .input(CreateProjectMediaUploadArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).uploadMedia(input.projectId, input)),
+    
     updateMedia: protectedProcedure
     .input(UpdateMediaArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateMedia(input.projectId, input)),
-    
-    deleteMedia: protectedProcedure
-    .input(DeleteMediaArgs)
-    .mutation(({ input, ctx }) =>
-        ctx.app.accounts.projects(ctx.auth).deleteMedia(input.projectId, input.id)),
     
     createMediaComment: protectedProcedure
     .input(CreateMediaCommentArgs)
@@ -91,6 +101,41 @@ export const appRouter = router({
     .input(UpdateMediaCommentArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateMediaComment(input.projectId, input.mediaId, input.commentId, input)),
+    
+    createFolder: protectedProcedure
+    .input(CreateFolderArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).createFolder(input.projectId, input)),
+    
+    updateFolder: protectedProcedure
+    .input(UpdateFolderArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).updateFolder(input.projectId, input)),
+    
+    searchProjectFolders: protectedProcedure
+    .input(SearchProjectFolderArgs)
+    .query(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).searchProjectFolders(input)),
+    
+    moveProjectItemsToFolder: protectedProcedure
+    .input(MoveProjectItemsToFolderArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).moveProjectItemsToFolder(input)),
+    
+    deleteProjectItems: protectedProcedure
+    .input(DeleteProjectItemsArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).deleteProjectItems(input)),
+    
+    createTransfer: protectedProcedure
+    .input(CreateShareableTransferArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.transfers(ctx.auth).create(input)),
+    
+    finalizeTransfer: protectedProcedure
+    .input(FinalizeTransferArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.transfers(ctx.auth).finalize(input.transferId, input)),
     
     initTransferFileUpload: protectedProcedure
     .input(InitTransferFileUploadArgs)

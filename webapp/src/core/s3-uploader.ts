@@ -129,7 +129,6 @@ export class S3Uploader {
     private addProgress(blockProgress: number) {
         this.progress += blockProgress;
         this.config.onProgress(this.progress);
-        console.log('added progress', this.progress);
     }
 
     private uploadBlockList(blockList: S3PresignedBlock[]) {

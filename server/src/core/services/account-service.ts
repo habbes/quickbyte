@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription, LinkGenerator } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription, LinkGenerator, IPlaybackPackagerProvider } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
@@ -7,6 +7,7 @@ import { CommentService } from "./comment-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database, DbAccount } from "../db.js";
 import { EventDispatcher } from "./event-bus/index.js";
+import { FolderService } from "./folder-service.js";
 
 export interface AccountServiceConfig {
     storageHandlers: IStorageHandlerProvider;
@@ -18,6 +19,7 @@ export interface AccountServiceConfig {
     access: IAccessHandler;
     links: LinkGenerator;
     eventBus: EventDispatcher;
+    playbackPackagers: IPlaybackPackagerProvider;
 }
 
 export class AccountService {
@@ -193,7 +195,8 @@ export class AccountService {
         return new TransferService(this.db, authContext, {
             eventBus: this.config.eventBus,
             providerRegistry: this.config.storageHandlers,
-            transactions: this.transactions(authContext)
+            transactions: this.transactions(authContext),
+            packagers: this.config.playbackPackagers
         });
     }
 
@@ -206,6 +209,7 @@ export class AccountService {
 
     projects(authContext: AuthContext): IProjectService {
         const transfers = this.transfers(authContext);
+        const folders = new FolderService(this.db, authContext);
         return new ProjectService(this.db, authContext, {
             transactions: this.transactions(authContext),
             invites: this.config.invites,
@@ -213,9 +217,12 @@ export class AccountService {
             access: this.config.access,
             email: this.config.emailHandler,
             links: this.config.links,
+            folders,
+            eventBus: this.config.eventBus,
             media: new MediaService(this.db, authContext, {
                 transfers,
-                comments: new CommentService(this.db, authContext)
+                comments: new CommentService(this.db, authContext),
+                folders
             })
         });
     }

@@ -7,6 +7,8 @@ export { default as UiDialog } from "./Dialog.vue";
 export { default as UiTextInput } from "./UiTextInput.vue";
 export { default as UiExpandableTextInput } from "./UiExpandableTextInput.vue";
 export { default as UiTextArea } from "./UiTextArea.vue";
+export * from "./context-menu";
+export { UiCheckbox } from "./checkbox";
 export * from "./radio-list/index.js";
 
 

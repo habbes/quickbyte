@@ -1,6 +1,7 @@
 import { Transfer } from "@quickbyte/common";
 import { IAlertService } from "../admin-alerts-service.js";
 import { createServerErrorWithDetails} from "../email/index.js";
+import { BackgroundWorker } from "src/core/background-worker.js";
 
 export interface EventDispatcher {
     send(event: Event): void;
@@ -11,7 +12,7 @@ export interface EventHandlerRegister {
 }
 
 export class EventBus implements EventDispatcher, EventHandlerRegister {
-    private handlers: Map<EventType, EventHandler[]> = new Map();
+    private handlers: Map<EventType, EventHandler[]> = new Map<EventType, EventHandler[]>();
 
     constructor(private config: EventBusConfig) {}
 
@@ -35,51 +36,80 @@ export class EventBus implements EventDispatcher, EventHandlerRegister {
             return;
         }
 
+        
         // TODO: we could run the handlers in parallel
         // but was too lazy to coordinate for the case
         // where we could have too many handlers running concurrently
         // and clogging the event loop
-        console.log(`Executing ${handlers.length} handler(s) for event ${eventType}`);
+        console.log(`Queuing ${handlers.length} handler(s) for event ${eventType}`);
         for (const handler of handlers) {
-            try {
-                await handler(event);
-            } catch (e: any) {
-                // TODO: better logging and error management
-                // should send admin email
-                await this.config.alerts.sendNotification(
-                    `Error occurred while handling event: '${event}'`,
-                    createServerErrorWithDetails([{
-                        error: e,
-                        details: event[eventType]
-                    }])
-                );
+            this.config.workQueue.queueJob(async () => {
+                try {
+                    await handler(event);
+                } catch (e: any) {
+                    // TODO: better logging and error management
+                    // should send admin email
+                    await this.config.alerts.sendNotification(
+                        `Error occurred while handling event: '${eventType}'`,
+                        createServerErrorWithDetails([{
+                            error: e,
+                            details: event['data']
+                        }])
+                    );
 
-                console.error(`Error occurred while handling event: '${event}' with details: ${e.message}`);
-            }
+                    console.error(`Error occurred while handling event: '${JSON.stringify(event)}' with details: ${e.message}`);
+                }
+            });
         }
 
-        console.log(`Completed handlers execution for event ${eventType}`);
+        console.log(`Completed queing event handlers for event event ${eventType}`);
     }
 }
 
 export interface EventBusConfig {
     alerts: IAlertService;
+    workQueue: BackgroundWorker
 }
 
 export function getEventType(event: Event): EventType {
-    const eventType = Object.keys(event)[0] as EventType;
+    const eventType = event['type'] as EventType;
     return eventType;
 }
 
-export type Event = TransferCompleteEvent;
+export type Event = TransferCompleteEvent | FolderDeletedEvent | ProjectMemberRemovedEvent | FilePlaybackPackagingUpdatedEvent;
 
-type TransferCompleteEvent = {
-    'transferComplete': {
+export type TransferCompleteEvent = {
+    type: 'transferComplete',
+    data: {
         transfer: Transfer
+    },
+}
+
+export type FolderDeletedEvent = {
+    type: 'folderDeleted',
+    data: {
+        projectId: string;
+        folderId: string;
     }
 }
 
-export type EventType = (keyof Event)
+export type ProjectMemberRemovedEvent = {
+    type: 'projectMemberRemoved',
+    data: {
+        projectId: string;
+        memberId: string;
+    }
+}
+
+export type FilePlaybackPackagingUpdatedEvent = {
+    type: 'filePlaybackPackagingUpdated',
+    data: {
+        packager: string;
+        packagerId: string;
+    }
+}
+
+export type EventType = Event['type'];
 
 // export type EventType = Event['type'];
 export type EventHandler = (event: Event) => Promise<unknown>;

@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import * as Sentry from "@sentry/vue";
-
+import VueDragSelect from "@coleqiu/vue-drag-select";
 import './styles/style.css'
 import App from './App.vue'
 import { router } from './router'
@@ -8,9 +8,12 @@ import VueSmoothScroll from 'vue3-smooth-scroll'
 import 'aos/dist/aos.css';
 import { initGoogleAuth } from './app-utils/google-auth';
 
+// @ts-ignore
+window.VIDEOJS_NO_DYNAMIC_STYLE = true
 initGoogleAuth(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 const app = createApp(App)
 app.use(VueSmoothScroll)
+app.use(VueDragSelect)
 
 Sentry.init({
     app,
