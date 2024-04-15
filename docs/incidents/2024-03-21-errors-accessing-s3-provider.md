@@ -1,4 +1,4 @@
-# 2024-04-21 Incident report: Failure to access files to disabled S3 provider
+# 2024-03-21 Incident report: Failure to access files to disabled S3 provider
 
 On Thursday March 14th 2024 (a week ago from the time of this writing), an incident occurred in Quickbyte's production deployment where some customers could not access some files that they had uploaded to their projects, they would get an error when trying to access the files. The error occurred because the files had been uploaded using the S3 provider, but the S3 provider had been unregistered when the user was trying to access them.
 
