@@ -121,7 +121,7 @@ type DownloadState = 'pending' | 'complete' | 'inProgress';
 // a warning will be displayed on browers which
 // don't support optimial download experience
 const MIN_SIZE_FOR_DOWNLOAD_WARNING = 1 * 1024 * 1024 * 1024; // 1GB
-const MIN_SIZE_FOR_ZIP64_TIP = 4 * 1024 * 1024; //4GB
+const MIN_SIZE_FOR_ZIP64_TIP = 4 * 1024 * 1024 * 1024; //4GB
 const route = useRoute();
 route.params.downloadId;
 const error = ref<Error|undefined>();
