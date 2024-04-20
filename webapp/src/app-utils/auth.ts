@@ -4,6 +4,7 @@ import { clearData } from './store';
 import { logger } from './logger';
 import { router } from '../router';
 import { trpcClient } from ".";
+import type { Router } from "vue-router";
 
 /**
  * Configuration object to be passed to MSAL instance on creation. 
@@ -55,3 +56,15 @@ export const auth = new AuthHandler({
     apiClient: trpcClient,
     router: router
 });
+
+/**
+ * Redirects to the login page with the current route set
+ * as next path. This is useful when the user navigates
+ * to a page that requires authentication without
+ * being logged in.
+ * @param router 
+ */
+export function redirectToLoginWithNextPath(router: Router) {
+    const nextPath = router.currentRoute.value?.path;
+    router.push({ name: 'login', query: { next: nextPath } });
+}
