@@ -134,6 +134,11 @@ const projectPages = computed(() => {
       params: {},
     },
     {
+      name: 'Review Links',
+      route: 'project-shared-links',
+      params: {},
+    },
+    {
       name: 'Settings',
       route: "project-settings",
       params: {}

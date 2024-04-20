@@ -14,6 +14,7 @@ import ProjectsView from '@/views/ProjectsView.vue';
 import ProjectView from '@/views/ProjectView.vue';
 import ProjectMediaView from '@/views/ProjectMediaView.vue';
 import ProjectMembersView from '@/views/ProjectMembersView.vue';
+import ProjectReviewLinksView from '@/views/ProjectReviewLinksView.vue';
 import ProjectSettingsView from '@/views/project-settings/ProjectSettingsView.vue';
 import InviteView from '@/views/InviteView.vue';
 import LoginView from '@/views/auth/LoginView.vue';
@@ -77,6 +78,11 @@ const router = createRouter({
                   path: 'members',
                   name: 'project-members',
                   component: ProjectMembersView
+                },
+                {
+                  path: 'shared-links',
+                  name: 'project-shared-links',
+                  component: ProjectReviewLinksView
                 },
                 {
                   path: 'settings',
