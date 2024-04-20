@@ -52,6 +52,7 @@ export class MuxPlaybackPackager implements PlaybackPackager {
             // so we enable smart tier for audio-only streams
             // see: https://docs.mux.com/pricing/video#encoding
             encoding_tier: fileKind === 'audio'? 'smart' : 'baseline',
+            passthrough: JSON.stringify({ fileId: file._id })
         });
         
         const result = convertAssetToQuickbyteResult(asset);

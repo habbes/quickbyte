@@ -12,7 +12,7 @@ import { findBestProviderAndRegion, getCachedPreferredProviderRegion, clearPrefs
 import { apiClient, trpcClient } from './api';
 import { uploadRecoveryManager } from './recovery-manager';
 import { logger } from './logger';
-import { auth, showToast } from '.';
+import { auth, showToast, redirectToLoginWithNextPath } from '.';
 import type { Router } from "vue-router";
 import { useProjectItemsQueryOptions } from "./project-item-query-options";
 
@@ -76,8 +76,7 @@ export async function initUserData(router: Router) {
             // can sign in again
             clearData();
             
-            const nextPath = router.currentRoute.value?.path;
-            router.push({ name: 'login', query: { next: nextPath } });
+            redirectToLoginWithNextPath(router);
         } else {
             throw e;
         }

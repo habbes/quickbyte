@@ -45,6 +45,7 @@
         @can-play="handleCanPlay()"
         @play="isPlaying = true"
         @pause="isPlaying = false"
+        @error="$emit('playBackError', $event)"
         @timeupdate="handleTimeUpdate()"
         @time-update="handleTimeUpdate()"
         @progress="handleProgress($event)"
@@ -102,7 +103,7 @@
       <div
         v-for="comment in comments"
         :key="comment._id"
-        @click="handleCommentClick(comment)"
+        @click.stop="handleCommentClick(comment)"
         @mouseenter="handleCommentMouseEnter(comment)"
         @mouseleave="handleCommentMouseLeave()"
         class="h-3 w-3 rounded-full  absolute cursor-pointer translate-x-[-50%]"
@@ -175,6 +176,8 @@ const player = ref<MediaPlayer>();
 const progressBar = ref<HTMLDivElement>();
 
 const isPlaying = ref(false);
+const canPlay = ref(false);
+const scheduledStartPlayWhenMediaReady = ref(false);
 const playTime = ref(0);
 const playPercentage = computed(() => {
   if (!player.value) return 0;
@@ -218,32 +221,32 @@ const isMuted = ref(false);
 const volume = ref(0);
 const prevVolume = ref(0);
 
-watch(props, (curr, prev) => {
-  // change in props.src does not to automatically
-  // change the src of the video because we're using the
-  // <source> element to set the source. So we do it
-  // manually here instead.
-  // TODO: how to update the mime type to match the new source?
+// This helps keeps track of when the media
+// source changes.
+const _sources = computed(() => props.sources);
+watch(_sources, (curr, prev) => {
+  // when the media sources change
+  // the video stops playing and we don't get "pause" event
+  // so we need to manually sync the play time and trigger
+  // the playing if the media was already playing
+
+  // we mark canPlay as false to avoid the playing
+  // when the media is not ready, which would otherwise lead to an error
+  canPlay.value = false;
   if (!player.value) return;
-  // just in case the video is currently playing, let's
-  // reset it first before we change the source
-  // otherwise the user might get issues trying to play
-  // the new source
+
+  const wasPlaying = isPlaying.value;
+  isPlaying.value = false; // sync with the fact that the player has stopped
   const currentTime = player.value.currentTime;
-  pause();
-  seek(0);
-  // change the source in the next tick to ensure
-  // the reset has happened
   
   nextTick(() => {
     if (!player.value) return;
-    // player.value.src = curr.src;
-    // seek to the same time where the previous version was playing
-    // at.
-    // TODO: this updates the timestamp but does not update the 
-    // play progress bar until the user clicks the play
-    // button again. Please investigate
+
     seek(currentTime);
+    // try to play if the media was playing before sources changed
+    if (wasPlaying) {
+      play();
+    }
   });
 });
 
@@ -277,6 +280,11 @@ function pause() {
 
 async function play() {
   try {
+    if (!canPlay.value) {
+      logger.info(`Tried to play media version ${props.versionId} but player is not ready.`)
+      scheduledStartPlayWhenMediaReady.value = true;
+      return;
+    }
     await player.value?.play();
   }
   catch (e: any) {
@@ -342,6 +350,14 @@ function handleProgressBarMouseLeave() {
 
 function handleCanPlay() {
   if (!player.value) return;
+  canPlay.value = true;
+  if (scheduledStartPlayWhenMediaReady.value) {
+    // Play was earlier requested but media was not ready.
+    // So now we can fulfull the play request
+    scheduledStartPlayWhenMediaReady.value = false;
+    play();
+  }
+
   duration.value = player.value.duration || 0;
   volume.value = player.value.volume;
 }
