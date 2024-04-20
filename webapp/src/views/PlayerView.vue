@@ -518,7 +518,7 @@ function handleCommentDeleted(comment: CommentWithAuthor) {
 
 function handleMediaPlayBackError(error: Error) {
   showToast(`Error occurred while playing media: ${error.message}`, 'error');
-  logger.error(`Error playing media, id: ${media.value?._id}, filename: ${media.value?.file.name}`);
+  logger.error(`Error playing media, id: ${media.value?._id}, filename: ${media.value?.file.name}`, error);
 }
 
 </script>

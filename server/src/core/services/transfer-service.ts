@@ -446,6 +446,7 @@ export async function queueTransferFilesForPackaging(
                 continue;
             }
 
+            console.log(`Queuing file ${file._id} from transfer ${transferId} for packaging.`);
             context.queue.queueJob(() => tryStartPackagingFile(
                 file._id,
                 {
@@ -464,6 +465,7 @@ export async function tryStartPackagingFile(
         db: Database
     }
 ) {
+    console.log(`Attempting to package file ${fileId}`);
     return wrapError(async () => {
         const file = await context.db.files().findOne({
             _id: fileId
@@ -490,7 +492,9 @@ export async function tryStartPackagingFile(
             return;
         }
 
+        console.log(`Attempting to package file ${file._id} with packager ${packager.name()}`);
         const packagingResult = await packager.startPackagingFile(file);
+        console.log(`Packaging initiated for file ${file._id} with packaging id ${packagingResult.providerId} with status ${packagingResult.status} using packager ${packager.name()}`);
         const updateResult = await setFilePackagingInfoById(
             file._id,
             packager.name(),
@@ -669,6 +673,7 @@ async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPl
         }
     }
     else {
+        console.log(`Media download file ${file._id} has no packager. Attempting to initiate packaging...`);
         // we should only try to package when we're sure upload is complete otherwise
         // packaging (and playback) will fail
         const transfer = await db.transfers().findOne({ _id: file.transferId });
@@ -686,6 +691,7 @@ async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPl
             // if no packager is assigned to the file, then it was probably uploaded
             // before the encoding feature was rolled out. Let's schedule it
             // for packaging
+            console.log(`Found completed transfer ${transfer._id} for file ${file._id}, try start packaging...`);
             const updatedFile = await tryStartPackagingFile(file._id, { db, packagers});
             // TODO: it's possible that this file has not been packaged because it's not a supported media file
             // (e.g. not an audio or video file). In which case, we'll always try to package and abort each
