@@ -19,7 +19,6 @@ onMounted(() => {
   // With the current routing setup, other public pages that don't require
   // auth aren't rendered through this view component, so we
   // can safely assume that any path other than / requires authentication
-  console.log('here', route.path, route.name);
   if (route.path !== '/' && !authenticated.value) {
     redirectToLoginWithNextPath(router);
   }
