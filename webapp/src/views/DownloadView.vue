@@ -16,7 +16,7 @@
         <span class="text-xs">{{ error.message }}</span>
       </div>
       <div v-if="download && zipDownloadState === 'complete'"
-        class="alert alert-success w-96 cursor-pointer"
+        class="alert alert-success w-96 cursor-pointer flex flex-col"
         @click="zipDownloadState = 'pending'"
       >
         <span class="text-xs">Download complete. Look for <b>{{ zipFileName }}</b> on your device.</span>
@@ -25,7 +25,7 @@
           v-if="totalSize && totalSize >= MIN_SIZE_FOR_ZIP64_TIP"
         >
           Support for ZIP files larger than 4GB maybe limited on some platforms.
-          Consider using a tool like <a href="https://www.7-zip.org/" target="_blank">7Zip</a> if you run into issues.
+          Consider using a tool like <a class="font-bold link" href="https://www.7-zip.org/" target="_blank">7Zip</a> if you run into issues.
         </span>
       </div>
       <div v-else-if="download && zipDownloadState === 'inProgress'"
@@ -121,7 +121,7 @@ type DownloadState = 'pending' | 'complete' | 'inProgress';
 // a warning will be displayed on browers which
 // don't support optimial download experience
 const MIN_SIZE_FOR_DOWNLOAD_WARNING = 1 * 1024 * 1024 * 1024; // 1GB
-const MIN_SIZE_FOR_ZIP64_TIP = 4 * 1024 * 1024 * 1024; //4GB
+const MIN_SIZE_FOR_ZIP64_TIP = 4 * 1024 * 1024; //4GB
 const route = useRoute();
 route.params.downloadId;
 const error = ref<Error|undefined>();
