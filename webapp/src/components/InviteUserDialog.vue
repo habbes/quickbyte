@@ -105,13 +105,11 @@ async function inviteUser() {
     await trpcClient.inviteUsersToProject.mutate(args)
     emit('invite', args.users);
     close();
-    showToast(`Sent invitations to ${args.users.length} ${pluralize('user', args.users.length)}.`, 'info');
+    showToast(`Sent ${pluralize('invitation', args.users.length)} to ${args.users.length} ${pluralize('person', args.users.length, 'people')}.`, 'info');
   }
   catch (e: any) {
     showToast(`Failed to invite user: ${e.message}`, 'error');
     logger.error(e.message, e);
-    console.error(e.message);
-    console.error(e);
   }
   
 }
