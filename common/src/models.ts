@@ -409,7 +409,9 @@ export interface UserRole extends PersistedModel {
     resourceId: string;
 }
 
-export type RoleType = 'reviewer'|'editor'|'admin'|'owner';
+
+export type NonOwnerRoleType = 'reviewer'|'editor'|'admin';
+export type RoleType = NonOwnerRoleType | 'owner';
 
 export type WithRole<T> = T & { role: RoleType };
 

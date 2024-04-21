@@ -1,5 +1,5 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs, CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs, CreateProjectMediaUploadArgs, CreateShareableTransferArgs, FinalizeTransferArgs, SearchProjectFolderArgs, DeleteProjectItemsArgs, MoveProjectItemsToFolderArgs, GetProjectMediaByIdArgs } from '@quickbyte/common';
+import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs, CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs, CreateProjectMediaUploadArgs, CreateShareableTransferArgs, FinalizeTransferArgs, SearchProjectFolderArgs, DeleteProjectItemsArgs, MoveProjectItemsToFolderArgs, GetProjectMediaByIdArgs, InviteUsersToProjectArgs } from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -36,6 +36,11 @@ export const appRouter = router({
     .input(z.string())
     .query(({ ctx, input }) =>
         ctx.app.accounts.projects(ctx.auth).getMembers(input)),
+    
+    inviteUsersToProject: protectedProcedure
+    .input(InviteUsersToProjectArgs)
+    .mutation(({ ctx, input }) =>
+        ctx.app.accounts.projects(ctx.auth).inviteUsers(input.projectId, input)),
     
     declineInvite: publicProcedure
     .input(DeclineInviteArgs)
