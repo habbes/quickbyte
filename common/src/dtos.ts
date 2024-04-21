@@ -319,3 +319,14 @@ export const GetProjectMediaByIdArgs = z.object({
 });
 
 export type GetProjectMediaByIdArgs = z.infer<typeof GetProjectMediaByIdArgs>;
+
+export const InviteUsersToProjectArgs = z.object({
+    projectId: z.string().min(1),
+    users: z.array(z.object({
+        email: z.string().min(1)
+    })).min(1),
+    role: z.enum(['editor', 'admin', 'reviewer']),
+    message: z.string().optional()
+});
+
+export type InviteUsersToProjectArgs = z.infer<typeof InviteUsersToProjectArgs>;

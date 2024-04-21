@@ -51,15 +51,15 @@
 import Dialog from '@/components/ui/Dialog.vue';
 import { ref } from 'vue';
 import { ensure, pluralize } from '@/core';
-import { apiClient, showToast, store, logger } from '@/app-utils';
+import { showToast, store, logger, trpcClient } from '@/app-utils';
 import { UiRadioList, UiRadioListItem, UiButton, UiTextInput } from "@/components/ui";
-import { type RoleType } from "@quickbyte/common";
+import { type NonOwnerRoleType } from "@quickbyte/common";
 
 const dialog = ref<typeof Dialog>();
 const emailInput = ref<HTMLInputElement>();
 const email = ref<string>();
 const emailError = ref<string>();
-const role = ref<RoleType>("editor");
+const role = ref<NonOwnerRoleType>("editor");
 
 const account = ensure(store.currentAccount.value);
 
@@ -96,15 +96,16 @@ async function inviteUser() {
   const emails = email.value.split(/[,;]/g);
   const users = emails.map(e => ({ email: e.trim() }));
   const args = {
+    projectId: props.projectId,
     users,
     role: role.value
-  }
+  };
 
   try {
-    await apiClient.inviteUsersToProject(account._id, props.projectId, args);
+    await trpcClient.inviteUsersToProject.mutate(args)
     emit('invite', args.users);
     close();
-    showToast(`Sent invitations to ${args.users.length} ${pluralize('user', args.users.length)}.`, 'info');
+    showToast(`Sent ${pluralize('invitation', args.users.length)} to ${args.users.length} ${pluralize('person', args.users.length, 'people')}.`, 'info');
   }
   catch (e: any) {
     showToast(`Failed to invite user: ${e.message}`, 'error');
