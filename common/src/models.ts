@@ -196,6 +196,32 @@ export interface DownloadRequest extends PersistedModel {
     filesRequested?: string[];
 }
 
+export interface ProjectShare extends PersistedModel {
+    code: string;
+    projectId: string;
+    enabled: boolean;
+    password?: string;
+    expiresAt?: Date;
+    allowDownload?: boolean;
+    allowComments?: boolean;
+    /**
+     * When true, different versions of the media will be accessible,
+     * otherwise only the preferred version will be accessible.
+     */
+    showAllVersions?: boolean;
+    /**
+     * When true, all items in the project are accessible, otherwise
+     * only the items in the items array are accessible
+     */
+    allItems?: boolean;
+    items?: ProjectShareItemRef[];
+}
+
+export interface ProjectShareItemRef {
+    type: ProjectItemType,
+    _id: string;
+}
+
 export interface PlaybackPackagingResult {
     providerId: string;
     status: PlaybackPackagingStatus;

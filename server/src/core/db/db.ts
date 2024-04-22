@@ -1,5 +1,5 @@
 import { Db, Filter, MongoClient } from 'mongodb';
-import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder, Deleteable, ParentDeleteable, Principal, PersistedModel } from '../models.js';
+import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder, Deleteable, ParentDeleteable, Principal, PersistedModel, ProjectShare } from '../models.js';
 import { Media } from '../models.js';
 
 export class Database {
@@ -35,6 +35,8 @@ export class Database {
     media = () => this.db.collection<Media>("media");
 
     folders = () => this.db.collection<Folder>("folders");
+
+    projectShares = () => this.db.collection<ProjectShare>("project_shares");
 
     async initialize() {
         await this.users().createIndex('email', { unique: true });

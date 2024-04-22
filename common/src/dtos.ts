@@ -330,3 +330,40 @@ export const InviteUsersToProjectArgs = z.object({
 });
 
 export type InviteUsersToProjectArgs = z.infer<typeof InviteUsersToProjectArgs>;
+
+export const CreateProjectShareArgs = z.object({
+    projectId: z.string().min(1),
+    allowDownload: z.boolean().optional(),
+    password: z.optional(z.string().min(1)),
+    allItems: z.optional(z.boolean()),
+    items: z.array(z.object({
+        _id: z.string().min(1),
+        type: z.enum(['folder', 'media'])
+    })),
+    expiresAt: z.date().optional(),
+    recipients: z.array(
+        z.object({
+            email: z.string().min(1)
+        })
+    ),
+});
+
+export type CreateProjectShareArgs = z.infer<typeof CreateProjectShareArgs>;
+
+export const UpdateProjectShareArgs = z.object({
+    projectId: z.string().min(1),
+    shareId: z.string().min(1),
+    enabled: z.boolean().optional(),
+    password: z.string().min(1).optional(),
+    expiresAt: z.date().optional(),
+});
+
+export type UpdateProjectShareArgs = z.infer<typeof UpdateProjectShareArgs>;
+
+export const DeleteProjetShareArgs = z.object({
+    projectId: z.string().min(1),
+    shareId: z.string().min(1)
+});
+
+export type DeleteProjectShareArgs = z.infer<typeof DeleteProjetShareArgs>;
+
