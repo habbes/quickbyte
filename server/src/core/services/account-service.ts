@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription, LinkGenerator, IPlaybackPackagerProvider } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription, LinkGenerator, IPlaybackPackagerProvider, ProjectShareService } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
@@ -223,7 +223,8 @@ export class AccountService {
                 transfers,
                 comments: new CommentService(this.db, authContext),
                 folders
-            })
+            }),
+            projectShares: new ProjectShareService(this.db, authContext, {})
         });
     }
 

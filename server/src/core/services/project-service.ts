@@ -2,13 +2,15 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
 import { EmailHandler, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs } from '@quickbyte/common';
+import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
 import { IFolderService } from "./folder-service.js";
+import { wrapError } from "../utils.js";
+import { IProjectShareService } from "./project-share-service.js";
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
@@ -20,6 +22,7 @@ export interface ProjectServiceConfig {
     links: LinkGenerator,
     email: EmailHandler,
     eventBus: EventDispatcher,
+    projectShares: IProjectShareService
 }
 
 export class ProjectService {
@@ -499,6 +502,45 @@ export class ProjectService {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
+    }
+
+    createProjectShare(args: CreateProjectShareArgs): Promise<ProjectShare> {
+        return wrapError(async () => {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'owner']);
+
+            const share = await this.config.projectShares.createProjectShare(args);
+            return share;
+        })
+    }
+
+    getProjectShares(projectId: string): Promise<ProjectShare[]> {
+        return wrapError(async () => {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'owner']);
+
+            const shares = await this.config.projectShares.listByProject(projectId);
+            return shares;
+        })
+    }
+
+    updateProjectShare(args: UpdateProjectShareArgs): Promise<ProjectShare> {
+        return wrapError(async () => {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'owner']);
+
+            const share = await this.config.projectShares.updateProjectShare(args);
+            return share;
+        });
+    }
+
+    deleteProjectShare(args: DeleteProjectShareArgs): Promise<void> {
+        return wrapError(async () => {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'owner']);
+
+            await this.config.projectShares.deleteProjectShare(args);
+        });
     }
 
     private async getByIdInternal(id: string): Promise<Project> {

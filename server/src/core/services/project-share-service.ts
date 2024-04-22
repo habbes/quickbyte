@@ -111,3 +111,5 @@ export class ProjectShareService {
         });
     }
 }
+
+export type IProjectShareService = ProjectShareService;

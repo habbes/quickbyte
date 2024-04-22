@@ -9,3 +9,4 @@ export * from './payment/index.js';
 export * from './link-generator.js';
 export * from './event-bus/index.js';
 export * from './email-announcement-service.js';
+export * from "./project-share-service.js";
