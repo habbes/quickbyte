@@ -335,6 +335,7 @@ export const CreateProjectShareArgs = z.object({
     projectId: z.string().min(1),
     allowDownload: z.boolean().optional(),
     password: z.optional(z.string().min(1)),
+    public: z.boolean(),
     allItems: z.optional(z.boolean()),
     items: z.array(z.object({
         _id: z.string().min(1),
@@ -354,6 +355,7 @@ export const UpdateProjectShareArgs = z.object({
     projectId: z.string().min(1),
     shareId: z.string().min(1),
     enabled: z.boolean().optional(),
+    public: z.boolean().optional(),
     password: z.string().min(1).optional(),
     expiresAt: z.date().optional(),
 });

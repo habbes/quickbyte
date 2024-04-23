@@ -197,9 +197,21 @@ export interface DownloadRequest extends PersistedModel {
 }
 
 export interface ProjectShare extends PersistedModel {
-    code: string;
+    /**
+     * Project files can be shared through a public are sent via email
+     * to invite users. When sent via email, a unique code is generated
+     * for each recipient, this allows us to track which user opened the link.
+     * Technically, the email recipient can still share their own link with others,
+     * which will fool the system. But we should discourage recipients from doing that.
+     */
+    sharedWith: ProjectShareTarget[];
     projectId: string;
     enabled: boolean;
+    /**
+     * When set to true, users will be able to access the shared items based
+     * on the public code. Otherwise, the public code will not be considered valid.
+     */
+    public: boolean;
     password?: string;
     expiresAt?: Date;
     allowDownload?: boolean;
@@ -215,6 +227,19 @@ export interface ProjectShare extends PersistedModel {
      */
     allItems?: boolean;
     items?: ProjectShareItemRef[];
+}
+
+export type ProjectShareTarget = ProjectSharePublicCode | ProjectShareInviteCode;
+
+export interface ProjectSharePublicCode {
+    type: 'public';
+    code: string;
+}
+
+export interface ProjectShareInviteCode {
+    type: 'invite',
+    code: string;
+    email: string;
 }
 
 export interface ProjectShareItemRef {

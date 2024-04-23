@@ -1,5 +1,13 @@
 import { Database } from "../db.js";
-import { AuthContext, createPersistedModel, CreateProjectShareArgs, DeleteProjectShareArgs, ProjectShare, UpdateProjectShareArgs } from "../models.js";
+import { createPersistedModel } from "../models.js";
+import {
+    AuthContext,
+    CreateProjectShareArgs,
+    DeleteProjectShareArgs,
+    ProjectShare,
+    ProjectShareTarget,
+    UpdateProjectShareArgs
+} from "@quickbyte/common";
 import { generateId, wrapError } from "../utils.js";
 import { createNotFoundError, createValidationError } from "../error.js";
 
@@ -28,7 +36,30 @@ export class ProjectShareService {
                 throw createValidationError('Either allItems or items list should be set, but not both.');
             }
 
-            const code = generateId();
+            if (!args.public && !(args.recipients && args.recipients.length))
+            {
+                throw createValidationError('The ')
+            }
+
+            const sharedWith: ProjectShareTarget[] = [];
+
+            // we always generate a public link code even when
+            // the share is not made "public".
+            // When share.public is false, this code will not be considered
+            // valid.
+            sharedWith.push({
+                type: 'public',
+                code: generateId()
+            });
+
+            for (let recipient of args.recipients) {
+                sharedWith.push({
+                    type: 'invite',
+                    code: generateId(),
+                    email: recipient.email
+                });
+            }
+
             const share: ProjectShare = {
                 ...createPersistedModel(this.authContext.user._id),
                 projectId: args.projectId,
@@ -36,7 +67,8 @@ export class ProjectShareService {
                 allItems: args.allItems,
                 items: args.items,
                 enabled: true,
-                code,
+                public: args.public,
+                sharedWith,
                 allowDownload: args.allowDownload
             };
 
@@ -79,6 +111,10 @@ export class ProjectShareService {
 
             if ('password' in args) {
                 update.password = args.password;
+            }
+
+            if ('public' in args) {
+                update.public = args.public;
             }
 
             const result = await this.db.projectShares().findOneAndUpdate({
