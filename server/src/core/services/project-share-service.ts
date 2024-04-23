@@ -62,6 +62,7 @@ export class ProjectShareService {
 
             const share: ProjectShare = {
                 ...createPersistedModel(this.authContext.user._id),
+                name: args.name,
                 projectId: args.projectId,
                 password: args.password,
                 allItems: args.allItems,

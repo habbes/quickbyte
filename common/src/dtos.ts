@@ -332,6 +332,7 @@ export const InviteUsersToProjectArgs = z.object({
 export type InviteUsersToProjectArgs = z.infer<typeof InviteUsersToProjectArgs>;
 
 export const CreateProjectShareArgs = z.object({
+    name: z.string().min(1),
     projectId: z.string().min(1),
     allowDownload: z.boolean().optional(),
     password: z.optional(z.string().min(1)),

@@ -197,6 +197,7 @@ export interface DownloadRequest extends PersistedModel {
 }
 
 export interface ProjectShare extends PersistedModel {
+    name: string;
     /**
      * Project files can be shared through a public are sent via email
      * to invite users. When sent via email, a unique code is generated
