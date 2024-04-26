@@ -224,7 +224,9 @@ export class AccountService {
                 comments: new CommentService(this.db, authContext),
                 folders
             }),
-            projectShares: new ProjectShareService(this.db, authContext, {})
+            projectShares: new ProjectShareService(this.db, authContext, {
+                events: this.config.eventBus
+            })
         });
     }
 

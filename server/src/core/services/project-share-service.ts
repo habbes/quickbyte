@@ -8,11 +8,12 @@ import {
     ProjectShareTarget,
     UpdateProjectShareArgs
 } from "@quickbyte/common";
+import { EventDispatcher } from "./event-bus/index.js";
 import { generateId, wrapError } from "../utils.js";
 import { createNotFoundError, createValidationError } from "../error.js";
 
 export interface ProjectShareServiceConfig {
-
+    events: EventDispatcher
 }
 
 export class ProjectShareService {
@@ -70,12 +71,19 @@ export class ProjectShareService {
                 enabled: true,
                 public: args.public,
                 sharedWith,
-                allowDownload: args.allowDownload
+                allowDownload: args.allowDownload,
+                expiresAt: args.expiresAt
             };
 
             await this.db.projectShares().insertOne(share);
 
-            // TODO Queue notification to recipients
+            this.config.events.send({
+                type: 'projectShareCreated',
+                data: {
+                    projectId: share.projectId,
+                    projectShareId: share._id
+                }
+            });
 
             return share;
         });

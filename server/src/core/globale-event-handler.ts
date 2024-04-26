@@ -1,4 +1,4 @@
-import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging } from "./services/index.js";
+import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging, ProjectShareCreatedEvent, createProjectSharedForReviewNotificationEmail } from "./services/index.js";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, rethrowIfAppError } from "./error.js";
 import { Database, getProjectMembersById } from "./db/index.js";
 import { Media, Project, User } from "./models.js";
@@ -13,6 +13,7 @@ export class GlobalEventHandler {
         eventBus.on('folderDeleted', (event) => this.handleFolderDeleted(event));
         eventBus.on('projectMemberRemoved', (event) => this.handleProjectMemberRemoved(event));
         eventBus.on('filePlaybackPackagingUpdated', (event) => this.handleFilePlaybackPackagingUpdated(event));
+        eventBus.on('projectShareCreated', (event) => this.handleProjectShareCreated(event));
     }
 
     private async handleProjectMemberRemoved(event: Event): Promise<void> {
@@ -208,6 +209,49 @@ export class GlobalEventHandler {
                 }
             );
         });
+    }
+
+    private async handleProjectShareCreated(event: Event): Promise<void> {
+        await wrapError(async () => {
+            const data = this.getEventData<ProjectShareCreatedEvent>("projectShareCreated", event);
+            console.log(`Handling projectShareCreatedEvent for share '${data.projectShareId}'`);
+            await this.config.backgroundWorker.queueJob(async () => {
+                const share = await this.config.db.projectShares().findOne({
+                    projectId: data.projectId,
+                    _id: data.projectShareId
+                });
+
+                if (!share) {
+                    throw createInvalidAppStateError(`Could not find share with id ${data.projectShareId} in project ${data.projectId}`);
+                }
+
+                const sender = await this.config.db.users().findOne({ _id: share._createdBy._id }, { projection: { name: 1 }});
+                if (!sender) {
+                    throw createInvalidAppStateError(`Could not find sender ${share._createdBy._id} of share ${data.projectShareId}`);
+                }
+
+                const recipients = share?.sharedWith.filter(s => s.type === 'invite');
+
+                for (const recipient of recipients) {
+                    console.log(`Queueing project share notification email to recipient`);
+                    this.config.backgroundWorker.queueJob(async () => {
+                        await this.config.email.sendEmail({
+                            to: {
+                                email: recipient.email
+                            },
+                            subject: `${sender.name} has shared a some files for you to review.`,
+                            message: createProjectSharedForReviewNotificationEmail({
+                                senderName: sender.name,
+                                shareName: share.name,
+                                expiresAt: share.expiresAt,
+                                hasPassword: !!share.password,
+                                shareLink: this.config.links.getProjectShareLink(share._id, recipient.code)
+                            })
+                        });
+                    });
+                }
+            });
+        })
     }
 
     private getEventData<TEvent extends Event>(expectedType: TEvent['type'], event: Event): TEvent['data'] {

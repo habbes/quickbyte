@@ -76,7 +76,11 @@ export function getEventType(event: Event): EventType {
     return eventType;
 }
 
-export type Event = TransferCompleteEvent | FolderDeletedEvent | ProjectMemberRemovedEvent | FilePlaybackPackagingUpdatedEvent;
+export type Event = TransferCompleteEvent
+    | FolderDeletedEvent
+    | ProjectMemberRemovedEvent
+    | FilePlaybackPackagingUpdatedEvent
+    | ProjectShareCreatedEvent;
 
 export type TransferCompleteEvent = {
     type: 'transferComplete',
@@ -106,6 +110,14 @@ export type FilePlaybackPackagingUpdatedEvent = {
     data: {
         packager: string;
         packagerId: string;
+    }
+}
+
+export type ProjectShareCreatedEvent = {
+    type: 'projectShareCreated',
+    data: {
+        projectId: string;
+        projectShareId: string;
     }
 }
 

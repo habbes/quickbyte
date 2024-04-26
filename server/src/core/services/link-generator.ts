@@ -28,4 +28,8 @@ export class LinkGenerator {
 
         return base;
     }
+
+    getProjectShareLink(shareId: string, code: string) {
+        return `${this.config.webappBaseUrl}/share/${shareId}/${code}`;
+    }
 }

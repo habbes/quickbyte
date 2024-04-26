@@ -151,7 +151,7 @@
 import { computed, ref } from "vue";
 import { DateTime } from "luxon";
 import {
-  UiDialog, UiLayout, UiTextInput, UiButton, UiCheckbox, UiDateTimeInput, UiHelpPopover
+  UiDialog, UiLayout, UiTextInput, UiButton, UiCheckbox, UiDateTimeInput
 } from "@/components/ui";
 import { pluralize } from "@/core";
 import { isEmail, type ProjectItem } from "@quickbyte/common";
