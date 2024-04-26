@@ -92,7 +92,7 @@
           <UiLayout v-if="hasPassword">
             <UiTextInput v-model="password" fullWidth :type="'password'" placeholder="Enter passphrase" />
             <div class="text-xs text-gray-500">
-              You have to manually share this passphrase with the intended recipients.
+              You have to manually share this passphrase with the reviewers.
             </div>
           </UiLayout>
         </UiLayout>
@@ -112,18 +112,18 @@
               <UiCheckbox :checked="allowComments" @update:checked="allowComments = $event" />
             </UiLayout>
             <div class="text-xs text-gray-500 w-[90%]">
-              Allow people with link to add comments to files. They will only be able
-              to see their comments and replies to their comments.
+              Reviewers will only be able to see their comments and replies to their comments.
             </div>
           </UiLayout>
           <UiLayout>
             <UiLayout horizontal justifyBetween itemsCenter>
-              <span>Show all versions</span>
+              <div>
+                <span>Show all versions</span>
+              </div>
               <UiCheckbox :checked="showAllVersions" @update:checked="showAllVersions = $event" />
             </UiLayout>
             <div class="text-xs text-gray-500 w-[90%]">
-              Choose whether people with the link should see all versions
-              of each file, or just the preferred version.
+              Should reviewers be able to see all versions of a file or just the current version?
             </div>
           </UiLayout>
           
@@ -150,7 +150,9 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { DateTime } from "luxon";
-import { UiDialog, UiLayout, UiTextInput, UiButton, UiCheckbox, UiDateTimeInput } from "@/components/ui";
+import {
+  UiDialog, UiLayout, UiTextInput, UiButton, UiCheckbox, UiDateTimeInput, UiHelpPopover
+} from "@/components/ui";
 import { pluralize } from "@/core";
 import { isEmail, type ProjectItem } from "@quickbyte/common";
 
@@ -203,7 +205,7 @@ const expiryDateError = computed(() => {
 
 const hasPassword = ref(false);
 const password = ref<string|undefined>(undefined);
-const allowDownloads = ref(false);
+const allowDownloads = ref(true);
 const allowComments = ref(false);
 const showAllVersions = ref(false);
 
@@ -221,6 +223,11 @@ function open() {
     props.items[0].name : 
     `Review Link - ${new Date().toLocaleDateString()}`;
   
+  hasPassword.value = false;
+  password.value = undefined;
+  hasExpiryDate.value = false;
+  allowComments.value = false;
+  allowDownloads.value = true;
   dialog.value?.open();
 }
 
