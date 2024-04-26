@@ -65,7 +65,7 @@
 
       <UiLayout v-else="activePage === 'settings'" :gap="3">
         <UiLayout gapSm>
-          <div class="font-bold">
+          <div class="text-lg">
             Expiry
           </div>
           <UiLayout horizontal justifyBetween itemsCenter>
@@ -73,8 +73,60 @@
             <UiCheckbox :checked="hasExpiryDate" @update:checked="hasExpiryDate = $event" />
           </UiLayout>
           <UiLayout v-if="hasExpiryDate">
-            <input type="datetime-local" :value="expiryDateString" @change="handleExpiryDateChange($event)"/>
+            <UiDateTimeInput
+              label="Expiry Date"
+              v-model="expiryDate"
+              :min="minExpiryDate"
+              :error="expiryDateError"
+            />
           </UiLayout>
+        </UiLayout>
+        <UiLayout gapSm>
+          <div class="text-lg">
+            Passphrase protection
+          </div>
+          <UiLayout horizontal justifyBetween itemsCenter>
+            <span>Enable passphrase protection</span>
+            <UiCheckbox :checked="hasPassword" @update:checked="hasPassword = $event" />
+          </UiLayout>
+          <UiLayout v-if="hasPassword">
+            <UiTextInput v-model="password" fullWidth :type="'password'" placeholder="Enter passphrase" />
+            <div class="text-xs text-gray-500">
+              You have to manually share this passphrase with the intended recipients.
+            </div>
+          </UiLayout>
+        </UiLayout>
+        <UiLayout gapSm>
+          <div class="text-lg">
+            Permissions
+          </div>
+          <UiLayout>
+            <UiLayout horizontal justifyBetween itemsCenter>
+              <span>Allow downloads</span>
+              <UiCheckbox :checked="allowDownloads" @update:checked="allowDownloads = $event" />
+            </UiLayout>
+          </UiLayout>
+          <UiLayout>
+            <UiLayout horizontal justifyBetween itemsCenter>
+              <span>Allow comments</span>
+              <UiCheckbox :checked="allowComments" @update:checked="allowComments = $event" />
+            </UiLayout>
+            <div class="text-xs text-gray-500 w-[90%]">
+              Allow people with link to add comments to files. They will only be able
+              to see their comments and replies to their comments.
+            </div>
+          </UiLayout>
+          <UiLayout>
+            <UiLayout horizontal justifyBetween itemsCenter>
+              <span>Show all versions</span>
+              <UiCheckbox :checked="showAllVersions" @update:checked="showAllVersions = $event" />
+            </UiLayout>
+            <div class="text-xs text-gray-500 w-[90%]">
+              Choose whether people with the link should see all versions
+              of each file, or just the preferred version.
+            </div>
+          </UiLayout>
+          
         </UiLayout>
       </UiLayout>
 
@@ -98,7 +150,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { DateTime } from "luxon";
-import { UiDialog, UiLayout, UiTextInput, UiButton, UiCheckbox } from "@/components/ui";
+import { UiDialog, UiLayout, UiTextInput, UiButton, UiCheckbox, UiDateTimeInput } from "@/components/ui";
 import { pluralize } from "@/core";
 import { isEmail, type ProjectItem } from "@quickbyte/common";
 
@@ -135,22 +187,33 @@ const emailError = computed(() => {
 });
 
 const hasExpiryDate = ref(false);
-const expiryDate = ref(DateTime.now());
-const expiryDateString = computed(() =>
-  expiryDate.value.toFormat("yyyy-MM-dd'T'T"))
+
+const minExpiryDate = new Date();
+// defult expiry date 7 days from now. This is arbitrary.
+const expiryDate = ref(
+  DateTime.now().plus({ days: 7 }).toJSDate()
+);
+const expiryDateError = computed(() => {
+  if (hasExpiryDate.value && expiryDate.value <= new Date()) {
+    return `The expiry date must be in the future.`;
+  }
+
+  return undefined;
+});
+
+const hasPassword = ref(false);
+const password = ref<string|undefined>(undefined);
+const allowDownloads = ref(false);
+const allowComments = ref(false);
+const showAllVersions = ref(false);
+
 
 const isValid = computed(() =>
   name.value
   && (isPublic.value || recipients.value.length > 0)
   && (!emailError.value)
+  && (!expiryDateError.value)
 );
-
-function handleExpiryDateChange(event: Event) {
-  const rawValue = (event.target as HTMLInputElement).value;
-  const date = DateTime.fromFormat(rawValue, "yyyy-MM-dd'T'T");
-  // @ts-ignore
-  expiryDate.value = date;
-}
 
 
 function open() {
