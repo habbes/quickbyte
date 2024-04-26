@@ -170,6 +170,7 @@
                   @update="handleItemUpdate($event)"
                   @delete="handleDeleteRequested($event)"
                   @move="handleMoveRequested($event)"
+                  @share="handleShareProjectItems($event)"
                   @toggleSelect="handleToggleSelect($event)"
                   @toggleInMultiSelect="handleToggleInMultiSelect($event)"
                   @selectAll="handleSelectAll()"
@@ -202,10 +203,10 @@
         </UiMenuItem>
         <template v-if="selectedItemIds.size > 0">
           <UiMenuSeparator />
-          <UiMenuItem @click="shareProjectItems()">
+          <UiMenuItem @click="handleShareProjectItems()">
             <UiLayout horizontal itemsCenter gapSm>
               <ShareIcon class="h-5 w-5" />
-              <span>Share</span>
+              <span>Share {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
             </UiLayout>
           </UiMenuItem>
           <UiMenuItem @click="handleMoveRequested()">
@@ -272,7 +273,7 @@
   <CreateProjectShareDialog
     v-if="project"
     ref="createProjectShareDialog"
-    :projectId="project._id"
+    :project="project"
     :items="selectedItems"
   />
 </template>
@@ -576,7 +577,7 @@ function handleItemMoved(item: ProjectItem) {
   // and is not being moved to this folder. Ignore it.
 }
 
-function shareProjectItems(item?: { type: ProjectItemType, itemId: string }) {
+function handleShareProjectItems(item?: { type: ProjectItemType, itemId: string }) {
   if (item && !isItemSelected(item.itemId)) {
     addToSelection(item.itemId);
   }

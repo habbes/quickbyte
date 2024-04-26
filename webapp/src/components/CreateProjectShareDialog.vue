@@ -199,14 +199,14 @@ import {
   UiDialog, UiLayout, UiTextInput, UiButton, UiCheckbox, UiDateTimeInput
 } from "@/components/ui";
 import { pluralize } from "@/core";
-import { isEmail, type ProjectItem, type ProjectShare } from "@quickbyte/common";
+import { isEmail, type ProjectItem, type ProjectShare, type Project } from "@quickbyte/common";
 import { trpcClient, wrapError, linkGenerator } from "@/app-utils";
 import { useClipboard } from "@vueuse/core";
 
 type State = 'creating'|'done';
 
 const props = defineProps<{
-  projectId: string;
+  project: Project;
   items: ProjectItem[]
 }>();
 
@@ -308,7 +308,7 @@ function open() {
   state.value = 'creating';
   name.value =  props.items.length === 1 ?
     props.items[0].name : 
-    `Review Link - ${new Date().toLocaleDateString()}`;
+    `${props.project.name} Review - ${new Date().toLocaleDateString()}`;
   
   activePage.value = 'shareWith';
   hasPassword.value = false;
@@ -328,7 +328,7 @@ function createProjectShare() {
   wrapError(async () => {
     if (!isValid.value) return;
     const result = await trpcClient.createProjectShare.mutate({
-      projectId: props.projectId,
+      projectId: props.project._id,
       name: name.value,
       expiresAt: hasExpiryDate.value ? expiryDate.value! : undefined,
       allowDownload: allowDownloads.value,

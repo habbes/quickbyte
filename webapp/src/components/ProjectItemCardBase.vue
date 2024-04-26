@@ -72,6 +72,7 @@
         :totalSelectedItems="totalSelectedItems"
         @rename="$emit('rename')"
         @move="$emit('move')"
+        @share="$emit('share')"
         @delete="$emit('delete')"
         @selectAll="$emit('selectAll')"
         @unselectAll="$emit('unselectAll')"
@@ -99,6 +100,7 @@ const emit = defineEmits<{
   (e: 'rename'): void;
   (e: 'delete'): void;
   (e: 'move'): void;
+  (e: 'share'): void;
   (e: 'toggleSelect'): void;
   (e: 'toggleInMultiSelect'): void;
   (e: 'selectAll'): void;

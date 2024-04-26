@@ -9,6 +9,7 @@
     @rename="rename()"
     @delete="$emit('delete', media._id)"
     @move="$emit('move')"
+    @share="$emit('share')"
     @toggleSelect="$emit('toggleSelect')"
     @toggleInMultiSelect="$emit('toggleInMultiSelect')"
     @selectAll="$emit('selectAll')"
@@ -52,6 +53,7 @@ defineEmits<{
   (e: 'update', updatedMedia: Media): void;
   (e: 'delete', mediaId: string): void;
   (e: 'move'): void;
+  (e: 'share'): void;
   (e: 'toggleSelect'): void;
   (e: 'toggleInMultiSelect'): void;
   (e: 'selectAll'): void;
