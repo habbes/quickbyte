@@ -6,7 +6,6 @@ export * from './transfer-service.js';
 export * from './email/index.js';
 export * from './admin-alerts-service.js';
 export * from './payment/index.js';
-export * from './link-generator.js';
 export * from './event-bus/index.js';
 export * from './email-announcement-service.js';
 export * from "./project-share-service.js";

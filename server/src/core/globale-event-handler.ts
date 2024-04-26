@@ -1,9 +1,10 @@
-import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging, ProjectShareCreatedEvent, createProjectSharedForReviewNotificationEmail } from "./services/index.js";
+import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging, ProjectShareCreatedEvent, createProjectSharedForReviewNotificationEmail } from "./services/index.js";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, rethrowIfAppError } from "./error.js";
 import { Database, getProjectMembersById } from "./db/index.js";
 import { Media, Project, User } from "./models.js";
 import { BackgroundWorker } from "./background-worker.js";
 import { wrapError } from "./utils.js";
+import { LinkGenerator } from '@quickbyte/common';
 
 export class GlobalEventHandler {
     constructor(private config: GlobalEventHandlerConfig) {}

@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription, LinkGenerator, IPlaybackPackagerProvider, ProjectShareService } from "../index.js";
+import { Account, AuthContext, createAppError, createDbError, createPersistedModel, createResourceNotFoundError, EmailHandler, IPaymentHandlerProvider, IPlanService, isMongoDuplicateKeyError, IStorageHandlerProvider, ITransactionService, ITransferService, Principal, rethrowIfAppError, TransactionService, TransferService, Project, BasicUserData, WithRole, createInvalidAppStateError, AccountWithSubscription, IPlaybackPackagerProvider, ProjectShareService } from "../index.js";
 import { IProjectService, ProjectService } from "./project-service.js";
 import { IInviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
@@ -8,6 +8,7 @@ import { IAccessHandler } from "./access-handler.js";
 import { Database, DbAccount } from "../db.js";
 import { EventDispatcher } from "./event-bus/index.js";
 import { FolderService } from "./folder-service.js";
+import { LinkGenerator } from '@quickbyte/common';
 
 export interface AccountServiceConfig {
     storageHandlers: IStorageHandlerProvider;
