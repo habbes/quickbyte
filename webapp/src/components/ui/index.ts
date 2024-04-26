@@ -8,6 +8,15 @@ export { default as UiTextInput } from "./UiTextInput.vue";
 export { default as UiExpandableTextInput } from "./UiExpandableTextInput.vue";
 export { default as UiTextArea } from "./UiTextArea.vue";
 export { default as UiDateTimeInput } from "./UiDateTimeInput.vue";
+export { default as UiSwitch } from "./UiSwitch.vue"
+export {
+    Table as UiTable,
+    TableBody as UiTableBody,
+    TableCell as UiTableCell,
+    TableHead as UiTableHead,
+    TableHeader as UiTableHeader,
+    TableRow as UiTableRow
+} from "./table/index.js";
 export * from "./context-menu";
 export { UiCheckbox } from "./checkbox";
 export * from "./radio-list/index.js";
