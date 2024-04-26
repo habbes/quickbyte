@@ -77,8 +77,8 @@ import { useClipboard } from '@vueuse/core';
 import {
   EllipsisVerticalIcon
 } from "@heroicons/vue/24/outline";
-import type { ProjectShare, WithCreator } from "@quickbyte/common";
-import { trpcClient, wrapError, linkGenerator } from '@/app-utils';
+import type { Project, ProjectShare, WithCreator, WithRole } from "@quickbyte/common";
+import { trpcClient, wrapError, linkGenerator, store } from '@/app-utils';
 import {
   UiTable,
   UiTableBody,
@@ -91,10 +91,13 @@ import {
   UiLayout,
   UiSwitch
 } from "@/components/ui"
+import { ensure } from '@/core';
+import RequireRole from '@/components/RequireRole.vue';
 
 const route = useRoute();
 const { copy } = useClipboard();
 const shares = ref<WithCreator<ProjectShare>[]>([]);
+const project = ref<WithRole<Project>|undefined>();
 
 function getSharePublicLink(share: ProjectShare): string|undefined {
   if (!share.public) {
@@ -155,6 +158,7 @@ function updateLocalShare(updatedShare: ProjectShare) {
 watch(route, () => {
   wrapError(async () => {
     const projectId = route.params.projectId as string;
+    project.value = ensure(store.projects.value.find(p => p._id === projectId));
 
     shares.value = await trpcClient.getProjectShares.query(projectId);
   });
