@@ -6,7 +6,21 @@
           Name
         </UiTableHead>
         <UiTableHead>
-          Date Created
+          <UiLayout horizontal itemsCenter gapSm>
+            <span>Date Created</span>
+            <ArrowLongDownIcon
+              title="Sorting by newest first"
+              v-if="sortDirection < 0"
+              @click="toggleSortDirection()"
+              class="h-4 w-4 cursor-pointer"
+            />
+            <ArrowLongUpIcon
+              title="Sorting by oldest first"
+              v-else
+              @click="toggleSortDirection()"
+              class="h-4 w-4 cursor-pointer"
+            />
+          </UiLayout>
         </UiTableHead>
         <UiTableHead>
           Created By
@@ -20,7 +34,7 @@
       </UiTableHeader>
       <UiTableBody>
         <UiTableRow
-          v-for="share in shares"
+          v-for="share in sortedShares"
           :key="share._id"
         >
           <UiTableCell>
@@ -39,16 +53,24 @@
             />
           </UiTableCell>
           <UiTableCell>
-            <UiLayout horizontal itemsCenter gapSm>
+            <UiLayout
+              horizontal
+              itemsCenter gapSm
+              v-if="share.public"
+            >
               <a
                 :href="getSharePublicLink(share)" target="_blank"
                 class="underline"
+                :title="getSharePublicLink(share)"
               >
                 Open link
               </a>
-              <span @click="copyLink(share)" class="underline cursor-pointer">
+              <span @click="copyLink(share)" class="underline cursor-pointer" :title="getSharePublicLink(share)">
                 Copy Link
               </span>
+            </UiLayout>
+            <UiLayout v-else horizontal>
+              No public link
             </UiLayout>
           </UiTableCell>
           <UiTableCell>
@@ -70,12 +92,14 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { watch, ref } from 'vue';
+import { watch, ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { DateTime } from 'luxon';
 import { useClipboard } from '@vueuse/core';
 import {
-  EllipsisVerticalIcon
+  EllipsisVerticalIcon,
+  ArrowLongDownIcon,
+  ArrowLongUpIcon,
 } from "@heroicons/vue/24/outline";
 import type { Project, ProjectShare, WithCreator, WithRole } from "@quickbyte/common";
 import { trpcClient, wrapError, linkGenerator, store } from '@/app-utils';
@@ -92,12 +116,21 @@ import {
   UiSwitch
 } from "@/components/ui"
 import { ensure } from '@/core';
-import RequireRole from '@/components/RequireRole.vue';
 
 const route = useRoute();
 const { copy } = useClipboard();
 const shares = ref<WithCreator<ProjectShare>[]>([]);
 const project = ref<WithRole<Project>|undefined>();
+const sortDirection = ref(-1);
+const sortedShares = computed(() => {
+  const copy = [...shares.value];
+  copy.sort((a, b) => sortDirection.value * (a._createdAt.getTime() - b._createdAt.getTime()));
+  return copy;
+});
+
+function toggleSortDirection() {
+  sortDirection.value = -1 * sortDirection.value;
+}
 
 function getSharePublicLink(share: ProjectShare): string|undefined {
   if (!share.public) {
