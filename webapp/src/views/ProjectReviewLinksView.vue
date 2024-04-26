@@ -79,10 +79,16 @@
                 <EllipsisVerticalIcon class="h-4 w-4" />
               </template>
               <UiMenuItem>
-                Settings
+                <UiLayout horizontal itemsCenter gapSm>
+                  <Cog6ToothIcon class="h4 w-4" />
+                  <span>Settings</span>
+                </UiLayout>
               </UiMenuItem>
-              <UiMenuItem>
-                Delete
+              <UiMenuItem @click="requestDeleteShare(share)">
+                <UiLayout horizontal itemsCenter gapSm>
+                  <TrashIcon class="h4 w-4" />
+                  <span>Delete</span>
+                </UiLayout>
               </UiMenuItem>
             </UiMenu>
           </UiTableCell>
@@ -90,6 +96,21 @@
       </UiTableBody>
     </UiTable>
   </div>
+  <ConfirmActionDialog
+    ref="deleteDialog"
+    v-if="selectedShare"
+    :input="selectedShare"
+    title="Delete review link"
+    actionLabel="Delete"
+    :action="deleteShare"
+    :actionDanger="true"
+    @done="handleShareDeleted($event)"
+  >
+    <div>
+      Are you sure you want to delete the link
+      <span class="font-bold">{{ selectedShare.name }}</span>?
+    </div>
+  </ConfirmActionDialog>
 </template>
 <script lang="ts" setup>
 import { watch, ref, computed } from 'vue';
@@ -100,9 +121,11 @@ import {
   EllipsisVerticalIcon,
   ArrowLongDownIcon,
   ArrowLongUpIcon,
+  TrashIcon,
+  Cog6ToothIcon,
 } from "@heroicons/vue/24/outline";
 import type { Project, ProjectShare, WithCreator, WithRole } from "@quickbyte/common";
-import { trpcClient, wrapError, linkGenerator, store } from '@/app-utils';
+import { trpcClient, wrapError, linkGenerator, store, showToast } from '@/app-utils';
 import {
   UiTable,
   UiTableBody,
@@ -115,7 +138,9 @@ import {
   UiLayout,
   UiSwitch
 } from "@/components/ui"
+import ConfirmActionDialog from '@/components/ConfirmActionDialog.vue';
 import { ensure } from '@/core';
+import { nextTick } from 'process';
 
 const route = useRoute();
 const { copy } = useClipboard();
@@ -127,6 +152,8 @@ const sortedShares = computed(() => {
   copy.sort((a, b) => sortDirection.value * (a._createdAt.getTime() - b._createdAt.getTime()));
   return copy;
 });
+const selectedShare = ref<WithCreator<ProjectShare>|undefined>();
+const deleteDialog = ref<typeof ConfirmActionDialog>();
 
 function toggleSortDirection() {
   sortDirection.value = -1 * sortDirection.value;
@@ -176,6 +203,32 @@ async function toggleShareEnabled(share: WithCreator<ProjectShare>) {
       share.enabled = originalValue;
     }
   });
+}
+
+async function requestDeleteShare(share: WithCreator<ProjectShare>) {
+  selectedShare.value = share;
+  nextTick(() => deleteDialog.value?.open());
+}
+
+async function deleteShare(share: WithCreator<ProjectShare>) {
+
+  await trpcClient.deleteProjectShare.mutate({
+    projectId: ensure(project.value)._id,
+    shareId: share._id
+  });
+
+  return share;
+}
+
+function handleShareDeleted(share: WithCreator<ProjectShare>) {
+  const index = shares.value.findIndex(s => s._id === share._id);
+  if (index === -1) {
+    return;
+  }
+
+  showToast("Review link deleted successfully.", 'info');
+
+  shares.value.splice(index, 1);
 }
 
 function updateLocalShare(updatedShare: ProjectShare) {
