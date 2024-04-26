@@ -544,3 +544,10 @@ export interface PlaybackUrls {
     thumbnailUrl?: string;
     posterUrl?: string;
 }
+
+export type WithCreator<T> = T & {
+    creator: {
+        _id: string;
+        name: string;
+    }
+};

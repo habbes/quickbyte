@@ -6,7 +6,8 @@ import {
     DeleteProjectShareArgs,
     ProjectShare,
     ProjectShareTarget,
-    UpdateProjectShareArgs
+    UpdateProjectShareArgs,
+    WithCreator
 } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
 import { generateId, wrapError } from "../utils.js";
@@ -91,11 +92,33 @@ export class ProjectShareService {
         });
     }
 
-    listByProject(projectId: string): Promise<ProjectShare[]> {
+    listByProject(projectId: string): Promise<WithCreator<ProjectShare>[]> {
         return wrapError(async () => {
-            const shares = await this.db.projectShares().find({
-                projectId: projectId
-            }).toArray();
+            const shares = await this.db.projectShares().aggregate<WithCreator<ProjectShare>>([
+                {
+                    $match: {
+                        projectId
+                    }
+                },
+                {
+                    $lookup: {
+                        from: this.db.users().collectionName,
+                        foreignField: '_id',
+                        localField: '_createdBy._id',
+                        pipeline: [
+                            {
+                                $project: {
+                                    _id: 1,
+                                    name: 1
+                                }
+                            }
+                        ],
+                        as: 'creator'
+                    }
+                }, {
+                    $unwind: '$creator'
+                }
+            ]).toArray();
 
             return shares;
         });
