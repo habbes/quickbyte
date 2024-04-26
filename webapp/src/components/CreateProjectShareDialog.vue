@@ -3,7 +3,7 @@
     ref="dialog"
     :title="title"
   >
-    <UiLayout :gap="4">
+    <UiLayout :gap="4" v-if="state === 'creating'">
       <UiLayout>
         <UiTextInput fullWidth v-model="name" />
       </UiLayout>
@@ -139,23 +139,71 @@
         <UiButton
           primary
           :disabled="!isValid"
+          @click="createProjectShare()"
         >
           Share
         </UiButton>
       </UiLayout>
     </UiLayout>
-    
+
+    <UiLayout v-else-if="state === 'done' && createdShare" gapSm>
+      <UiLayout horizontal gapSm itemsCenter class="bg-green-200 p-2 rounded-md">
+        <CheckCircleIcon class="h-8 w-8 text-green-600" />
+        <span class="text-green-700">
+          The project assets have been successfully shared.
+        </span>
+      </UiLayout>
+      <UiLayout v-if="createdShare.sharedWith.some(s => s.type === 'invite')">
+        An email has been sent to each person you added.
+      </UiLayout>
+      <UiLayout v-if="publicLink" class="text-xs" gapSm>
+        <div class="text-sm font-bold">Public Link</div>
+        <p>
+          Copy and share the <a class="link" :href="publicLink" target="_blank">public link</a>
+          with anyone else you want to grant access to the shared items:
+        </p>
+        <div class="relative" @click="copyLink()">
+          <div class="text-nowrap overflow-auto border p-2 rounded-md">
+            {{ publicLink }}
+          </div>
+        </div>
+      </UiLayout>
+      <UiLayout v-if="createdShare.password" class="text-xs" gapSm>
+        <div class="text-sm font-bold">
+          Password protection
+        </div>
+        <p>
+          This review link is password protected. Remember to share the password
+          with every recipient you added or shared the link with.
+        </p>
+      </UiLayout>
+
+
+      <UiLayout horizontal justifyEnd gapSm class="mt-4">
+        <UiButton v-if="publicLink" @click="copyLink">Copy Link</UiButton>
+        <UiButton
+          primary
+          @click="close()"
+        >
+          Done
+        </UiButton>
+      </UiLayout>
+    </UiLayout>
   </UiDialog>
 </template>
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { DateTime } from "luxon";
+import { CheckCircleIcon } from '@heroicons/vue/24/outline';
 import {
   UiDialog, UiLayout, UiTextInput, UiButton, UiCheckbox, UiDateTimeInput
 } from "@/components/ui";
 import { pluralize } from "@/core";
-import { isEmail, type ProjectItem } from "@quickbyte/common";
+import { isEmail, type ProjectItem, type ProjectShare } from "@quickbyte/common";
+import { trpcClient, wrapError, linkGenerator } from "@/app-utils";
+import { useClipboard } from "@vueuse/core";
 
+type State = 'creating'|'done';
 
 const props = defineProps<{
   projectId: string;
@@ -163,6 +211,9 @@ const props = defineProps<{
 }>();
 
 defineExpose({ open, close });
+
+const { copy } = useClipboard();
+const state = ref<State>('creating');
 
 const title = computed(() =>
   `Share ${props.items.length} ${pluralize('item', props.items.length)}`
@@ -208,7 +259,23 @@ const password = ref<string|undefined>(undefined);
 const allowDownloads = ref(true);
 const allowComments = ref(false);
 const showAllVersions = ref(false);
+const createdShare = ref<ProjectShare|undefined>();
+const publicLink = computed(() => {
+  if (!createdShare.value) {
+    return;
+  }
 
+  if (!createdShare.value.public) {
+    return;
+  }
+
+  const publicCode = createdShare.value.sharedWith.find(s => s.type === 'public');
+  if (!publicCode) {
+    return;
+  }
+
+  return linkGenerator.getProjectShareLink(createdShare.value._id, publicCode.code);
+});
 
 const isValid = computed(() =>
   name.value
@@ -216,24 +283,6 @@ const isValid = computed(() =>
   && (!emailError.value)
   && (!expiryDateError.value)
 );
-
-
-function open() {
-  name.value =  props.items.length === 1 ?
-    props.items[0].name : 
-    `Review Link - ${new Date().toLocaleDateString()}`;
-  
-  hasPassword.value = false;
-  password.value = undefined;
-  hasExpiryDate.value = false;
-  allowComments.value = false;
-  allowDownloads.value = true;
-  dialog.value?.open();
-}
-
-function close() {
-  dialog.value?.close();
-}
 
 const activePage = ref('shareWith');
 const pages = [
@@ -246,4 +295,54 @@ const pages = [
     title: 'Settings'
   }
 ];
+
+function copyLink() {
+  if (!publicLink.value) {
+    return;
+  }
+
+  copy(publicLink.value);
+}
+
+function open() {
+  state.value = 'creating';
+  name.value =  props.items.length === 1 ?
+    props.items[0].name : 
+    `Review Link - ${new Date().toLocaleDateString()}`;
+  
+  activePage.value = 'shareWith';
+  hasPassword.value = false;
+  password.value = undefined;
+  hasExpiryDate.value = false;
+  allowComments.value = false;
+  allowDownloads.value = true;
+  createdShare.value = undefined;
+  dialog.value?.open();
+}
+
+function close() {
+  dialog.value?.close();
+}
+
+function createProjectShare() {
+  wrapError(async () => {
+    if (!isValid.value) return;
+    const result = await trpcClient.createProjectShare.mutate({
+      projectId: props.projectId,
+      name: name.value,
+      expiresAt: hasExpiryDate.value ? expiryDate.value! : undefined,
+      allowDownload: allowDownloads.value,
+      allowComments: allowComments.value,
+      showAllVersions: showAllVersions.value,
+      items: props.items.filter(item => ({ type: item.type, _id: item._id })),
+      password: hasPassword && password.value ? password.value : undefined,
+      public: isPublic.value,
+      recipients: recipients.value
+    });
+
+    state.value = 'done';
+    createdShare.value = result;
+  })
+}
+
 </script>

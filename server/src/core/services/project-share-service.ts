@@ -72,6 +72,8 @@ export class ProjectShareService {
                 public: args.public,
                 sharedWith,
                 allowDownload: args.allowDownload,
+                allowComments: args.allowComments,
+                showAllVersions: args.showAllVersions,
                 expiresAt: args.expiresAt
             };
 

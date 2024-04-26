@@ -23,7 +23,6 @@ IUnauthenicatedTransactionService,
 UnauthenticatedTransactionService,
 IAlertService,
 FreeTrialHandler,
-LinkGenerator,
 EventBus,
 EmailAnnouncementService,
 S3StorageHandler,
@@ -39,6 +38,7 @@ import { AccessHandler } from "./services/access-handler.js";
 import { Database } from "./db.js";
 import { GlobalEventHandler } from "./globale-event-handler.js";
 import { BackgroundWorker } from "./background-worker.js";
+import { LinkGenerator } from "@quickbyte/common";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const dbConn = await getDbConnection(config);

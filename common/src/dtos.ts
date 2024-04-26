@@ -335,6 +335,8 @@ export const CreateProjectShareArgs = z.object({
     name: z.string().min(1),
     projectId: z.string().min(1),
     allowDownload: z.boolean().optional(),
+    showAllVersions: z.boolean().optional(),
+    allowComments: z.boolean().optional(),
     password: z.optional(z.string().min(1)),
     public: z.boolean(),
     allItems: z.optional(z.boolean()),
