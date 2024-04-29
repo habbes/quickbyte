@@ -151,6 +151,26 @@ export class ProjectShareService {
                 update.public = args.public;
             }
 
+            if ('allowDownload' in args) {
+                update.allowDownload = args.allowDownload;
+            }
+
+            if ('allowComments' in args) {
+                update.allowComments = args.allowComments;
+            }
+
+            if ('showAllVersions' in args) {
+                update.showAllVersions = args.showAllVersions;
+            }
+
+            if ('password' in args && args.password) {
+                // TODO how do we tell that the password was removed?
+                // Maybe add a hasPassword field?
+                update.password = args.password;
+            }
+
+            // if recipients in args, add new recipients and send them emails
+
             const result = await this.db.projectShares().findOneAndUpdate({
                 projectId: args.projectId,
                 _id: args.shareId
