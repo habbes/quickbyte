@@ -357,10 +357,19 @@ export type CreateProjectShareArgs = z.infer<typeof CreateProjectShareArgs>;
 export const UpdateProjectShareArgs = z.object({
     projectId: z.string().min(1),
     shareId: z.string().min(1),
+    name: z.string().optional(),
     enabled: z.boolean().optional(),
     public: z.boolean().optional(),
     password: z.string().min(1).optional(),
     expiresAt: z.date().optional(),
+    allowComments: z.boolean().optional(),
+    showAllVersions: z.boolean().optional(),
+    allowDownload: z.boolean().optional(),
+    recipients: z.array(
+        z.object({
+            email: z.string().min(1)
+        })
+    )
 });
 
 export type UpdateProjectShareArgs = z.infer<typeof UpdateProjectShareArgs>;
