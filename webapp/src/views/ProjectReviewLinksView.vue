@@ -78,7 +78,7 @@
               <template #trigger>
                 <EllipsisVerticalIcon class="h-4 w-4" />
               </template>
-              <UiMenuItem>
+              <UiMenuItem @click="requestUpdateShare(share)">
                 <UiLayout horizontal itemsCenter gapSm>
                   <Cog6ToothIcon class="h4 w-4" />
                   <span>Settings</span>
@@ -111,6 +111,11 @@
       <span class="font-bold">{{ selectedShare.name }}</span>?
     </div>
   </ConfirmActionDialog>
+  <ProjectShareUpdateDialog
+    ref="updateDialog"
+    v-if="selectedShare"
+    :share="selectedShare"
+  />
 </template>
 <script lang="ts" setup>
 import { watch, ref, computed } from 'vue';
@@ -139,6 +144,7 @@ import {
   UiSwitch
 } from "@/components/ui"
 import ConfirmActionDialog from '@/components/ConfirmActionDialog.vue';
+import ProjectShareUpdateDialog from '@/components/ProjectShareUpdateDialog.vue';
 import { ensure } from '@/core';
 import { nextTick } from 'process';
 
@@ -154,6 +160,7 @@ const sortedShares = computed(() => {
 });
 const selectedShare = ref<WithCreator<ProjectShare>|undefined>();
 const deleteDialog = ref<typeof ConfirmActionDialog>();
+const updateDialog = ref<typeof ProjectShareUpdateDialog>();
 
 function toggleSortDirection() {
   sortDirection.value = -1 * sortDirection.value;
@@ -218,6 +225,11 @@ async function deleteShare(share: WithCreator<ProjectShare>) {
   });
 
   return share;
+}
+
+function requestUpdateShare(share: WithCreator<ProjectShare>) {
+  selectedShare.value = share;
+  nextTick(() => updateDialog.value?.open());
 }
 
 function handleShareDeleted(share: WithCreator<ProjectShare>) {
