@@ -360,6 +360,12 @@ export const UpdateProjectShareArgs = z.object({
     name: z.string().optional(),
     enabled: z.boolean().optional(),
     public: z.boolean().optional(),
+    // if has password is set to true and password is null,
+    // then the share will retain its current password if it has one,
+    // otherwise password is not set.
+    // If hasPassword is false, the current password will be removed
+    // if one is set.
+    hasPassword: z.boolean().optional(),
     password: z.string().min(1).optional(),
     expiresAt: z.date().optional(),
     allowComments: z.boolean().optional(),
@@ -369,7 +375,7 @@ export const UpdateProjectShareArgs = z.object({
         z.object({
             email: z.string().min(1)
         })
-    )
+    ).optional()
 });
 
 export type UpdateProjectShareArgs = z.infer<typeof UpdateProjectShareArgs>;

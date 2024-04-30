@@ -6,6 +6,8 @@
     :defaultName="share.name"
     :title="title"
     :items="share.items!"
+    :actionLabel="'Save'"
+    :action="updateProjectShare"
   />
 </template>
 <script lang="ts" setup>
@@ -14,6 +16,8 @@ import type { ProjectShare } from "@quickbyte/common";
 import { pluralize } from "@/core";
 import ProjectShareBaseDialog from "./ProjectShareBaseDialog.vue";
 import { computed } from "vue";
+import type { ProjectShareActionArgs } from "./project-share-args";
+import { trpcClient } from "@/app-utils";
 
 const props = defineProps<{
   share: ProjectShare
@@ -34,5 +38,23 @@ function open() {
 
 function close() {
   dialog.value?.close();
+}
+
+async function updateProjectShare(args: ProjectShareActionArgs) {
+  const result = await trpcClient.updateProjectShare.mutate({
+    projectId: props.share.projectId,
+    shareId: props.share._id,
+    name: args.name,
+    public: args.public,
+    recipients: args.recipients,
+    hasPassword: args.hasPassword,
+    password: args.password,
+    allowComments: args.allowComments,
+    allowDownload: args.allowDownload,
+    showAllVersions: args.showAllVersions,
+    expiresAt: args.expiresAt
+  });
+
+  return result;
 }
 </script>

@@ -144,7 +144,7 @@ import {
   UiSwitch
 } from "@/components/ui"
 import ConfirmActionDialog from '@/components/ConfirmActionDialog.vue';
-import ProjectShareUpdateDialog from '@/components/ProjectShareUpdateDialog.vue';
+import ProjectShareUpdateDialog from '@/components/project-share/ProjectShareUpdateDialog.vue';
 import { ensure } from '@/core';
 import { nextTick } from 'process';
 
