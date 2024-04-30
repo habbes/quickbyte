@@ -1,4 +1,4 @@
-import { Database } from "../db.js";
+import { Database, DbProjectShare, getSafeProjectShare } from "../db.js";
 import { createPersistedModel } from "../models.js";
 import {
     AuthContext,
@@ -62,10 +62,11 @@ export class ProjectShareService {
                 });
             }
 
-            const share: ProjectShare = {
+            const share: DbProjectShare = {
                 ...createPersistedModel(this.authContext.user._id),
                 name: args.name,
                 projectId: args.projectId,
+                hasPassword: args.password ? true : false,
                 password: args.password,
                 allItems: args.allItems,
                 items: args.items,
@@ -88,7 +89,7 @@ export class ProjectShareService {
                 }
             });
 
-            return share;
+            return getSafeProjectShare(share);
         });
     }
 
@@ -98,6 +99,11 @@ export class ProjectShareService {
                 {
                     $match: {
                         projectId
+                    }
+                },
+                {
+                    $project: {
+                        password: 0
                     }
                 },
                 {
@@ -130,7 +136,7 @@ export class ProjectShareService {
                 throw createValidationError('Invalid expiry date. The expiry date should be a date later than today.');
             }
 
-            const update: Partial<ProjectShare> = {
+            const update: Partial<DbProjectShare> = {
                 _updatedAt: new Date(),
                 _updatedBy: { _id: this.authContext.user._id, type: 'user' }
             };
@@ -164,8 +170,8 @@ export class ProjectShareService {
             }
 
             if ('password' in args && args.password) {
-                // TODO how do we tell that the password was removed?
-                // Maybe add a hasPassword field?
+                update.hasPassword = true;
+                // TODO: hashPassword
                 update.password = args.password;
             }
 
@@ -177,7 +183,8 @@ export class ProjectShareService {
             }, {
                 $set: update
             }, {
-                returnDocument: 'after'
+                returnDocument: 'after',
+                projection: { password: 0 }
             });
 
             if (!result.value) {

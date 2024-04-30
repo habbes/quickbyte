@@ -36,7 +36,7 @@ export class Database {
 
     folders = () => this.db.collection<Folder>("folders");
 
-    projectShares = () => this.db.collection<ProjectShare>("project_shares");
+    projectShares = () => this.db.collection<DbProjectShare>("project_shares");
 
     async initialize() {
         await this.users().createIndex('email', { unique: true });
@@ -74,6 +74,10 @@ export type DbAccount = Omit<Account, 'name'>;
 // the invite
 export type DbUserInvite = UserInvite & { secret: string };
 
+export interface DbProjectShare extends ProjectShare {
+    password?: string;
+}
+
 export function createFilterForDeleteableResource<T extends Deleteable | ParentDeleteable>(filter: Filter<T>): Filter<T> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } };
 }
@@ -93,4 +97,10 @@ export function deleteNowBy(principal: string | Principal): Deleteable {
         deletedAt: new Date(),
         deletedBy
     };
+}
+
+export function getSafeProjectShare(dbShare: DbProjectShare): ProjectShare {
+    const share = { ...dbShare };
+    delete share.password;
+    return share;
 }

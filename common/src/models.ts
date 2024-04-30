@@ -213,6 +213,7 @@ export interface ProjectShare extends PersistedModel {
      * on the public code. Otherwise, the public code will not be considered valid.
      */
     public: boolean;
+    hasPassword: boolean;
     password?: string;
     expiresAt?: Date;
     allowDownload?: boolean;
