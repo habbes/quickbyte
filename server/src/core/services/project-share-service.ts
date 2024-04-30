@@ -1,5 +1,5 @@
 import { Database, DbProjectShare, getSafeProjectShare } from "../db.js";
-import { createPersistedModel } from "../models.js";
+import { createPersistedModel, ProjectShareInviteCode } from "../models.js";
 import {
     AuthContext,
     CreateProjectShareArgs,
@@ -48,7 +48,8 @@ export class ProjectShareService {
             // we always generate a public link code even when
             // the share is not made "public".
             // When share.public is false, this code will not be considered
-            // valid.
+            // valid. This allows us toggle whether a link is public or not
+            // without having to regenerate or remove the code.
             sharedWith.push({
                 type: 'public',
                 code: generateId()
@@ -175,13 +176,24 @@ export class ProjectShareService {
                 update.password = args.password;
             }
 
+            const sharedWith: ProjectShareInviteCode[] = [];
             // if recipients in args, add new recipients and send them emails
+            if (args.recipients && args.recipients.length) {
+                for (const recipient of args.recipients) {
+                    sharedWith.push({
+                        code: generateId(),
+                        email: recipient.email,
+                        type: 'invite'
+                    });
+                }
+            }
 
             const result = await this.db.projectShares().findOneAndUpdate({
                 projectId: args.projectId,
                 _id: args.shareId
             }, {
-                $set: update
+                $set: update,
+                $addToSet: { sharedWith: { $each: sharedWith } }
             }, {
                 returnDocument: 'after',
                 projection: { password: 0 }
@@ -190,6 +202,8 @@ export class ProjectShareService {
             if (!result.value) {
                 throw createNotFoundError("project link");
             }
+
+            // TODO: send email to new recipients
 
             return result.value;
         });
