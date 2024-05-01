@@ -125,8 +125,8 @@
         <UiButton @click="close()">
           Cancel
         </UiButton>
-        <UiButton primary :disabled="!isValid" @click="createProjectShare()">
-          Share
+        <UiButton primary :disabled="!isValid" @click="executeAction()">
+          {{ actionLabel }}
         </UiButton>
       </UiLayout>
     </UiLayout>
@@ -166,7 +166,7 @@
 
       <UiLayout horizontal justifyEnd gapSm class="mt-4">
         <UiButton v-if="publicLink" @click="copyLink">Copy Link</UiButton>
-        <UiButton primary @click="close()">
+        <UiButton primary @click="handleDone()">
           Done
         </UiButton>
       </UiLayout>
@@ -196,6 +196,10 @@ const props = defineProps<{
   items: ProjectShareItemRef[]
   actionLabel: string;
   action: (args: ProjectShareActionArgs) => Promise<ProjectShare>;
+}>();
+
+const emit = defineEmits<{
+  (e: 'done', result: ProjectShare): unknown;
 }>();
 
 defineExpose({ open, close });
@@ -274,7 +278,7 @@ const publicLink = computed(() => {
 
 const isValid = computed(() =>
   name.value
-  && (isPublic.value || recipients.value.length > 0)
+  && (isPublic.value || recipients.value.length > 0 || props.initialShare)
   && (!emailError.value)
   && (!expiryDateError.value)
 );
@@ -313,11 +317,19 @@ function open() {
   dialog.value?.open();
 }
 
+function handleDone() {
+  if (createdShare.value) {
+    emit('done', createdShare.value);
+  }
+
+  close();
+}
+
 function close() {
   dialog.value?.close();
 }
 
-function createProjectShare() {
+function executeAction() {
   wrapError(async () => {
     if (!isValid.value) return;
 
@@ -333,7 +345,7 @@ function createProjectShare() {
       public: isPublic.value,
       recipients: recipients.value,
       items: props.items
-    }
+    };
 
     const result = await props.action(args);
 

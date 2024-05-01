@@ -115,6 +115,7 @@
     ref="updateDialog"
     v-if="selectedShare"
     :share="selectedShare"
+    @update="updateLocalShare($event)"
   />
 </template>
 <script lang="ts" setup>

@@ -8,6 +8,7 @@
     :items="share.items!"
     :actionLabel="'Save'"
     :action="updateProjectShare"
+    @done="$emit('update', $event)"
   />
 </template>
 <script lang="ts" setup>
@@ -21,6 +22,10 @@ import { trpcClient } from "@/app-utils";
 
 const props = defineProps<{
   share: ProjectShare
+}>();
+
+defineEmits<{
+  (e: 'update', share: ProjectShare): unknown;
 }>();
 
 defineExpose({ open, close });

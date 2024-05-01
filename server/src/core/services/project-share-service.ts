@@ -154,6 +154,10 @@ export class ProjectShareService {
                 update.enabled = args.enabled;
             }
 
+            if ('name' in args) {
+                update.name = args.name;
+            }
+
             if ('password' in args) {
                 update.password = args.password;
             }
