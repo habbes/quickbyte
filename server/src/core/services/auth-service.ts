@@ -7,7 +7,7 @@ import { EmailHandler, IAlertService, createEmailVerificationEmail, createInvite
 import { IInviteService } from "./invite-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
-import * as bcrypt from "bcrypt";
+import { hashPassword, verifyPassword } from "../utils.js";
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core'
 import * as zxcvbnCommonPackage from '@zxcvbn-ts/language-common'
 import * as zxcvbnEnPackage from '@zxcvbn-ts/language-en'
@@ -541,14 +541,6 @@ function getSafeUser(user: UserInDb): User {
     }
 
     return user;
-}
-
-function hashPassword(plaintext: string): Promise<string> {
-    return bcrypt.hash(plaintext, 10);
-}
-
-function verifyPassword(plaintext: string, hashed: string): Promise<boolean> {
-    return bcrypt.compare(plaintext, hashed);
 }
 
 function checkPasswordStrength(password: string, args: CreateUserArgs) {

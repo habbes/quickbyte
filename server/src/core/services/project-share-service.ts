@@ -10,7 +10,7 @@ import {
     WithCreator
 } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
-import { generateId, wrapError } from "../utils.js";
+import { generateId, hashPassword, wrapError } from "../utils.js";
 import { createNotFoundError, createValidationError } from "../error.js";
 import { Filter } from "mongodb";
 
@@ -69,7 +69,7 @@ export class ProjectShareService {
                 name: args.name,
                 projectId: args.projectId,
                 hasPassword: args.password ? true : false,
-                password: args.password,
+                password: args.password ? await hashPassword(args.password) : undefined,
                 allItems: args.allItems,
                 items: args.items,
                 enabled: true,
@@ -176,8 +176,7 @@ export class ProjectShareService {
 
             if ('password' in args && args.password) {
                 update.hasPassword = true;
-                // TODO: hashPassword
-                update.password = args.password;
+                update.password = await hashPassword(args.password);
             }
 
             const sharedWith: ProjectShareInviteCode[] = [];

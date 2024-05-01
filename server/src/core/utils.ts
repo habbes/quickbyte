@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import { createAppError, createInvalidAppStateError, rethrowIfAppError } from './error.js';
+import * as bcrypt from "bcrypt";
 
 export function generateId() {
     return randomBytes(16).toString('base64url');
@@ -41,4 +42,12 @@ export function ensureSingleOrEmpty<T>(collection: T[]): T|undefined {
     }
 
     return ensureSingle(collection);
+}
+
+export function hashPassword(plaintext: string): Promise<string> {
+    return bcrypt.hash(plaintext, 10);
+}
+
+export function verifyPassword(plaintext: string, hashed: string): Promise<boolean> {
+    return bcrypt.compare(plaintext, hashed);
 }
