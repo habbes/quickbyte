@@ -7,11 +7,14 @@ import {
     ProjectShare,
     ProjectShareTarget,
     UpdateProjectShareArgs,
-    WithCreator
+    WithCreator,
+    GetProjectShareLinkItemsArgs,
+    GetProjectShareLinkItemsResult,
+ProjectShareLinkItemsRequirePasswordResult
 } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
-import { generateId, hashPassword, wrapError } from "../utils.js";
-import { createNotFoundError, createValidationError } from "../error.js";
+import { ensureSingle, ensureSingleOrEmpty, generateId, hashPassword, verifyPassword, wrapError } from "../utils.js";
+import { createAuthError, createNotFoundError, createResourceNotFoundError, createValidationError } from "../error.js";
 import { Filter } from "mongodb";
 
 export interface ProjectShareServiceConfig {
@@ -222,6 +225,48 @@ export class ProjectShareService {
             }
 
             return result.value;
+        });
+    }
+
+    getProjectShareByCode(args: GetProjectShareLinkItemsArgs): Promise<ProjectShareLinkItemsRequirePasswordResult|ProjectShare> {
+        return wrapError(async () => {
+            const result = await this.db.projectShares().aggregate<DbProjectShare>([
+                {
+                    $match: {
+                        _id: args.shareId,
+                        'sharedWith.code': args.code,
+                        enabled: true,
+                        $or: [
+                            { expiresAt: null },
+                            {
+                                expiresAt: { $gt: new Date() } 
+                            }
+                        ]
+                    }
+                },
+                {
+                    $limit: 1
+                }
+            ]).toArray();
+            const share = ensureSingleOrEmpty(result);
+            if (!share) {
+                throw createResourceNotFoundError("The link is invalid or has been disabled.");
+            }
+
+            if (share.hasPassword && !args.password) {
+                return {
+                    passwordRequired: true
+                }
+            }
+
+            if (share.hasPassword && share.password && args.password) {
+                const passwordCorrect = await verifyPassword(args.password, share.password);
+                if (!passwordCorrect) {
+                    throw createAuthError("The password is incorrect.");
+                }
+            }
+
+            return getSafeProjectShare(share);
         });
     }
 

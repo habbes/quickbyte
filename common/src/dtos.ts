@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { string, z } from "zod";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -387,3 +387,26 @@ export const DeleteProjetShareArgs = z.object({
 
 export type DeleteProjectShareArgs = z.infer<typeof DeleteProjetShareArgs>;
 
+export const GetProjectShareLinkItemsArgs = z.object({
+    shareId: z.string().min(1),
+    code: z.string().min(1),
+    password: z.string().min(1).optional(),
+});
+
+export type GetProjectShareLinkItemsArgs = z.infer<typeof GetProjectShareLinkItemsArgs>;
+
+export type GetProjectShareLinkItemsResult = ProjectShareLinkItemsRequirePasswordResult | ProjectShareLinkItemsSuccessResult;
+
+export interface ProjectShareLinkItemsRequirePasswordResult {
+    passwordRequired: true;
+}
+
+export interface ProjectShareLinkItemsSuccessResult {
+    
+}
+
+export interface ProjectShareLinkMediaItem {
+    _id: string;
+    name: string;
+    path: string;
+}
