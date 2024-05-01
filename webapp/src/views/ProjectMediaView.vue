@@ -296,7 +296,7 @@ import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue'
 import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue";
-import CreateProjectShareDialog from "@/components/project-share/CreateProjectShareDialog.vue";
+import { CreateProjectShareDialog } from "@/components/project-share";
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
 import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox, UiContextMenu, UiMenuSeparator } from "@/components/ui";
 import { DragSelect, DragSelectOption } from "@coleqiu/vue-drag-select";
