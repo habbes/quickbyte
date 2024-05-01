@@ -2,15 +2,15 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
 import { EmailHandler, EventDispatcher, ITransactionService, ITransferService, createMediaCommentNotificationEmail } from "./index.js";
-import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator } from '@quickbyte/common';
+import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
-import { IMediaService  } from "./media-service.js";
+import { getMultipleMediaByIds, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
-import { IFolderService } from "./folder-service.js";
+import { getMultipleProjectFoldersByIds, IFolderService } from "./folder-service.js";
 import { wrapError } from "../utils.js";
-import { IProjectShareService } from "./project-share-service.js";
+import { getProjectShareByCode, IProjectShareService } from "./project-share-service.js";
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
@@ -547,7 +547,7 @@ export class ProjectService {
         try {
             const project = await this.collection.findOne({ _id: id });
             if (!project) {
-                throw createResourceNotFoundError();
+                throw createNotFoundError('project');
             }
 
             return project;
@@ -653,3 +653,74 @@ export interface InviteUserArgs {
     message?: string;
     role: RoleType;
 }
+
+export class PublicProjectService {
+    constructor(private db: Database) {
+    }
+
+    getProjectShareItems(args: GetProjectShareLinkItemsArgs): Promise<GetProjectShareLinkItemsResult> {
+        return wrapError(async () => {
+            const projectShareResult = await getProjectShareByCode(this.db, args);
+            if ('passwordRequired' in projectShareResult) {
+                return projectShareResult;
+            }
+
+            const share = projectShareResult;
+            const project = await this.db.projects().findOne({ _id: share.projectId });
+            if (!project) {
+                throw createNotFoundError('project');
+            }
+            
+            // get project media
+            // should we fetch all the files at once, include download and play links (could be a long request),
+            // -- pros: get all data in single request, simplifies client-side playback, navigation and download
+            // -- cons: request can take long time if shared items are many or deeply nested, request can take
+            // or fetch the files lazily expecting subsequent API calls to play or download the files?
+            // -- pros: requests will be relatively quick and scalable for most scenarios
+            // -- cons: navigation, playback and download will require follow up API calls, how will "Download all" be implemented
+            // -- cons: more endpoints to be implemented backend
+
+            if (share.allItems) {
+                // TODO: support this feature
+                throw createAppError("Fetching all project items is currently not supported");
+            }
+
+            const sharedMedia = share.items?.filter(i => i.type === 'media')!;
+            const sharedFolders = share.items?.filter(i => i.type === 'folder')!;
+
+            const media = await getMultipleMediaByIds(this.db, share.projectId, sharedMedia.map(i => i._id));
+            const folders = await getMultipleProjectFoldersByIds(this.db, share.projectId, sharedFolders.map(i => i._id));
+
+            const items: ProjectItem[] = [
+                ...folders.map<ProjectItem>(f => ({
+                    _id: f._id,
+                    name: f.name,
+                    type: 'folder',
+                    _createdAt: f._createdAt,
+                    _updatedAt: f._updatedAt,
+                    item: f
+                })),
+                ...media.map<ProjectItem>(m => ({
+                    _id: m._id,
+                    name: m.name,
+                    type: 'media',
+                    _createdAt: m._createdAt,
+                    _updatedAt: m._updatedAt,
+                    item: m
+                })),
+            ];
+
+            return {
+                _id: share._id,
+                name: share.name,
+                sharedEmail: share.sharedEmail,
+                allowDownload: !!share.allowDownload,
+                allowComments: !!share.allowComments,
+                showAllVersions: !!share.showAllVersions,
+                items: items
+            }
+        });
+    }
+}
+
+export type ISharedProjectsService = PublicProjectService;

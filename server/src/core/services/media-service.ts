@@ -5,6 +5,7 @@ import { ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
 import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
+import { wrapError } from "../utils.js";
 
 export interface MediaServiceConfig {
     transfers: ITransferService;
@@ -358,6 +359,19 @@ export class MediaService {
 
 export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
+}
+
+export function getMultipleMediaByIds(db: Database, projectId: string, ids: string[]): Promise<Media[]> {
+    return wrapError(async () => {
+        const media = await db.media().find(
+            addRequiredMediaFilters({
+                projectId,
+                _id: { $in: ids }
+            })
+        ).toArray();
+
+        return media
+    });
 }
 
 export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;

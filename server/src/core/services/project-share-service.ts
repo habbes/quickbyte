@@ -228,48 +228,6 @@ export class ProjectShareService {
         });
     }
 
-    getProjectShareByCode(args: GetProjectShareLinkItemsArgs): Promise<ProjectShareLinkItemsRequirePasswordResult|ProjectShare> {
-        return wrapError(async () => {
-            const result = await this.db.projectShares().aggregate<DbProjectShare>([
-                {
-                    $match: {
-                        _id: args.shareId,
-                        'sharedWith.code': args.code,
-                        enabled: true,
-                        $or: [
-                            { expiresAt: null },
-                            {
-                                expiresAt: { $gt: new Date() } 
-                            }
-                        ]
-                    }
-                },
-                {
-                    $limit: 1
-                }
-            ]).toArray();
-            const share = ensureSingleOrEmpty(result);
-            if (!share) {
-                throw createResourceNotFoundError("The link is invalid or has been disabled.");
-            }
-
-            if (share.hasPassword && !args.password) {
-                return {
-                    passwordRequired: true
-                }
-            }
-
-            if (share.hasPassword && share.password && args.password) {
-                const passwordCorrect = await verifyPassword(args.password, share.password);
-                if (!passwordCorrect) {
-                    throw createAuthError("The password is incorrect.");
-                }
-            }
-
-            return getSafeProjectShare(share);
-        });
-    }
-
     deleteProjectShare(args: DeleteProjectShareArgs): Promise<void> {
         return wrapError(async () => {
             const result = await this.db.projectShares().findOneAndDelete({
@@ -320,4 +278,56 @@ export async function findProjectShares(db: Database, projectId: string, filter:
     ]).toArray();
 
     return shares;
+}
+
+
+export function getProjectShareByCode(
+    db: Database,
+    args: GetProjectShareLinkItemsArgs
+): Promise<ProjectShareLinkItemsRequirePasswordResult|ProjectShare & { sharedEmail?: string }> {
+    return wrapError(async () => {
+        const result = await db.projectShares().aggregate<DbProjectShare>([
+            {
+                $match: {
+                    _id: args.shareId,
+                    'sharedWith.code': args.code,
+                    enabled: true,
+                    $or: [
+                        { expiresAt: null },
+                        {
+                            expiresAt: { $gt: new Date() } 
+                        }
+                    ]
+                }
+            },
+            {
+                $limit: 1
+            }
+        ]).toArray();
+        const share = ensureSingleOrEmpty(result);
+        if (!share) {
+            throw createResourceNotFoundError("The link is invalid or has been disabled.");
+        }
+
+        if (share.hasPassword && !args.password) {
+            return {
+                passwordRequired: true
+            }
+        }
+
+        if (share.hasPassword && share.password && args.password) {
+            const passwordCorrect = await verifyPassword(args.password, share.password);
+            if (!passwordCorrect) {
+                throw createAuthError("The password is incorrect.");
+            }
+        }
+
+        const safeShare: ProjectShare & { sharedEmail?: string } = getSafeProjectShare(share);
+        const sharedCode = safeShare.sharedWith.find(s => s.code === args.code);
+        if (sharedCode && sharedCode.type === 'invite') {
+            safeShare.sharedEmail = sharedCode.email
+        }
+
+        return safeShare;
+    });
 }

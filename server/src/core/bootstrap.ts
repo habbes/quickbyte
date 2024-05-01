@@ -39,6 +39,7 @@ import { Database } from "./db.js";
 import { GlobalEventHandler } from "./globale-event-handler.js";
 import { BackgroundWorker } from "./background-worker.js";
 import { LinkGenerator } from "@quickbyte/common";
+import { ISharedProjectsService, PublicProjectService } from "./services/project-service.js";
 
 export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const dbConn = await getDbConnection(config);
@@ -186,6 +187,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         plans: plans
     });
 
+    const sharedProjects = new PublicProjectService(db);
+
     const globalEventHandler = new GlobalEventHandler({
         email: emailHandler,
         db: db,
@@ -205,6 +208,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         storageProvider,
         playbackPackagerProvider: playbacPackagerRegistry,
         accounts,
+        sharedProjects,
         auth,
         downloads,
         plans,
@@ -219,6 +223,7 @@ export interface AppServices {
     playbackPackagerProvider: IPlaybackPackagerProvider;
     accounts: IAccountService;
     auth: IAuthService;
+    sharedProjects: ISharedProjectsService;
     downloads: ITransferDownloadService;
     plans: IPlanService;
     transactions: IUnauthenicatedTransactionService;

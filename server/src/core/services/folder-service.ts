@@ -3,6 +3,7 @@ import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPath
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
+import { wrapError } from "../utils.js";
 
 
 export class FolderService {
@@ -446,6 +447,19 @@ function normalizeFolderWithPath(folder: Folder & { rawPath: Folder[] }): Folder
     delete normalizedFolder.rawPath;
 
     return normalizedFolder;
+}
+
+export function getMultipleProjectFoldersByIds(db: Database, projectId: string, ids: string[]): Promise<Folder[]> {
+    return wrapError(async () => {
+        const folders = await db.folders().find(
+            createFilterForDeleteableResource({
+                projectId: projectId,
+                _id: { $in: ids }
+            })
+        ).toArray();
+
+        return folders;
+    });
 }
 
 export type IFolderService = FolderService;

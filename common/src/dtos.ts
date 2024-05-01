@@ -1,4 +1,5 @@
 import { string, z } from "zod";
+import { ProjectItem } from "./models.js";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -402,7 +403,13 @@ export interface ProjectShareLinkItemsRequirePasswordResult {
 }
 
 export interface ProjectShareLinkItemsSuccessResult {
-    
+    _id: string;
+    name: string;
+    sharedEmail?: string;
+    allowDownload: boolean;
+    allowComments: boolean;
+    showAllVersions: boolean;
+    items: ProjectItem[]
 }
 
 export interface ProjectShareLinkMediaItem {

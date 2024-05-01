@@ -10,7 +10,8 @@ import {
     CreateShareableTransferArgs, FinalizeTransferArgs, SearchProjectFolderArgs,
     DeleteProjectItemsArgs, MoveProjectItemsToFolderArgs, GetProjectMediaByIdArgs,
     InviteUsersToProjectArgs, CreateProjectShareArgs, UpdateProjectShareArgs,
-    DeleteProjetShareArgs
+    DeleteProjetShareArgs,
+GetProjectShareLinkItemsArgs
 } from '@quickbyte/common';
 import { z } from 'zod';
 
@@ -183,6 +184,11 @@ export const appRouter = router({
     .input(DeleteProjetShareArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).deleteProjectShare(input)),
+    
+    getProjectShareItems: publicProcedure
+    .input(GetProjectShareLinkItemsArgs)
+    .query(({ input, ctx }) =>
+        ctx.app.sharedProjects.getProjectShareItems(input)),
     
     getUserAuthMethod: publicProcedure
     .input(CheckUserAuthMethodArgs)
