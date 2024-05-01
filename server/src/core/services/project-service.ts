@@ -1,10 +1,10 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
-import { EmailHandler, EventDispatcher, ITransactionService, ITransferService, createMediaCommentNotificationEmail } from "./index.js";
-import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult } from '@quickbyte/common';
+import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail } from "./index.js";
+import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
-import { getMultipleMediaByIds, IMediaService  } from "./media-service.js";
+import { getMultipleMediaByIds, getProjectShareMedia, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
@@ -654,8 +654,13 @@ export interface InviteUserArgs {
     role: RoleType;
 }
 
+export interface PublicProjectServiceConfig {
+    packagers: IPlaybackPackagerProvider;
+    storageHandlers: IStorageHandlerProvider;
+}
+
 export class PublicProjectService {
-    constructor(private db: Database) {
+    constructor(private db: Database, private config: PublicProjectServiceConfig) {
     }
 
     getProjectShareItems(args: GetProjectShareLinkItemsArgs): Promise<GetProjectShareLinkItemsResult> {
@@ -685,14 +690,13 @@ export class PublicProjectService {
                 throw createAppError("Fetching all project items is currently not supported");
             }
 
-            const sharedMedia = share.items?.filter(i => i.type === 'media')!;
             const sharedFolders = share.items?.filter(i => i.type === 'folder')!;
 
-            const media = await getMultipleMediaByIds(this.db, share.projectId, sharedMedia.map(i => i._id));
+            const media = await getProjectShareMedia(this.db, this.config.storageHandlers, this.config.packagers, share);
             const folders = await getMultipleProjectFoldersByIds(this.db, share.projectId, sharedFolders.map(i => i._id));
 
-            const items: ProjectItem[] = [
-                ...folders.map<ProjectItem>(f => ({
+            const items: ProjectShareItem[] = [
+                ...folders.map<ProjectShareItem>(f => ({
                     _id: f._id,
                     name: f.name,
                     type: 'folder',
@@ -700,7 +704,7 @@ export class PublicProjectService {
                     _updatedAt: f._updatedAt,
                     item: f
                 })),
-                ...media.map<ProjectItem>(m => ({
+                ...media.map<ProjectShareItem>(m => ({
                     _id: m._id,
                     name: m.name,
                     type: 'media',

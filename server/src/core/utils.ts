@@ -44,6 +44,19 @@ export function ensureSingleOrEmpty<T>(collection: T[]): T|undefined {
     return ensureSingle(collection);
 }
 
+/**
+ * Asserts that a value is not null/undefined and returns it, otherwise
+ * throws an `invalidAppState` error.
+ * @param value 
+ */
+export function ensure<T>(value: T|null|undefined, errorMessage?: string): T {
+    if (value === null || value === undefined) {
+        throw createInvalidAppStateError(errorMessage || `Expected value to be set but was null or undefined`);
+    }
+
+    return value;
+}
+
 export function hashPassword(plaintext: string): Promise<string> {
     return bcrypt.hash(plaintext, 10);
 }

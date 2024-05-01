@@ -1,5 +1,5 @@
-import { string, z } from "zod";
-import { ProjectItem } from "./models.js";
+import { z } from "zod";
+import { ProjectShareItem } from "./models.js";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -409,7 +409,7 @@ export interface ProjectShareLinkItemsSuccessResult {
     allowDownload: boolean;
     allowComments: boolean;
     showAllVersions: boolean;
-    items: ProjectItem[],
+    items: ProjectShareItem[],
     sharedBy: { name: string, _id: string }
 }
 

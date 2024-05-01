@@ -187,7 +187,10 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         plans: plans
     });
 
-    const sharedProjects = new PublicProjectService(db);
+    const sharedProjects = new PublicProjectService(db, {
+        storageHandlers: storageProvider,
+        packagers: playbacPackagerRegistry
+    });
 
     const globalEventHandler = new GlobalEventHandler({
         email: emailHandler,

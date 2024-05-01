@@ -1,11 +1,11 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
-import { ITransferService } from "./index.js";
+import { getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService } from "./index.js";
 import { ICommentService } from "./comment-service.js";
 import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
-import { wrapError } from "../utils.js";
+import { ensure, wrapError } from "../utils.js";
 
 export interface MediaServiceConfig {
     transfers: ITransferService;
@@ -372,6 +372,107 @@ export function getMultipleMediaByIds(db: Database, projectId: string, ids: stri
 
         return media
     });
+}
+/*
+
+
+async getMediaById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
+        try {
+            const medium = await this.collection.findOne(addRequiredMediaFilters({ projectId: projectId, _id: id }));
+            if (!medium) {
+                throw createResourceNotFoundError();
+            }
+
+            const [files, comments] = await Promise.all([
+                this.config.transfers.getMediaFiles(medium.versions.map(v => v.fileId)),
+                this.config.comments.getMediaComments(medium._id)
+            ]);
+
+            const versionsWithFiles = medium.versions.map<MediaVersionWithFile>(v => {
+
+                const file = files.find(f => f._id === v.fileId);
+                if (!file) {
+                    throw createInvalidAppStateError(`Could not find file '${v.fileId}' for version '${v._id}' of media '${medium._id}'`);
+                }
+                const version = {
+                    ...v,
+                    file
+                }
+
+                return version;
+            });
+
+            const preferredVersion = versionsWithFiles.find(v => v._id === medium.preferredVersionId);
+            if (!preferredVersion) {
+                throw createInvalidAppStateError(`Could not find preferred verson '${medium.preferredVersionId}' for media '${medium._id}'`);
+            }
+
+            const file = preferredVersion.file;
+
+            return { ...medium, file, versions: versionsWithFiles, comments }
+        } catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+*/
+
+export function getProjectShareMedia(
+    db: Database,
+    storageProviders: IStorageHandlerProvider,
+    packagers: IPlaybackPackagerProvider,
+    share: ProjectShare
+): Promise<MediaWithFileAndComments[]> {
+    return wrapError(async () => {
+        if (!share.items || share.allItems) {
+            // TODO: support this feature.
+            throw createAppError('Sharing all project items not currently supported');
+        }
+        const media = await getMultipleMediaByIds(db, share.projectId, share.items.filter(i => i.type === 'media').map(i => i._id));
+        const mediaWithFiles = executeTasksInBatches(
+            media,
+            medium => getProjectShareMediaFilesAndComments(db, storageProviders, packagers, share, medium),
+            10
+        );
+
+        return mediaWithFiles;
+    });
+}
+
+async function getProjectShareMediaFilesAndComments(
+    db: Database,
+    storageProviders: IStorageHandlerProvider,
+    packagers: IPlaybackPackagerProvider,
+    share: ProjectShare,
+    medium: Media
+) {
+    const versions = share.showAllVersions ? medium.versions : [ensure(medium.versions.find(v => v._id === medium.preferredVersionId))];
+
+    // TODO: if downloads not allowed, remove or prevent downloadUrl from being generated
+    const files = await getMediaFiles(versions.map(v => v.fileId), db, storageProviders, packagers);
+
+    const versionsWithFiles = medium.versions.map<MediaVersionWithFile>(v => {
+
+        const file = files.find(f => f._id === v.fileId);
+        if (!file) {
+            throw createInvalidAppStateError(`Could not find file '${v.fileId}' for version '${v._id}' of media '${medium._id}'`);
+        }
+        const version = {
+            ...v,
+            file
+        }
+
+        return version;
+    });
+
+    const preferredVersion = versionsWithFiles.find(v => v._id === medium.preferredVersionId);
+    if (!preferredVersion) {
+        throw createInvalidAppStateError(`Could not find preferred verson '${medium.preferredVersionId}' for media '${medium._id}'`);
+    }
+
+    const file = preferredVersion.file;
+
+    return { ...medium, file, versions: versionsWithFiles, comments: [] }
 }
 
 export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;

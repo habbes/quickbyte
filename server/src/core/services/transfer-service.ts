@@ -310,22 +310,13 @@ export class TransferService {
         }
     }
 
-    async getMediaFiles(fileIds: string[]): Promise<DownloadTransferFileResult[]> {
-        try {
-            const files = await this.filesCollection.find({ _id: { $in: fileIds } }).toArray();
-
-            const downloadableFilesTasks = files.map(file => {
-                const provider = this.config.providerRegistry.getHandler(file.provider);
-                return createMediaDownloadFile(provider, this.config.packagers, this.db,  file);
-            });
-
-            const downloadableFiles = await Promise.all(downloadableFilesTasks);
-            return downloadableFiles;
-
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+    getMediaFiles(fileIds: string[]): Promise<DownloadTransferFileResult[]> {
+        return getMediaFiles(
+            fileIds,
+            this.db,
+            this.config.providerRegistry,
+            this.config.packagers
+        );
     }
     
 }
@@ -611,6 +602,29 @@ async function createResultFile(provider: IStorageHandler, transfer: Transfer, f
     return {
         ...file,
         uploadUrl
+    }
+}
+
+export async function getMediaFiles(
+    fileIds: string[],
+    db: Database,
+    storageProviders: IStorageHandlerProvider,
+    packagers: IPlaybackPackagerProvider
+): Promise<DownloadTransferFileResult[]> {
+    try {
+        const files = await db.files().find({ _id: { $in: fileIds } }).toArray();
+
+        const downloadableFilesTasks = files.map(file => {
+            const provider = storageProviders.getHandler(file.provider);
+            return createMediaDownloadFile(provider, packagers, db,  file);
+        });
+
+        const downloadableFiles = await Promise.all(downloadableFilesTasks);
+        return downloadableFiles;
+
+    } catch (e: any) {
+        rethrowIfAppError(e);
+        throw createAppError(e);
     }
 }
 

@@ -53,14 +53,16 @@
                 <template #trigger>
                   <EllipsisVerticalIcon class="h-5 w-5" />
                 </template>
-                <ProjectItemMenuItems
-                  :totalSelectedItems="totalSelectedItems"
-                  @rename="$emit('rename')"
-                  @move="$emit('move')"
-                  @delete="$emit('delete')"
-                  @selectAll="$emit('selectAll')"
-                  @unselectAll="$emit('unselectAll')"
-                />
+                <slot name="menuItems">
+                  <ProjectItemMenuItems
+                    :totalSelectedItems="totalSelectedItems"
+                    @rename="$emit('rename')"
+                    @move="$emit('move')"
+                    @delete="$emit('delete')"
+                    @selectAll="$emit('selectAll')"
+                    @unselectAll="$emit('unselectAll')"
+                  />
+                </slot>
               </UiMenu>
             </slot>
           </div>
@@ -68,15 +70,17 @@
       </div>
     </div>
     <template #menu>
-      <ProjectItemMenuItems
-        :totalSelectedItems="totalSelectedItems"
-        @rename="$emit('rename')"
-        @move="$emit('move')"
-        @share="$emit('share')"
-        @delete="$emit('delete')"
-        @selectAll="$emit('selectAll')"
-        @unselectAll="$emit('unselectAll')"
-      />
+      <slot name="menuItems">
+        <ProjectItemMenuItems
+          :totalSelectedItems="totalSelectedItems"
+          @rename="$emit('rename')"
+          @move="$emit('move')"
+          @share="$emit('share')"
+          @delete="$emit('delete')"
+          @selectAll="$emit('selectAll')"
+          @unselectAll="$emit('unselectAll')"
+        />
+      </slot>
     </template>
   </UiContextMenu>
 </template>

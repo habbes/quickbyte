@@ -5,7 +5,6 @@
         <Logo />
       </template>
       <template #right>
-        Download all
       </template>
     </NavBarBase>
     <div class="flex flex-1 bg-[#24141f]">
@@ -21,8 +20,7 @@
             The link is password protected.
           </p>
           <p>
-            This link is password-protected. You need to enter
-            the correct password to access. Ask the sender
+            You need to enter a password to access the shared items. Ask the sender
             to share the password with you.
           </p>
         </UiLayout>
@@ -41,6 +39,8 @@
                 <UiButton
                   submit
                   primary
+                  :disabled="loading"
+                  :loading="loading"
                 >
                   Proceed
                 </UiButton>
@@ -49,32 +49,113 @@
           </form>
         </UiLayout>
       </UiLayout>
+      <UiLayout v-if="share" fill fullWidth>
+        <UiLayout
+          horizontal
+          horizontalSpace
+          itemsCenter
+          justifyBetween
+          class="border-b border-[#2e2634]"
+          :fixedHeight="`${headerHeight}px`"
+          :style="{ height: `${headerHeight}px`}"
+        >
+          <div class="text-white text-md flex flex-col">
+            <router-link
+              :to="{ name: 'project-share', params: { shareId: share._id, code: code } }"
+            >
+              {{ share.name }}
+            </router-link>
+            <div class="text-xs text-gray-300">
+              Shared by {{ share.sharedBy.name }}
+            </div>
+          </div>
+        </UiLayout>
+        <UiContextMenu>
+          <UiLayout ref="dropzone" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
+            :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
+          >
+            <div
+              class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
+            >
+              <div
+                v-for="item in share.items"
+                :key="item._id"
+                class="w-full aspect-square"
+              >
+                <ProjectShareItemCard
+                  :item="item"
+                  :allowDownload="share.allowDownload"
+                  :showAllVersions="share.showAllVersions"
+                  @download="downloadItem($event)"
+                />
+              </div>
+            </div>
+          </UiLayout>
+        </UiContextMenu>
+      </UiLayout>
     </div>
+    <a ref="hiddenDownloader" class="hidden" download :href="currentDownloadUrl" />
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, onMounted  } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref, onMounted, computed  } from "vue";
+import { useRoute } from "vue-router";
 import { trpcClient, wrapError  } from "@/app-utils";
+import { ensure } from "@/core";
+import type { GetProjectShareLinkItemsArgs, ProjectShareItemRef, ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
+import { getRemainingContentHeightCss, layoutDimensions } from "@/styles/dimentions.js";
+import { UiLayout, UiTextInput, UiButton, UiContextMenu } from "@/components/ui";
 import NavBarBase from '@/components/NavBarBase.vue';
 import Logo from '@/components/Logo.vue';
-import { UiLayout, UiTextInput, UiButton } from "@/components/ui";
-import { ensure } from "@/core";
-import type { GetProjectShareLinkItemsArgs, ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
+import { ProjectShareItemCard } from "@/components/project-share";
+import { nextTick } from "process";
 
 const route = useRoute();
+const code = computed(() => ensure(route.params.code as string));
+const loading = ref(false);
 const share = ref<ProjectShareLinkItemsSuccessResult>();
 const password = ref<string>();
 const passwordRequired = ref(false);
+const headerHeight = layoutDimensions.projectHeaderHeight;
+const contentOffset = headerHeight + layoutDimensions.navBarHeight + layoutDimensions.projectHeaderHeight + 2;
+const contentHeight = getRemainingContentHeightCss(
+  contentOffset
+);
+
+const hiddenDownloader = ref<HTMLAnchorElement>();
+const currentDownloadUrl = ref<string>();
+
+function downloadItem(item: ProjectShareItemRef) {
+  if (item.type === 'folder') {
+    // TODO: support folder download
+    return;
+  }
+
+  if (!share.value) {
+    return;
+  }
+
+  const media = share.value.items.find(i => i._id === item._id && i.type === 'media');
+  if (!media || media.type !== 'media') {
+    return;
+  }
+
+  if (!media.item.file.downloadUrl) {
+    return;
+  }
+
+  currentDownloadUrl.value = media.item.file.downloadUrl;
+  nextTick(() => hiddenDownloader.value?.click());
+}
 
 function loadShare() {
   const shareId = ensure(route.params.shareId as string);
-  const code = ensure(route.params.code as string);
+  loading.value = true;
 
   return wrapError(async () => {
     const args: GetProjectShareLinkItemsArgs = {
       shareId: shareId,
-      code: code
+      code: code.value
     };
 
     if (passwordRequired.value && password.value) {
@@ -88,6 +169,8 @@ function loadShare() {
     } else {
       share.value = result;
     }
+  }, {
+    finally: () => loading.value = false
   });
 }
 

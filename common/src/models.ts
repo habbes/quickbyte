@@ -343,6 +343,7 @@ export interface Media extends PersistedModel, Deleteable, ParentDeleteable {
 }
 
 export type ProjectItem = ProjectFolderItem | ProjectMediaItem;
+export type ProjectShareItem = ProjectFolderItem | ProjectShareMediaItem;
 
 export interface BaseProjectItem {
     _id: string;
@@ -359,6 +360,11 @@ export interface ProjectFolderItem extends BaseProjectItem {
 export interface ProjectMediaItem extends BaseProjectItem {
     type: "media";
     item: Media
+}
+
+export interface ProjectShareMediaItem extends BaseProjectItem {
+    type: "media",
+    item: MediaWithFileAndComments
 }
 
 export type ProjectItemType = "folder"|"media";
