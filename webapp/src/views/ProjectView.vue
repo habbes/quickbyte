@@ -155,7 +155,7 @@ const projectPages = computed<NavPage[]>(() => {
       allowedRoles: ['admin', 'owner', 'editor']
     },
     {
-      name: 'Review Links',
+      name: 'Shared Links',
       route: 'project-shared-links',
       params: {},
       allowedRoles: ['admin', 'owner']

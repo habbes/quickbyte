@@ -1,6 +1,19 @@
 <template>
   <div class="p-5">
-    <UiTable>
+    <UiLayout v-if="loading" itemsCenter justifyCenter>
+      Loading...
+    </UiLayout>
+    <UiLayout v-else-if="shares.length === 0" itemsCenter justifyCenter gapSm>
+      <p>
+        There are no shared links in this project. Shared links allow you to share selected project
+        files with external reviewers.
+      </p>
+      <p>
+        You can create links by
+        sharing media in your project.
+      </p>
+    </UiLayout>
+    <UiTable v-else>
       <UiTableHeader>
         <UiTableHead>
           Name
@@ -151,6 +164,7 @@ import { nextTick } from 'process';
 
 const route = useRoute();
 const { copy } = useClipboard();
+const loading = ref(false);
 const shares = ref<WithCreator<ProjectShare>[]>([]);
 const project = ref<WithRole<Project>|undefined>();
 const sortDirection = ref(-1);
@@ -255,11 +269,14 @@ function updateLocalShare(updatedShare: ProjectShare) {
 }
 
 watch(route, () => {
+  loading.value = true;
   wrapError(async () => {
     const projectId = route.params.projectId as string;
     project.value = ensure(store.projects.value.find(p => p._id === projectId));
 
     shares.value = await trpcClient.getProjectShares.query(projectId);
+  }, {
+    finally: () => loading.value = false
   });
 }, { immediate: true });
 </script>
