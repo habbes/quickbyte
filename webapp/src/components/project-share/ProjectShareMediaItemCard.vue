@@ -23,6 +23,7 @@
     <template #menuItems>
       <ProjectShareItemMenuItems
         :totalSelectedItems="totalSelectedItems"
+        :allowDownload="allowDownload"
         @download="$emit('download')"
       />
     </template>

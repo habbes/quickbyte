@@ -1,5 +1,5 @@
 <template>
-  <UiMenuItem v-if="!areMultipleItemsSelected" @click="$emit('download')">
+  <UiMenuItem v-if="!areMultipleItemsSelected && allowDownload" @click="$emit('download')">
     <UiLayout horizontal itemsCenter gapSm>
       <ArrowDownTrayIcon class="w-4 h-4" />
       <span v-if="!areMultipleItemsSelected">Download</span>
@@ -32,7 +32,8 @@ import { computed } from "vue";
 import { pluralize } from "@/core";
 
 const props = defineProps<{
-totalSelectedItems?: number;
+  totalSelectedItems?: number;
+  allowDownload?: boolean;
 }>();
 
 defineEmits<{

@@ -448,10 +448,16 @@ async function getProjectShareMediaFilesAndComments(
 ) {
     const versions = share.showAllVersions ? medium.versions : [ensure(medium.versions.find(v => v._id === medium.preferredVersionId))];
 
-    // TODO: if downloads not allowed, remove or prevent downloadUrl from being generated
     const files = await getMediaFiles(versions.map(v => v.fileId), db, storageProviders, packagers);
+    if (!share.allowDownload) {
+        // TODO: this is a quick hack. We should ideally not have the downloadUrl field if downloads are not allowed
+        // I was just too lazy to refactor things
+        for (const file of files) {
+            file.downloadUrl = "";
+        }
+    }
 
-    const versionsWithFiles = medium.versions.map<MediaVersionWithFile>(v => {
+    const versionsWithFiles = versions.map<MediaVersionWithFile>(v => {
 
         const file = files.find(f => f._id === v.fileId);
         if (!file) {
