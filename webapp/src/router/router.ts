@@ -21,6 +21,8 @@ import LoginView from '@/views/auth/LoginView.vue';
 import SignupView from '@/views/auth/SignupView.vue';
 import PasswordResetView from '@/views/auth/PasswordResetView.vue';
 import ProjectShareView from '@/views/ProjectShareView.vue';
+import ProjectShareListView from "@/views/ProjectShareListView.vue";
+import ProjectSharePlayerView from '@/views/ProjectSharePlayerView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -140,8 +142,19 @@ const router = createRouter({
     },
     {
       path: '/share/:shareId/:code',
-      name: 'project-share',
-      component: ProjectShareView
+      component: ProjectShareView,
+      children: [
+        {
+          path: '',
+          name: 'project-share',
+          component: ProjectShareListView
+        },
+        {
+          path: 'player/:mediaId',
+          name: 'project-share-player',
+          component: ProjectSharePlayerView
+        }
+      ]
     }
   ]
 })

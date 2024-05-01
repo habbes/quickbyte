@@ -373,49 +373,6 @@ export function getMultipleMediaByIds(db: Database, projectId: string, ids: stri
         return media
     });
 }
-/*
-
-
-async getMediaById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
-        try {
-            const medium = await this.collection.findOne(addRequiredMediaFilters({ projectId: projectId, _id: id }));
-            if (!medium) {
-                throw createResourceNotFoundError();
-            }
-
-            const [files, comments] = await Promise.all([
-                this.config.transfers.getMediaFiles(medium.versions.map(v => v.fileId)),
-                this.config.comments.getMediaComments(medium._id)
-            ]);
-
-            const versionsWithFiles = medium.versions.map<MediaVersionWithFile>(v => {
-
-                const file = files.find(f => f._id === v.fileId);
-                if (!file) {
-                    throw createInvalidAppStateError(`Could not find file '${v.fileId}' for version '${v._id}' of media '${medium._id}'`);
-                }
-                const version = {
-                    ...v,
-                    file
-                }
-
-                return version;
-            });
-
-            const preferredVersion = versionsWithFiles.find(v => v._id === medium.preferredVersionId);
-            if (!preferredVersion) {
-                throw createInvalidAppStateError(`Could not find preferred verson '${medium.preferredVersionId}' for media '${medium._id}'`);
-            }
-
-            const file = preferredVersion.file;
-
-            return { ...medium, file, versions: versionsWithFiles, comments }
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-*/
 
 export function getProjectShareMedia(
     db: Database,

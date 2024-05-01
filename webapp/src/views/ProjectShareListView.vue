@@ -1,63 +1,56 @@
 <template>
-  <div class="flex flex-col fixed w-full min-h-screen text-[#9499ae] text-sm">
-    <NavBarBase>
-      <template #logo>
-        <Logo />
-      </template>
-      <template #right>
-      </template>
-    </NavBarBase>
-    <div class="flex flex-1 bg-[#24141f]">
+  <UiLayout v-if="share" fill fullWidth>
       <UiLayout
-        v-if="!share && passwordRequired"
+        horizontal
+        horizontalSpace
         itemsCenter
-        justifyCenter
-        class="w-full sm:w-[500px] sm:m-auto"
-        gapSm
+        justifyBetween
+        class="border-b border-[#2e2634]"
+        :fixedHeight="`${headerHeight}px`"
+        :style="{ height: `${headerHeight}px`}"
       >
-        <UiLayout gapSm itemsCenter>
-          <p class="text-lg text-white">
-            The link is password protected.
-          </p>
-          <p>
-            You need to enter a password to access the shared items. Ask the sender
-            to share the password with you.
-          </p>
-        </UiLayout>
-        <UiLayout fullWidth>
-          <form @submit.prevent="loadShare()">
-            <UiLayout gapSm>
-              <UiTextInput
-                v-model="password"
-                required
-                fullWidth
-                :type="'password'"
-                label="Enter password"
-                placeholder="Enter password"
-              />
-              <UiLayout>
-                <UiButton
-                  submit
-                  primary
-                  :disabled="loading"
-                  :loading="loading"
-                >
-                  Proceed
-                </UiButton>
-              </UiLayout>
-          </UiLayout>
-          </form>
-        </UiLayout>
+        <div class="text-white text-md flex flex-col">
+          <router-link
+            :to="{ name: 'project-share', params: { shareId: share._id, code: code } }"
+          >
+            {{ share.name }}
+          </router-link>
+          <div class="text-xs text-gray-300">
+            Shared by {{ share.sharedBy.name }}
+          </div>
+        </div>
       </UiLayout>
-      <router-view v-if="share"></router-view>
-    </div>
-    <a ref="hiddenDownloader" class="hidden" download :href="currentDownloadUrl" />
-  </div>
+        <UiContextMenu>
+          <UiLayout ref="dropzone" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
+            :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
+          >
+            <div
+              class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
+            >
+              <div
+                v-for="item in share.items"
+                :key="item._id"
+                class="w-full aspect-square"
+              >
+                <ProjectShareItemCard
+                  :item="item"
+                  :shareId="share._id"
+                  :shareCode="code"
+                  :allowDownload="share.allowDownload"
+                  :showAllVersions="share.showAllVersions"
+                  @download="downloadItem($event)"
+                />
+              </div>
+            </div>
+          </UiLayout>
+        </UiContextMenu>
+  </UiLayout>
+  <a ref="hiddenDownloader" class="hidden" download :href="currentDownloadUrl" />
 </template>
 <script lang="ts" setup>
-import { ref, computed, watch  } from "vue";
+import { ref, onMounted, computed  } from "vue";
 import { useRoute } from "vue-router";
-import { trpcClient, wrapError, projectShareStore } from "@/app-utils";
+import { trpcClient, wrapError  } from "@/app-utils";
 import { ensure } from "@/core";
 import type { GetProjectShareLinkItemsArgs, ProjectShareItemRef, ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
 import { getRemainingContentHeightCss, layoutDimensions } from "@/styles/dimentions.js";
@@ -125,15 +118,13 @@ function loadShare() {
       passwordRequired.value = result.passwordRequired;
     } else {
       share.value = result;
-      projectShareStore.setShare(share.value);
-      projectShareStore.setShareCode(code.value);
     }
   }, {
     finally: () => loading.value = false
   });
 }
 
-watch([() => route.params.shareId, () => route.params.code], async () => {
+onMounted(async () => {
   await loadShare();
-}, { immediate: true });
+});
 </script>

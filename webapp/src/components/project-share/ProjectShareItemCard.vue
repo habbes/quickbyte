@@ -2,6 +2,8 @@
   <ProjectShareMediaItemCard
     v-if="item.type === 'media'"
     :media="item.item"
+    :shareId="shareId"
+    :shareCode="shareCode"
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
     :totalSelectedItems="totalSelectedItems"
@@ -38,6 +40,8 @@ type ItemDescriptor = {
 
 defineProps<{
   item: ProjectItem;
+  shareId: string;
+  shareCode: string;
   selected?: boolean;
   showSelectCheckbox?: boolean;
   totalSelectedItems?: number;

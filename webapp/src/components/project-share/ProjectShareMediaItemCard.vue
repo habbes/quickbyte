@@ -2,7 +2,7 @@
   <ProjectItemCardBase
     :id="media._id"
     :name="media.name"
-    :link="{ name: 'player', params: { projectId: media.projectId, mediaId: media._id } }"
+    :link="{ name: 'project-share-player', params: { shareId: shareId, code: shareCode, mediaId: media._id } }"
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
     :totalSelectedItems="totalSelectedItems"
@@ -39,6 +39,8 @@ import ProjectShareItemMenuItems from './ProjectShareItemMenuItems.vue';
 
 const props = defineProps<{
   media: Media,
+  shareId: string;
+  shareCode: string;
   selected?: boolean;
   showSelectCheckbox?: boolean;
   totalSelectedItems?: number;
