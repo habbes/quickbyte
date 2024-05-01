@@ -80,7 +80,7 @@ export type Event = TransferCompleteEvent
     | FolderDeletedEvent
     | ProjectMemberRemovedEvent
     | FilePlaybackPackagingUpdatedEvent
-    | ProjectShareCreatedEvent;
+    | ProjectShareInviteEvent;
 
 export type TransferCompleteEvent = {
     type: 'transferComplete',
@@ -113,11 +113,12 @@ export type FilePlaybackPackagingUpdatedEvent = {
     }
 }
 
-export type ProjectShareCreatedEvent = {
-    type: 'projectShareCreated',
+export type ProjectShareInviteEvent = {
+    type: 'projectShareInvite',
     data: {
         projectId: string;
         projectShareId: string;
+        recipients: { email: string }[];
     }
 }
 

@@ -191,7 +191,8 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         db: db,
         links: links,
         backgroundWorker,
-        playbackPackagers: playbacPackagerRegistry
+        playbackPackagers: playbacPackagerRegistry,
+        adminAlerts: adminAlerts
     });
     globalEventHandler.registerEvents(eventBus);
 

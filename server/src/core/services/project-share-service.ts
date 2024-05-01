@@ -12,6 +12,7 @@ import {
 import { EventDispatcher } from "./event-bus/index.js";
 import { generateId, wrapError } from "../utils.js";
 import { createNotFoundError, createValidationError } from "../error.js";
+import { Filter } from "mongodb";
 
 export interface ProjectShareServiceConfig {
     events: EventDispatcher
@@ -82,13 +83,16 @@ export class ProjectShareService {
 
             await this.db.projectShares().insertOne(share);
 
-            this.config.events.send({
-                type: 'projectShareCreated',
-                data: {
-                    projectId: share.projectId,
-                    projectShareId: share._id
-                }
-            });
+            if (sharedWith.length) {
+                this.config.events.send({
+                    type: 'projectShareInvite',
+                    data: {
+                        projectId: share.projectId,
+                        projectShareId: share._id,
+                        recipients: sharedWith.filter(s => s.type === 'invite').map(s => ({ email: s.email }))
+                    }
+                });
+            }
 
             return getSafeProjectShare(share);
         });
@@ -203,7 +207,16 @@ export class ProjectShareService {
                 throw createNotFoundError("project link");
             }
 
-            // TODO: send email to new recipients
+            if (sharedWith.length) {
+                this.config.events.send({
+                    type: 'projectShareInvite',
+                    data: {
+                        projectId: result.value.projectId,
+                        projectShareId: result.value._id,
+                        recipients: sharedWith.map(s => ({ email: s.email }))
+                    }
+                });
+            }
 
             return result.value;
         });
@@ -224,3 +237,39 @@ export class ProjectShareService {
 }
 
 export type IProjectShareService = ProjectShareService;
+
+export async function findProjectShares(db: Database, projectId: string, filter: Filter<DbProjectShare>): Promise<WithCreator<ProjectShare>[]> {
+    const shares = await db.projectShares().aggregate<WithCreator<ProjectShare>>([
+        {
+            $match: {
+                projectId,
+                ...filter
+            }
+        },
+        {
+            $project: {
+                password: 0
+            }
+        },
+        {
+            $lookup: {
+                from: db.users().collectionName,
+                foreignField: '_id',
+                localField: '_createdBy._id',
+                pipeline: [
+                    {
+                        $project: {
+                            _id: 1,
+                            name: 1
+                        }
+                    }
+                ],
+                as: 'creator'
+            }
+        }, {
+            $unwind: '$creator'
+        }
+    ]).toArray();
+
+    return shares;
+}
