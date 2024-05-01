@@ -161,9 +161,7 @@ export class ProjectShareService {
                 update.name = args.name;
             }
 
-            if ('password' in args) {
-                update.password = args.password;
-            }
+            
 
             if ('public' in args) {
                 update.public = args.public;
@@ -181,9 +179,13 @@ export class ProjectShareService {
                 update.showAllVersions = args.showAllVersions;
             }
 
-            if ('password' in args && args.password) {
-                update.hasPassword = true;
+            if ('hasPassword' in args && !args.hasPassword) {
+                update.hasPassword = false;
+            }
+            else if ('hasPassword' in args && args.hasPassword && args.password) {
+                update.hasPassword = args.hasPassword;
                 update.password = await hashPassword(args.password);
+
             }
 
             const sharedWith: ProjectShareInviteCode[] = [];
