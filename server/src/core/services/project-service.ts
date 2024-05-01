@@ -717,7 +717,8 @@ export class PublicProjectService {
                 allowDownload: !!share.allowDownload,
                 allowComments: !!share.allowComments,
                 showAllVersions: !!share.showAllVersions,
-                items: items
+                items: items,
+                sharedBy: share.creator
             }
         });
     }

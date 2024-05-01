@@ -284,9 +284,9 @@ export async function findProjectShares(db: Database, projectId: string, filter:
 export function getProjectShareByCode(
     db: Database,
     args: GetProjectShareLinkItemsArgs
-): Promise<ProjectShareLinkItemsRequirePasswordResult|ProjectShare & { sharedEmail?: string }> {
+): Promise<ProjectShareLinkItemsRequirePasswordResult|WithCreator<ProjectShare> & { sharedEmail?: string }> {
     return wrapError(async () => {
-        const result = await db.projectShares().aggregate<DbProjectShare>([
+        const result = await db.projectShares().aggregate<WithCreator<DbProjectShare>>([
             {
                 $match: {
                     _id: args.shareId,
@@ -302,6 +302,25 @@ export function getProjectShareByCode(
             },
             {
                 $limit: 1
+            },
+            {
+                $lookup: {
+                    from: db.users().collectionName,
+                    foreignField: '_id',
+                    localField: '_createdBy._id',
+                    as: 'creator',
+                    pipeline: [
+                        {
+                            $project: {
+                                _id: 1,
+                                name: 1
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                $unwind: '$creator'
             }
         ]).toArray();
         const share = ensureSingleOrEmpty(result);
@@ -322,7 +341,7 @@ export function getProjectShareByCode(
             }
         }
 
-        const safeShare: ProjectShare & { sharedEmail?: string } = getSafeProjectShare(share);
+        const safeShare: WithCreator<ProjectShare> & { sharedEmail?: string } = getSafeProjectShare(share);
         const sharedCode = safeShare.sharedWith.find(s => s.code === args.code);
         if (sharedCode && sharedCode.type === 'invite') {
             safeShare.sharedEmail = sharedCode.email

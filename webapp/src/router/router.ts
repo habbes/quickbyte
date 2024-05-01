@@ -20,6 +20,7 @@ import InviteView from '@/views/InviteView.vue';
 import LoginView from '@/views/auth/LoginView.vue';
 import SignupView from '@/views/auth/SignupView.vue';
 import PasswordResetView from '@/views/auth/PasswordResetView.vue';
+import ProjectShareView from '@/views/ProjectShareView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -136,6 +137,11 @@ const router = createRouter({
       path: '/i/:inviteId',
       name: 'invite',
       component: InviteView
+    },
+    {
+      path: '/share/:shareId/:code',
+      name: 'project-share',
+      component: ProjectShareView
     }
   ]
 })

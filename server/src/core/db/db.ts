@@ -99,7 +99,7 @@ export function deleteNowBy(principal: string | Principal): Deleteable {
     };
 }
 
-export function getSafeProjectShare(dbShare: DbProjectShare): ProjectShare {
+export function getSafeProjectShare<T extends DbProjectShare>(dbShare: T): Omit<T, 'password'> {
     const share = { ...dbShare };
     delete share.password;
     return share;

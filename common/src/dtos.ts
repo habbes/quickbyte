@@ -409,7 +409,8 @@ export interface ProjectShareLinkItemsSuccessResult {
     allowDownload: boolean;
     allowComments: boolean;
     showAllVersions: boolean;
-    items: ProjectItem[]
+    items: ProjectItem[],
+    sharedBy: { name: string, _id: string }
 }
 
 export interface ProjectShareLinkMediaItem {
