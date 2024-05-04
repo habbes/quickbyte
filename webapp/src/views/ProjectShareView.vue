@@ -5,6 +5,7 @@
         <Logo />
       </template>
       <template #right>
+        <ProjectShareDownloadAllButton v-if="share && share.allowDownload" />
       </template>
     </NavBarBase>
     <div class="flex flex-1 bg-[#24141f]">
@@ -55,17 +56,16 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, computed, watch  } from "vue";
+import { ref, computed, watch, nextTick  } from "vue";
 import { useRoute } from "vue-router";
 import { trpcClient, wrapError, projectShareStore } from "@/app-utils";
 import { ensure } from "@/core";
 import type { GetProjectShareLinkItemsArgs, ProjectShareItemRef, ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
 import { getRemainingContentHeightCss, layoutDimensions } from "@/styles/dimentions.js";
-import { UiLayout, UiTextInput, UiButton, UiContextMenu } from "@/components/ui";
+import { UiLayout, UiTextInput, UiButton } from "@/components/ui";
 import NavBarBase from '@/components/NavBarBase.vue';
 import Logo from '@/components/Logo.vue';
-import { ProjectShareItemCard } from "@/components/project-share";
-import { nextTick } from "process";
+import { ProjectShareDownloadAllButton } from "@/components/project-share";
 
 const route = useRoute();
 const code = computed(() => ensure(route.params.code as string));

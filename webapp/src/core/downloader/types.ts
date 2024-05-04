@@ -11,9 +11,21 @@ export interface ZipDownloader {
      * @throws operationCanceled error if user cancels the download.
      */
     download(
-        transfer: DownloadRequestResult,
+        transfer: ZipDownloadRequest,
         suggestFileName: string,
         onProgress: (currentPercentage: number) => void,
         onFilePicked: (fileName: string) => unknown
     ): Promise<void>;
+}
+
+export interface ZipDownloadRequest {
+    name: string;
+    files: ZipDownloadRequestFile[]
+}
+
+export interface ZipDownloadRequestFile {
+    _id: string;
+    name: string;
+    size: number;
+    downloadUrl: string;
 }

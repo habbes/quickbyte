@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FolderPathEntry, ProjectShareItem } from "./models.js";
+import { DownloadTransferFileResult, FolderPathEntry, ProjectShareItem } from "./models.js";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -472,4 +472,8 @@ export const GetAllProjectShareFilesForDownloadArgs = z.object({
 });
 
 export type GetAllProjectShareFilesForDownloadArgs = z.infer<typeof GetAllProjectShareFilesForDownloadArgs>;
+
+export interface GetAllProjectShareFilesForDownloadResult {
+    files: DownloadTransferFileResult[]
+}
 

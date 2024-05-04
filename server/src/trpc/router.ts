@@ -217,7 +217,7 @@ export const appRouter = router({
     
     getAllProjectShareFilesForDownload: publicProcedure
     .input(GetAllProjectShareFilesForDownloadArgs)
-    .mutation(({ input, ctx }) =>
+    .query(({ input, ctx }) =>
         ctx.app.sharedProjects.getAllProjectShareFilesForDownload(input)),
     
     getUserAuthMethod: publicProcedure
