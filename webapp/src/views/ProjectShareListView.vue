@@ -9,16 +9,23 @@
         :fixedHeight="`${headerHeight}px`"
         :style="{ height: `${headerHeight}px`}"
       >
-        <div class="text-white text-md flex flex-col">
-          <router-link
-            :to="{ name: 'project-share', params: { shareId: share._id, code: code } }"
-          >
-            {{ share.name }}
-          </router-link>
-          <div class="text-xs text-gray-300">
-            Shared by {{ share.sharedBy.name }}
+        <UiLayout horizontal itemsCenter gapSm>
+          <div class="text-white text-md flex flex-col">
+            <router-link
+              :to="{ name: 'project-share', params: { shareId: share._id, code: code } }"
+            >
+              {{ share.name }}
+            </router-link>
           </div>
-        </div>
+          <ChevronRightIcon class="h-4 w-4" />
+          <div>
+            <ProjectSharePathBreadcrumbs
+              :shareId="share._id"
+              :shareCode="code"
+              :path="share.path"
+            />
+          </div>
+        </UiLayout>
       </UiLayout>
         <UiContextMenu>
           <UiLayout ref="dropzone" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
@@ -48,17 +55,15 @@
   <a ref="hiddenDownloader" class="hidden" download :href="currentDownloadUrl" />
 </template>
 <script lang="ts" setup>
-import { ref, watch, computed  } from "vue";
+import { ref, watch, computed, nextTick  } from "vue";
 import { useRoute } from "vue-router";
 import { trpcClient, wrapError  } from "@/app-utils";
 import { ensure } from "@/core";
 import type { GetProjectShareLinkItemsArgs, ProjectShareItemRef, ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
 import { getRemainingContentHeightCss, layoutDimensions } from "@/styles/dimentions.js";
-import { UiLayout, UiTextInput, UiButton, UiContextMenu } from "@/components/ui";
-import NavBarBase from '@/components/NavBarBase.vue';
-import Logo from '@/components/Logo.vue';
-import { ProjectShareItemCard } from "@/components/project-share";
-import { nextTick } from "process";
+import { UiLayout, UiContextMenu } from "@/components/ui";
+import { ProjectShareItemCard, ProjectSharePathBreadcrumbs } from "@/components/project-share";
+import { ChevronRightIcon } from "@heroicons/vue/24/outline";
 
 const route = useRoute();
 const code = computed(() => ensure(route.params.code as string));
