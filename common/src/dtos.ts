@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ProjectShareItem } from "./models.js";
+import { FolderPathEntry, ProjectShareItem } from "./models.js";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -392,6 +392,7 @@ export const GetProjectShareLinkItemsArgs = z.object({
     shareId: z.string().min(1),
     code: z.string().min(1),
     password: z.string().min(1).optional(),
+    folderId: z.string().min(1).optional()
 });
 
 export type GetProjectShareLinkItemsArgs = z.infer<typeof GetProjectShareLinkItemsArgs>;
@@ -410,6 +411,7 @@ export interface ProjectShareLinkItemsSuccessResult {
     allowComments: boolean;
     showAllVersions: boolean;
     items: ProjectShareItem[],
+    path: FolderPathEntry[],
     sharedBy: { name: string, _id: string }
 }
 

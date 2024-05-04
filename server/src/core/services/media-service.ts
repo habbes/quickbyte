@@ -105,24 +105,8 @@ export class MediaService {
         }
     }
 
-    async getProjectMediaByFolder(projectId: string, folderId?: string): Promise<Media[]> {
-        try {
-            const query: Filter<Media> = addRequiredMediaFilters({
-                projectId
-            });
-
-            if (folderId) {
-                query.folderId = folderId;
-            } else {
-                query.folderId = null;
-            }
-
-            const media = await this.collection.find(query).toArray();
-            return media;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+    getProjectMediaByFolder(projectId: string, folderId?: string): Promise<Media[]> {
+        return getProjectMediaByFolder(this.db, projectId, folderId);
     }
 
     async getMediaById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
@@ -374,18 +358,38 @@ export function getMultipleMediaByIds(db: Database, projectId: string, ids: stri
     });
 }
 
+export function getProjectMediaByFolder(db: Database, projectId: string, folderId?: string) {
+    return wrapError(async () => {
+        const query: Filter<Media> = addRequiredMediaFilters({
+            projectId
+        });
+
+        if (folderId) {
+            query.folderId = folderId;
+        } else {
+            query.folderId = null;
+        }
+
+        const media = await db.media().find(query).toArray();
+        return media;
+    });
+}
+
 export function getProjectShareMedia(
     db: Database,
     storageProviders: IStorageHandlerProvider,
     packagers: IPlaybackPackagerProvider,
-    share: ProjectShare
+    share: ProjectShare,
+    folderId?: string
 ): Promise<MediaWithFileAndComments[]> {
     return wrapError(async () => {
         if (!share.items || share.allItems) {
             // TODO: support this feature.
             throw createAppError('Sharing all project items not currently supported');
         }
-        const media = await getMultipleMediaByIds(db, share.projectId, share.items.filter(i => i.type === 'media').map(i => i._id));
+        const media = folderId?
+            await getProjectMediaByFolder(db, share.projectId, folderId):
+            await getMultipleMediaByIds(db, share.projectId, share.items.filter(i => i.type === 'media').map(i => i._id))
         const mediaWithFiles = executeTasksInBatches(
             media,
             medium => getProjectShareMediaFilesAndComments(db, storageProviders, packagers, share, medium),

@@ -2,13 +2,13 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
 import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail } from "./index.js";
-import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem } from '@quickbyte/common';
+import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
-import { getMultipleMediaByIds, getProjectShareMedia, IMediaService  } from "./media-service.js";
+import { getMultipleMediaByIds, getProjectMediaByFolder, getProjectShareMedia, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
-import { getMultipleProjectFoldersByIds, IFolderService } from "./folder-service.js";
+import { getFoldersByParent, getMultipleProjectFoldersByIds, getProjectFolderById, getProjectFolderWithPath, IFolderService } from "./folder-service.js";
 import { wrapError } from "../utils.js";
 import { getProjectShareByCode, IProjectShareService } from "./project-share-service.js";
 
@@ -690,10 +690,26 @@ export class PublicProjectService {
                 throw createAppError("Fetching all project items is currently not supported");
             }
 
-            const sharedFolders = share.items?.filter(i => i.type === 'folder')!;
-
-            const media = await getProjectShareMedia(this.db, this.config.storageHandlers, this.config.packagers, share);
-            const folders = await getMultipleProjectFoldersByIds(this.db, share.projectId, sharedFolders.map(i => i._id));
+            
+            let resultPath: FolderPathEntry[] = [];
+            
+            
+            let media: MediaWithFileAndComments[] = [];
+            let folders: Folder[] = [];
+            if (!args.folderId) {
+                // if no folder is specified, get all items directly shared from the share
+                const sharedFolders = share.items?.filter(i => i.type === 'folder')!;
+                media = await getProjectShareMedia(this.db, this.config.storageHandlers, this.config.packagers, share);
+                folders = await getMultipleProjectFoldersByIds(this.db, share.projectId, sharedFolders.map(i => i._id));
+            }
+            else {
+                // if folder is specified, we have to check if the folder is among the shared folders
+                // or a subfolder of a shared folder
+                const folder = await this.getSharedFolderOrSubFolder(args.folderId, share);
+                media = await getProjectShareMedia(this.db, this.config.storageHandlers, this.config.packagers, share, folder._id);
+                folders = await getFoldersByParent(this.db, share.projectId, folder._id);
+                resultPath = folder.path;
+            }
 
             const items: ProjectShareItem[] = [
                 ...folders.map<ProjectShareItem>(f => ({
@@ -721,10 +737,47 @@ export class PublicProjectService {
                 allowDownload: !!share.allowDownload,
                 allowComments: !!share.allowComments,
                 showAllVersions: !!share.showAllVersions,
+                path: resultPath,
                 items: items,
                 sharedBy: share.creator
             }
         });
+    }
+
+    private async getSharedFolderOrSubFolder(folderId: string, share: ProjectShare): Promise<FolderWithPath> {
+        if (!share.items || !share.items.length) {
+            throw createAppError("Retrieving shared folder is currently only supported when share items are explicitly specified");
+        }
+
+        const sharedFolderRef = share.items.find(f => f._id === folderId);
+        if (sharedFolderRef) {
+            // The folder is directly share, return it and treat it like a root
+            const folder = await getProjectFolderById(this.db, share.projectId, folderId);
+            return {
+                ...folder,
+                path: [
+                    {
+                        _id: folder._id,
+                        name: folder.name
+                    }
+                ]
+            };
+        }
+
+        // folder is not directly shared, check if it's a subfolder of any shared folder
+        const folder = await getProjectFolderWithPath(this.db, share.projectId, folderId);
+        const rootIndex = folder.path.findIndex(parent => share.items!.some(shared => shared._id === parent._id));
+        if (rootIndex === -1) {
+            // The folder is not shared
+            console.warn(`Attempt to access non-shared folder ${folderId} from project share ${share._id}`);
+            throw createNotFoundError('folder');
+        }
+
+        // folder is a subfolder of a shared folder
+        // trim the path to exclude ancestors of the root share path
+        // to avoid exposing information about unshared folders
+        folder.path.splice(rootIndex + 1);
+        return folder;
     }
 }
 
