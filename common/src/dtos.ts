@@ -464,3 +464,12 @@ export const DeleteProjectShareMediaCommentArgs = z.object({
 });
 
 export type DeleteProjectShareMediaCommentArgs = z.infer<typeof DeleteProjectShareMediaCommentArgs>;
+
+export const GetAllProjectShareFilesForDownloadArgs = z.object({
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional()
+});
+
+export type GetAllProjectShareFilesForDownloadArgs = z.infer<typeof GetAllProjectShareFilesForDownloadArgs>;
+
