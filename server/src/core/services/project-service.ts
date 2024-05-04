@@ -975,14 +975,16 @@ export type ISharedProjectsService = PublicProjectService;
 class GetProjectShareAllDownloadFilesRetriever {
     private readonly result: DownloadTransferFileResult[] = [];
     private readonly taskQueue: ConcurrentTaskQueue;
+    private readonly tracker: TaskTracker;
     private readonly errors: { name: string, mediaId: string, error: string }[] = []
 
     constructor(private share: ProjectShare, private db: Database, private storageHandlers: IStorageHandlerProvider) {
-        this.taskQueue = new ConcurrentTaskQueue(10);
+        this.tracker = new TaskTracker(console);
+        this.taskQueue = new ConcurrentTaskQueue(10, error => console.error(`Error in task queue`, error));
+        
     }
 
     async run(): Promise<DownloadTransferFileResult[]> {
-        // TODO: error handling
         if (!this.share.items || !this.share.items.length) {
              // TODO: support for "share.allItems"
              throw createAppError("Downloading all project items is currently not supported");
@@ -997,24 +999,40 @@ class GetProjectShareAllDownloadFilesRetriever {
             getMultipleMediaByIds(this.db, this.share.projectId, mediaIds)
         ]);
 
+        // TODO: error handling in the task queue
+
+        // the tracker helps know when we have finishing queing all tasks
         for (const folder of folders) {
-            this.taskQueue.addTask(() => this.processDownloadFilesForFolder(path, folder));
+            this.tracker.startTask();
+            this.taskQueue.addTask(async () => {
+                await this.processDownloadFilesForFolder(path, folder);
+                this.tracker.completeTask();
+            });
         }
 
-        this.taskQueue.addTask(() => this.processDownloadFilesForMedia(path, media));
+        this.tracker.startTask();
+        this.taskQueue.addTask(async () => {
+            await this.processDownloadFilesForMedia(path, media);
+            this.tracker.completeTask();
+        });
 
-        this.taskQueue.signalNoMoreTasks();
-        await this.taskQueue.waitForAllTasksToComplete();
+        // here we signal that we have finished queing all tasks
+        this.tracker.signalNoMoreTasks();
+        await this.tracker.waitForTasksToComplete();
+        // TODO: taskQueue.signalNoMoreTasks() seems to have a bug
+        // this.taskQueue.signalNoMoreTasks();
+        // await this.taskQueue.waitForAllTasksToComplete();
 
         return this.result;
     }
 
     async processDownloadFilesForMedia(path: string, media: Media[]) {
-        const fileIds = media.map(m => m.preferredVersionId);
+        const fileIds = media.map(m => m.versions.find(v => v._id === m.preferredVersionId)!.fileId);
         const downloadableFiles = await getDownloadableFiles(fileIds, this.db, this.storageHandlers);
+
         // rename each file based on the media and file
         for (const file of downloadableFiles) {
-            const mediaOfFile = media.find(m => m.preferredVersionId === file._id);
+            const mediaOfFile = media.find(m => m.versions.find(v => v._id == m.preferredVersionId)!.fileId === file._id);
             if (!mediaOfFile) {
                 throw createInvalidAppStateError(`Expected to find media backed by file ${file._id} but was not found.`);
             }
@@ -1034,9 +1052,17 @@ class GetProjectShareAllDownloadFilesRetriever {
         const newPath = path ? `${path}/${folder.name}` : folder.name;
 
         for (const subfolder of subFolders) {
-            this.taskQueue.addTask(() => this.processDownloadFilesForFolder(newPath, subfolder));
+            this.tracker.startTask();
+            this.taskQueue.addTask(async () => {
+                await this.processDownloadFilesForFolder(newPath, subfolder);
+                this.tracker.completeTask();
+            });
         }
 
-        this.taskQueue.addTask(() => this.processDownloadFilesForMedia(newPath, media));
+        this.tracker.startTask();
+        this.taskQueue.addTask(async () => {
+            await this.processDownloadFilesForMedia(newPath, media);
+            this.tracker.completeTask();
+        });
     }
 }

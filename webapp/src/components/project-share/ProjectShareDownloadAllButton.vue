@@ -14,6 +14,11 @@
       {{ downloadProgress }}
     </div>
   </UiLayout>
+  <UiLayout v-else-if="status === 'done'" @click="status = 'pending'">
+    <div>
+      Download complete. Look for {{ zipFileName }} on your device.
+    </div>
+  </UiLayout>
 </template>
 <script lang="ts" setup>
 import { computed, ref } from "vue";
