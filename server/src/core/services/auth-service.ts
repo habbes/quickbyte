@@ -61,23 +61,48 @@ export class AuthService {
 
     async createUser(args: CreateUserArgs): Promise<FullUser> {
         try {
+            let fullUser: FullUserInDb
             const existingUser = await this.usersCollection.findOne({ email: args.email });
             if (existingUser && existingUser.isGuest) {
-                // TODO: handle guest user upgrade
-                throw createAppError("Upgrading guest user to full user not yet supported");
+                const password = await validateAndHashPassword(args);
+                const guestUpgradeResult = await this.usersCollection.findOneAndUpdate({
+                    _id: existingUser._id,
+                }, {
+                    $set: {
+                        name: args.name,
+                        password,
+                        verified: false,
+                        isGuest: false
+                    }
+                }, {
+                    returnDocument: 'after'
+                });
+
+                if (!guestUpgradeResult.value) {
+                    throw createAppError('Failed to upgrade guest user.');
+                }
+
+                if (guestUpgradeResult.value.isGuest) {
+                    throw createInvalidAppStateError(`Upgraded user ${guestUpgradeResult.value._id} to full user, but still marked as guest.`);
+                }
+
+                fullUser = guestUpgradeResult.value;
             }
 
-            const password = await validateAndHashPassword(args);
+            else {
+                const password = await validateAndHashPassword(args);
 
-            let fullUser: FullUserInDb = {
-                ...createPersistedModel({ type: 'system', _id: 'system'}),
-                name: args.name,
-                email: args.email,
-                password,
-                verified: false
-            };
+                fullUser = {
+                    ...createPersistedModel({ type: 'system', _id: 'system'}),
+                    name: args.name,
+                    email: args.email,
+                    password,
+                    verified: false
+                };
 
-            await this.usersCollection.insertOne(fullUser);
+                await this.usersCollection.insertOne(fullUser);
+            }
+
             const user = getSafeUser(fullUser) as FullUser;
 
             // TODO: we're sending a welcome email, then verification email back to back.
@@ -270,7 +295,6 @@ export class AuthService {
             const isNewUser = user._id === baseModel._id;
 
             if (isNewUser) {
-                console.log('new user');
                 await this.args.email.sendEmail({
                     to: { name: user.name, email: user.email },
                     subject: 'Welcome to Quickbyte',
