@@ -34,9 +34,9 @@
             Each recipient will receive an email with a unique link to access the project.
           </div>
         </UiLayout>
-        <UiLayout v-if="initialShare" gapSm>
+        <UiLayout v-if="initialShare && initialRecipients.length" gapSm>
           <div class="text-xs">Currently shared with</div>
-          <div class="flex gap-1">
+          <div class="flex flex-wrap gap-1">
             <span
               class="text-xs bg-slate-300 py-1 px-2 rounded-md"
               v-for="recipient in initialRecipients" :key="recipient.email"
@@ -257,7 +257,10 @@ const showAllVersions = ref(props.initialShare ? !!(props.initialShare.showAllVe
 const createdShare = ref<ProjectShare | undefined>();
 const publicLink = computed(() => {
   if (props.initialShare && props.initialShare.public) {
-    return props.initialShare.sharedWith.find(s => s.type === 'public')?.code;
+    const initialCode = props.initialShare.sharedWith.find(s => s.type === 'public')?.code;
+    if (initialCode) {
+      return linkGenerator.getProjectShareLink(props.initialShare._id, initialCode);
+    }
   }
 
   if (!createdShare.value) {
