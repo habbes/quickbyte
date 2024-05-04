@@ -756,14 +756,15 @@ export class PublicProjectService {
             const user = share.sharedEmail ? await tryGetUserByEmail(this.db, share.sharedEmail) : undefined;
 
             const plainMedia = await this.getProjectShareMediaByIdInternal(share, args.mediaId);
-            const media = await getProjectShareMediaFilesAndComments(
-                this.db,
-                this.config.storageHandlers,
-                this.config.packagers,
+            const media = await getProjectShareMediaFilesAndComments({
+                db: this.db,
+                storageProviders: this.config.storageHandlers,
+                packagers: this.config.packagers,
                 share,
-                plainMedia,
-                user
-            );
+                medium: plainMedia,
+                user: user,
+                playable: true
+            });
 
             return media
         });

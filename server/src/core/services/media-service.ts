@@ -1,7 +1,7 @@
 import { Collection, Filter } from "mongodb";
 import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
-import { getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService } from "./index.js";
+import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService } from "./index.js";
 import { getMediaComments, ICommentService } from "./comment-service.js";
 import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
@@ -409,7 +409,16 @@ export function getProjectShareMedia(
             await getMultipleMediaByIds(db, share.projectId, share.items.filter(i => i.type === 'media').map(i => i._id))
         const mediaWithFiles = executeTasksInBatches(
             media,
-            medium => getProjectShareMediaFilesAndComments(db, storageProviders, packagers, share, medium),
+            medium => getProjectShareMediaFilesAndComments({
+                db: db,
+                storageProviders: storageProviders,
+                packagers: packagers,
+                share: share,
+                medium: medium,
+                // when fetching a list of media items we don't fetch
+                // the playback urls because it might be expensive
+                playable: false
+            }),
             10
         );
 
@@ -417,17 +426,28 @@ export function getProjectShareMedia(
     });
 }
 
-export async function getProjectShareMediaFilesAndComments(
+export async function getProjectShareMediaFilesAndComments({
+    db,
+    storageProviders,
+    packagers,
+    share,
+    medium,
+    playable,
+    user
+}: {
     db: Database,
     storageProviders: IStorageHandlerProvider,
     packagers: IPlaybackPackagerProvider,
     share: ProjectShare,
     medium: Media,
-    user?: User
-) {
+    user?: User,
+    playable: boolean
+}) {
     const versions = share.showAllVersions ? medium.versions : [ensure(medium.versions.find(v => v._id === medium.preferredVersionId))];
 
-    const files = await getMediaFiles(versions.map(v => v.fileId), db, storageProviders, packagers);
+    const files = playable ?
+        await getMediaFiles(versions.map(v => v.fileId), db, storageProviders, packagers) :
+        await getDownloadableFiles(versions.map(v => v.fileId), db, storageProviders);
     if (!share.allowDownload) {
         // TODO: this is a quick hack. We should ideally not have the downloadUrl field if downloads are not allowed
         // I was just too lazy to refactor things

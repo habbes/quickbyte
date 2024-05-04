@@ -300,7 +300,7 @@ export class TransferService {
             }
 
             const provider = this.config.providerRegistry.getHandler(file.provider);
-            const downloadableFile = createMediaDownloadFile(provider, this.config.packagers, this.db, file);
+            const downloadableFile = createDownloadAndPlayableFile(provider, this.config.packagers, this.db, file);
 
             return downloadableFile;
 
@@ -358,7 +358,7 @@ export class TransferDownloadService {
 
             const provider = this.providerRegistry.getHandler(transfer.provider);
             const downloadableFiles = await Promise.all(
-                files.map(file => createDownloadFile(provider,  transfer, file))
+                files.map(file => createTransferDownloadFile(provider,  transfer, file))
             );
 
             return {
@@ -616,7 +616,7 @@ export async function getMediaFiles(
 
         const downloadableFilesTasks = files.map(file => {
             const provider = storageProviders.getHandler(file.provider);
-            return createMediaDownloadFile(provider, packagers, db,  file);
+            return createDownloadAndPlayableFile(provider, packagers, db,  file);
         });
 
         const downloadableFiles = await Promise.all(downloadableFilesTasks);
@@ -628,7 +628,29 @@ export async function getMediaFiles(
     }
 }
 
-async function createDownloadFile(provider: IStorageHandler, transfer: Transfer, file: TransferFile): Promise<DownloadTransferFileResult> {
+export async function getDownloadableFiles(
+    fileIds: string[],
+    db: Database,
+    storageProviders: IStorageHandlerProvider
+): Promise<DownloadTransferFileResult[]> {
+    try {
+        const files = await db.files().find({ _id: { $in: fileIds } }).toArray();
+
+        const downloadableFilesTasks = files.map(file => {
+            const provider = storageProviders.getHandler(file.provider);
+            return createDownloadableFile(provider, file);
+        });
+
+        const downloadableFiles = await Promise.all(downloadableFilesTasks);
+        return downloadableFiles;
+
+    } catch (e: any) {
+        rethrowIfAppError(e);
+        throw createAppError(e);
+    }
+}
+
+async function createTransferDownloadFile(provider: IStorageHandler, transfer: Transfer, file: TransferFile): Promise<DownloadTransferFileResult> {
     const blobName = `${transfer._id}/${file._id}`;
     // TODO: what if the owner changes the expiry date?
     const expiryDate = new Date(transfer.expiresAt);
@@ -646,7 +668,33 @@ async function createDownloadFile(provider: IStorageHandler, transfer: Transfer,
     };
 }
 
-async function createMediaDownloadFile(provider: IStorageHandler, packagers: IPlaybackPackagerProvider, db: Database, file: TransferFile): Promise<DownloadTransferFileResult> {
+async function createDownloadableFile(provider: IStorageHandler, file: TransferFile) {
+    if (!file.accountId) {
+        throw createInvalidAppStateError(`Media file '${file._id}' is not tied to an account`);
+    }
+    // TODO: we should store the blobPath into the file itself to keep file resilient
+    // from design changes on where we store paths
+    const blobName = `${file.transferId}/${file._id}`;
+    const now = new Date().getTime();
+
+    const expiryDate = new Date(now + DAYS_TO_MILLIS);
+    const fileName = file.name.split('/').at(-1) || file._id;
+    const downloadUrl = await provider.getBlobDownloadUrl(file.region, file.accountId, blobName, expiryDate, fileName);
+
+    const downlodableFile: DownloadTransferFileResult = {
+        _id: file._id,
+        transferId: file.transferId,
+        name: file.name,
+        size: file.size,
+        _createdAt: file._createdAt,
+        downloadUrl,
+        accountId: file.accountId
+    };
+
+    return downlodableFile;
+}
+
+async function createDownloadAndPlayableFile(provider: IStorageHandler, packagers: IPlaybackPackagerProvider, db: Database, file: TransferFile): Promise<DownloadTransferFileResult> {
     if (!file.accountId) {
         throw createInvalidAppStateError(`Media file '${file._id}' is not tied to an account`);
     }
