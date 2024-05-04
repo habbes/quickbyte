@@ -34,7 +34,7 @@
 
         <div class="overflow-y-auto flex flex-col h-[calc(100dvh-478px)] sm:h-[calc(100dvh-248px)]">
           <MediaComment
-            v-if="user && project"
+            v-if="user"
             v-for="comment in sortedComments"
             :key="comment._id"
             :comment="comment"
@@ -42,7 +42,7 @@
             :getHtmlId="getHtmlCommentId"
             :selected="comment._id === selectedCommentId"
             :currentUserId="user._id"
-            :currentRole="project.role"
+            :currentRole="role"
             @click="handleCommentClicked($event)"
             @reply="sendCommentReply"
             @delete="showDeleteCommentDialog($event)"
@@ -71,7 +71,7 @@
             ></textarea>
           </div>
           <div>
-            <button class="btn btn-primary btn-xs" @click="sendComment()">Send</button>
+            <button class="btn btn-primary btn-xs" @click="sendTopLevelComment()">Send</button>
           </div>
         </div>
         
@@ -118,7 +118,7 @@
 import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { logger, showToast, store } from "@/app-utils";
-import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
+import type { UserRole, MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
@@ -137,12 +137,17 @@ type MediaSource = {
 
 const props = defineProps<{
   media: MediaWithFileAndComments;
+  role: UserRole;
   allowComments: boolean;
   allowDownload: boolean;
   showAllVersions: boolean;
   allowUploadVersion: boolean;
   selectedVersionId?: string;
   selectedCommentId?: string;
+  user?: {
+    _id: string;
+    name: string;
+  },
   sendComment?: (args: {
     text: string;
     versionId: string;
@@ -199,8 +204,8 @@ const currentTimeStamp = ref<number>(0);
 const includeTimestamp = ref<boolean>(true);
 const commentInputText = ref<string>();
 const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
-const user = store.user;
-const project = computed(() => store.projects.value.find(p => p._id === route.params.projectId));
+const user = ref<{ _id: string, name: string }|undefined>(props.user);
+
 const sources = computed<MediaSource[]>(() => {
   if (!props.media) return [];
   if (!file.value) return [];
@@ -376,7 +381,7 @@ function handleVideoCommentClicked(comment: CommentWithAuthor) {
   scrollToComment(comment);
 }
 
-async function sendComment() {
+async function sendTopLevelComment() {
   if (!commentInputText.value) return;
   if (!props.media) return;
   if (!props.sendComment) throw new Error('sendComment func not set in props');
@@ -387,6 +392,11 @@ async function sendComment() {
       timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined,
       versionId: selectedVersionId.value || props.media.preferredVersionId,
     });
+
+    if (!user.value) {
+      user.value = comment.author
+    };
+  
     commentInputText.value = '';
     comments.value.push(comment);
     
@@ -409,6 +419,10 @@ async function sendComment() {
       parentId,
       versionId: selectedVersionId.value || props.media.preferredVersionId
     });
+
+    if (!user.value) {
+      user.value = comment.author
+    };
 
     const parent = comments.value.find(c => c._id === parentId);
     if (parent) {

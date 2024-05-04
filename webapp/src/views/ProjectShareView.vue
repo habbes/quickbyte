@@ -107,6 +107,8 @@ function downloadItem(item: ProjectShareItemRef) {
 
 function loadShare() {
   const shareId = ensure(route.params.shareId as string);
+  const folderId = route.params.folderId as string|undefined;
+
   loading.value = true;
 
   return wrapError(async () => {
@@ -115,10 +117,14 @@ function loadShare() {
       code: code.value
     };
 
+    if (folderId) {
+      args.folderId = folderId;
+    }
+
     if (passwordRequired.value && password.value) {
       args.password = password.value
     }
-  
+    
     const result = await trpcClient.getProjectShareItems.query(args);
 
     if ('passwordRequired' in result) {
@@ -133,7 +139,7 @@ function loadShare() {
   });
 }
 
-watch([() => route.params.shareId, () => route.params.code], async () => {
+watch([() => route.params.shareId, () => route.params.code, () => route.params.folderId], async () => {
   await loadShare();
 }, { immediate: true });
 </script>
