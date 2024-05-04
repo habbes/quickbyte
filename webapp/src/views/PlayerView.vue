@@ -106,6 +106,7 @@
   <DeleteCommentDialog
     ref="deleteCommentDialog"
     v-if="media"
+    :deleteComment="deleteComment"
     @deleted="handleCommentDeleted($event)"
    />
 </template>
@@ -435,6 +436,15 @@ async function sendCommentReply(text: string, parentId: string) {
     logger.error(e.message, e);
     showToast(e.message, 'error');
   }
+}
+
+async function deleteComment(commentId: string) {
+  if (!media.value) return;
+  await trpcClient.deleteMediaComment.mutate({
+    projectId: media.value.projectId,
+    commentId: commentId,
+    mediaId: media.value._id
+  });
 }
 
 async function editComment(commentId: string, text: string) {

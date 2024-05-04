@@ -32,7 +32,7 @@
       <div class="w-full sm:w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col">
         
 
-        <div class="overflow-y-auto flex flex-col h-[calc(100dvh-478px)] sm:h-[calc(100dvh-248px)]" :style="commentsListStyles">
+        <div class="overflow-y-auto flex flex-col h-[calc(100dvh-478px)] sm:h-[calc(100dvh-248px)]">
           <MediaComment
             v-if="user && project"
             v-for="comment in sortedComments"
@@ -109,14 +109,15 @@
   </div>
   <DeleteCommentDialog
     ref="deleteCommentDialog"
-    v-if="media"
+    v-if="media && deleteComment"
+    :deleteComment="deleteComment"
     @deleted="handleCommentDeleted($event)"
    />
 </template>
 <script setup lang="ts">
 import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { apiClient, logger, showToast, store, trpcClient } from "@/app-utils";
+import { logger, showToast, store } from "@/app-utils";
 import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
@@ -142,33 +143,39 @@ const props = defineProps<{
   allowUploadVersion: boolean;
   selectedVersionId?: string;
   selectedCommentId?: string;
+  sendComment?: (args: {
+    text: string;
+    versionId: string;
+    timestamp?: number;
+    parentId?: string;
+  }) => Promise<WithChildren<CommentWithAuthor>>;
+  editComment?: (args: {
+    commentId: string;
+    text: string;
+  }) => Promise<WithChildren<CommentWithAuthor>>;
+  deleteComment?: (args: {
+    commentId: string
+  }) => Promise<unknown>;
 }>();
 
 const emit = defineEmits<{
   (e: 'close'): unknown;
+  (e: 'selectVersion', versionId: string): unknown;
+  (e: 'newVersionUpload'): unknown;
 }>();
 
 // had difficulties getting the scrollbar on the comments panel to work
 // properly using overflow: auto css, so I resorted to hardcoding dimensions
 const headerSize = 48;
-const commentInputHeight = 200;
 const headerClasses = {
   height: `${headerSize}px`
 };
-const commentInputStyles = {
-  height: `${commentInputHeight}px`
-};
-
-const commentsListStyles = {} /* = {
-  height: `calc(100dvh - ${headerSize + commentInputHeight}px)`
-}; */
-
 
 const videoPlayer = ref<typeof AVPlayer>();
 const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
-// const media = ref<MediaWithFileAndComments>();
+
 const selectedVersionId = ref<string>(props.media.preferredVersionId);
 const file = computed(() => {
   if (!props.media) return;
@@ -179,8 +186,8 @@ const file = computed(() => {
 
   return version.file;
 });
-const comments = ref<WithChildren<CommentWithAuthor>[]>([]);
-const loading = ref(true);
+
+const comments = ref<WithChildren<CommentWithAuthor>[]>(props.media.comments);
 const selectedCommentId = ref<string>();
 const mediaType = computed(() => {
   if (!props.media) return 'unknown';
@@ -281,58 +288,25 @@ const sortedComments = computed(() => {
 const timedComments = computed<WithChildren<TimedCommentWithAuthor>[]>(() =>
   sortedComments.value.filter(c => isDefined(c.timestamp)) as WithChildren<TimedCommentWithAuthor>[]);
 
-// onMounted(async () => {
-//   if (!store.currentAccount.value) return;
-
-//   const account = ensure(store.currentAccount.value);
-//   const queriedCommentId = Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment;
-//   const queriedVersionId = Array.isArray(route.query.version) ? route.query.version[0] : route.query.version;
-
-//   try {
-//     props.media = await trpcClient.getProjectMediaById.query({
-//       projectId: route.params.projectId as string,
-//       mediaId: route.params.mediaId as string
-//     });
-
-//     selectedVersionId.value = queriedVersionId && props.media.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : props.media.preferredVersionId;
-//     comments.value = props.media.comments;
-//     if (queriedCommentId) {
-//       const comment = comments.value.find(c => c._id === queriedCommentId);
-//       if (comment) {
-//         handleVideoCommentClicked(comment);
-//       }
-//     }
-
-//   }
-//   catch (e: any) {
-//     error.value = e;
-//     logger.error(e.message, e);
-//   }
-//   finally {
-//     loading.value = false;
-//   }
-// });
+onMounted(() => {
+  if (props.selectedCommentId) {
+    const comment = comments.value.find(c => c._id === props.selectedCommentId);
+    if (comment) {
+      handleVideoCommentClicked(comment);
+    }
+  }
+});
 
 async function handleVersionUpload() {
-//   // TODO: since we don't have the file, for now just reload
-//   // the entire media object and update the local instance
-//   // this is unnecessarily costly, we just need to load
-//   // the downloadable file for the new preferred version
-//   // but wanted to get this done quickly by re-using existing
-//   // endpoints and maybe optmize later.
-//   try {
-//     const account = ensure(store.currentAccount.value);
-//     media.value = await apiClient.getProjectMediumById(account._id, route.params.projectId as string, route.params.mediaId as string);
-//     selectedVersionId.value = media.value.preferredVersionId;
-//   } catch (e: any) {
-//     showToast(e.message, 'error');
-//     logger.error(e.message, e);
-//   }
+  // TODO: we currently don't pass the file or version that was
+  // uploaded (refactoring maybe needed)
+  // As a workaround, parent of this component is expected to reload the media
+  // and update the selectedVersionId prop when this event occurrs.
+  emit('newVersionUpload');
 };
 
 async function handleSelectVersion(versionId: string) {
-  selectedVersionId.value = versionId;
-  router.push({ query: { ...route.query, version: versionId }});
+  emit('selectVersion', versionId);
 }
 
 function seekToComment(comment: CommentWithAuthor) {
@@ -403,101 +377,90 @@ function handleVideoCommentClicked(comment: CommentWithAuthor) {
 }
 
 async function sendComment() {
-//   if (!commentInputText.value) return;
-//   if (!media.value) return;
-//   const projectId = ensure(route.params.projectId) as string;
-//   const mediaId = ensure(route.params.mediaId) as string;
+  if (!commentInputText.value) return;
+  if (!props.media) return;
+  if (!props.sendComment) throw new Error('sendComment func not set in props');
 
-//   try {
-//     const comment = await trpcClient.createMediaComment.mutate({
-//       projectId: projectId,
-//       mediaId: mediaId,
-//       mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
-//       text: commentInputText.value,
-//       timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined
-//     });
-//     commentInputText.value = '';
-//     comments.value.push(comment);
+  try {
+    const comment = await props.sendComment({
+      text: commentInputText.value,
+      timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined,
+      versionId: selectedVersionId.value || props.media.preferredVersionId,
+    });
+    commentInputText.value = '';
+    comments.value.push(comment);
     
     
-//     scrollToComment(comment);
-//   }
-//   catch (e: any) {
-//     logger.error(e.message, e);
-//     showToast(e.message, 'error');
-//   }
+    scrollToComment(comment);
+  }
+  catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
 }
 
  async function sendCommentReply(text: string, parentId: string) {
-//   if (!media.value) return;
-//   const projectId = ensure(route.params.projectId) as string;
-//   const mediaId = ensure(route.params.mediaId) as string;
+  if (!props.sendComment) throw new Error(`props.sendComment required`);
 
-//   try {
-//     // Note: we don't support timestamps for replies
-//     const comment = await trpcClient.createMediaComment.mutate({
-//       projectId: projectId,
-//       mediaId: mediaId,
-//       mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
-//       text,
-//       parentId
-//     });
+  try {
+    // Note: we don't support timestamps for replies
+    const comment = await props.sendComment({
+      text,
+      parentId,
+      versionId: selectedVersionId.value || props.media.preferredVersionId
+    });
 
-//     const parent = comments.value.find(c => c._id === parentId);
-//     if (parent) {
-//       parent.children.push(comment);
-//     }
+    const parent = comments.value.find(c => c._id === parentId);
+    if (parent) {
+      parent.children.push(comment);
+    }
 
-//     scrollToComment(comment);
-//   } catch (e: any) {
-//     logger.error(e.message, e);
-//     showToast(e.message, 'error');
-//   }
+    scrollToComment(comment);
+  } catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
 }
 
 async function editComment(commentId: string, text: string) {
-//   if (!media.value) return;
-//   const projectId = ensure(route.params.projectId) as string;
-//   const mediaId = ensure(route.params.mediaId) as string;
+  if (!props.editComment) throw new Error('props.editComment required for this operation');
 
-//   try {
-//     const comment = await trpcClient.updateMediaComment.mutate({
-//       projectId,
-//       mediaId,
-//       commentId,
-//       text
-//     });
+  try {
+    const comment = await props.editComment({
+      commentId,
+      text
+    });
 
-//     if (comment.parentId) {
-//       const parent = comments.value.find(c => c._id === comment.parentId);
-//       if (!parent) {
-//         logger.warn(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' after comment update, but did not find it.`);
-//         return;
-//       }
+    if (comment.parentId) {
+      const parent = comments.value.find(c => c._id === comment.parentId);
+      if (!parent) {
+        logger.warn(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' after comment update, but did not find it.`);
+        return;
+      }
 
-//       const indexToUpdate = parent.children.findIndex(c => c._id === comment._id);
-//       if (indexToUpdate === -1) {
-//         logger.warn(`Expected to find comment '${comment._id}' as child of '${parent._id}' in comments list after update, but did not find it.`);
-//         return;
-//       }
+      const indexToUpdate = parent.children.findIndex(c => c._id === comment._id);
+      if (indexToUpdate === -1) {
+        logger.warn(`Expected to find comment '${comment._id}' as child of '${parent._id}' in comments list after update, but did not find it.`);
+        return;
+      }
 
-//       // the comment we get from the server has less fields than the one we have in the client, so we merge
-//       // the two instead of a full replacement
-//       parent.children[indexToUpdate] = { ...parent.children[indexToUpdate], ...comment };
-//       return;
-//     }
+      // the comment we get from the server has less fields than the one we have in the client, so we merge
+      // the two instead of a full replacement
+      parent.children[indexToUpdate] = { ...parent.children[indexToUpdate], ...comment };
+      return;
+    }
 
-//     const indexToUpdate = comments.value.findIndex(c => c._id === comment._id);
-//     if (indexToUpdate === -1) {
-//       logger.warn(`Expected to find comment '${comment._id}' in comment list after comment update.`);
-//       return;
-//     }
+    const indexToUpdate = comments.value.findIndex(c => c._id === comment._id);
+    if (indexToUpdate === -1) {
+      logger.warn(`Expected to find comment '${comment._id}' in comment list after comment update.`);
+      return;
+    }
 
-//     comments.value[indexToUpdate] = { ...comments.value[indexToUpdate], ...comment };
-//   } catch (e: any) {
-//     logger.error(e.message, e);
-//     showToast(e.message, 'error');
-//   }
+    comments.value[indexToUpdate] = { ...comments.value[indexToUpdate], ...comment };
+  } catch (e: any) {
+    logger.error(e.message, e);
+    showToast(e.message, 'error');
+  }
 }
 
 function showDeleteCommentDialog(comment: CommentWithAuthor) {
