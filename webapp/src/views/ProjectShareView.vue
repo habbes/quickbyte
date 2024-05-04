@@ -124,7 +124,7 @@ function loadShare() {
     if (passwordRequired.value && password.value) {
       args.password = password.value
     }
-    
+
     const result = await trpcClient.getProjectShareItems.query(args);
 
     if ('passwordRequired' in result) {

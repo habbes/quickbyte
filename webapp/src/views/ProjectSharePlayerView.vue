@@ -3,6 +3,7 @@
     v-if="share && media"
     :media="media"
     :role="'reviewer'"
+    :user="user"
     :allowComments="share.allowComments"
     :allowDownload="share.allowDownload"
     :showAllVersions="share.showAllVersions"
@@ -17,7 +18,7 @@
 import { ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import PlayerWrapper from "@/components/PlayerWrapper.vue";
-import { projectShareStore, trpcClient } from "@/app-utils";
+import { projectShareStore, trpcClient, wrapError } from "@/app-utils";
 import type { MediaWithFileAndComments } from "@quickbyte/common";
 
 const share = projectShareStore.share;
@@ -26,6 +27,7 @@ const password = projectShareStore.password;
 const route = useRoute();
 const router = useRouter();
 const media = ref<MediaWithFileAndComments>();
+const user = ref<{ _id: string, name: string }|undefined>();
 
 function handleClosePlayer() {
   router.push({ name: 'project-share', params: { shareId: share.value?._id, code: code.value }  });
@@ -94,18 +96,28 @@ async function deleteComment(args: { commentId: string }) {
   });
 }
 
-watch(() => route.params.mediaId, () => {
-  if (!share.value) {
-    return;
-  }
+watch(() => route.params.mediaId, async () => {
+  wrapError(async () => {
+    if (!share.value || !code.value) {
+      return;
+    }
 
-  const item = share.value.items.find(i => i.type === 'media' && i._id === route.params.mediaId as string);
-  if (!item || item.type !== 'media') {
-    return;
-  }
+    const mediaId = route.params.mediaId as string;
+    media.value = await trpcClient.getProjectShareMediaById.query({
+      shareCode: code.value,
+      shareId: share.value._id,
+      password: password.value,
+      mediaId: mediaId
+    });
 
-  // TODO load media from API in case it's not locally available
-  media.value = item.item;
+    if (media.value.comments.length) {
+      // because we can only see the comments from the current user or
+      // their replies, we're sure that the author of any top-level comment
+      // is the current user
+      const comment = media.value.comments[0];
+      user.value = comment.author;
+    }
+  });
 }, {
   immediate: true
 });

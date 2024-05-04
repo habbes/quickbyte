@@ -117,8 +117,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { logger, showToast, store } from "@/app-utils";
-import type { UserRole, MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
+import { logger, showToast } from "@/app-utils";
+import type { RoleType, MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
@@ -137,7 +137,7 @@ type MediaSource = {
 
 const props = defineProps<{
   media: MediaWithFileAndComments;
-  role: UserRole;
+  role: RoleType;
   allowComments: boolean;
   allowDownload: boolean;
   showAllVersions: boolean;

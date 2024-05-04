@@ -1,10 +1,10 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createAuthError, createPermissionError } from "../error.js";
-import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail, getUserByEmail, getUserByEmailOrCreateGuest } from "./index.js";
-import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs } from '@quickbyte/common';
+import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail, getUserByEmail, getUserByEmailOrCreateGuest, tryGetUserByEmail } from "./index.js";
+import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs, GetProjectShareMediaByIdArgs, User } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
-import { getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, IMediaService  } from "./media-service.js";
+import { getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, getProjectShareMediaFilesAndComments, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
@@ -745,12 +745,36 @@ export class PublicProjectService {
         });
     }
 
+    getProjectShareMediaById(args: GetProjectShareMediaByIdArgs): Promise<MediaWithFileAndComments> {
+        return wrapError(async () => {
+            const share = await this.getAndValidateProjectShare({
+                shareId: args.shareId,
+                shareCode: args.shareCode,
+                password: args.password
+            });
+
+            const user = share.sharedEmail ? await tryGetUserByEmail(this.db, share.sharedEmail) : undefined;
+
+            const plainMedia = await this.getProjectShareMediaByIdInternal(share, args.mediaId);
+            const media = await getProjectShareMediaFilesAndComments(
+                this.db,
+                this.config.storageHandlers,
+                this.config.packagers,
+                share,
+                plainMedia,
+                user
+            );
+
+            return media
+        });
+    }
+
     createProjectShareMediaComment(args: CreateProjectShareMediaCommentArgs): Promise<CommentWithAuthor> {
         return wrapError(async () => {
             const share = await this.getAndValidateProjectShareForComments(args);
 
             // find media if it's shared or in a shared folder
-            const media = await this.getProjectShareMediaById(share, args.mediaId);
+            const media = await this.getProjectShareMediaByIdInternal(share, args.mediaId);
 
             // find user by email
             const user = await getUserByEmailOrCreateGuest(this.db, {
@@ -782,7 +806,7 @@ export class PublicProjectService {
             const share = await this.getAndValidateProjectShareForComments(args);
 
             // find media if it's shared or in a shared folder
-            const media = await this.getProjectShareMediaById(share, args.mediaId);
+            const media = await this.getProjectShareMediaByIdInternal(share, args.mediaId);
 
             // find user by email
             const user = await getUserByEmail(this.db, share.sharedEmail!);
@@ -802,7 +826,7 @@ export class PublicProjectService {
         return wrapError(async () => {
             const share = await this.getAndValidateProjectShareForComments(args);
             // find media if it's shared or in a shared folder
-            const media = await this.getProjectShareMediaById(share, args.mediaId);
+            const media = await this.getProjectShareMediaByIdInternal(share, args.mediaId);
 
             const user = await getUserByEmail(this.db, share.sharedEmail!);
             const comment = await updateMediaComment(
@@ -819,7 +843,7 @@ export class PublicProjectService {
         });
     }
 
-    private async getAndValidateProjectShareForComments(args: {
+    private async getAndValidateProjectShare(args: {
         shareId: string;
         shareCode: string;
         password?: string;
@@ -834,6 +858,16 @@ export class PublicProjectService {
             throw createAuthError('Password required');
         }
 
+        return share;
+    }
+
+    private async getAndValidateProjectShareForComments(args: {
+        shareId: string;
+        shareCode: string;
+        password?: string;
+    }) {
+        const share = await this.getAndValidateProjectShare(args);
+
         if (!share.sharedEmail) {
             throw createAuthError("Not authorized to post a comment");
         }
@@ -845,7 +879,7 @@ export class PublicProjectService {
         return share;
     }
 
-    private getProjectShareMediaById(share: ProjectShare, mediaId: string) {
+    private getProjectShareMediaByIdInternal(share: ProjectShare, mediaId: string) {
         return wrapError(async () => {
             const media = await getPlainMediaById(this.db, share.projectId, mediaId);
             // verify that share has access to this media

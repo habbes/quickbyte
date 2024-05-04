@@ -1,4 +1,4 @@
-import { Collection } from "mongodb";
+import { Collection, Filter } from "mongodb";
 import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren, CreateMediaCommentArgs, UpdateMediaCommentArgs, User } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createNotFoundError } from "../error.js";
 import { ITransferService } from "./index.js";
@@ -25,85 +25,8 @@ export class CommentService {
         );
     }
 
-    async getMediaComments(mediaId: string): Promise<WithChildren<CommentWithAuthor>[]> {
-        try {
-            const result = await this.collection.aggregate<WithChildren<CommentWithAuthor>>([
-                {
-                    $match: {
-                        mediaId: mediaId,
-                        deleted: { $ne: true },
-                        $or: [
-                            { parentId: null },
-                            { parentId: { $exists: false } }
-                        ]
-                    }
-                },
-                {
-                    $lookup: {
-                        from: 'users',
-                        localField: '_createdBy._id',
-                        foreignField: '_id',
-                        as: 'author',
-                        pipeline: [
-                            { $limit: 1 },
-                            {
-                                $project: {
-                                    _id: 1,
-                                    name: 1
-                                }
-                            }
-                        ],
-                    }
-                },
-                {
-                    $unwind: {
-                        path: '$author'
-                    }
-                },
-                {
-                    $lookup: {
-                        from: this.collection.collectionName,
-                        localField: '_id',
-                        foreignField: 'parentId',
-                        as: 'children',
-                        pipeline: [
-                            {
-                                $match: {
-                                    deleted: { $ne: true }
-                                }
-                            },
-                            {
-                                $lookup: {
-                                    from: this.db.users().collectionName,
-                                    localField: '_createdBy._id',
-                                    foreignField: '_id',
-                                    as: 'author',
-                                    pipeline: [
-                                        { $limit: 1 },
-                                        {
-                                            $project: {
-                                                _id: 1,
-                                                name: 1
-                                            }
-                                        }
-                                    ]
-                                }
-                            },
-                            {
-                                $unwind: {
-                                    path: '$author'
-                                }
-                            }
-                        ]
-                    }
-                }
-            ]).toArray();;
-            
-            return result;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+    getMediaComments(mediaId: string, authorId?: string): Promise<WithChildren<CommentWithAuthor>[]> {
+        return getMediaComments(this.db, mediaId, authorId);
     }
 
     deleteMediaComment(projectId: string, mediaId: string, commentId: string, isOwnerOrAdmin: boolean): Promise<void> {
@@ -177,6 +100,85 @@ async function createComment(db: Database, args: CreateCommentArgs, user: User):
             children: []
         };
         
+    });
+}
+
+export function getMediaComments(db: Database, mediaId: string, authorId?: string) {
+    return wrapError(async () => {
+        const result = await db.comments().aggregate<WithChildren<CommentWithAuthor>>([
+            {
+                $match: {
+                    mediaId: mediaId,
+                    deleted: { $ne: true },
+                    $or: [
+                        { parentId: null },
+                        { parentId: { $exists: false } }
+                    ],
+                    '_createdBy._id': authorId? authorId : { $ne: null}
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_createdBy._id',
+                    foreignField: '_id',
+                    as: 'author',
+                    pipeline: [
+                        { $limit: 1 },
+                        {
+                            $project: {
+                                _id: 1,
+                                name: 1
+                            }
+                        }
+                    ],
+                }
+            },
+            {
+                $unwind: {
+                    path: '$author'
+                }
+            },
+            {
+                $lookup: {
+                    from: db.comments().collectionName,
+                    localField: '_id',
+                    foreignField: 'parentId',
+                    as: 'children',
+                    pipeline: [
+                        {
+                            $match: {
+                                deleted: { $ne: true }
+                            }
+                        },
+                        {
+                            $lookup: {
+                                from: db.users().collectionName,
+                                localField: '_createdBy._id',
+                                foreignField: '_id',
+                                as: 'author',
+                                pipeline: [
+                                    { $limit: 1 },
+                                    {
+                                        $project: {
+                                            _id: 1,
+                                            name: 1
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            $unwind: {
+                                path: '$author'
+                            }
+                        }
+                    ]
+                }
+            }
+        ]).toArray();;
+        
+        return result;
     });
 }
 

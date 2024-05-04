@@ -61,7 +61,7 @@
 <script lang="ts" setup>
 import { ref, watch, computed, nextTick  } from "vue";
 import { useRoute } from "vue-router";
-import { trpcClient, wrapError  } from "@/app-utils";
+import { trpcClient, wrapError, projectShareStore } from "@/app-utils";
 import { ensure } from "@/core";
 import type { GetProjectShareLinkItemsArgs, ProjectShareItemRef, ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
 import { getRemainingContentHeightCss, layoutDimensions } from "@/styles/dimentions.js";
@@ -72,7 +72,7 @@ import { ChevronRightIcon } from "@heroicons/vue/24/outline";
 const route = useRoute();
 const code = computed(() => ensure(route.params.code as string));
 const loading = ref(false);
-const share = ref<ProjectShareLinkItemsSuccessResult>();
+const share = projectShareStore.share;
 const password = ref<string>();
 const passwordRequired = ref(false);
 const headerHeight = layoutDimensions.projectHeaderHeight;
@@ -107,38 +107,4 @@ function downloadItem(item: ProjectShareItemRef) {
   nextTick(() => hiddenDownloader.value?.click());
 }
 
-function loadShare() {
-  const shareId = ensure(route.params.shareId as string);
-  const folderId = route.params.folderId as string|undefined;
-  loading.value = true;
-
-  return wrapError(async () => {
-    const args: GetProjectShareLinkItemsArgs = {
-      shareId: shareId,
-      code: code.value,
-    };
-
-    if (folderId) {
-      args.folderId = folderId;
-    }
-
-    if (passwordRequired.value && password.value) {
-      args.password = password.value
-    }
-  
-    const result = await trpcClient.getProjectShareItems.query(args);
-
-    if ('passwordRequired' in result) {
-      passwordRequired.value = result.passwordRequired;
-    } else {
-      share.value = result;
-    }
-  }, {
-    finally: () => loading.value = false
-  });
-}
-
-watch(() => route.params, async () => {
-  await loadShare();
-}, { immediate: true });
 </script>

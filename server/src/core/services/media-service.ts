@@ -1,8 +1,8 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService } from "./index.js";
-import { ICommentService } from "./comment-service.js";
+import { getMediaComments, ICommentService } from "./comment-service.js";
 import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
 import { ensure, wrapError } from "../utils.js";
@@ -417,12 +417,13 @@ export function getProjectShareMedia(
     });
 }
 
-async function getProjectShareMediaFilesAndComments(
+export async function getProjectShareMediaFilesAndComments(
     db: Database,
     storageProviders: IStorageHandlerProvider,
     packagers: IPlaybackPackagerProvider,
     share: ProjectShare,
-    medium: Media
+    medium: Media,
+    user?: User
 ) {
     const versions = share.showAllVersions ? medium.versions : [ensure(medium.versions.find(v => v._id === medium.preferredVersionId))];
 
@@ -456,7 +457,13 @@ async function getProjectShareMediaFilesAndComments(
 
     const file = preferredVersion.file;
 
-    return { ...medium, file, versions: versionsWithFiles, comments: [] }
+    // If the share is being accessed by a user (fully registered or guest),
+    // return their comments, otherwise return no comments. People using
+    // a share link to access files can only see their comments or replies
+    // to their comments.
+    const comments = user ? await getMediaComments(db, medium._id, user._id) : [];
+
+    return { ...medium, file, versions: versionsWithFiles, comments }
 }
 
 export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;

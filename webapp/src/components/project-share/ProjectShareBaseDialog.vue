@@ -312,6 +312,7 @@ function open() {
 
   activePage.value = 'shareWith';
   hasPassword.value = props.initialShare ? props.initialShare.hasPassword : false;
+  recipientsRaw.value = '';
   password.value = undefined;
   hasExpiryDate.value = props.initialShare ? !!(props.initialShare.expiresAt) : false;
   allowComments.value = props.initialShare ? !!(props.initialShare.allowComments) : false;

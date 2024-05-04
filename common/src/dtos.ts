@@ -421,6 +421,15 @@ export interface ProjectShareLinkMediaItem {
     path: string;
 }
 
+export const GetProjectShareMediaByIdArgs = z.object({
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional(),
+    mediaId: z.string(),
+});
+
+export type GetProjectShareMediaByIdArgs = z.infer<typeof GetProjectShareMediaByIdArgs>;
+
 export const CreateProjectShareMediaCommentArgs = z.object({
     authorName: z.string().min(1).optional(),
     shareId: z.string().min(1),
