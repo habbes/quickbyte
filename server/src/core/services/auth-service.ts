@@ -1,4 +1,4 @@
-import { Collection } from "mongodb";
+import { Collection, Filter } from "mongodb";
 import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
 import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs, LoginWithGoogleRequestArgs, AuthProvider, Principal } from "@quickbyte/common";
@@ -263,10 +263,42 @@ export class AuthService {
 
             const baseModel = createPersistedModel({ type: 'system', _id: 'system' });
 
-            const result = await this.db.users().findOneAndUpdate({
-                provider: 'google',
-                providerId: googleId
-            }, {
+            
+
+            
+
+            
+
+            // What to do if there's already another account with the same
+            // email?
+            // Consider the following scenario: A project share link is
+            // sent to an external review without a Quickbyte account,
+            // they submit comments to the shared files. This causes
+            // a guest user to be created for them.
+            // If they login using Google, a duplicate email error will be created.
+            // This will be confusing to the user since they had not created an account
+            // before. We detect this scenario and "upgrade" the guest user instead.
+            // If there's an existing user with the same email, but is not a guest, it
+            // means the user registered the account explicitly with username and password,
+            // in that case we don't want to auto-migrate the account to sign-in with google,
+            // so an error will be thrown.
+
+            // Let's check a guest account already exists with the provided email
+            const existingGuest = await this.db.users().findOne({
+                email: payload.email,
+                isGuest: true
+            }, { 
+                projection: { _id: 1 }
+            });
+
+            const filter: Filter<UserInDb> = payload.email && existingGuest ? 
+                { _id: existingGuest._id } :
+                {
+                    provider: 'google',
+                    providerId: googleId
+                };
+            
+            const result = await this.db.users().findOneAndUpdate(filter, {
                 $set: {
                     isGuest: false,
                     name: payload.name,
