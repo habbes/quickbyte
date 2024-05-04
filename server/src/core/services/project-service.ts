@@ -774,9 +774,10 @@ export class PublicProjectService {
         }
 
         // folder is a subfolder of a shared folder
-        // trim the path to exclude ancestors of the root share path
+        // trim the path to exclude ancestors of the directly shared folder
         // to avoid exposing information about unshared folders
-        folder.path.splice(rootIndex + 1);
+        // path is sorted from root to leaf
+        folder.path.splice(0, rootIndex);
         return folder;
     }
 }

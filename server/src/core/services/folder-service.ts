@@ -426,10 +426,15 @@ function buildPathBranch(path: string, visitedNodes: Map<string, FolderNode>, pa
     buildPathBranch(remainingPath, visitedNodes, node);
 }
 
+/**
+ * Returns the folder with the path sorted from root to leaf, where the leaf
+ * refers to the target folder
+ * @param folder 
+ */
 function normalizeFolderWithPath(folder: Folder & { rawPath: Folder[] }): FolderWithPath {
     // the results returned from $graphLookup are not
     // guaranteed to be ordered. So let's manually
-    // sort the paths from leaf to root
+    // sort the paths from root to lead
     const path: FolderPathEntry[] = [];
 
     let current: Folder|undefined = folder;

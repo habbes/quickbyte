@@ -32,6 +32,7 @@
             :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
           >
             <div
+              v-if="share.items.length"
               class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
             >
               <div
@@ -48,6 +49,9 @@
                   @download="downloadItem($event)"
                 />
               </div>
+            </div>
+            <div v-else class="w-full flex justify-center flex-1">
+              There are no items here.
             </div>
           </UiLayout>
         </UiContextMenu>
