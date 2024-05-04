@@ -36,6 +36,8 @@ watch(() => route.params.mediaId, () => {
     return;
   }
 
+  
+
   // TODO load media from API in case it's not locally available
   media.value = item.item;
 }, {

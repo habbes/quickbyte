@@ -345,6 +345,23 @@ export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
 }
 
+export function getPlainMediaById(db: Database, projectId: string, id: string): Promise<Media> {
+    return wrapError(async () => {
+        const media = await db.media().findOne(
+            addRequiredMediaFilters({
+                projectId,
+                _id: id
+            })
+        )
+
+        if (!media) {
+            throw createNotFoundError('media');
+        }
+
+        return media
+    });
+}
+
 export function getMultipleMediaByIds(db: Database, projectId: string, ids: string[]): Promise<Media[]> {
     return wrapError(async () => {
         const media = await db.media().find(

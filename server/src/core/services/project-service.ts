@@ -1,16 +1,17 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
-import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
-import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail } from "./index.js";
-import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry } from '@quickbyte/common';
+import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createAuthError } from "../error.js";
+import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail, getUserByEmailOrCreateGuest } from "./index.js";
+import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
-import { getMultipleMediaByIds, getProjectMediaByFolder, getProjectShareMedia, IMediaService  } from "./media-service.js";
+import { getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
 import { getFoldersByParent, getMultipleProjectFoldersByIds, getProjectFolderById, getProjectFolderWithPath, IFolderService } from "./folder-service.js";
 import { wrapError } from "../utils.js";
 import { getProjectShareByCode, IProjectShareService } from "./project-share-service.js";
+import { createMediaComment } from "./comment-service.js";
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
@@ -741,6 +742,61 @@ export class PublicProjectService {
                 items: items,
                 sharedBy: share.creator
             }
+        });
+    }
+
+    createProjectShareMediaComment(args: CreateProjectShareMediaCommentArgs): Promise<CommentWithAuthor> {
+        return wrapError(async () => {
+            const share = await getProjectShareByCode(this.db, {
+                code: args.shareCode,
+                shareId: args.shareId,
+                password: args.password
+            });
+
+            if ('passwordRequired' in share) {
+                throw createAuthError('Password required');
+            }
+
+            if (!share.sharedEmail) {
+                throw createAuthError("Not authorized to post a comment");
+            }
+
+            // find media
+            const media = await getPlainMediaById(this.db, share.projectId, args.mediaId);
+            // verify that share has access to this media
+            if (!share.items?.find(i => i.type === 'media' && i._id === media._id)) {
+                // media not directly shared, let's see if the media is inside
+                // a shared folder or a subfolder of a shared folder
+                const folderId = media.folderId;
+                if (!folderId) {
+                    throw createNotFoundError('media');
+                }
+
+                await this.getSharedFolderOrSubFolder(folderId, share);
+            }
+
+            // find user by email
+            const user = await getUserByEmailOrCreateGuest(this.db, {
+                email: share.sharedEmail,
+                name: args.authorName || share.sharedEmail.split('@')[0],
+                invitedBy: share._createdBy
+            });
+
+            const comment = await createMediaComment(
+                this.db,
+                media,
+                {
+                    mediaId: args.mediaId,
+                    projectId: share.projectId,
+                    mediaVersionId: args.mediaVersionId,
+                    text: args.text,
+                    timestamp: args.timestamp,
+                    parentId: args.parentId
+                },
+                user
+            );
+
+            return comment;
         });
     }
 

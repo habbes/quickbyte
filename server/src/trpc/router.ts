@@ -11,7 +11,8 @@ import {
     DeleteProjectItemsArgs, MoveProjectItemsToFolderArgs, GetProjectMediaByIdArgs,
     InviteUsersToProjectArgs, CreateProjectShareArgs, UpdateProjectShareArgs,
     DeleteProjetShareArgs,
-GetProjectShareLinkItemsArgs
+GetProjectShareLinkItemsArgs,
+CreateProjectShareMediaCommentArgs
 } from '@quickbyte/common';
 import { z } from 'zod';
 
@@ -189,6 +190,11 @@ export const appRouter = router({
     .input(GetProjectShareLinkItemsArgs)
     .query(({ input, ctx }) =>
         ctx.app.sharedProjects.getProjectShareItems(input)),
+    
+    createProjectShareMediaComment: publicProcedure
+    .input(CreateProjectShareMediaCommentArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.sharedProjects.createProjectShareMediaComment(input)),
     
     getUserAuthMethod: publicProcedure
     .input(CheckUserAuthMethodArgs)

@@ -1,8 +1,9 @@
 import { Collection } from "mongodb";
-import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren, CreateMediaCommentArgs, UpdateMediaCommentArgs } from "../models.js";
+import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren, CreateMediaCommentArgs, UpdateMediaCommentArgs, User } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createNotFoundError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { Database } from "../db.js";
+import { wrapError } from "../utils.js";
 
 export interface MediaServiceConfig {
     transfers: ITransferService
@@ -15,80 +16,13 @@ export class CommentService {
         this.collection = db.comments();
     }
 
-    async createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
-        const version = media.versions.find(v => v._id === args.mediaVersionId);
-        if (!version) {
-            throw createResourceNotFoundError(`The version '${args.mediaVersionId}' does not exist for the media '${media._id}'.`);
-        }
-    
-        return this.create({
-            mediaId: media._id,
-            projectId: media.projectId,
-            mediaVersionId: args.mediaVersionId,
-            text: args.text,
-            timestamp: args.timestamp,
-            parentId: args.parentId
-        });
-    }
-
-    private async create(args: CreateCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
-        try {
-            if (args.parentId) {
-                await this.ensurCommentReplyValid(args);
-            }
-
-            const comment: Comment = {
-                ...createPersistedModel(this.authContext.user._id),
-                text: args.text,
-                mediaId: args.mediaId,
-                mediaVersionId: args.mediaVersionId,
-                projectId: args.projectId,
-                parentId: args.parentId
-            };
-
-            if (args.timestamp !== undefined && args.timestamp !== null) {
-                comment.timestamp = args.timestamp;
-            }
-
-            await this.collection.insertOne(comment);
-            return {
-                ...comment,
-                author: {
-                    _id: this.authContext.user._id,
-                    name: this.authContext.user.name
-                },
-                children: []
-            };
-            
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
-    }
-
-    private async ensurCommentReplyValid(args: CreateCommentArgs): Promise<void> {
-        try {
-            // the reply comment must apply to the same media as the parent,
-            // but could be a different version
-            const parent = await this.collection.findOne({
-                _id: args.parentId,
-                mediaId: args.mediaId,
-                deleted: { $ne: true }
-            });
-
-            if (!parent) {
-                throw createResourceNotFoundError(`The target comment does not exist.`);
-            }
-
-            if (parent.parentId) {
-                // TODO: we currently do not supported deeply nested comments
-                // but one day we may support this
-                throw createAppError
-            }
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+    createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
+        return createMediaComment(
+            this.db,
+            media,
+            args,
+            this.authContext.user
+        );
     }
 
     async getMediaComments(mediaId: string): Promise<WithChildren<CommentWithAuthor>[]> {
@@ -242,4 +176,75 @@ interface CreateCommentArgs {
     text: string;
     timestamp?: number;
     parentId?: string;
+}
+
+export async function createMediaComment(db: Database, media: Media, args: CreateMediaCommentArgs, author: User): Promise<WithChildren<CommentWithAuthor>> {
+    const version = media.versions.find(v => v._id === args.mediaVersionId);
+    if (!version) {
+        throw createResourceNotFoundError(`The version '${args.mediaVersionId}' does not exist for the media '${media._id}'.`);
+    }
+
+    return createComment(db, {
+        mediaId: media._id,
+        projectId: media.projectId,
+        mediaVersionId: args.mediaVersionId,
+        text: args.text,
+        timestamp: args.timestamp,
+        parentId: args.parentId
+    }, author);
+}
+
+async function createComment(db: Database, args: CreateCommentArgs, user: User): Promise<WithChildren<CommentWithAuthor>> {
+    return wrapError(async () => {
+        if (args.parentId) {
+            await ensureCommentReplyValid(db, args);
+        }
+
+        const comment: Comment = {
+            ...createPersistedModel(user._id),
+            text: args.text,
+            mediaId: args.mediaId,
+            mediaVersionId: args.mediaVersionId,
+            projectId: args.projectId,
+            parentId: args.parentId
+        };
+
+        if (args.timestamp !== undefined && args.timestamp !== null) {
+            comment.timestamp = args.timestamp;
+        }
+
+        await db.comments().insertOne(comment);
+        return {
+            ...comment,
+            author: {
+                _id: user._id,
+                name: user.name
+            },
+            children: []
+        };
+        
+    });
+}
+
+
+async function ensureCommentReplyValid(db: Database, args: CreateCommentArgs): Promise<void> {
+    return wrapError(async () => {
+        // the reply comment must apply to the same media as the parent,
+        // but could be a different version
+        const parent = await db.comments().findOne({
+            _id: args.parentId,
+            mediaId: args.mediaId,
+            deleted: { $ne: true }
+        });
+
+        if (!parent) {
+            throw createResourceNotFoundError(`The target comment does not exist.`);
+        }
+
+        if (parent.parentId) {
+            // TODO: we currently do not supported deeply nested comments
+            // but one day we may support this
+            throw createAppError
+        }
+    });
 }

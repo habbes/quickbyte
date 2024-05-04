@@ -420,3 +420,17 @@ export interface ProjectShareLinkMediaItem {
     name: string;
     path: string;
 }
+
+export const CreateProjectShareMediaCommentArgs = z.object({
+    authorName: z.string().min(1).optional(),
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional(),
+    mediaId: z.string().min(1),
+    mediaVersionId: z.string().min(1),
+    text: z.string().min(1),
+    timestamp: z.number().optional(),
+    parentId: z.string().optional()
+});
+
+export type CreateProjectShareMediaCommentArgs = z.infer<typeof CreateProjectShareMediaCommentArgs>;

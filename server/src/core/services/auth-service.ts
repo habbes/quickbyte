@@ -1,13 +1,13 @@
 import { Collection } from "mongodb";
 import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs, LoginWithGoogleRequestArgs, AuthProvider } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs, LoginWithGoogleRequestArgs, AuthProvider, Principal } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
-import { hashPassword, verifyPassword } from "../utils.js";
+import { hashPassword, verifyPassword, wrapError } from "../utils.js";
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core'
 import * as zxcvbnCommonPackage from '@zxcvbn-ts/language-common'
 import * as zxcvbnEnPackage from '@zxcvbn-ts/language-en'
@@ -530,6 +530,32 @@ export class AuthService {
 }
 
 export type IAuthService = Pick<AuthService, 'getUserByToken' | 'getUserById' | 'acceptUserInvite' | 'declineUserInvite' | 'verifyInvite'|'getAuthMethod'|'createUser'|'verifyUserEmail'|'requestUserVerificationEmail'|'login'|'logoutToken'|'resetPassword'|'loginWithGoogle'>;
+
+export async function getUserByEmailOrCreateGuest(db: Database, args: {
+    email: string,
+    name: string,
+    // in case it's a guest user
+    invitedBy: Principal
+}): Promise<User> {
+    return wrapError(async () => {
+        const user = await db.users().findOne({ email: args.email });
+        if (user) {
+            return getSafeUser(user);
+        }
+
+        const guest: GuestUser = {
+            ...createPersistedModel({ _id: 'system', type: 'system' }),
+            email: args.email,
+            name: args.name,
+            invitedBy: args.invitedBy,
+            isGuest: true
+        };
+
+        await db.users().insertOne(guest);
+
+        return guest;
+    });
+}
 
 
 function getSafeUser(user: UserInDb): User {
