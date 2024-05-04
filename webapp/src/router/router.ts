@@ -145,7 +145,7 @@ const router = createRouter({
       component: ProjectShareView,
       children: [
         {
-          path: '',
+          path: ':folderId?',
           name: 'project-share',
           component: ProjectShareListView
         },

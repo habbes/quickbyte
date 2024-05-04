@@ -18,6 +18,8 @@
   <ProjectShareFolderItemCard
     v-if="item.type === 'folder'"
     :folder="item.item"
+    :shareId="shareId"
+    :shareCode="shareCode"
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
     :totalSelectedItems="totalSelectedItems"

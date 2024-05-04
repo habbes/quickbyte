@@ -48,7 +48,7 @@
   <a ref="hiddenDownloader" class="hidden" download :href="currentDownloadUrl" />
 </template>
 <script lang="ts" setup>
-import { ref, onMounted, computed  } from "vue";
+import { ref, watch, computed  } from "vue";
 import { useRoute } from "vue-router";
 import { trpcClient, wrapError  } from "@/app-utils";
 import { ensure } from "@/core";
@@ -100,13 +100,18 @@ function downloadItem(item: ProjectShareItemRef) {
 
 function loadShare() {
   const shareId = ensure(route.params.shareId as string);
+  const folderId = route.params.folderId as string|undefined;
   loading.value = true;
 
   return wrapError(async () => {
     const args: GetProjectShareLinkItemsArgs = {
       shareId: shareId,
-      code: code.value
+      code: code.value,
     };
+
+    if (folderId) {
+      args.folderId = folderId;
+    }
 
     if (passwordRequired.value && password.value) {
       args.password = password.value
@@ -124,7 +129,7 @@ function loadShare() {
   });
 }
 
-onMounted(async () => {
+watch(() => route.params, async () => {
   await loadShare();
-});
+}, { immediate: true });
 </script>

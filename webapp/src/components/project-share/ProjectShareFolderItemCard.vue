@@ -2,7 +2,7 @@
   <ProjectItemCardBase
     :id="folder._id"
     :name="folder.name"
-    :link="{ name: 'project-media', params: { projectId: folder.projectId, folderId: folder._id } }"
+    :link="{ name: 'project-share', params: { shareId, code: shareCode, folderId: folder._id } }"
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
     :totalSelectedItems="totalSelectedItems"
@@ -28,7 +28,9 @@ import { FolderIcon } from '@heroicons/vue/24/solid';
 import ProjectShareItemMenuItems from "./ProjectShareItemMenuItems.vue";
 
 const props = defineProps<{
-  folder: Folder,
+  folder: Folder;
+  shareId: string;
+  shareCode: string;
   selected?: boolean,
   showSelectCheckbox?: boolean;
   totalSelectedItems?: number;
