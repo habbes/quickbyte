@@ -434,3 +434,24 @@ export const CreateProjectShareMediaCommentArgs = z.object({
 });
 
 export type CreateProjectShareMediaCommentArgs = z.infer<typeof CreateProjectShareMediaCommentArgs>;
+
+export const UpdateProjectShareMediaCommentArgs = z.object({
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional(),
+    mediaId: z.string().min(1),
+    commentId: z.string().min(1),
+    text: z.string().min(1)
+});
+
+export type UpdateProjectShareMediaCommentArgs = z.infer<typeof UpdateProjectShareMediaCommentArgs>;
+
+export const DeleteProjectShareMediaCommentArgs = z.object({
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional(),
+    mediaId: z.string().min(1),
+    commentId: z.string().min(1)
+});
+
+export type DeleteProjectShareMediaCommentArgs = z.infer<typeof DeleteProjectShareMediaCommentArgs>;

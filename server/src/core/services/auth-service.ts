@@ -557,6 +557,17 @@ export async function getUserByEmailOrCreateGuest(db: Database, args: {
     });
 }
 
+export async function getUserByEmail(db: Database, email: string): Promise<User> {
+    return wrapError(async () => {
+        const user = await db.users().findOne({ email: email });
+        if (user) {
+            return getSafeUser(user);
+        }
+
+        throw createAuthError("Incorrect email");
+    });
+}
+
 
 function getSafeUser(user: UserInDb): User {
     if ('password' in user) {

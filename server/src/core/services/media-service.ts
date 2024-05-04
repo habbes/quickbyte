@@ -279,8 +279,8 @@ export class MediaService {
         return this.config.comments.deleteMediaComment(projectId, mediaId, commentId, isOwnerOrAdmin);
     }
 
-    updateMediaComment(projectId: string, mediaId: string, commentId: string, args: UpdateMediaCommentArgs): Promise<Comment> {
-        return this.config.comments.updateMediaComment(projectId, mediaId, commentId, args);
+    updateMediaComment(args: UpdateMediaCommentArgs): Promise<Comment> {
+        return this.config.comments.updateMediaComment(args);
     }
 
     private convertFileToMedia(projectId: string, file: CreateTransferFileResult, pathToFolderMap: Map<string, Folder>) {

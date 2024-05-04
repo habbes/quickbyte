@@ -106,64 +106,18 @@ export class CommentService {
         }
     }
 
-    async deleteMediaComment(projectId: string, mediaId: string, commentId: string, isOwnerOrAdmin: boolean): Promise<void> {
-        try {
-            // if the user is a project owner or admin, then allow deleting
-            // otherwise, allow deleting only if the user is the author
-            const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
-            const result = await this.collection.updateOne(
-                {
-                    _id: commentId,
-                    mediaId,
-                    projectId,
-                    deleted: { $ne: true },
-                    ...userAccessFilter
-                },
-                {
-                    $set: {
-                        deleted: true,
-                        deletedAt: new Date(),
-                        deletedBy: { type: 'user', _id: this.authContext.user._id }
-                    }
-                }
-            );
-
-            if (result.modifiedCount == 0) {
-                throw createNotFoundError('comment');
-            }
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+    deleteMediaComment(projectId: string, mediaId: string, commentId: string, isOwnerOrAdmin: boolean): Promise<void> {
+        return deleteMediaComment(this.db, {
+            projectId,
+            mediaId,
+            commentId,
+            isOwnerOrAdmin,
+            user: this.authContext.user
+        });
     }
 
-    async updateMediaComment(projectId: string, mediaId: string, commentId: string, args: UpdateMediaCommentArgs): Promise<Comment> {
-        try {
-            const result = await this.collection.findOneAndUpdate({
-                _id: commentId,
-                projectId,
-                mediaId,
-                deleted: { $ne: true },
-                '_createdBy._id': this.authContext.user._id
-            }, {
-                $set: {
-                    text: args.text,
-                    _updatedBy: { type: 'user', _id: this.authContext.user._id },
-                    _updatedAt: new Date(),
-                }
-            }, {
-                returnDocument: 'after'
-            });
-
-            if (!result.value) {
-                throw createNotFoundError('comment');
-            }
-
-            return result.value;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+    updateMediaComment(args: UpdateMediaCommentArgs): Promise<Comment> {
+        return updateMediaComment(this.db, args, this.authContext.user);
     }
 }
 
@@ -226,6 +180,32 @@ async function createComment(db: Database, args: CreateCommentArgs, user: User):
     });
 }
 
+export function updateMediaComment(db: Database, args: UpdateMediaCommentArgs, user: User): Promise<Comment> {
+    return wrapError(async () => {
+        const result = await db.comments().findOneAndUpdate({
+            _id: args.commentId,
+            projectId: args.projectId,
+            mediaId: args.mediaId,
+            deleted: { $ne: true },
+            '_createdBy._id': user._id
+        }, {
+            $set: {
+                text: args.text,
+                _updatedBy: { type: 'user', _id: user._id },
+                _updatedAt: new Date(),
+            }
+        }, {
+            returnDocument: 'after'
+        });
+
+        if (!result.value) {
+            throw createNotFoundError('comment');
+        }
+
+        return result.value;
+    });
+}
+
 
 async function ensureCommentReplyValid(db: Database, args: CreateCommentArgs): Promise<void> {
     return wrapError(async () => {
@@ -245,6 +225,40 @@ async function ensureCommentReplyValid(db: Database, args: CreateCommentArgs): P
             // TODO: we currently do not supported deeply nested comments
             // but one day we may support this
             throw createAppError
+        }
+    });
+}
+
+export function deleteMediaComment(db: Database, args: {
+    projectId: string,
+    mediaId: string,
+    commentId: string,
+    isOwnerOrAdmin: boolean,
+    user: User
+}): Promise<void> {
+    return wrapError(async () => {
+        // if the user is a project owner or admin, then allow deleting
+        // otherwise, allow deleting only if the user is the author
+        const userAccessFilter = args.isOwnerOrAdmin ? {} : { '_createdBy._id': args.user._id };
+        const result = await db.comments().updateOne(
+            {
+                _id: args.commentId,
+                mediaId: args.mediaId,
+                projectId: args.projectId,
+                deleted: { $ne: true },
+                ...userAccessFilter
+            },
+            {
+                $set: {
+                    deleted: true,
+                    deletedAt: new Date(),
+                    deletedBy: { type: 'user', _id: args.user._id }
+                }
+            }
+        );
+
+        if (result.modifiedCount == 0) {
+            throw createNotFoundError('comment');
         }
     });
 }
