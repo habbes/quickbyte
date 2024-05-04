@@ -8,6 +8,8 @@
     :showAllVersions="share.showAllVersions"
     :allowUploadVersion="false"
     :sendComment="sendComment"
+    :editComment="editComment"
+    :deleteComment="deleteComment"
     @close="handleClosePlayer()"
   />
 </template>
@@ -20,6 +22,7 @@ import type { MediaWithFileAndComments } from "@quickbyte/common";
 
 const share = projectShareStore.share;
 const code = projectShareStore.code;
+const password = projectShareStore.password;
 const route = useRoute();
 const router = useRouter();
 const media = ref<MediaWithFileAndComments>();
@@ -53,10 +56,42 @@ async function sendComment(args: {
     parentId: args.parentId,
     shareId: share.value._id,
     shareCode: code.value,
+    password: password.value,
     authorName: name || share.value.sharedEmail.split('@')[0]
   });
 
   return comment;
+}
+
+async function editComment(args: { commentId: string, text: string }) {
+  if (!media.value || !share.value || !code.value) {
+    return;
+  }
+
+  const comment = await trpcClient.updateProjectShareMediaComment.mutate({
+    text: args.text,
+    commentId: args.commentId,
+    mediaId: media.value._id,
+    shareCode: code.value,
+    shareId: share.value._id,
+    password: password.value
+  });
+
+  return comment;
+}
+
+async function deleteComment(args: { commentId: string }) {
+  if (!media.value || !share.value || !code.value) {
+    return;
+  }
+
+  await trpcClient.deleteProjectShareMediaComment.mutate({
+    commentId: args.commentId,
+    mediaId: media.value._id,
+    shareId: share.value._id,
+    shareCode: code.value,
+    password: password.value
+  });
 }
 
 watch(() => route.params.mediaId, () => {
@@ -68,8 +103,6 @@ watch(() => route.params.mediaId, () => {
   if (!item || item.type !== 'media') {
     return;
   }
-
-  
 
   // TODO load media from API in case it's not locally available
   media.value = item.item;

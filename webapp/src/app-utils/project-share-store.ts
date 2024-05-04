@@ -4,6 +4,7 @@ import type { ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
 function createProjectShareStore() {
     const share = ref<ProjectShareLinkItemsSuccessResult>();
     const code = ref<string>();
+    const password = ref<string|undefined>();
 
     function setShare(value: ProjectShareLinkItemsSuccessResult) {
         share.value = value;
@@ -13,11 +14,17 @@ function createProjectShareStore() {
         code.value = value;
     }
 
+    function setSharePassword(value: string|undefined) {
+        password.value = value;
+    }
+
     return {
         share,
         code,
+        password,
         setShare,
-        setShareCode
+        setShareCode,
+        setSharePassword
     }
 }
 

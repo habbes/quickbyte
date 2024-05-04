@@ -133,6 +133,7 @@ function loadShare() {
       share.value = result;
       projectShareStore.setShare(share.value);
       projectShareStore.setShareCode(code.value);
+      projectShareStore.setSharePassword(password.value);
     }
   }, {
     finally: () => loading.value = false
