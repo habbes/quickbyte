@@ -14,7 +14,8 @@
       leave-to-class="translate-y-1 opacity-0"
     >
       <PopoverPanel
-        class="fixed top-24 bottom-0 sm:top-auto sm:bottom-auto sm:bg-auto left-0 h-screen sm:h-auto sm:absolute z-10 mt-3 w-screen sm:w-72  sm:translate-x-[-30%] transform sm:px-4 lg:max-w-3xl"
+        class="fixed top-24 bottom-0 sm:top-auto sm:bottom-auto sm:bg-auto h-screen sm:h-auto sm:absolute z-10 mt-3 w-screen sm:w-72  transform sm:px-4 lg:max-w-3xl"
+        :class="{ 'right-0': right, 'left-0 sm:translate-x-[-30%]': !right }"
       >
         <div class="h-full overflow-hidden rounded-t-lg sm:rounded-lg shadow-lg ring-1 ring-black/5">
           <div class="content relative bg-white h-full overflow-y-auto">
@@ -32,6 +33,10 @@ import {
   PopoverPanel,
   PopoverOverlay
 } from '@headlessui/vue';
+
+defineProps<{
+  right?: boolean;
+}>();
 </script>
 <style scoped>
 .content {

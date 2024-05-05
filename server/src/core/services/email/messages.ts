@@ -1,5 +1,6 @@
 import { AppError } from "../../error.js";
 import { UserInvite } from "../../models.js";
+import { DateTime } from "luxon";
 
 export function createWelcomeEmail(name: string, baseUrl: string) {
     return `
@@ -268,4 +269,42 @@ Hello,
 You have been removed from the project <b>${args.projectName}</b> on Quickbyte.
 </p>
 `;
+}
+
+export function createProjectSharedForReviewNotificationEmail(
+    args:
+    {
+        senderName: string,
+        shareName: string,
+        shareLink: string,
+        hasPassword?: boolean,
+        expiresAt?: Date,
+    }
+) {
+    const passwordNote = args.hasPassword ? `
+<p>
+Please note that you will need a password to access these files.
+<b>Please ask ${args.senderName} to share the password with you.</b>
+<p>
+`
+: "";
+
+    const expirtyNote = args.expiresAt? `
+<p>
+The review link will <b>expire on ${DateTime.fromJSDate(args.expiresAt).toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY)}</b>
+</p>
+`
+: "";
+
+    return `
+<p>
+Hello,
+</p>
+<p>
+${args.senderName} has shared project <b>${args.shareName}</b> for you to review.
+Click <a href="${args.shareLink}">here to view the files.</a>
+</p>
+${ passwordNote }
+${ expirtyNote }
+`
 }

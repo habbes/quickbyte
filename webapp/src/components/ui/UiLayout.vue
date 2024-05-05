@@ -32,7 +32,7 @@ const classes = computed(() => {
     'justify-center': props.justifyCenter,
     'justify-between': props.justifyBetween,
     'justify-end': props.justifyEnd,
-    [`gap-[${props.gap}]`]: props.gap,
+    [`gap-${props.gap}`]: props.gap,
     'gap-2': props.gapSm,
     'px-4 py-2': props.innerSpace,
     'px-4': props.horizontalSpace,

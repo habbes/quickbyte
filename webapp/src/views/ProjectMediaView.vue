@@ -170,6 +170,7 @@
                   @update="handleItemUpdate($event)"
                   @delete="handleDeleteRequested($event)"
                   @move="handleMoveRequested($event)"
+                  @share="handleShareProjectItems($event)"
                   @toggleSelect="handleToggleSelect($event)"
                   @toggleInMultiSelect="handleToggleInMultiSelect($event)"
                   @selectAll="handleSelectAll()"
@@ -202,6 +203,12 @@
         </UiMenuItem>
         <template v-if="selectedItemIds.size > 0">
           <UiMenuSeparator />
+          <UiMenuItem @click="handleShareProjectItems()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <ShareIcon class="h-5 w-5" />
+              <span>Share {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
+            </UiLayout>
+          </UiMenuItem>
           <UiMenuItem @click="handleMoveRequested()">
             <UiLayout horizontal itemsCenter gapSm>
               <ArrowRightCircleIcon class="w-5 h-5" />
@@ -263,20 +270,33 @@
     :items="selectedItems"
     @move="handleItemsMoved($event)"
   />
+  <CreateProjectShareDialog
+    v-if="project"
+    ref="createProjectShareDialog"
+    :project="project"
+    :items="selectedItems"
+  />
 </template>
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
 import { ensure, pluralize } from '@/core';
-import type { WithRole, Project, ProjectItem, Folder, ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
-import { PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon, FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon, Cog8ToothIcon, TrashIcon, ArrowRightCircleIcon,
-  DocumentPlusIcon, DocumentMinusIcon } from '@heroicons/vue/24/outline'
+import type {
+  WithRole, Project, ProjectItem, Folder,
+  ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
+import {
+  PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon,
+  FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon,
+  Cog8ToothIcon, TrashIcon, ArrowRightCircleIcon,
+  DocumentPlusIcon, DocumentMinusIcon,
+  ShareIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
 import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue';
 import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
-import CreateFolderDialog from "@/components/CreateFolderDialog.vue"
+import CreateFolderDialog from "@/components/CreateFolderDialog.vue";
+import { CreateProjectShareDialog } from "@/components/project-share";
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
 import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox, UiContextMenu, UiMenuSeparator } from "@/components/ui";
 import { DragSelect, DragSelectOption } from "@coleqiu/vue-drag-select";
@@ -295,6 +315,7 @@ const route = useRoute();
 const createFolderDialog = ref<typeof CreateFolderDialog>();
 const deleteItemsDialog = ref<typeof DeleteProjectItemsDialog>();
 const moveItemsDialog = ref<typeof MoveProjectItemsDialog>();
+const createProjectShareDialog = ref<typeof CreateProjectShareDialog>();
 const loading = ref(true);
 const searchTerm = ref('');
 
@@ -555,6 +576,18 @@ function handleItemMoved(item: ProjectItem) {
   // last possibility: item does not exist in the current list
   // and is not being moved to this folder. Ignore it.
 }
+
+function handleShareProjectItems(item?: { type: ProjectItemType, itemId: string }) {
+  if (item && !isItemSelected(item.itemId)) {
+    addToSelection(item.itemId);
+  }
+
+  if (!selectedItems.value.length) {
+    return;
+  }
+  nextTick(() => createProjectShareDialog.value?.open());
+}
+
 
 function handleCreatedFolder(newFolder: Folder) {
   const item: ProjectFolderItem = {

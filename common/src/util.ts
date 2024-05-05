@@ -75,3 +75,8 @@ export function getFileName(file: TransferFile) {
     const fileName = file.name.split('/').at(-1) || file._id;
     return fileName;
 }
+
+const EMAIL_REGEX = /^[^@,;\s]+@[^@,;\s]+\.[^@,;\s]+$/;
+export function isEmail(value: string) {
+    return EMAIL_REGEX.test(value);
+}

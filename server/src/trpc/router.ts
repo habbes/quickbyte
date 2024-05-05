@@ -1,5 +1,23 @@
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs, CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs, LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs, UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs, UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs, CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs, CreateProjectMediaUploadArgs, CreateShareableTransferArgs, FinalizeTransferArgs, SearchProjectFolderArgs, DeleteProjectItemsArgs, MoveProjectItemsToFolderArgs, GetProjectMediaByIdArgs, InviteUsersToProjectArgs } from '@quickbyte/common';
+import {
+    DeclineInviteArgs, AcceptInviteArgs, UpdateMediaArgs,
+    CheckUserAuthMethodArgs, CreateUserArgs, VerifyUserEmailArgs,
+    RequestUserVerificationEmailArgs, LoginRequestArgs, PasswordResetArgs,
+    LoginWithGoogleRequestArgs, CreateMediaCommentArgs, DeleteMediaCommentArgs,
+    UpdateMediaCommentArgs, InitTransferFileUploadArgs, CompleteFileUploadArgs,
+    UpdateProjectArgs, ChangeProjectMemberRoleArgs, RemoveProjectMemberArgs,
+    CreateFolderArgs, UpdateFolderArgs, GetProjectItemsArgs, CreateProjectMediaUploadArgs,
+    CreateShareableTransferArgs, FinalizeTransferArgs, SearchProjectFolderArgs,
+    DeleteProjectItemsArgs, MoveProjectItemsToFolderArgs, GetProjectMediaByIdArgs,
+    InviteUsersToProjectArgs, CreateProjectShareArgs, UpdateProjectShareArgs,
+    DeleteProjetShareArgs,
+GetProjectShareLinkItemsArgs,
+CreateProjectShareMediaCommentArgs,
+DeleteProjectShareMediaCommentArgs,
+UpdateProjectShareMediaCommentArgs,
+GetProjectShareMediaByIdArgs,
+GetAllProjectShareFilesForDownloadArgs
+} from '@quickbyte/common';
 import { z } from 'zod';
 
 export const appRouter = router({
@@ -151,6 +169,56 @@ export const appRouter = router({
     .input(CompleteFileUploadArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.transfers(ctx.auth).completeFileUpload(input)),
+    
+    createProjectShare: protectedProcedure
+    .input(CreateProjectShareArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).createProjectShare(input)),
+    
+    getProjectShares: protectedProcedure
+    .input(z.string())
+    .query(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).getProjectShares(input)),
+    
+    updateProjectShare: protectedProcedure
+    .input(UpdateProjectShareArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).updateProjectShare(input)),
+    
+    deleteProjectShare: protectedProcedure
+    .input(DeleteProjetShareArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).deleteProjectShare(input)),
+    
+    getProjectShareItems: publicProcedure
+    .input(GetProjectShareLinkItemsArgs)
+    .query(({ input, ctx }) =>
+        ctx.app.sharedProjects.getProjectShareItems(input)),
+
+    getProjectShareMediaById: publicProcedure
+    .input(GetProjectShareMediaByIdArgs)
+    .query(({ input, ctx }) =>
+        ctx.app.sharedProjects.getProjectShareMediaById(input)),
+    
+    createProjectShareMediaComment: publicProcedure
+    .input(CreateProjectShareMediaCommentArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.sharedProjects.createProjectShareMediaComment(input)),
+    
+    deleteProjectShareMediaComment: publicProcedure
+    .input(DeleteProjectShareMediaCommentArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.sharedProjects.deleteProjectShareMediaComment(input)),
+    
+    updateProjectShareMediaComment: publicProcedure
+    .input(UpdateProjectShareMediaCommentArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.sharedProjects.updateProjectShareMediaComment(input)),
+    
+    getAllProjectShareFilesForDownload: publicProcedure
+    .input(GetAllProjectShareFilesForDownloadArgs)
+    .query(({ input, ctx }) =>
+        ctx.app.sharedProjects.getAllProjectShareFilesForDownload(input)),
     
     getUserAuthMethod: publicProcedure
     .input(CheckUserAuthMethodArgs)

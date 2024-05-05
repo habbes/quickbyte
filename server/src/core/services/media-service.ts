@@ -1,10 +1,11 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
-import { ITransferService } from "./index.js";
-import { ICommentService } from "./comment-service.js";
+import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService } from "./index.js";
+import { getMediaComments, ICommentService } from "./comment-service.js";
 import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
+import { ensure, wrapError } from "../utils.js";
 
 export interface MediaServiceConfig {
     transfers: ITransferService;
@@ -104,24 +105,8 @@ export class MediaService {
         }
     }
 
-    async getProjectMediaByFolder(projectId: string, folderId?: string): Promise<Media[]> {
-        try {
-            const query: Filter<Media> = addRequiredMediaFilters({
-                projectId
-            });
-
-            if (folderId) {
-                query.folderId = folderId;
-            } else {
-                query.folderId = null;
-            }
-
-            const media = await this.collection.find(query).toArray();
-            return media;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+    getProjectMediaByFolder(projectId: string, folderId?: string): Promise<Media[]> {
+        return getProjectMediaByFolder(this.db, projectId, folderId);
     }
 
     async getMediaById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
@@ -294,8 +279,8 @@ export class MediaService {
         return this.config.comments.deleteMediaComment(projectId, mediaId, commentId, isOwnerOrAdmin);
     }
 
-    updateMediaComment(projectId: string, mediaId: string, commentId: string, args: UpdateMediaCommentArgs): Promise<Comment> {
-        return this.config.comments.updateMediaComment(projectId, mediaId, commentId, args);
+    updateMediaComment(args: UpdateMediaCommentArgs): Promise<Comment> {
+        return this.config.comments.updateMediaComment(args);
     }
 
     private convertFileToMedia(projectId: string, file: CreateTransferFileResult, pathToFolderMap: Map<string, Folder>) {
@@ -358,6 +343,147 @@ export class MediaService {
 
 export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
+}
+
+export function getPlainMediaById(db: Database, projectId: string, id: string): Promise<Media> {
+    return wrapError(async () => {
+        const media = await db.media().findOne(
+            addRequiredMediaFilters({
+                projectId,
+                _id: id
+            })
+        )
+
+        if (!media) {
+            throw createNotFoundError('media');
+        }
+
+        return media
+    });
+}
+
+export function getMultipleMediaByIds(db: Database, projectId: string, ids: string[]): Promise<Media[]> {
+    return wrapError(async () => {
+        const media = await db.media().find(
+            addRequiredMediaFilters({
+                projectId,
+                _id: { $in: ids }
+            })
+        ).toArray();
+
+        return media
+    });
+}
+
+export function getProjectMediaByFolder(db: Database, projectId: string, folderId?: string) {
+    return wrapError(async () => {
+        const query: Filter<Media> = addRequiredMediaFilters({
+            projectId
+        });
+
+        if (folderId) {
+            query.folderId = folderId;
+        } else {
+            query.folderId = null;
+        }
+
+        const media = await db.media().find(query).toArray();
+        return media;
+    });
+}
+
+export function getProjectShareMedia(
+    db: Database,
+    storageProviders: IStorageHandlerProvider,
+    packagers: IPlaybackPackagerProvider,
+    share: ProjectShare,
+    folderId?: string
+): Promise<MediaWithFileAndComments[]> {
+    return wrapError(async () => {
+        if (!share.items || share.allItems) {
+            // TODO: support this feature.
+            throw createAppError('Sharing all project items not currently supported');
+        }
+        const media = folderId?
+            await getProjectMediaByFolder(db, share.projectId, folderId):
+            await getMultipleMediaByIds(db, share.projectId, share.items.filter(i => i.type === 'media').map(i => i._id))
+        const mediaWithFiles = executeTasksInBatches(
+            media,
+            medium => getProjectShareMediaFilesAndComments({
+                db: db,
+                storageProviders: storageProviders,
+                packagers: packagers,
+                share: share,
+                medium: medium,
+                // when fetching a list of media items we don't fetch
+                // the playback urls because it might be expensive
+                playable: false
+            }),
+            10
+        );
+
+        return mediaWithFiles;
+    });
+}
+
+export async function getProjectShareMediaFilesAndComments({
+    db,
+    storageProviders,
+    packagers,
+    share,
+    medium,
+    playable,
+    user
+}: {
+    db: Database,
+    storageProviders: IStorageHandlerProvider,
+    packagers: IPlaybackPackagerProvider,
+    share: ProjectShare,
+    medium: Media,
+    user?: User,
+    playable: boolean
+}) {
+    const versions = share.showAllVersions ? medium.versions : [ensure(medium.versions.find(v => v._id === medium.preferredVersionId))];
+
+    const files = playable ?
+        await getMediaFiles(versions.map(v => v.fileId), db, storageProviders, packagers) :
+        await getDownloadableFiles(versions.map(v => v.fileId), db, storageProviders);
+    if (!share.allowDownload) {
+        // TODO: this is a quick hack. We should ideally not have the downloadUrl field if downloads are not allowed
+        // I was just too lazy to refactor things
+        for (const file of files) {
+            file.downloadUrl = "";
+        }
+    }
+
+    const versionsWithFiles = versions.map<MediaVersionWithFile>(v => {
+
+        const file = files.find(f => f._id === v.fileId);
+        if (!file) {
+            throw createInvalidAppStateError(`Could not find file '${v.fileId}' for version '${v._id}' of media '${medium._id}'`);
+        }
+        const version = {
+            ...v,
+            file
+        }
+
+        return version;
+    });
+
+    const preferredVersion = versionsWithFiles.find(v => v._id === medium.preferredVersionId);
+    if (!preferredVersion) {
+        throw createInvalidAppStateError(`Could not find preferred verson '${medium.preferredVersionId}' for media '${medium._id}'`);
+    }
+
+    const file = preferredVersion.file;
+
+    // If the share is being accessed by a user (fully registered or guest),
+    // return their comments, otherwise return no comments. People using
+    // a share link to access files can only see their comments or replies
+    // to their comments.
+    const comments = user ? await getMediaComments(db, medium._id, user._id) : [];
+
+    return { ...medium, file, versions: versionsWithFiles, comments }
 }
 
 export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;

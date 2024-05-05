@@ -24,7 +24,7 @@ export class AuthHandler {
     }
 
     /**
-     * forces a sign in request even there's a user
+     * forces a sign in request even when there's a user
      * currently logged in.
      * If current user session is active, its data
      * is first cleared from the local cache.

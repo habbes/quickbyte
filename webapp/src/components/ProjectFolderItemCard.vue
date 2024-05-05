@@ -9,6 +9,7 @@
     @rename="renameFolder()"
     @delete="$emit('delete', folder._id)"
     @move="$emit('move')"
+    @share="$emit('share')"
     @toggleSelect="$emit('toggleSelect')"
     @toggleInMultiSelect="$emit('toggleInMultiSelect')"
     @selectAll="$emit('selectAll')"
@@ -45,6 +46,7 @@ defineEmits<{
   (e: 'update', updatedFolder: Folder): void;
   (e: 'delete', deletedFolderId: string): void;
   (e: 'move'): void;
+  (e: 'share'): void;
   (e: 'toggleSelect'): void;
   (e: 'toggleInMultiSelect'): void;
   (e: 'selectAll'): void;

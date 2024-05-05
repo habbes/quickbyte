@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DownloadTransferFileResult, FolderPathEntry, ProjectShareItem } from "./models.js";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -330,3 +331,156 @@ export const InviteUsersToProjectArgs = z.object({
 });
 
 export type InviteUsersToProjectArgs = z.infer<typeof InviteUsersToProjectArgs>;
+
+export const CreateProjectShareArgs = z.object({
+    name: z.string().min(1),
+    projectId: z.string().min(1),
+    allowDownload: z.boolean().optional(),
+    showAllVersions: z.boolean().optional(),
+    allowComments: z.boolean().optional(),
+    password: z.optional(z.string().min(1)),
+    public: z.boolean(),
+    allItems: z.optional(z.boolean()),
+    items: z.array(z.object({
+        _id: z.string().min(1),
+        type: z.enum(['folder', 'media'])
+    })),
+    expiresAt: z.date().optional(),
+    recipients: z.array(
+        z.object({
+            email: z.string().min(1)
+        })
+    ),
+});
+
+export type CreateProjectShareArgs = z.infer<typeof CreateProjectShareArgs>;
+
+export const UpdateProjectShareArgs = z.object({
+    projectId: z.string().min(1),
+    shareId: z.string().min(1),
+    name: z.string().optional(),
+    enabled: z.boolean().optional(),
+    public: z.boolean().optional(),
+    // if has password is set to true and password is null,
+    // then the share will retain its current password if it has one,
+    // otherwise password is not set.
+    // If hasPassword is false, the current password will be removed
+    // if one is set.
+    hasPassword: z.boolean().optional(),
+    password: z.string().min(1).optional(),
+    expiresAt: z.date().optional(),
+    allowComments: z.boolean().optional(),
+    showAllVersions: z.boolean().optional(),
+    allowDownload: z.boolean().optional(),
+    recipients: z.array(
+        z.object({
+            email: z.string().min(1)
+        })
+    ).optional()
+});
+
+export type UpdateProjectShareArgs = z.infer<typeof UpdateProjectShareArgs>;
+
+export const DeleteProjetShareArgs = z.object({
+    projectId: z.string().min(1),
+    shareId: z.string().min(1)
+});
+
+export type DeleteProjectShareArgs = z.infer<typeof DeleteProjetShareArgs>;
+
+export const GetProjectShareLinkItemsArgs = z.object({
+    shareId: z.string().min(1),
+    code: z.string().min(1),
+    password: z.string().min(1).optional(),
+    folderId: z.string().min(1).optional()
+});
+
+export type GetProjectShareLinkItemsArgs = z.infer<typeof GetProjectShareLinkItemsArgs>;
+
+export type GetProjectShareLinkItemsResult = ProjectShareLinkItemsRequirePasswordResult | ProjectShareLinkItemsSuccessResult;
+
+export interface ProjectShareLinkItemsRequirePasswordResult {
+    passwordRequired: true;
+}
+
+export interface ProjectShareLinkItemsSuccessResult {
+    _id: string;
+    name: string;
+    sharedEmail?: string;
+    allowDownload: boolean;
+    allowComments: boolean;
+    showAllVersions: boolean;
+    items: ProjectShareItem[],
+    path: FolderPathEntry[],
+    sharedBy: { name: string, _id: string }
+}
+
+export interface ProjectShareLinkMediaItem {
+    _id: string;
+    name: string;
+    path: string;
+}
+
+export const GetProjectShareMediaByIdArgs = z.object({
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional(),
+    mediaId: z.string(),
+});
+
+export type GetProjectShareMediaByIdArgs = z.infer<typeof GetProjectShareMediaByIdArgs>;
+
+export const CreateProjectShareMediaCommentArgs = z.object({
+    authorName: z.string().min(1).optional(),
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional(),
+    mediaId: z.string().min(1),
+    mediaVersionId: z.string().min(1),
+    text: z.string().min(1),
+    timestamp: z.number().optional(),
+    parentId: z.string().optional()
+});
+
+export type CreateProjectShareMediaCommentArgs = z.infer<typeof CreateProjectShareMediaCommentArgs>;
+
+export const UpdateProjectShareMediaCommentArgs = z.object({
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional(),
+    mediaId: z.string().min(1),
+    commentId: z.string().min(1),
+    text: z.string().min(1)
+});
+
+export type UpdateProjectShareMediaCommentArgs = z.infer<typeof UpdateProjectShareMediaCommentArgs>;
+
+export const DeleteProjectShareMediaCommentArgs = z.object({
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional(),
+    mediaId: z.string().min(1),
+    commentId: z.string().min(1)
+});
+
+export type DeleteProjectShareMediaCommentArgs = z.infer<typeof DeleteProjectShareMediaCommentArgs>;
+
+export const GetAllProjectShareFilesForDownloadArgs = z.object({
+    shareId: z.string().min(1),
+    shareCode: z.string().min(1),
+    password: z.string().min(1).optional()
+});
+
+export type GetAllProjectShareFilesForDownloadArgs = z.infer<typeof GetAllProjectShareFilesForDownloadArgs>;
+
+export interface GetAllProjectShareFilesForDownloadResult {
+    files: DownloadTransferFileResult[];
+    errors?: GetAllProjectShareFilesForDownloadError[];
+}
+
+export interface GetAllProjectShareFilesForDownloadError {
+    path: string;
+    error: string;
+}
+
+
