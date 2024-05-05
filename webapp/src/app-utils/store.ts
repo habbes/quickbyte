@@ -136,6 +136,11 @@ function addProject(project: WithRole<Project>) {
     }
 }
 
+function deleteProject(id: string) {
+    const index = projects.value.findIndex(p => p._id === id);
+    projects.value.splice(index, 1);
+}
+
 function setCurrentAccount(id: string) {
     currentAccountId.value = id;
 }
@@ -161,6 +166,7 @@ export const store = {
     currentAccount,
     removeInvite,
     addProject,
+    deleteProject,
     setCurrentAccount,
     initialDataLoaded,
     projectItemsQueryOptions
