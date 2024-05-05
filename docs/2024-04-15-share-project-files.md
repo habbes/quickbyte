@@ -38,14 +38,18 @@ Storing the media items and folder records in the share will enable more flexibi
 ```ts
 interface FileShare {
     projectId: string;
-    inviteUsers?: Array<{ name?: string, email: string }>;
     enabled?: boolean;
     password?: string;
     expiresAt?: Date;
     allowDownload?: boolean;
     showAllVersions?: boolean;
-    items: Array<{ item: ProjectItemType, itemId: string }>;
+    allItems?: boolean;
+    items?: Array<{ item: ProjectItemType, itemId: string }>;
 }
 
 type ProjectItemType = 'folder'|'media';
 ```
+
+After thinking about it some more, I've decided not to allow users to accept an invite without logging in. I think that will introduce unnecessary complexity to the system. The invite system will continue to be user to invite members to join a project, these members will have access to the project until they're removed. Members will need to have signed up to Quickbyte. To give project access to people who don't necessarily have accounts, you'll need to create a share links mentioned above. Anyone with the link will be able to access the items in that share while the link is valid.
+
+This means guest users will no longer be able to accept invites and that code will need to be removed (the logic for guest users accepting invites is implemented in the backend but has never been surfaced on the frontend and therefore has never been used). However, we can still make use of guest accounts to store review comments made on media shared via share links.

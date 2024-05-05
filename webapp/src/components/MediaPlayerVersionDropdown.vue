@@ -5,13 +5,13 @@
         <ChevronDownIcon class="h-5 w-5" />
       </slot>
     </template>
-    <UiMenuItem v-if="uploadState === 'progress' && versionTransfer" disabled>
+    <UiMenuItem v-if="allowUpload && uploadState === 'progress' && versionTransfer" disabled>
       <UiLayout horizontal gapSm itemsCenter>
         <ArrowUpIcon class="h-4 w-4" />
         <span>Uploading {{ formatPercentage(uploadProgress, versionTransfer.totalSize) }}</span>
       </UiLayout>
     </UiMenuItem>
-    <UiMenuItem v-else @click="openFilePicker()">
+    <UiMenuItem v-else-if="allowUpload " @click="openFilePicker()">
       <UiLayout horizontal gapSm itemsCenter>
         <ArrowUpIcon class="h-4 w-4" />
         <span>Upload new version</span>
@@ -42,6 +42,7 @@ import { formatPercentage, pluralize } from "@/core";
 const props = defineProps<{
   media: Media,
   selectedVersionId?: string;
+  allowUpload?: boolean;
 }>();
 
 const emit = defineEmits<{

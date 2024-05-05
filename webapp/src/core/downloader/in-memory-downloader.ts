@@ -1,16 +1,15 @@
 import { BlockBlobClient } from "@azure/storage-blob";
 import Zip from "jszip";
-import type { DownloadRequestResult } from "../api-client";
 import { ensure, executeTasksInBatches, isNetworkError } from "../util";
-import { type ZipDownloader } from "./types.js";
-import type { Logger } from "..";
+import type { ZipDownloader, ZipDownloadRequest, ZipDownloadRequestFile } from "./types.js";
+import type { Logger  } from "..";
 
 
 export class InMemoryZipDownloader implements ZipDownloader {
     constructor(private logger?: Logger) {}
 
     async download(
-        transfer: DownloadRequestResult,
+        transfer: ZipDownloadRequest,
         suggestedFileName: string,
         onProgress: (percentage: number) => unknown,
         onFilePicked: (fileName: string) => unknown,
@@ -23,7 +22,7 @@ export class InMemoryZipDownloader implements ZipDownloader {
 class DownloadTask {
     private zip: Zip;
     constructor(
-        private transfer: DownloadRequestResult,
+        private transfer: ZipDownloadRequest,
         private suggestedFileName: string,
         private onProgress: (progressPercent: number) => unknown,
         private onFilePicked: (fileName: string) => unknown,
@@ -108,7 +107,7 @@ class DownloadTask {
         a.click();
     }
 
-    private async downloadFile(file: DownloadRequestResult["files"][0], onProgress: (currentProgress: number) => unknown) {
+    private async downloadFile(file: ZipDownloadRequestFile, onProgress: (currentProgress: number) => unknown) {
         this.logger?.log('downloading file', file.name);
         const client = new BlockBlobClient(file.downloadUrl);
         let retry = true;

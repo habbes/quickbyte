@@ -18,6 +18,12 @@ import { trpcClient, logger, showToast } from "@/app-utils";
 import type { CommentWithAuthor } from "@quickbyte/common";
 import { ensure } from "@/core";
 
+const props = defineProps<{
+  deleteComment: (args: {
+    commentId: string;
+  }) => Promise<unknown>;
+}>();
+
 const emit = defineEmits<{
   (e: 'deleted', comment: CommentWithAuthor): void;
 }>();
@@ -52,10 +58,9 @@ async function deleteComment() {
   if (!comment.value) return;
 
   try {
-    await trpcClient.deleteMediaComment.mutate({
-      projectId: comment.value.projectId,
-      commentId: comment.value._id,
-      mediaId: comment.value.mediaId
+
+    await props.deleteComment({
+      commentId: comment.value._id
     });
     
     emit('deleted', comment.value);

@@ -6,6 +6,7 @@ import { getDownloadUrl } from '../storage/storage-utils.js';
 import { IStorageHandlerProvider } from '../storage/storage-provider-registry.js';
 import { createInvalidAppStateError } from '../../error.js';
 import { EventDispatcher } from '../event-bus/event-bus.js';
+import { MemoryCache } from '../../memory-cache.js';
 
 export const MUX_PLAYBACK_PACKAGER_NAME = 'mux';
 
@@ -19,6 +20,7 @@ export interface MuxConfig {
 
 export class MuxPlaybackPackager implements PlaybackPackager {
     private client: Mux;
+    private cache = new MemoryCache<string, Mux.Video.Assets.Asset>(10000, 'MuxAssetsCache');
 
     constructor(private readonly config: MuxConfig) {
         this.client = new Mux({
@@ -135,7 +137,8 @@ export class MuxPlaybackPackager implements PlaybackPackager {
                 `Attempting to get packaging info of file '${file._id}' without a packaging id`
             );
         }
-        const asset = await this.client.video.assets.retrieve(file.playbackPackagingId);
+
+        const asset = await this.retrieveAsset(file.playbackPackagingId);
         if (!asset.playback_ids || !asset.playback_ids.length) {
             console.warn(
                 `No playback ids available for file '${file._id}' using mux asset id '${file.playbackPackagingId}'. Cannot generate playback urls.`
@@ -162,6 +165,16 @@ export class MuxPlaybackPackager implements PlaybackPackager {
         };
 
         return urls;
+    }
+
+    private async retrieveAsset(assetId: string) {
+        let asset = this.cache.get(assetId);
+        if (!asset) {
+            asset = await this.client.video.assets.retrieve(assetId);
+            this.cache.set(assetId, asset);
+        }
+
+        return asset;
     }
 }
 

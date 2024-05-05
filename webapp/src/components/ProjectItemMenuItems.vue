@@ -12,6 +12,13 @@
         <span v-else>Move {{ totalSelectedItems }} {{ pluralize('item', totalSelectedItems!) }} to...</span>
       </UiLayout>
     </UiMenuItem>
+    <UiMenuItem @click="$emit('share')">
+      <UiLayout horizontal itemsCenter gapSm>
+        <ShareIcon class="w-4 h-4" />
+        <span v-if="!areMultipleItemsSelected">Share</span>
+        <span v-else>Share {{ totalSelectedItems }} {{ pluralize('item', totalSelectedItems!) }}</span>
+      </UiLayout>
+    </UiMenuItem>
     <UiMenuItem @click="$emit('delete')">
       <UiLayout horizontal itemsCenter gapSm>
         <TrashIcon class="w-4 h-4" />
@@ -40,7 +47,7 @@
 </template>
 <script lang="ts" setup>
 import { UiMenuItem, UiLayout } from "@/components/ui";
-import { PencilIcon, TrashIcon, ArrowRightCircleIcon, DocumentPlusIcon, DocumentMinusIcon } from '@heroicons/vue/24/outline';
+import { PencilIcon, TrashIcon, ArrowRightCircleIcon, DocumentPlusIcon, DocumentMinusIcon, ShareIcon } from '@heroicons/vue/24/outline';
 import { computed } from "vue";
 import { pluralize } from "@/core";
 
@@ -52,6 +59,7 @@ defineEmits<{
   (e: 'rename'): unknown;
   (e: 'delete'): unknown;
   (e: 'move'): unknown;
+  (e: 'share'): unknown;
   (e: 'selectAll'): unknown;
   (e: 'unselectAll'): unknown;
 }>();

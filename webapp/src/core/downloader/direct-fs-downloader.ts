@@ -1,5 +1,4 @@
-import { type DownloadRequestResult } from "../api-client.js";
-import { type ZipDownloader } from "./types.js";
+import type { ZipDownloader, ZipDownloadRequest, ZipDownloadRequestFile } from "./types.js";
 import { ensure, executeTasksInBatches, isNetworkError, noop } from '../util.js';
 import { crc32, CrcTracker } from '../crc.js';
 import { BlockBlobClient } from "@azure/storage-blob";
@@ -23,7 +22,7 @@ export class DirectFileSystemZipDownloader implements ZipDownloader {
     }
 
     async download(
-        transfer: DownloadRequestResult,
+        transfer: ZipDownloadRequest,
         suggestedFileName: string,
         onProgress: (currentPercentage: number) => unknown,
         onFilePicked: (fileName: string) => unknown,
@@ -89,7 +88,7 @@ class FileDownloader {
     constructor(
         // @ts-ignore
         private writer: FileSystemWritableFileStream,
-        private file: DownloadRequestResult["files"][0],
+        private file: ZipDownloadRequestFile,
         private zipEntry: ZipFileEntry,
         private blockSize: number,
         private logger?: Logger,
@@ -438,7 +437,7 @@ async function writeFileCrc32(writer: FileSystemWritableFileStream, crc32: numbe
     await writer.write({ position: centralOffset, data: crcBytes, type: 'write' });
 }
 
-function generateZipEntryData(files: DownloadRequestResult['files']): ZipEntryInfo {
+function generateZipEntryData(files: ZipDownloadRequestFile[]): ZipEntryInfo {
     const zipEntries = new Map<string, ZipFileEntry>();
     const encoder = new TextEncoder();
     let currentOffset = 0;

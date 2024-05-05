@@ -22,15 +22,21 @@
     </div>
       <!-- tabs on large screens -->
       <div class="hidden sm:block shadow-sm h-full">
-        <router-link
+        <RequireRole
           v-for="page in projectPages"
           :key="page.name"
-          :to="{ name: page.route, params: { projectId: project._id, ...page.params }}"
-          class="hover:text-white inline-flex h-full items-center px-4"
-          exactActiveClass="text-white border-b-2 border-b-blue-300"
+          :accepted="page.allowedRoles"
+          :current="project.role"
         >
-          {{ page.name }}
-        </router-link>
+          <router-link
+            
+            :to="{ name: page.route, params: { projectId: project._id, ...page.params }}"
+            class="hover:text-white inline-flex h-full items-center px-4"
+            exactActiveClass="text-white border-b-2 border-b-blue-300"
+          >
+            {{ page.name }}
+          </router-link>
+        </RequireRole>
       </div>
       <!-- dropdown menu on mobile screens -->
       <div class="sm:hidden h-full flex text-white items-center">
@@ -46,16 +52,21 @@
               v-for="page in projectPages"
               :key="page.name"
             >
-              <MenuItem
+              <RequireRole
+                :accepted="page.allowedRoles"
+                :current="project.role"
               >
-                <router-link
-                  :to="{ name: page.route, params: { projectId: project._id }}"
+                <MenuItem
                 >
-                  <UiLayout innerSpace>
-                    {{ page.name }}
-                  </UiLayout>
-                </router-link>
-              </MenuItem>
+                  <router-link
+                    :to="{ name: page.route, params: { projectId: project._id }}"
+                  >
+                    <UiLayout innerSpace>
+                      {{ page.name }}
+                    </UiLayout>
+                  </router-link>
+                </MenuItem>
+              </RequireRole>
             </div>
           </MenuItems>
         </Menu>
@@ -77,8 +88,16 @@ import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
 import { ChevronDownIcon } from '@heroicons/vue/24/solid';
 import ProjectSwitcherMenu from '@/components/ProjectSwitcherMenu.vue';
 import ProjectPathBreadcrumbs from '@/components/ProjectPathBreadcrumbs.vue';
-import type { FolderPathEntry } from '@quickbyte/common';
+import type { FolderPathEntry, RoleType } from '@quickbyte/common';
 import { providerFolderPathSetter } from "./project-utils.js";
+import RequireRole from '@/components/RequireRole.vue';
+
+type NavPage = {
+  name: string;
+  route: string;
+  params: Record<string, string>;
+  allowedRoles: RoleType[];
+};
 
 const route = useRoute();
 const loading = ref(false);
@@ -116,27 +135,36 @@ watch([project], () => {
   }
 });
 
-const projectPages = computed(() => {
+const projectPages = computed<NavPage[]>(() => {
   const folderId = (folderPath.value.length &&
     folderPath.value[folderPath.value.length - 1]._id) ||
     route.params.folderId as (string|undefined) ||
     undefined;
 
-  const pages = [
+  const pages: NavPage[] = [
     {
       name: 'Media',
       route: 'project-media',
-      params: folderId ? { folderId } : {}
+      params: folderId ? { folderId } : {},
+      allowedRoles: ['admin', 'owner', 'editor', 'reviewer']
     },
     {
       name: 'Members',
       route: 'project-members',
       params: {},
+      allowedRoles: ['admin', 'owner', 'editor']
+    },
+    {
+      name: 'Shared Links',
+      route: 'project-shared-links',
+      params: {},
+      allowedRoles: ['admin', 'owner']
     },
     {
       name: 'Settings',
       route: "project-settings",
-      params: {}
+      params: {},
+      allowedRoles: ['admin', 'owner', 'editor']
     }
   ];
 

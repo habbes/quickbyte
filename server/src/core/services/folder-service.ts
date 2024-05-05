@@ -3,6 +3,7 @@ import { AuthContext, CreateFolderArgs, CreateFolderTreeArgs, Folder, FolderPath
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceConflictError, createResourceNotFoundError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel } from "../models.js";
 import { Filter } from "mongodb";
+import { wrapError } from "../utils.js";
 
 
 export class FolderService {
@@ -120,73 +121,15 @@ export class FolderService {
     }
 
     async getProjectFolderById(projectId: string, id: string): Promise<Folder> {
-        try {
-            const folder = await this.db.folders().findOne(createFilterForDeleteableResource({ projectId: projectId, _id: id }));
-            if (!folder) {
-                throw createNotFoundError('folder');
-            }
-
-            return folder;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+        return getProjectFolderById(this.db, projectId, id);
     }
 
     async getProjectFolderWithPath(projectId: string, folderId: string): Promise<FolderWithPath> {
-        try {
-            const result = await this.db.folders().aggregate<Folder & { rawPath: Folder[] }>([
-                {
-                    $match: createFilterForDeleteableResource<Folder>({
-                        projectId: projectId,
-                        _id: folderId
-                    })
-                },
-                // return list of ancestor folders
-                // ordering is not guaranteed
-                // see: https://www.mongodb.com/docs/manual/reference/operator/aggregation/graphLookup/
-                {
-                    $graphLookup: {
-                        from: this.db.folders().collectionName,
-                        startWith: "$parentId",
-                        connectFromField: "parentId",
-                        connectToField: "_id",
-                        as: "rawPath"
-                    }
-                },
-            ]).toArray();
-
-            if (!result.length) {
-                throw createNotFoundError("folder");
-            }
-
-            const folder = result[0];
-            const normalizedFolder = normalizeFolderWithPath(folder);
-            return normalizedFolder;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+        return getProjectFolderWithPath(this.db, projectId, folderId);
     }
 
-    async getFoldersByParent(projectId: string, parentId?: string): Promise<Folder[]> {
-        try {
-            const query: Filter<Folder> = createFilterForDeleteableResource({
-                projectId
-            });
-
-            if (parentId) {
-                query.parentId = parentId;
-            } else {
-                query.$or = [{ parentId: { $exists: false } }, { parentId: null }];
-            }
-
-            const result = await this.db.folders().find(query).toArray();
-            return result;
-        } catch (e: any) {
-            rethrowIfAppError(e);
-            throw createAppError(e);
-        }
+    getFoldersByParent(projectId: string, parentId?: string): Promise<Folder[]> {
+        return getFoldersByParent(this.db, projectId, parentId);
     }
 
     async updateFolder(args: UpdateFolderArgs): Promise<Folder> {
@@ -376,6 +319,68 @@ type FolderNode = {
     children: FolderNode[]
 }
 
+export async function getProjectFolderById(db: Database, projectId: string, folderId: string) {
+    const folder = await db.folders().findOne(createFilterForDeleteableResource({ projectId: projectId, _id: folderId }));
+    if (!folder) {
+        throw createNotFoundError('folder');
+    }
+
+    return folder;
+}
+
+export async function getProjectFolderWithPath(db: Database, projectId: string, folderId: string) {
+    try {
+        const result = await db.folders().aggregate<Folder & { rawPath: Folder[] }>([
+            {
+                $match: createFilterForDeleteableResource<Folder>({
+                    projectId: projectId,
+                    _id: folderId
+                })
+            },
+            // return list of ancestor folders
+            // ordering is not guaranteed
+            // see: https://www.mongodb.com/docs/manual/reference/operator/aggregation/graphLookup/
+            {
+                $graphLookup: {
+                    from: db.folders().collectionName,
+                    startWith: "$parentId",
+                    connectFromField: "parentId",
+                    connectToField: "_id",
+                    as: "rawPath"
+                }
+            },
+        ]).toArray();
+
+        if (!result.length) {
+            throw createNotFoundError("folder");
+        }
+
+        const folder = result[0];
+        const normalizedFolder = normalizeFolderWithPath(folder);
+        return normalizedFolder;
+    } catch (e: any) {
+        rethrowIfAppError(e);
+        throw createAppError(e);
+    }
+}
+
+export function getFoldersByParent(db: Database, projectId: string, parentId?: string): Promise<Folder[]> {
+    return wrapError(async () => {
+        const query: Filter<Folder> = createFilterForDeleteableResource({
+            projectId
+        });
+
+        if (parentId) {
+            query.parentId = parentId;
+        } else {
+            query.$or = [{ parentId: { $exists: false } }, { parentId: null }];
+        }
+
+        const result = await db.folders().find(query).toArray();
+        return result;
+    });
+}
+
 function pathsToTree(paths: string[]) {
     const visitedNodes = new Map<string, FolderNode>();
     const root: FolderNode = {
@@ -421,10 +426,15 @@ function buildPathBranch(path: string, visitedNodes: Map<string, FolderNode>, pa
     buildPathBranch(remainingPath, visitedNodes, node);
 }
 
+/**
+ * Returns the folder with the path sorted from root to leaf, where the leaf
+ * refers to the target folder
+ * @param folder 
+ */
 function normalizeFolderWithPath(folder: Folder & { rawPath: Folder[] }): FolderWithPath {
     // the results returned from $graphLookup are not
-    // guaranteed to be order. So let's manually
-    // sort the paths from leaf to root
+    // guaranteed to be ordered. So let's manually
+    // sort the paths from root to lead
     const path: FolderPathEntry[] = [];
 
     let current: Folder|undefined = folder;
@@ -446,6 +456,19 @@ function normalizeFolderWithPath(folder: Folder & { rawPath: Folder[] }): Folder
     delete normalizedFolder.rawPath;
 
     return normalizedFolder;
+}
+
+export function getMultipleProjectFoldersByIds(db: Database, projectId: string, ids: string[]): Promise<Folder[]> {
+    return wrapError(async () => {
+        const folders = await db.folders().find(
+            createFilterForDeleteableResource({
+                projectId: projectId,
+                _id: { $in: ids }
+            })
+        ).toArray();
+
+        return folders;
+    });
 }
 
 export type IFolderService = FolderService;

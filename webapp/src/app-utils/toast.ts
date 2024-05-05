@@ -18,7 +18,7 @@ export function closeToast(id: number) {
     toasts.value = toasts.value.filter(t => t.id !== id);
 }
 
-export type MessageType = 'info' | 'error' | 'success';
+export type MessageType = 'info' | 'error' | 'success'| 'warning';
 export type ToastPosition = 'center' | 'right';
 
 export interface Toast {

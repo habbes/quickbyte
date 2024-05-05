@@ -1,14 +1,17 @@
 import { Collection } from "mongodb";
-import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
-import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError } from "../error.js";
-import { EmailHandler, EventDispatcher, ITransactionService, ITransferService, LinkGenerator, createMediaCommentNotificationEmail } from "./index.js";
-import { CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs } from '@quickbyte/common';
+import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs, ProjectItemType } from "../models.js";
+import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createAuthError, createPermissionError } from "../error.js";
+import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail, getDownloadableFiles, getUserByEmail, getUserByEmailOrCreateGuest, tryGetUserByEmail } from "./index.js";
+import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs, GetProjectShareMediaByIdArgs, User, GetAllProjectShareFilesForDownloadArgs, ConcurrentTaskQueue, DownloadTransferFileResult, TaskTracker, GetAllProjectShareFilesForDownloadResult } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
-import { IMediaService  } from "./media-service.js";
+import { getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, getProjectShareMediaFilesAndComments, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
-import { IFolderService } from "./folder-service.js";
+import { getFoldersByParent, getMultipleProjectFoldersByIds, getProjectFolderById, getProjectFolderWithPath, IFolderService } from "./folder-service.js";
+import { wrapError } from "../utils.js";
+import { getProjectShareByCode, IProjectShareService } from "./project-share-service.js";
+import { createMediaComment, deleteMediaComment, updateMediaComment } from "./comment-service.js";
 
 export interface ProjectServiceConfig {
     transactions: ITransactionService;
@@ -20,6 +23,7 @@ export interface ProjectServiceConfig {
     links: LinkGenerator,
     email: EmailHandler,
     eventBus: EventDispatcher,
+    projectShares: IProjectShareService
 }
 
 export class ProjectService {
@@ -386,7 +390,7 @@ export class ProjectService {
             // them from editing a comment they created when they're not longer part of the project.
             const project = await this.getByIdInternal(projectId);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer'])
-            const result = await this.config.media.updateMediaComment(projectId, mediaId, commentId, args);
+            const result = await this.config.media.updateMediaComment(args);
             return result;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -501,11 +505,50 @@ export class ProjectService {
         }
     }
 
+    createProjectShare(args: CreateProjectShareArgs): Promise<ProjectShare> {
+        return wrapError(async () => {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'owner']);
+
+            const share = await this.config.projectShares.createProjectShare(args);
+            return share;
+        })
+    }
+
+    getProjectShares(projectId: string): Promise<WithCreator<ProjectShare>[]> {
+        return wrapError(async () => {
+            const project = await this.getByIdInternal(projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'owner']);
+
+            const shares = await this.config.projectShares.listByProject(projectId);
+            return shares;
+        })
+    }
+
+    updateProjectShare(args: UpdateProjectShareArgs): Promise<ProjectShare> {
+        return wrapError(async () => {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'owner']);
+
+            const share = await this.config.projectShares.updateProjectShare(args);
+            return share;
+        });
+    }
+
+    deleteProjectShare(args: DeleteProjectShareArgs): Promise<void> {
+        return wrapError(async () => {
+            const project = await this.getByIdInternal(args.projectId);
+            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['admin', 'owner']);
+
+            await this.config.projectShares.deleteProjectShare(args);
+        });
+    }
+
     private async getByIdInternal(id: string): Promise<Project> {
         try {
             const project = await this.collection.findOne({ _id: id });
             if (!project) {
-                throw createResourceNotFoundError();
+                throw createNotFoundError('project');
             }
 
             return project;
@@ -610,4 +653,430 @@ export interface InviteUserArgs {
     users: { email: string }[];
     message?: string;
     role: RoleType;
+}
+
+export interface PublicProjectServiceConfig {
+    packagers: IPlaybackPackagerProvider;
+    storageHandlers: IStorageHandlerProvider;
+}
+
+export class PublicProjectService {
+    constructor(private db: Database, private config: PublicProjectServiceConfig) {
+    }
+
+    getProjectShareItems(args: GetProjectShareLinkItemsArgs): Promise<GetProjectShareLinkItemsResult> {
+        return wrapError(async () => {
+            const projectShareResult = await getProjectShareByCode(this.db, args);
+            if ('passwordRequired' in projectShareResult) {
+                return projectShareResult;
+            }
+
+            const share = projectShareResult;
+            const project = await this.db.projects().findOne({ _id: share.projectId });
+            if (!project) {
+                throw createNotFoundError('project');
+            }
+            
+            // get project media
+            // should we fetch all the files at once, include download and play links (could be a long request),
+            // -- pros: get all data in single request, simplifies client-side playback, navigation and download
+            // -- cons: request can take long time if shared items are many or deeply nested, request can take
+            // or fetch the files lazily expecting subsequent API calls to play or download the files?
+            // -- pros: requests will be relatively quick and scalable for most scenarios
+            // -- cons: navigation, playback and download will require follow up API calls, how will "Download all" be implemented
+            // -- cons: more endpoints to be implemented backend
+
+            if (share.allItems) {
+                // TODO: support this feature
+                throw createAppError("Fetching all project items is currently not supported");
+            }
+
+            
+            let resultPath: FolderPathEntry[] = [];
+            
+            
+            let media: MediaWithFileAndComments[] = [];
+            let folders: Folder[] = [];
+            if (!args.folderId) {
+                // if no folder is specified, get all items directly shared from the share
+                const sharedFolders = share.items?.filter(i => i.type === 'folder')!;
+                media = await getProjectShareMedia(this.db, this.config.storageHandlers, this.config.packagers, share);
+                folders = await getMultipleProjectFoldersByIds(this.db, share.projectId, sharedFolders.map(i => i._id));
+            }
+            else {
+                // if folder is specified, we have to check if the folder is among the shared folders
+                // or a subfolder of a shared folder
+                const folder = await this.getSharedFolderOrSubFolder(args.folderId, share);
+                media = await getProjectShareMedia(this.db, this.config.storageHandlers, this.config.packagers, share, folder._id);
+                folders = await getFoldersByParent(this.db, share.projectId, folder._id);
+                resultPath = folder.path;
+            }
+
+            const items: ProjectShareItem[] = [
+                ...folders.map<ProjectShareItem>(f => ({
+                    _id: f._id,
+                    name: f.name,
+                    type: 'folder',
+                    _createdAt: f._createdAt,
+                    _updatedAt: f._updatedAt,
+                    item: f
+                })),
+                ...media.map<ProjectShareItem>(m => ({
+                    _id: m._id,
+                    name: m.name,
+                    type: 'media',
+                    _createdAt: m._createdAt,
+                    _updatedAt: m._updatedAt,
+                    item: m
+                })),
+            ];
+
+            return {
+                _id: share._id,
+                name: share.name,
+                sharedEmail: share.sharedEmail,
+                allowDownload: !!share.allowDownload,
+                allowComments: !!share.allowComments,
+                showAllVersions: !!share.showAllVersions,
+                path: resultPath,
+                items: items,
+                sharedBy: share.creator
+            }
+        });
+    }
+
+    getProjectShareMediaById(args: GetProjectShareMediaByIdArgs): Promise<MediaWithFileAndComments> {
+        return wrapError(async () => {
+            const share = await this.getAndValidateProjectShare({
+                shareId: args.shareId,
+                shareCode: args.shareCode,
+                password: args.password
+            });
+
+            const user = share.sharedEmail ? await tryGetUserByEmail(this.db, share.sharedEmail) : undefined;
+
+            const plainMedia = await this.getProjectShareMediaByIdInternal(share, args.mediaId);
+            const media = await getProjectShareMediaFilesAndComments({
+                db: this.db,
+                storageProviders: this.config.storageHandlers,
+                packagers: this.config.packagers,
+                share,
+                medium: plainMedia,
+                user: user,
+                playable: true
+            });
+
+            return media
+        });
+    }
+
+    createProjectShareMediaComment(args: CreateProjectShareMediaCommentArgs): Promise<CommentWithAuthor> {
+        return wrapError(async () => {
+            const share = await this.getAndValidateProjectShareForComments(args);
+
+            // find media if it's shared or in a shared folder
+            const media = await this.getProjectShareMediaByIdInternal(share, args.mediaId);
+
+            // find user by email
+            const user = await getUserByEmailOrCreateGuest(this.db, {
+                email: share.sharedEmail!,
+                name: args.authorName || share.sharedEmail!.split('@')[0],
+                invitedBy: share._createdBy
+            });
+
+            const comment = await createMediaComment(
+                this.db,
+                media,
+                {
+                    mediaId: args.mediaId,
+                    projectId: share.projectId,
+                    mediaVersionId: args.mediaVersionId,
+                    text: args.text,
+                    timestamp: args.timestamp,
+                    parentId: args.parentId
+                },
+                user
+            );
+
+            return comment;
+        });
+    }
+
+    deleteProjectShareMediaComment(args: DeleteProjectShareMediaCommentArgs): Promise<void> {
+        return wrapError(async () => {
+            const share = await this.getAndValidateProjectShareForComments(args);
+
+            // find media if it's shared or in a shared folder
+            const media = await this.getProjectShareMediaByIdInternal(share, args.mediaId);
+
+            // find user by email
+            const user = await getUserByEmail(this.db, share.sharedEmail!);
+            await deleteMediaComment(
+                this.db, {
+                    mediaId: media._id,
+                    projectId: share.projectId,
+                    commentId: args.commentId,
+                    isOwnerOrAdmin: false, // user should only be able to delete comment if they created it
+                    user: user
+                }
+            );
+        });
+    }
+
+    updateProjectShareMediaComment(args: UpdateProjectShareMediaCommentArgs): Promise<Comment> {
+        return wrapError(async () => {
+            const share = await this.getAndValidateProjectShareForComments(args);
+            // find media if it's shared or in a shared folder
+            const media = await this.getProjectShareMediaByIdInternal(share, args.mediaId);
+
+            const user = await getUserByEmail(this.db, share.sharedEmail!);
+            const comment = await updateMediaComment(
+                this.db, {
+                    commentId: args.commentId,
+                    mediaId: media._id,
+                    text: args.text,
+                    projectId: share.projectId
+                },
+                user
+            );
+
+            return comment;
+        });
+    }
+
+    getAllProjectShareFilesForDownload(args: GetAllProjectShareFilesForDownloadArgs): Promise<GetAllProjectShareFilesForDownloadResult> {
+        return wrapError(async () => {
+            const share = await this.getAndValidateProjectShare({
+                shareId: args.shareId,
+                shareCode: args.shareCode,
+                password: args.password
+            });
+
+            if (!share.allowDownload) {
+                throw createPermissionError('This link does not allow downloads.');
+            }
+
+            if (!share.items || !share.items.length) {
+                // TODO: support for "share.allItems"
+                throw createAppError("Downloading all project items is currently not supported");
+            }
+
+            const downloadProcessor = new GetProjectShareAllDownloadFilesRetriever(
+                share,
+                this.db,
+                this.config.storageHandlers
+            );
+
+            const result = await downloadProcessor.run();
+
+            return result;
+        });
+    }
+
+    private async getAndValidateProjectShare(args: {
+        shareId: string;
+        shareCode: string;
+        password?: string;
+    }) {
+        const share = await getProjectShareByCode(this.db, {
+            code: args.shareCode,
+            shareId: args.shareId,
+            password: args.password
+        });
+
+        if ('passwordRequired' in share) {
+            throw createAuthError('Password required');
+        }
+
+        return share;
+    }
+
+    private async getAndValidateProjectShareForComments(args: {
+        shareId: string;
+        shareCode: string;
+        password?: string;
+    }) {
+        const share = await this.getAndValidateProjectShare(args);
+
+        if (!share.sharedEmail) {
+            throw createAuthError("Not authorized to post a comment");
+        }
+
+        if (!share.allowComments) {
+            throw createPermissionError("Comments are not allowed.");
+        }
+
+        return share;
+    }
+
+    private getProjectShareMediaByIdInternal(share: ProjectShare, mediaId: string) {
+        return wrapError(async () => {
+            const media = await getPlainMediaById(this.db, share.projectId, mediaId);
+            // verify that share has access to this media
+            if (!share.items?.find(i => i.type === 'media' && i._id === media._id)) {
+                // media not directly shared, let's see if the media is inside
+                // a shared folder or a subfolder of a shared folder
+                const folderId = media.folderId;
+                if (!folderId) {
+                    throw createNotFoundError('media');
+                }
+
+                // this will throw an error if the folder is not on a shared path
+                await this.getSharedFolderOrSubFolder(folderId, share);
+            }
+
+            return media;
+        });
+    }
+
+    private async getSharedFolderOrSubFolder(folderId: string, share: ProjectShare): Promise<FolderWithPath> {
+        if (!share.items || !share.items.length) {
+            throw createAppError("Retrieving shared folder is currently only supported when share items are explicitly specified");
+        }
+
+        const sharedFolderRef = share.items.find(f => f._id === folderId);
+        if (sharedFolderRef) {
+            // The folder is directly share, return it and treat it like a root
+            const folder = await getProjectFolderById(this.db, share.projectId, folderId);
+            return {
+                ...folder,
+                path: [
+                    {
+                        _id: folder._id,
+                        name: folder.name
+                    }
+                ]
+            };
+        }
+
+        // folder is not directly shared, check if it's a subfolder of any shared folder
+        const folder = await getProjectFolderWithPath(this.db, share.projectId, folderId);
+        const rootIndex = folder.path.findIndex(parent => share.items!.some(shared => shared._id === parent._id));
+        if (rootIndex === -1) {
+            // The folder is not shared
+            console.warn(`Attempt to access non-shared folder ${folderId} from project share ${share._id}`);
+            throw createNotFoundError('folder');
+        }
+
+        // folder is a subfolder of a shared folder
+        // trim the path to exclude ancestors of the directly shared folder
+        // to avoid exposing information about unshared folders
+        // path is sorted from root to leaf
+        folder.path.splice(0, rootIndex);
+        return folder;
+    }
+}
+
+export type ISharedProjectsService = PublicProjectService;
+
+
+class GetProjectShareAllDownloadFilesRetriever {
+    private readonly files: DownloadTransferFileResult[] = [];
+    private readonly taskQueue: ConcurrentTaskQueue;
+    private readonly tracker: TaskTracker;
+    private readonly errors: { path: string, error: string }[] = []
+
+    constructor(private share: ProjectShare, private db: Database, private storageHandlers: IStorageHandlerProvider) {
+        this.tracker = new TaskTracker(console);
+        this.taskQueue = new ConcurrentTaskQueue(10, error => console.error(`Error in task queue`, error));
+        
+    }
+
+    async run(): Promise<{ files: DownloadTransferFileResult[], errors?: { path: string, error: string }[] }> {
+        if (!this.share.items || !this.share.items.length) {
+             // TODO: support for "share.allItems"
+             throw createAppError("Downloading all project items is currently not supported");
+        }
+
+        const path = "";
+
+        const mediaIds = this.share.items.filter(i => i.type === 'media').map(i => i._id);
+        const folderIds = this.share.items.filter(i => i.type === 'folder').map(i => i._id);
+        const [folders, media] = await Promise.all([
+            getMultipleProjectFoldersByIds(this.db, this.share.projectId, folderIds),
+            getMultipleMediaByIds(this.db, this.share.projectId, mediaIds)
+        ]);
+
+        // the tracker helps know when we have finishing queing all tasks
+        for (const folder of folders) {
+            this.tracker.startTask();
+            this.taskQueue.addTask(async () => {
+                await this.processDownloadFilesForFolder(path, folder);
+                this.tracker.completeTask();
+            });
+        }
+
+        this.tracker.startTask();
+        this.taskQueue.addTask(async () => {
+            await this.processDownloadFilesForMedia(path, media);
+            this.tracker.completeTask();
+        });
+
+        // here we signal that we have finished queing all tasks
+        this.tracker.signalNoMoreTasks();
+        await this.tracker.waitForTasksToComplete();
+        // TODO: taskQueue.signalNoMoreTasks() seems to have a bug
+        // this.taskQueue.signalNoMoreTasks();
+        // await this.taskQueue.waitForAllTasksToComplete();
+
+        const result = this.errors.length ?
+            { files: this.files, errors: this.errors } :
+            { files: this.files };
+        
+        return result;
+    }
+
+    async processDownloadFilesForMedia(path: string, media: Media[]) {
+        try {
+            const fileIds = media.map(m => m.versions.find(v => v._id === m.preferredVersionId)!.fileId);
+            const downloadableFiles = await getDownloadableFiles(fileIds, this.db, this.storageHandlers);
+
+            // rename each file based on the media and file
+            for (const file of downloadableFiles) {
+                const mediaOfFile = media.find(m => m.versions.find(v => v._id == m.preferredVersionId)!.fileId === file._id);
+                if (!mediaOfFile) {
+                    throw createInvalidAppStateError(`Expected to find media backed by file ${file._id} but was not found.`);
+                }
+
+                // we send back flat files and use the path names to reconstruct the folder hierarchy
+                file.name = path ? `${path}/${mediaOfFile.name}` : mediaOfFile.name;
+                this.files.push(file);
+            }
+        } catch (e: any) {
+            this.errors.push({
+                path: path,
+                error: e.message
+            });
+        }
+    }
+
+    async processDownloadFilesForFolder(path: string, folder: Folder) {
+        try {
+            const [subFolders, media] =  await Promise.all([
+                getFoldersByParent(this.db, this.share.projectId, folder._id),
+                getProjectMediaByFolder(this.db, this.share.projectId, folder._id)
+            ]);
+
+            const newPath = path ? `${path}/${folder.name}` : folder.name;
+
+            for (const subfolder of subFolders) {
+                this.tracker.startTask();
+                this.taskQueue.addTask(async () => {
+                    await this.processDownloadFilesForFolder(newPath, subfolder);
+                    this.tracker.completeTask();
+                });
+            }
+
+            this.tracker.startTask();
+            this.taskQueue.addTask(async () => {
+                await this.processDownloadFilesForMedia(newPath, media);
+                this.tracker.completeTask();
+            });
+        } catch (e: any) {
+            this.errors.push({
+                path: `${path}/${folder.name}`,
+                error: e.message
+            });
+        }
+    }
 }

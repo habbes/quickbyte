@@ -196,6 +196,59 @@ export interface DownloadRequest extends PersistedModel {
     filesRequested?: string[];
 }
 
+export interface ProjectShare extends PersistedModel {
+    name: string;
+    /**
+     * Project files can be shared through a public are sent via email
+     * to invite users. When sent via email, a unique code is generated
+     * for each recipient, this allows us to track which user opened the link.
+     * Technically, the email recipient can still share their own link with others,
+     * which will fool the system. But we should discourage recipients from doing that.
+     */
+    sharedWith: ProjectShareTarget[];
+    projectId: string;
+    enabled: boolean;
+    /**
+     * When set to true, users will be able to access the shared items based
+     * on the public code. Otherwise, the public code will not be considered valid.
+     */
+    public: boolean;
+    hasPassword: boolean;
+    password?: string;
+    expiresAt?: Date;
+    allowDownload?: boolean;
+    allowComments?: boolean;
+    /**
+     * When true, different versions of the media will be accessible,
+     * otherwise only the preferred version will be accessible.
+     */
+    showAllVersions?: boolean;
+    /**
+     * When true, all items in the project are accessible, otherwise
+     * only the items in the items array are accessible
+     */
+    allItems?: boolean;
+    items?: ProjectShareItemRef[];
+}
+
+export type ProjectShareTarget = ProjectSharePublicCode | ProjectShareInviteCode;
+
+export interface ProjectSharePublicCode {
+    type: 'public';
+    code: string;
+}
+
+export interface ProjectShareInviteCode {
+    type: 'invite',
+    code: string;
+    email: string;
+}
+
+export interface ProjectShareItemRef {
+    type: ProjectItemType,
+    _id: string;
+}
+
 export interface PlaybackPackagingResult {
     providerId: string;
     status: PlaybackPackagingStatus;
@@ -290,6 +343,7 @@ export interface Media extends PersistedModel, Deleteable, ParentDeleteable {
 }
 
 export type ProjectItem = ProjectFolderItem | ProjectMediaItem;
+export type ProjectShareItem = ProjectFolderItem | ProjectShareMediaItem;
 
 export interface BaseProjectItem {
     _id: string;
@@ -306,6 +360,11 @@ export interface ProjectFolderItem extends BaseProjectItem {
 export interface ProjectMediaItem extends BaseProjectItem {
     type: "media";
     item: Media
+}
+
+export interface ProjectShareMediaItem extends BaseProjectItem {
+    type: "media",
+    item: MediaWithFileAndComments
 }
 
 export type ProjectItemType = "folder"|"media";
@@ -492,3 +551,10 @@ export interface PlaybackUrls {
     thumbnailUrl?: string;
     posterUrl?: string;
 }
+
+export type WithCreator<T> = T & {
+    creator: {
+        _id: string;
+        name: string;
+    }
+};

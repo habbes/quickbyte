@@ -14,11 +14,15 @@ import ProjectsView from '@/views/ProjectsView.vue';
 import ProjectView from '@/views/ProjectView.vue';
 import ProjectMediaView from '@/views/ProjectMediaView.vue';
 import ProjectMembersView from '@/views/ProjectMembersView.vue';
+import ProjectReviewLinksView from '@/views/ProjectReviewLinksView.vue';
 import ProjectSettingsView from '@/views/project-settings/ProjectSettingsView.vue';
 import InviteView from '@/views/InviteView.vue';
 import LoginView from '@/views/auth/LoginView.vue';
 import SignupView from '@/views/auth/SignupView.vue';
 import PasswordResetView from '@/views/auth/PasswordResetView.vue';
+import ProjectShareView from '@/views/ProjectShareView.vue';
+import ProjectShareListView from "@/views/ProjectShareListView.vue";
+import ProjectSharePlayerView from '@/views/ProjectSharePlayerView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -79,6 +83,11 @@ const router = createRouter({
                   component: ProjectMembersView
                 },
                 {
+                  path: 'shared-links',
+                  name: 'project-shared-links',
+                  component: ProjectReviewLinksView
+                },
+                {
                   path: 'settings',
                   name: 'project-settings',
                   component: ProjectSettingsView
@@ -130,6 +139,22 @@ const router = createRouter({
       path: '/i/:inviteId',
       name: 'invite',
       component: InviteView
+    },
+    {
+      path: '/share/:shareId/:code',
+      component: ProjectShareView,
+      children: [
+        {
+          path: ':folderId?',
+          name: 'project-share',
+          component: ProjectShareListView
+        },
+        {
+          path: 'player/:mediaId',
+          name: 'project-share-player',
+          component: ProjectSharePlayerView
+        }
+      ]
     }
   ]
 })

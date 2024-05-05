@@ -82,6 +82,7 @@ class Worker {
         this.status = 'working';
         while (!this.terminationRequested) {
             const task = this.queue.dequeue();
+            
             if (task) {
                 try {
                     await task();

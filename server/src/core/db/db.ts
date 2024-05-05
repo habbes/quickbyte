@@ -1,5 +1,5 @@
 import { Db, Filter, MongoClient } from 'mongodb';
-import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder, Deleteable, ParentDeleteable, Principal, PersistedModel } from '../models.js';
+import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder, Deleteable, ParentDeleteable, Principal, PersistedModel, ProjectShare } from '../models.js';
 import { Media } from '../models.js';
 
 export class Database {
@@ -35,6 +35,8 @@ export class Database {
     media = () => this.db.collection<Media>("media");
 
     folders = () => this.db.collection<Folder>("folders");
+
+    projectShares = () => this.db.collection<DbProjectShare>("project_shares");
 
     async initialize() {
         await this.users().createIndex('email', { unique: true });
@@ -72,6 +74,10 @@ export type DbAccount = Omit<Account, 'name'>;
 // the invite
 export type DbUserInvite = UserInvite & { secret: string };
 
+export interface DbProjectShare extends ProjectShare {
+    password?: string;
+}
+
 export function createFilterForDeleteableResource<T extends Deleteable | ParentDeleteable>(filter: Filter<T>): Filter<T> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } };
 }
@@ -91,4 +97,10 @@ export function deleteNowBy(principal: string | Principal): Deleteable {
         deletedAt: new Date(),
         deletedBy
     };
+}
+
+export function getSafeProjectShare<T extends DbProjectShare>(dbShare: T): Omit<T, 'password'> {
+    const share = { ...dbShare };
+    delete share.password;
+    return share;
 }

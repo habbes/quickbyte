@@ -8,6 +8,7 @@
     @update="$emit('update', { type: 'media', item: $event })"
     @delete="$emit('delete', { type: 'media', itemId: $event })"
     @move="$emit('move', { type: 'media', itemId: item._id })"
+    @share="$emit('share', { type: 'media', itemId: item._id })"
     @toggleSelect="$emit('toggleSelect', { type: 'media', itemId: item._id })"
     @toggleInMultiSelect="$emit('toggleInMultiSelect', { type: 'media', itemId: item._id })"
     @selectAll="$emit('selectAll')"
@@ -22,6 +23,7 @@
     @update="$emit('update', { type: 'folder', item: $event })"
     @delete="$emit('delete', { type: 'folder', itemId: $event })"
     @move="$emit('move', { type: 'folder', itemId: item._id })"
+    @share="$emit('share', { type: 'folder', itemId: item._id })"
     @toggleSelect="$emit('toggleSelect', { type: 'folder', itemId: item._id })"
     @toggleInMultiSelect="$emit('toggleInMultiSelect', { type: 'folder', itemId: item._id })"
     @selectAll="$emit('selectAll')"
@@ -57,6 +59,7 @@ defineEmits<{
   (e: 'update', args: UpdatedItemEvent): unknown;
   (e: 'delete', args: ItemDescriptor): unknown;
   (e: 'move', args: ItemDescriptor): unknown;
+  (e: 'share', args: ItemDescriptor): unknown;
   (e: 'toggleSelect', args: ItemDescriptor): unknown;
   (e: 'toggleInMultiSelect', args: ItemDescriptor): unknown;
   (e: 'selectAll'): unknown;

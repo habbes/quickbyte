@@ -1,9 +1,10 @@
-import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, LinkGenerator, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging } from "./services/index.js";
+import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging, createProjectSharedForReviewNotificationEmail, ProjectShareInviteEvent, findProjectShares, IAlertService } from "./services/index.js";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, rethrowIfAppError } from "./error.js";
 import { Database, getProjectMembersById } from "./db/index.js";
 import { Media, Project, User } from "./models.js";
 import { BackgroundWorker } from "./background-worker.js";
-import { wrapError } from "./utils.js";
+import { ensureSingleOrEmpty, wrapError } from "./utils.js";
+import { LinkGenerator } from '@quickbyte/common';
 
 export class GlobalEventHandler {
     constructor(private config: GlobalEventHandlerConfig) {}
@@ -13,6 +14,7 @@ export class GlobalEventHandler {
         eventBus.on('folderDeleted', (event) => this.handleFolderDeleted(event));
         eventBus.on('projectMemberRemoved', (event) => this.handleProjectMemberRemoved(event));
         eventBus.on('filePlaybackPackagingUpdated', (event) => this.handleFilePlaybackPackagingUpdated(event));
+        eventBus.on('projectShareInvite', (event) => this.handleProjectInviteEvent(event))
     }
 
     private async handleProjectMemberRemoved(event: Event): Promise<void> {
@@ -210,6 +212,61 @@ export class GlobalEventHandler {
         });
     }
 
+    private handleProjectInviteEvent(event: Event): Promise<void> {
+        return wrapError(async () => {
+            const data = this.getEventData<ProjectShareInviteEvent>("projectShareInvite", event);
+            console.log(`Handling projectShareInviteEvent for share '${data.projectShareId}'`);
+
+            const share = ensureSingleOrEmpty(await findProjectShares(this.config.db, data.projectId, { _id: data.projectShareId }));
+            if (!share) {
+                // the project share may have already been deleted;
+                console.log(`Could not find project share '${data.projectShareId}' in project '${data.projectId}'`);
+                return;
+            }
+
+            let numRecipients = 0;
+            for (const recipient of share.sharedWith) {
+                if (recipient.type !== 'invite') {
+                    // this check is to appease the compiler
+                    // since some versions are not able to infer from the filter
+                    // predicate
+                    continue;
+                }
+
+                if (!data.recipients.find(r => r.email === recipient.email)) {
+                    // the share might have additional invitees who may have already
+                    // received the invite in the past
+                    continue;
+                }
+
+                
+                this.config.backgroundWorker.queueJob(async () => {
+                    await this.config.email.sendEmail({
+                        to: { email: recipient.email },
+                        subject: `${share.creator.name} has shared with you files for review`,
+                        message: createProjectSharedForReviewNotificationEmail({
+                            senderName: share.creator.name,
+                            shareName: share.name,
+                            shareLink: this.config.links.getProjectShareLink(share._id, recipient.code),
+                            hasPassword: share.hasPassword
+                        })
+                    })
+                });
+
+                numRecipients++;
+            }
+
+            if (numRecipients !== data.recipients.length) {
+                const warningMessage = `Expected to send ${data.recipients.length} invite emails for project share ${data.projectShareId} of project ${data.projectId} but actually sent ${numRecipients}`;
+                console.warn(
+                    warningMessage
+                );
+                
+                this.config.adminAlerts.sendNotification('Unexpected number of project share invite emails sent', warningMessage );
+            }
+        });
+    }
+
     private getEventData<TEvent extends Event>(expectedType: TEvent['type'], event: Event): TEvent['data'] {
         const actualType = getEventType(event);
         if (expectedType !== actualType) {
@@ -226,6 +283,7 @@ export interface GlobalEventHandlerConfig {
     links: LinkGenerator;
     backgroundWorker: BackgroundWorker;
     playbackPackagers: IPlaybackPackagerProvider;
+    adminAlerts: IAlertService;
 }
 
 async function queueDeletedFolderCleanupTask(parentFolderIds: string[], projectId: string, worker: BackgroundWorker, db: Database) {
