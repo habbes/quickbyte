@@ -207,6 +207,12 @@ export const UpdateProjectArgs = z.object({
 
 export type UpdateProjectArgs = z.infer<typeof UpdateProjectArgs>;
 
+export const DeleteProjectArgs = z.object({
+    id: z.string().min(1)
+});
+
+export type DeleteProjectArgs = z.infer<typeof DeleteProjectArgs>;
+
 export const ChangeProjectMemberRoleArgs = z.object({
     projectId: z.string().min(1),
     userId: z.string().min(1),
