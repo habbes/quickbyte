@@ -311,7 +311,7 @@ export interface Plan {
 
 export type PlanRenewalRate = 'monthly'|'annual';
 
-export interface Project extends PersistedModel {
+export interface Project extends PersistedModel, Deleteable {
     name: string;
     description: string;
     accountId: string;
