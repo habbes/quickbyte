@@ -40,7 +40,7 @@ async function sendComment(args: {
   parentId?: string;
 }) {
   if (!media.value || !share.value || !code.value) {
-    return;
+    throw new Error('Media has not loaded.');
   }
 
   if (!share.value.sharedEmail) {
@@ -62,12 +62,12 @@ async function sendComment(args: {
     authorName: name || share.value.sharedEmail.split('@')[0]
   });
 
-  return comment;
+  return { ...comment, children: [] };
 }
 
 async function editComment(args: { commentId: string, text: string }) {
   if (!media.value || !share.value || !code.value) {
-    return;
+    throw new Error('Media has not loaded.');
   }
 
   const comment = await trpcClient.updateProjectShareMediaComment.mutate({

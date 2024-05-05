@@ -181,7 +181,7 @@ import {
   UiDialog, UiLayout, UiTextInput, UiButton, UiCheckbox, UiDateTimeInput
 } from "@/components/ui";
 import { isEmail } from "@quickbyte/common";
-import type { ProjectShareItemRef, ProjectShare } from "@quickbyte/common";
+import type { ProjectShareItemRef, ProjectShare, ProjectShareInviteCode } from "@quickbyte/common";
 import { wrapError, linkGenerator } from "@/app-utils";
 import { useClipboard } from "@vueuse/core";
 import type { ProjectShareActionArgs } from './project-share-args.js';
@@ -217,9 +217,20 @@ const recipients = computed(() => {
   return trimmed.split(/[,;\s]/g).filter(email => email).map(email => ({ email: email }));
 });
 
-const initialRecipients = computed(() =>
+const initialRecipients = computed<ProjectShareInviteCode[]>(() =>
   props.initialShare?
-    props.initialShare.sharedWith.filter(s => s.type === 'invite')
+    props.initialShare.sharedWith
+    .filter(s => s.type === 'invite')
+    .map(s => {
+      if (s.type !== 'invite') {
+        // We don't expect this error to ever occur due to the filter already removing irrelevant types.
+        // We do this so that compiler can also see that all returned objects are guaranteed
+        // to have type === invite
+        throw new Error(`Expected share target recipient with type invite but got '${s.type}'`);
+      }
+
+      return s;
+    })
     : []);
 
 

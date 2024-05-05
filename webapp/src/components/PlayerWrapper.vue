@@ -118,7 +118,7 @@
 import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { logger, showToast } from "@/app-utils";
-import type { RoleType, MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
+import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
@@ -157,7 +157,7 @@ const props = defineProps<{
   editComment?: (args: {
     commentId: string;
     text: string;
-  }) => Promise<WithChildren<CommentWithAuthor>>;
+  }) => Promise<Comment>;
   deleteComment?: (args: {
     commentId: string
   }) => Promise<unknown>;

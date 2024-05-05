@@ -438,7 +438,7 @@ async function sendCommentReply(text: string, parentId: string) {
   }
 }
 
-async function deleteComment(commentId: string) {
+async function deleteComment({ commentId } : { commentId: string }) {
   if (!media.value) return;
   await trpcClient.deleteMediaComment.mutate({
     projectId: media.value.projectId,

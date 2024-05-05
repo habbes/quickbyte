@@ -229,6 +229,7 @@ async function toggleShareEnabled(share: WithCreator<ProjectShare>) {
 
 async function requestDeleteShare(share: WithCreator<ProjectShare>) {
   selectedShare.value = share;
+  // @ts-ignore not sure why .open() method caused a compiler error here
   nextTick(() => deleteDialog.value?.open());
 }
 
