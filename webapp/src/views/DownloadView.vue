@@ -24,7 +24,7 @@
           class="text-xs"
           v-if="totalSize && totalSize >= MIN_SIZE_FOR_ZIP64_TIP"
         >
-          Support for ZIP files larger than 4GB maybe limited on some platforms.
+          Support for ZIP files larger than 4GB may be limited on some platforms.
           Consider using a tool like <a class="font-bold link" href="https://www.7-zip.org/" target="_blank">7Zip</a> if you run into issues.
         </span>
       </div>
@@ -110,18 +110,17 @@
 import { computed, onMounted, onUnmounted, ref } from "vue"
 import { useRoute } from "vue-router"
 import { apiClient, downloaderProvider, logger, windowUnloadManager, getDeviceData, store } from "@/app-utils";
-import { humanizeSize, ApiError, type DownloadRequestResult, ensure, isOperationCancelledError, isNetworkError, retryOnError } from "@/core";
+import {
+  humanizeSize, ApiError, type DownloadRequestResult, ensure, isOperationCancelledError, isNetworkError, retryOnError,
+  MIN_SIZE_FOR_DOWNLOAD_WARNING,
+  MIN_SIZE_FOR_ZIP64_TIP
+} from "@/core";
 import { ArrowDownTrayIcon } from "@heroicons/vue/24/solid";
 import FileListItem from '@/components/FileListItem.vue';
 import AppShell from '@/components/AppShell.vue'
 
 type DownloadState = 'pending' | 'complete' | 'inProgress';
 
-// When transfers are larger than this size,
-// a warning will be displayed on browers which
-// don't support optimial download experience
-const MIN_SIZE_FOR_DOWNLOAD_WARNING = 1 * 1024 * 1024 * 1024; // 1GB
-const MIN_SIZE_FOR_ZIP64_TIP = 4 * 1024 * 1024 * 1024; //4GB
 const route = useRoute();
 route.params.downloadId;
 const error = ref<Error|undefined>();

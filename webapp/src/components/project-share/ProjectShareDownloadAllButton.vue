@@ -3,29 +3,90 @@
     <span>Download all</span>
     <ArrowDownTrayIcon class="h-4 w-4"/>
   </UiLayout>
-  <UiLayout v-else-if="status === 'preparing'">
-    Preparing files for download...
+  <UiLayout v-else>
+    <UiBottomSheetPopoverMenu right>
+      <template #trigger>
+        <UiLayout>
+          <UiLayout v-if="status === 'preparing'">
+            Preparing files...
+          </UiLayout>
+          <UiLayout v-else-if="status === 'downloading'">
+            <div>
+              Downloading {{ Math.floor(downloadProgress) }}%
+            </div>
+          </UiLayout>
+          <UiLayout v-else-if="status === 'done'">
+            <div>
+              Download complete.
+            </div>
+          </UiLayout>
+        </UiLayout>
+      </template>
+      <UiLayout innerSpace>
+        <UiLayout v-if="status === 'downloading'" gapSm>
+          <UiLayout horizontal itemsCenter justifyCenter>
+            <div class="text-gray-700 text-center font-bold">
+              {{ zipFileName }}
+            </div>
+          </UiLayout>
+          <UiLayout horizontal itemsCenter justifyCenter>
+            <UiRadialProgress :progressPercentage="downloadProgress" />
+          </UiLayout>
+          <UiLayout itemsCenter>
+            <div class="text-gray-400">
+              {{ files.length }} files
+            </div>
+            <div class="text-gray-400">
+              {{ humanizeSize(downloadedSize) }} / {{  humanizeSize(totalSize || 0) }}
+            </div>
+          </UiLayout>
+          <UiLayout>
+            <div class="text-xs text-center">
+              Closing or reloading the browser page will cancel the download.
+            </div>
+          </UiLayout>
+          <UiLayout v-if="!optimalDownloaderSupported && totalSize >= MIN_SIZE_FOR_DOWNLOAD_WARNING">
+            <div class="text-xs text-center">
+              This browser does not support an optimal download experience.
+              Consider using Microsoft Edge or Google Chrome
+              if you're downloading large files.
+            </div>
+          </UiLayout>
+        </UiLayout>
+        <UiLayout v-if="status === 'done'" :gap="4">
+          <UiLayout horizontal itemsCenter justifyCenter>
+            <div class="text-gray-700 font-bold">
+              Download complete!
+            </div>
+          </UiLayout>
+          <UiLayout itemsCenter>
+            <div class="text-xs text-center">
+              <span>Look for </span>
+              <span class="font-bold text-gray-700">{{ zipFileName }}</span>
+              <span> on your device.</span>
+            </div>
+          </UiLayout>
+          <UiLayout v-if="totalSize >= MIN_SIZE_FOR_ZIP64_TIP" itemsCenter>
+            <div class="text-xs text-center">
+              Support for ZIP files larger than 4GB may be limited on some platforms.
+              Consider using a tool like <a class="font-bold link" href="https://www.7-zip.org/" target="_blank">7Zip</a> if you run into issues.
+            </div>
+          </UiLayout>
+          <UiLayout itemsCenter>
+            <UiButton primary @click="status = 'pending'">Done</UiButton>
+          </UiLayout>
+        </UiLayout>
+      </UiLayout>
+    </UiBottomSheetPopoverMenu>
   </UiLayout>
-  <UiLayout v-else-if="status === 'downloading'">
-    <div>
-      Download in progess. Please don't close or reload the browser tab.
-    </div>
-    <div>
-      {{ downloadProgress }}
-    </div>
-  </UiLayout>
-  <UiLayout v-else-if="status === 'done'" @click="status = 'pending'">
-    <div>
-      Download complete. Look for {{ zipFileName }} on your device.
-    </div>
-  </UiLayout>
+    
 </template>
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import { UiLayout } from "@/components/ui";
+import { UiLayout, UiBottomSheetPopoverMenu, UiRadialProgress, UiButton } from "@/components/ui";
 import { ArrowDownTrayIcon } from "@heroicons/vue/24/outline";
-import { downloaderProvider, projectShareStore, trpcClient, windowUnloadManager, wrapError } from "@/app-utils";
-import { ensure, isNetworkError, isOperationCancelledError } from "@/core";
+import { downloaderProvider, projectShareStore, showToast, trpcClient, windowUnloadManager, wrapError } from "@/app-utils";
+import { ensure, isNetworkError, isOperationCancelledError, humanizeSize, MIN_SIZE_FOR_ZIP64_TIP, MIN_SIZE_FOR_DOWNLOAD_WARNING } from "@/core";
 import type { ZipDownloadRequestFile } from "@/core";
 
 type Status = 'pending'|'preparing'|'downloading'|'done'|'error';
@@ -39,6 +100,12 @@ const zipFileName = ref('');
 const downloadProgress = ref(0);
 const files = ref<ZipDownloadRequestFile[]>([]);
 const totalSize = computed(() => files.value.reduce((sizeSoFar, file) => file.size + sizeSoFar, 0));
+const downloadedSize = computed(() => {
+  const downloaded = downloadProgress.value * totalSize.value / 100;
+  return Math.min(downloaded, totalSize.value);
+});
+
+const optimalDownloaderSupported = downloaderProvider.isOptimalDownloaderSupported();
 
 function startDownload() {
   return wrapError(async () => {
@@ -62,6 +129,9 @@ function startDownload() {
 
 async function downloadZip(files: ZipDownloadRequestFile[]) {
   if (!share.value) return;
+  if (totalSize.value >= MIN_SIZE_FOR_DOWNLOAD_WARNING && !optimalDownloaderSupported) {
+    showToast('You may experiences suboptimal download experience on this browser.', 'warning');
+  }
   const downloader = downloaderProvider.getDownloader();
   const removeOnExitWarning = windowUnloadManager.warnUserOnExit();
   zipFileName.value = `${share.value!.name}.zip`;
@@ -81,6 +151,7 @@ async function downloadZip(files: ZipDownloadRequestFile[]) {
       });
   
       status.value = 'done';
+      showToast(`Downloade complete. The file '${zipFileName.value}' has been saved to your device.`, 'info');
   }
   catch (e: any) {
     status.value = 'pending';
