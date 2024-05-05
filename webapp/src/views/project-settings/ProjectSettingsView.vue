@@ -39,23 +39,52 @@
           <UiButton @click="copyUrl()">Copy</UiButton>
         </UiLayout>
       </SectionCard>
+      <SectionCard title="Delete project">
+        <UiLayout>
+          <UiLayout horizontal itemsCenter gapSm>
+            <ExclamationTriangleIcon class="h-7 w-7 text-error" /> <span class="font-bold">This operation is irreversible.</span>
+          </UiLayout>
+        </UiLayout>
+        <UiLayout horizontal>
+          <UiButton danger @click="openDeleteDialog()">Delete project</UiButton>
+        </UiLayout>
+      </SectionCard>
     </UiLayout>
   </UiLayout>
+  <ConfirmActionDialog
+    v-if="project"
+    ref="deleteDialog"
+    :title="`Delete project ${project.name}`"
+    actionLabel="Delete project"
+    actionDanger
+    :input="project"
+    :action="deleteProject"
+  >
+    <div>
+      Are you sure you want to delete project <span class="font-bold">{{ project.name }}</span>?
+      This action is <span class="font-bold">irreversible</span>.
+    </div>
+  </ConfirmActionDialog>
 </template>
 <script lang="ts" setup>
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useClipboard } from "@vueuse/core";
 import { UiLayout, UiTextInput, UiButton } from "@/components/ui";
+import ConfirmActionDialog from "@/components/ConfirmActionDialog.vue";
+import { ExclamationTriangleIcon } from "@heroicons/vue/24/outline";
 import { computed, ref, watch } from "vue";
 import { logger, showToast, store, trpcClient } from "@/app-utils";
 import SectionCard from "./SectionCard.vue";
 import RequireRole from "@/components/RequireRole.vue";
+import type { Project } from "@quickbyte/common";
 
 const route = useRoute();
+const router = useRouter();
 const { copy } = useClipboard();
 const project = computed(() => store.projects.value.find(p => p._id === route.params.projectId as string));
 const url = computed(() => `${location.origin}/projects/${project.value?._id}`)
 const name = ref(project.value?.name);
+const deleteDialog = ref<typeof ConfirmActionDialog>();
 
 
 watch([route], () => {
@@ -65,6 +94,18 @@ watch([route], () => {
 function copyUrl() {
   copy(url.value);
   showToast("Project URL copied to clipboard.", "info");
+}
+
+function openDeleteDialog() {
+  // @ts-ignore not sure why TS doesn't see the open() fn
+  deleteDialog.value?.open();
+}
+
+async function deleteProject(project: Project) {
+  await trpcClient.deleteProject.mutate({ id: project._id });
+  store.deleteProject(project._id);
+  showToast(`Project '${project.name}' has been successfully delete.`, 'info');
+  router.push({ name: 'projects' });
 }
 
 async function updateProjectName() {

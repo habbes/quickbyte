@@ -5,7 +5,7 @@ import { IInviteService } from "./invite-service.js";
 import { MediaService } from "./media-service.js";
 import { CommentService } from "./comment-service.js";
 import { IAccessHandler } from "./access-handler.js";
-import { Database, DbAccount } from "../db.js";
+import { createFilterForDeleteableResource, Database, DbAccount } from "../db.js";
 import { EventDispatcher } from "./event-bus/index.js";
 import { FolderService } from "./folder-service.js";
 import { LinkGenerator } from '@quickbyte/common';
@@ -234,7 +234,9 @@ export class AccountService {
     async getUserData(authContext: AuthContext): Promise<BasicUserData> {
         try {
             const ownedProjectsTask = this.db.projects().aggregate<WithRole<Project>>([
-                { $match: { '_createdBy._id': authContext.user._id } },
+                { 
+                    $match: createFilterForDeleteableResource({ '_createdBy._id': authContext.user._id })
+                },
                 { $addFields: { role: 'owner'} }
             ]).toArray();
             const otherProjectsTask = this.db.roles().aggregate<WithRole<Project>>([
@@ -249,7 +251,12 @@ export class AccountService {
                         from: this.db.projects().collectionName,
                         localField: 'resourceId',
                         foreignField: '_id',
-                        as: 'project'
+                        as: 'project',
+                        pipeline: [
+                            {
+                                $match: createFilterForDeleteableResource({})
+                            }
+                        ]
                     }
                 },
                 // flatten the "project" property

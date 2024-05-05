@@ -16,7 +16,8 @@ CreateProjectShareMediaCommentArgs,
 DeleteProjectShareMediaCommentArgs,
 UpdateProjectShareMediaCommentArgs,
 GetProjectShareMediaByIdArgs,
-GetAllProjectShareFilesForDownloadArgs
+GetAllProjectShareFilesForDownloadArgs,
+DeleteProjectArgs
 } from '@quickbyte/common';
 import { z } from 'zod';
 
@@ -89,6 +90,11 @@ export const appRouter = router({
     .input(UpdateProjectArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateProject(input.id, input)),
+    
+    deleteProject: protectedProcedure
+    .input(DeleteProjectArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).deleteProject(input.id)),
     
     getProjectItems: protectedProcedure
     .input(GetProjectItemsArgs)
