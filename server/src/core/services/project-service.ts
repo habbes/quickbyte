@@ -6,7 +6,7 @@ import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, 
 import { IInviteService } from "./invite-service.js";
 import { getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, getProjectShareMediaFilesAndComments, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
-import { Database } from "../db.js";
+import { createFilterForDeleteableResource, Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
 import { getFoldersByParent, getMultipleProjectFoldersByIds, getProjectFolderById, getProjectFolderWithPath, IFolderService } from "./folder-service.js";
 import { wrapError } from "../utils.js";
@@ -61,7 +61,9 @@ export class ProjectService {
 
     async getByAccount(accountId: string): Promise<Project[]> {
         try {
-            const projects = await this.collection.find({ accountId }).toArray();
+            const projects = await this.collection.find(
+                createFilterForDeleteableResource({ accountId })
+            ).toArray();
             return projects;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -546,7 +548,9 @@ export class ProjectService {
 
     private async getByIdInternal(id: string): Promise<Project> {
         try {
-            const project = await this.collection.findOne({ _id: id });
+            const project = await this.collection.findOne(
+                createFilterForDeleteableResource({ _id: id })
+            );
             if (!project) {
                 throw createNotFoundError('project');
             }
