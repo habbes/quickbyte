@@ -14,7 +14,7 @@ ProjectShareLinkItemsRequirePasswordResult
 } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
 import { ensureSingle, ensureSingleOrEmpty, generateId, hashPassword, verifyPassword, wrapError } from "../utils.js";
-import { createAuthError, createNotFoundError, createResourceNotFoundError, createValidationError } from "../error.js";
+import { createAuthError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, createValidationError } from "../error.js";
 import { Filter } from "mongodb";
 
 export interface ProjectShareServiceConfig {
@@ -92,7 +92,16 @@ export class ProjectShareService {
                     data: {
                         projectId: share.projectId,
                         projectShareId: share._id,
-                        recipients: sharedWith.filter(s => s.type === 'invite').map(s => ({ email: s.email }))
+                        recipients: sharedWith.filter(s => s.type === 'invite').map(s => {
+                            if (s.type !== 'invite') {
+                                // This should not occur due to the filter we performed
+                                // But the compiler doesn't know that. This if statement
+                                // is just here to appease the compiler. We could also have used @ts-ignore. But I like to avoid that.
+                                throw createInvalidAppStateError(`Expected shared target with type invite but found type '${s.type}'`);
+                            }
+
+                            return ({ email: s.email })
+                        })
                     }
                 });
             }
