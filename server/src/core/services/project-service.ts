@@ -1,8 +1,8 @@
 import { Collection } from "mongodb";
-import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs } from "../models.js";
+import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs, ProjectItemType } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createAuthError, createPermissionError } from "../error.js";
 import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail, getDownloadableFiles, getUserByEmail, getUserByEmailOrCreateGuest, tryGetUserByEmail } from "./index.js";
-import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs, GetProjectShareMediaByIdArgs, User, GetAllProjectShareFilesForDownloadArgs, ConcurrentTaskQueue, DownloadTransferFileResult, TaskTracker } from '@quickbyte/common';
+import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs, GetProjectShareMediaByIdArgs, User, GetAllProjectShareFilesForDownloadArgs, ConcurrentTaskQueue, DownloadTransferFileResult, TaskTracker, GetAllProjectShareFilesForDownloadResult } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, getProjectShareMediaFilesAndComments, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -844,7 +844,7 @@ export class PublicProjectService {
         });
     }
 
-    getAllProjectShareFilesForDownload(args: GetAllProjectShareFilesForDownloadArgs) {
+    getAllProjectShareFilesForDownload(args: GetAllProjectShareFilesForDownloadArgs): Promise<GetAllProjectShareFilesForDownloadResult> {
         return wrapError(async () => {
             const share = await this.getAndValidateProjectShare({
                 shareId: args.shareId,
@@ -869,9 +869,7 @@ export class PublicProjectService {
 
             const result = await downloadProcessor.run();
 
-            return {
-                files: result
-            };
+            return result;
         });
     }
 
@@ -973,10 +971,10 @@ export type ISharedProjectsService = PublicProjectService;
 
 
 class GetProjectShareAllDownloadFilesRetriever {
-    private readonly result: DownloadTransferFileResult[] = [];
+    private readonly files: DownloadTransferFileResult[] = [];
     private readonly taskQueue: ConcurrentTaskQueue;
     private readonly tracker: TaskTracker;
-    private readonly errors: { name: string, mediaId: string, error: string }[] = []
+    private readonly errors: { path: string, error: string }[] = []
 
     constructor(private share: ProjectShare, private db: Database, private storageHandlers: IStorageHandlerProvider) {
         this.tracker = new TaskTracker(console);
@@ -984,7 +982,7 @@ class GetProjectShareAllDownloadFilesRetriever {
         
     }
 
-    async run(): Promise<DownloadTransferFileResult[]> {
+    async run(): Promise<{ files: DownloadTransferFileResult[], errors?: { path: string, error: string }[] }> {
         if (!this.share.items || !this.share.items.length) {
              // TODO: support for "share.allItems"
              throw createAppError("Downloading all project items is currently not supported");
@@ -998,8 +996,6 @@ class GetProjectShareAllDownloadFilesRetriever {
             getMultipleProjectFoldersByIds(this.db, this.share.projectId, folderIds),
             getMultipleMediaByIds(this.db, this.share.projectId, mediaIds)
         ]);
-
-        // TODO: error handling in the task queue
 
         // the tracker helps know when we have finishing queing all tasks
         for (const folder of folders) {
@@ -1023,46 +1019,64 @@ class GetProjectShareAllDownloadFilesRetriever {
         // this.taskQueue.signalNoMoreTasks();
         // await this.taskQueue.waitForAllTasksToComplete();
 
-        return this.result;
+        const result = this.errors.length ?
+            { files: this.files, errors: this.errors } :
+            { files: this.files };
+        
+        return result;
     }
 
     async processDownloadFilesForMedia(path: string, media: Media[]) {
-        const fileIds = media.map(m => m.versions.find(v => v._id === m.preferredVersionId)!.fileId);
-        const downloadableFiles = await getDownloadableFiles(fileIds, this.db, this.storageHandlers);
+        try {
+            const fileIds = media.map(m => m.versions.find(v => v._id === m.preferredVersionId)!.fileId);
+            const downloadableFiles = await getDownloadableFiles(fileIds, this.db, this.storageHandlers);
 
-        // rename each file based on the media and file
-        for (const file of downloadableFiles) {
-            const mediaOfFile = media.find(m => m.versions.find(v => v._id == m.preferredVersionId)!.fileId === file._id);
-            if (!mediaOfFile) {
-                throw createInvalidAppStateError(`Expected to find media backed by file ${file._id} but was not found.`);
+            // rename each file based on the media and file
+            for (const file of downloadableFiles) {
+                const mediaOfFile = media.find(m => m.versions.find(v => v._id == m.preferredVersionId)!.fileId === file._id);
+                if (!mediaOfFile) {
+                    throw createInvalidAppStateError(`Expected to find media backed by file ${file._id} but was not found.`);
+                }
+
+                // we send back flat files and use the path names to reconstruct the folder hierarchy
+                file.name = path ? `${path}/${mediaOfFile.name}` : mediaOfFile.name;
+                this.files.push(file);
             }
-
-            // we send back flat files and use the path names to reconstruct the folder hierarchy
-            file.name = path ? `${path}/${mediaOfFile.name}` : mediaOfFile.name;
-            this.result.push(file);
+        } catch (e: any) {
+            this.errors.push({
+                path: path,
+                error: e.message
+            });
         }
     }
 
     async processDownloadFilesForFolder(path: string, folder: Folder) {
-        const [subFolders, media] =  await Promise.all([
-            getFoldersByParent(this.db, this.share.projectId, folder._id),
-            getProjectMediaByFolder(this.db, this.share.projectId, folder._id)
-        ]);
+        try {
+            const [subFolders, media] =  await Promise.all([
+                getFoldersByParent(this.db, this.share.projectId, folder._id),
+                getProjectMediaByFolder(this.db, this.share.projectId, folder._id)
+            ]);
 
-        const newPath = path ? `${path}/${folder.name}` : folder.name;
+            const newPath = path ? `${path}/${folder.name}` : folder.name;
 
-        for (const subfolder of subFolders) {
+            for (const subfolder of subFolders) {
+                this.tracker.startTask();
+                this.taskQueue.addTask(async () => {
+                    await this.processDownloadFilesForFolder(newPath, subfolder);
+                    this.tracker.completeTask();
+                });
+            }
+
             this.tracker.startTask();
             this.taskQueue.addTask(async () => {
-                await this.processDownloadFilesForFolder(newPath, subfolder);
+                await this.processDownloadFilesForMedia(newPath, media);
                 this.tracker.completeTask();
             });
+        } catch (e: any) {
+            this.errors.push({
+                path: `${path}/${folder.name}`,
+                error: e.message
+            });
         }
-
-        this.tracker.startTask();
-        this.taskQueue.addTask(async () => {
-            await this.processDownloadFilesForMedia(newPath, media);
-            this.tracker.completeTask();
-        });
     }
 }

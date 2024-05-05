@@ -474,6 +474,13 @@ export const GetAllProjectShareFilesForDownloadArgs = z.object({
 export type GetAllProjectShareFilesForDownloadArgs = z.infer<typeof GetAllProjectShareFilesForDownloadArgs>;
 
 export interface GetAllProjectShareFilesForDownloadResult {
-    files: DownloadTransferFileResult[]
+    files: DownloadTransferFileResult[];
+    errors?: GetAllProjectShareFilesForDownloadError[];
 }
+
+export interface GetAllProjectShareFilesForDownloadError {
+    path: string;
+    error: string;
+}
+
 
