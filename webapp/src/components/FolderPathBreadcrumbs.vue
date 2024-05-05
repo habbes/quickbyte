@@ -88,11 +88,10 @@ import type { FolderPathEntry } from "@quickbyte/common";
 import { UiLayout, UiMenu, UiMenuItem } from "@/components/ui";
 import { FolderIcon } from "@heroicons/vue/24/solid";
 import { computed } from "vue";
-import type { RouteLocation } from "vue-router";
 
 const props = defineProps<{
   path: FolderPathEntry[];
-  getFolderLink: (folderId: string) => RouteLocation
+  getFolderLink: (folderId: string) => { name: string; params: Record<string, any> } | string;
 }>();
 
 const ancestors = computed(() => {
