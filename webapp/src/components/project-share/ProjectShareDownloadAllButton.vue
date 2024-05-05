@@ -17,7 +17,12 @@
           </UiLayout>
           <UiLayout v-else-if="status === 'done'">
             <div>
-              Download complete.
+              Download complete
+            </div>
+          </UiLayout>
+          <UiLayout v-else-if="status === 'error'">
+            <div>
+              An error occured
             </div>
           </UiLayout>
         </UiLayout>
@@ -76,6 +81,16 @@
             <UiButton primary @click="status = 'pending'">Done</UiButton>
           </UiLayout>
         </UiLayout>
+        <UiLayout v-if="status === 'error'" :gap="4">
+          <UiLayout>
+            <div class="text-xs text-center text-error">
+              {{ error?.message }}
+            </div>
+          </UiLayout>
+          <UiLayout itemsCenter>
+            <UiButton primary @click="status = 'pending'">Done</UiButton>
+          </UiLayout>
+        </UiLayout>
       </UiLayout>
     </UiBottomSheetPopoverMenu>
   </UiLayout>
@@ -85,7 +100,7 @@
 import { computed, ref } from "vue";
 import { UiLayout, UiBottomSheetPopoverMenu, UiRadialProgress, UiButton } from "@/components/ui";
 import { ArrowDownTrayIcon } from "@heroicons/vue/24/outline";
-import { downloaderProvider, projectShareStore, showToast, trpcClient, windowUnloadManager, wrapError } from "@/app-utils";
+import { downloaderProvider, logger, projectShareStore, showToast, trpcClient, windowUnloadManager, wrapError } from "@/app-utils";
 import { ensure, isNetworkError, isOperationCancelledError, humanizeSize, MIN_SIZE_FOR_ZIP64_TIP, MIN_SIZE_FOR_DOWNLOAD_WARNING } from "@/core";
 import type { ZipDownloadRequestFile } from "@/core";
 
@@ -114,15 +129,21 @@ function startDownload() {
     }
 
     status.value = 'preparing';
-    const result = await trpcClient.getAllProjectShareFilesForDownload.query({
-      shareId: ensure(share.value)._id,
-      shareCode: ensure(code.value),
-      password: password.value
-    });
+    try {
+      const result = await trpcClient.getAllProjectShareFilesForDownload.query({
+        shareId: ensure(share.value)._id,
+        shareCode: ensure(code.value),
+        password: password.value
+      });
 
-    files.value = result.files;
-    
-    await downloadZip(files.value);
+      files.value = result.files;
+      await downloadZip(files.value);
+    } catch (e: any) {
+      showToast(e.message, 'error');
+      logger.error(e.message, e);
+      error.value = e;
+      status.value = 'error';
+    }
   });
 }
 
@@ -154,16 +175,22 @@ async function downloadZip(files: ZipDownloadRequestFile[]) {
       showToast(`Downloade complete. The file '${zipFileName.value}' has been saved to your device.`, 'info');
   }
   catch (e: any) {
-    status.value = 'pending';
+    
+   
     if (isOperationCancelledError(e)) {
+      status.value = 'pending';
       return;
     }
 
+    logger.error(e.message, e);
     if (isNetworkError(e)) {
       error.value = new Error('Network error occurred');
     } else {
       error.value = e as Error;
     }
+
+    status.value = 'error';
+    showToast(error.value.message, 'error');
   }
   finally {
     removeOnExitWarning();
