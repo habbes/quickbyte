@@ -157,7 +157,7 @@ watch(() => route.query.version, async () => {
   immediate: true
 });
 
-function handleBrowserItemClick(item: ProjectItem) {
+async function handleBrowserItemClick(item: ProjectItem) {
   if (!share.value || !code.value) {
     return;
   }
@@ -170,6 +170,19 @@ function handleBrowserItemClick(item: ProjectItem) {
         code: code.value,
         mediaId: item._id
     }});
+
+    return;
+  }
+
+  const result = await trpcClient.getProjectShareItems.query({
+    shareId: share.value._id,
+    code: code.value,
+    password: password.value,
+    folderId: item._id
+  });
+  
+  if ('items' in result) {
+    otherItems.value = result.items;
   }
 }
 
@@ -180,5 +193,6 @@ function handleVersionChange(versionId: string) {
 
   router.push({ query: { ...route.query, version: versionId } });
 }
+
 
 </script>
