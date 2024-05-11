@@ -7,7 +7,7 @@
     :role="project.role"
     :user="user"
     :otherItems="browserItems"
-    :browserHasParentFolder="browserItemsPath.length"
+    :browserHasParentFolder="browserItemsPath.length > 0"
     allowComments
     allowDownload
     showAllVersions
@@ -18,6 +18,8 @@
     @close="closePlayer()"
     @selectVersion="handleSelectVersion($event)"
     @newVersionUpload="handleVersionUpload()"
+    @browserItemClick="handleBrowserItemClick($event)"
+    @browserToParentFolder="handleBrowserToParentFolder()"
   />
 </template>
 <script setup lang="ts">
@@ -144,6 +146,39 @@ async function deleteComment({ commentId } : { commentId: string }) {
     commentId: commentId,
     mediaId: media.value._id
   });
+}
+
+async function handleBrowserItemClick(item: ProjectItem) {
+  if (item.type === 'media') {
+    const projectId = unwrapSingleton(ensure(route.params.projectId));
+    router.push({
+      name: 'player',
+      params: {
+        projectId: projectId,
+        mediaId: item._id
+      }
+    });
+
+    return;
+  }
+
+  await navigateBrowserToFolder(item._id);
+}
+
+function handleBrowserToParentFolder() {
+  return navigateBrowserToFolder();
+}
+
+async function navigateBrowserToFolder(folderId?: string) {
+  const projectId = unwrapSingleton(ensure(route.params.projectId));
+  return wrapError(async () => {
+    const result = await trpcClient.getProjectItems.query({
+      projectId,
+      folderId
+    });
+
+    setBrowserItems(result.items, result.folder ? result.folder.path : []);
+  })
 }
 
 function setBrowserItems(items: ProjectItem[], path: FolderPathEntry[]) {
