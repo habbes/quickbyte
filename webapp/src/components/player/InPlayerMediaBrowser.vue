@@ -10,6 +10,8 @@
     </div>
     <div
       v-for="item in items"
+      :key="item._id"
+      :id="getItemHtmlId(item._id)"
     >
       <ProjectItemCardBase
         :name="item.name"
@@ -33,9 +35,9 @@ import type { MediaType } from '@/core/media-types';
 import ProjectItemCardBase from "../ProjectItemCardBase.vue";
 import MediaTypeIcon from '../MediaTypeIcon.vue';
 import { ArrowUpOnSquareIcon } from "@heroicons/vue/24/outline";
+import { computed, nextTick, watch } from 'vue';
 
-
-defineProps<{
+const props = defineProps<{
   items: T[];
   selectedItemId?: string;
   getMediaType: (item: T) => MediaType | 'folder';
@@ -46,4 +48,19 @@ defineEmits<{
   (e: 'itemClick', item: T): unknown;
   (e: 'goToParent'): unknown;
 }>();
+
+function getItemHtmlId(itemId: string) {
+  return `mediaBrowserItem_${itemId}`;
+}
+
+watch(() => props.selectedItemId, () => {
+  nextTick(() => {
+    if (!props.selectedItemId) return;
+    document.querySelector(`#${getItemHtmlId(props.selectedItemId)}`)?.scrollIntoView({
+      block: 'end',
+      inline: 'nearest',
+      behavior: 'smooth'
+    });
+  });
+}, { immediate: true });
 </script>
