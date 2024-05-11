@@ -10,20 +10,23 @@
     :allowDownload="share.allowDownload"
     :showAllVersions="share.showAllVersions"
     :allowUploadVersion="false"
+    :browserHasParentFolder="browserHasParentFolder"
     :sendComment="sendComment"
     :editComment="editComment"
     :deleteComment="deleteComment"
     @close="handleClosePlayer()"
     @browserItemClick="handleBrowserItemClick($event)"
+    @browserToParentFolder="handleBrowserToParentFolder()"
     @selectVersion="handleVersionChange($event)"
   />
 </template>
 <script lang="ts" setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { PlayerWrapper } from "@/components/player";
 import { projectShareStore, trpcClient, wrapError } from "@/app-utils";
-import type { MediaWithFileAndComments, ProjectItem } from "@quickbyte/common";
+import type { FolderPathEntry, MediaWithFileAndComments, ProjectItem } from "@quickbyte/common";
+import { ensure } from "@/core";
 
 const share = projectShareStore.share;
 const code = projectShareStore.code;
@@ -32,14 +35,27 @@ const route = useRoute();
 const router = useRouter();
 const media = ref<MediaWithFileAndComments>();
 const selectedVersionId = ref<string>();
-const otherItems = ref<ProjectItem[]>([]);
 const user = ref<{ _id: string, name: string }|undefined>();
+/**
+ * Folder containing the current media
+ */
+const currentFolderId = ref<string>();
+/**
+ * Items to display in the embedded file browser
+ */
+const otherItems = ref<ProjectItem[]>([]);
+/**
+ * The path of the folder containing the items
+ * currently displayed in the embedded file browser
+ */
+const browserItemsPath = ref<FolderPathEntry[]>([]);
+const browserHasParentFolder = computed(() => browserItemsPath.value.length > 0);
 
 function handleClosePlayer() {
   router.push({
     name: 'project-share',
     params: {
-      shareId: share.value?._id, code: code.value,
+      shareId: share.value?._id, code: code.value, folderId: currentFolderId.value
     },
     query: {
       version: selectedVersionId.value
@@ -110,6 +126,11 @@ async function deleteComment(args: { commentId: string }) {
   });
 }
 
+watch(() => share, () => {
+  if (!share.value) return;
+  browserItemsPath.value = share.value.path;
+});
+
 watch(() => route.params.mediaId, async () => {
   wrapError(async () => {
     if (!share.value || !code.value) {
@@ -136,15 +157,18 @@ watch(() => route.params.mediaId, async () => {
 
     // fetch folders/files in the same path to populate
     // the in-player browser
-    const folderId = media.value.folderId || undefined;
+    currentFolderId.value = media.value.folderId || undefined;
     const result = await trpcClient.getProjectShareItems.query({
       shareId: share.value._id,
       code: code.value,
       password: password.value,
-      folderId
+      folderId: currentFolderId.value
     });
+
     if ('items' in result) {
       otherItems.value = result.items;
+      browserItemsPath.value = result.path;
+      console.log('path', result.path);
     }
   });
 }, {
@@ -174,16 +198,32 @@ async function handleBrowserItemClick(item: ProjectItem) {
     return;
   }
 
+  await navigateBrowserToFolder(item._id);
+}
+
+async function navigateBrowserToFolder(folderId?: string) {
   const result = await trpcClient.getProjectShareItems.query({
-    shareId: share.value._id,
-    code: code.value,
+    shareId: ensure(share.value)._id,
+    code: ensure(code.value),
     password: password.value,
-    folderId: item._id
+    folderId
   });
   
   if ('items' in result) {
     otherItems.value = result.items;
+    browserItemsPath.value = result.path;
+    console.log('path', result.path);
   }
+}
+
+function handleBrowserToParentFolder() {
+  const pathSize = browserItemsPath.value.length;
+  if (pathSize <= 1) {
+    return navigateBrowserToFolder();
+  }
+
+  const parent = browserItemsPath.value[pathSize - 2];
+  return navigateBrowserToFolder(parent._id);
 }
 
 function handleVersionChange(versionId: string) {

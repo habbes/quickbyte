@@ -107,8 +107,10 @@
           <InPlayerMediaBrowser
             :items="otherItems"
             :getMediaType="getBrowserItemMediaType"
+            :hasParentFolder="browserHasParentFolder"
             :selectedItemId="media._id"
             @itemClick="$emit('browserItemClick', $event)"
+            @goToParent="$emit('browserToParentFolder')"
           />
         </div>
         <!-- end file list section -->
@@ -156,7 +158,7 @@
 import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { logger, showToast } from "@/app-utils";
-import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren, MediaType, ProjectItem } from "@quickbyte/common";
+import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren, MediaType, ProjectItem, FolderPathEntry } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
@@ -190,6 +192,7 @@ const props = defineProps<{
     _id: string;
     name: string;
   },
+  browserHasParentFolder: boolean;
   sendComment?: (args: {
     text: string;
     versionId: string;
@@ -210,6 +213,7 @@ const emit = defineEmits<{
   (e: 'selectVersion', versionId: string): unknown;
   (e: 'newVersionUpload'): unknown;
   (e: 'browserItemClick', item: ProjectItem): unknown;
+  (e: 'browserToParentFolder'): unknown;
 }>();
 
 // had difficulties getting the scrollbar on the comments panel to work

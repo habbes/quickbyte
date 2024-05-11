@@ -1,6 +1,14 @@
 <template>
   <div class="h-full px-4 py-2 gap-2 flex flex-col mb-6">
     <div
+      @click="$emit('goToParent')"
+      v-if="hasParentFolder"
+      class="flex gap-2 items-center cursor-pointer text-sm hover:text-white"
+    >
+      <ArrowUpOnSquareIcon class="h-4 w-4" />
+      <span>Move to parent folder</span>
+    </div>
+    <div
       v-for="item in items"
     >
       <ProjectItemCardBase
@@ -24,15 +32,18 @@
 import type { MediaType } from '@/core/media-types';
 import ProjectItemCardBase from "../ProjectItemCardBase.vue";
 import MediaTypeIcon from '../MediaTypeIcon.vue';
+import { ArrowUpOnSquareIcon } from "@heroicons/vue/24/outline";
 
 
 defineProps<{
   items: T[];
   selectedItemId?: string;
   getMediaType: (item: T) => MediaType | 'folder';
+  hasParentFolder: boolean;
 }>();
 
 defineEmits<{
   (e: 'itemClick', item: T): unknown;
+  (e: 'goToParent'): unknown;
 }>();
 </script>
