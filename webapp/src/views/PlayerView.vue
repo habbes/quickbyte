@@ -1,300 +1,77 @@
 <template>
-  <div v-if="media" class="flex flex-col fixed top-0 bottom-0 left-0 right-0 z-50 bg-[#261922]">
-    <div class="h-[48px] border-b border-b-[#120c11] flex flex-row items-center justify-between px-5" :style="headerClasses">
-      <div>
-        <XMarkIcon class="h-5 w-5 hover:text-white hover:cursor-pointer" @click="closePlayer()" />
-      </div>
-      <UiLayout horizontal itemsCenter gapSm class="overflow-hidden">
-        <div class="max-w-[200px] sm:max-w-max overflow-hidden text-ellipsis">
-          <span :title="file?.name" class="text-white text-md overflow-hidden whitespace-nowrap">{{ file?.name }}</span>
-        </div>
-        <MediaPlayerVersionDropdown
-          :media="media"
-          :selectedVersionId="selectedVersionId"
-          @versionUpload="handleVersionUpload()"
-          @selectVersion="handleSelectVersion($event)"
-        />
-      </UiLayout>
-      <a class="flex items-center gap-2 hover:text-white" download :href="media.file.downloadUrl">
-        <div class="inline-block">
-          <span class="hidden sm:inline">Download </span>
-          <span class="whitespace-nowrap">{{ humanizeSize(media.file.size) }}</span>
-        </div>
-        <ArrowDownCircleIcon class="h-4 w-4 inline" />
-      </a>
-    </div>
-    <div class=" flex flex-col-reverse sm:flex-row h-[calc(100dvh-48px)] relative">
-      <!-- start comment sidebar -->
-      <div class="w-full sm:w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col">
-        
-
-        <div class="overflow-y-auto flex flex-col h-[calc(100dvh-478px)] sm:h-[calc(100dvh-248px)]" :style="commentsListStyles">
-          <MediaComment
-            v-if="user && project"
-            v-for="comment in sortedComments"
-            :key="comment._id"
-            :comment="comment"
-            :htmlId="getHtmlCommentId(comment)"
-            :getHtmlId="getHtmlCommentId"
-            :selected="comment._id === selectedCommentId"
-            :currentUserId="user._id"
-            :currentRole="project.role"
-            @click="handleCommentClicked($event)"
-            @reply="sendCommentReply"
-            @delete="showDeleteCommentDialog($event)"
-            @edit="editComment"
-          />
-        </div>
-
-        <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 sm:h-[200px]">
-          <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
-            <div class="flex flex-row items-center justify-end">
-              <div class="flex flex-row items-center gap-1" title="Save comment at the current timestamp">
-                <ClockIcon class="h-5 w-5"/>
-                <span>{{ formatTimestampDuration(currentTimeStamp) }}</span>
-                <input
-                  v-model="includeTimestamp"
-                  type="checkbox"
-                  class="checkbox checkbox-xs checkbox-accent"
-                >
-              </div>
-            </div>
-            <textarea
-              class="bg-[#604a59] border-0 hover:border-0 outline-none w-full flex-1 resize-none"
-              placeholder="Type your comment here"
-              @focus="handleCommentInputFocus()"
-              v-model="commentInputText"
-            ></textarea>
-          </div>
-          <div>
-            <button class="btn btn-primary btn-xs" @click="sendComment()">Send</button>
-          </div>
-        </div>
-        
-      </div>
-      <!-- end comment sidebar -->
-      <!-- player container -->
-      <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]">
-          <div class="h-full max-h-full sm:h-[90%] w-full flex sm:items-center">
-            <AVPlayer
-              v-if="file && (mediaType === 'video' || mediaType === 'audio')"
-              ref="videoPlayer"
-              :mediaType="mediaType"
-              :sources="sources"
-              @seeked="handleSeek()"
-              :comments="timedComments"
-              :selectedCommentId="selectedCommentId"
-              @clickComment="handleVideoCommentClicked($event)"
-              :versionId="selectedVersionId"
-              @playBackError="handleMediaPlayBackError($event)"
-            />
-            <ImageViewer
-              v-else-if="file && mediaType === 'image'"
-              :src="file.downloadUrl"
-            />
-            <div v-else class="w-full flex items-center justify-center">
-              Preview unsupported for this file type.
-            </div>
-          </div>
-      </div>
-      <!-- end player container -->
-    </div>
-  </div>
-  <div v-else-if="error" class="w-full flex justify-center items-center text-lg text-red-300">
-    Error: {{ error.message }}
-  </div>
-  <DeleteCommentDialog
-    ref="deleteCommentDialog"
-    v-if="media"
+  <PlayerWrapper
+    v-if="project && media && selectedVersionId"
+    :media="media"
+    :selectedVersionId="selectedVersionId"
+    :selectedCommentId="selectedCommentId"
+    :role="project.role"
+    :user="user"
+    :otherItems="browserItems"
+    :browserHasParentFolder="browserItemsPath.length > 0"
+    allowComments
+    allowDownload
+    showAllVersions
+    :allowUploadVersion="project.role === 'admin' || project.role === 'owner' || project.role === 'editor'"
+    :sendComment="sendComment"
+    :editComment="editComment"
     :deleteComment="deleteComment"
-    @deleted="handleCommentDeleted($event)"
-   />
+    @close="closePlayer()"
+    @selectVersion="handleSelectVersion($event)"
+    @newVersionUpload="handleVersionUpload()"
+    @browserItemClick="handleBrowserItemClick($event)"
+    @browserToParentFolder="handleBrowserToParentFolder()"
+  />
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick, watch } from "vue"
+import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { apiClient, logger, showToast, store, trpcClient } from "@/app-utils";
-import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
-import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
-import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
-import { UiLayout } from '@/components/ui';
-import AVPlayer from '@/components/AVPlayer.vue';
-import ImageViewer from '@/components/ImageViewer.vue';
-import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
-import MediaComment from "@/components/MediaComment.vue";
-import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
-import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
-
-type MediaSource = {
-  url: string;
-  mimeType?: string;
-  type: 'hls'|'dash'|'raw'
-};
-
-// had difficulties getting the scrollbar on the comments panel to work
-// properly using overflow: auto css, so I resorted to hardcoding dimensions
-const headerSize = 48;
-const commentInputHeight = 200;
-const headerClasses = {
-  height: `${headerSize}px`
-};
-const commentInputStyles = {
-  height: `${commentInputHeight}px`
-};
-
-const commentsListStyles = {} /* = {
-  height: `calc(100dvh - ${headerSize + commentInputHeight}px)`
-}; */
+import { apiClient, logger, showToast, store, trpcClient, wrapError } from "@/app-utils";
+import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry } from "@quickbyte/common";
+import { ensure, unwrapSingleton } from "@/core";
+import { PlayerWrapper } from "@/components/player";
 
 
-const videoPlayer = ref<typeof AVPlayer>();
 const route = useRoute();
 const router = useRouter();
-const error = ref<Error|undefined>();
 const media = ref<MediaWithFileAndComments>();
 const selectedVersionId = ref<string>();
-const file = computed(() => {
-  if (!media.value) return;
-  if (!selectedVersionId.value) return;
-
-  const version = ensure(media.value.versions.find(v => v._id === selectedVersionId.value),
-    `Expected version '${selectedVersionId.value}'' to exist for media '${media.value._id}'.`);
-
-  return version.file;
-});
-const comments = ref<WithChildren<CommentWithAuthor>[]>([]);
 const loading = ref(true);
 const selectedCommentId = ref<string>();
-const mediaType = computed(() => {
-  if (!media.value) return 'unknown';
-  return getMediaType(media.value.file.name);
-});
+const browserItems = ref<ProjectItem[]>([]);
+const browserItemsPath = ref<FolderPathEntry[]>([]);
 
-
-const currentTimeStamp = ref<number>(0);
-const includeTimestamp = ref<boolean>(true);
-const commentInputText = ref<string>();
-const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
 const user = store.user;
 const project = computed(() => store.projects.value.find(p => p._id === route.params.projectId));
-const sources = computed<MediaSource[]>(() => {
-  if (!media.value) return [];
-  if (!file.value) return [];
 
-  const _src = [] as MediaSource[];
-  if (file.value.hlsManifestUrl) {
-    _src.push({
-      url: file.value.hlsManifestUrl,
-      type: 'hls'
-    });
-  }
-  if (file.value.dashManifestUrl) {
-    _src.push({
-      url: file.value.dashManifestUrl,
-      type: 'dash'
-    });
-  }
-  if (file.value.downloadUrl) {
-    _src.push({
-      url: file.value.downloadUrl,
-      mimeType: getMimeTypeFromFilename(file.value.name),
-      type: 'raw'
-    });
-  }
 
-  return _src;
-});
-const isMediaOptimized = computed(() => 
-  mediaType.value === 'video' || mediaType.value === 'audio' ?
-    sources.value.some(s => s.type === 'hls' || s.type === 'dash')
-    : true
-);
+watch(() => route.params.mediaId, () => {
+  const queriedCommentId = unwrapSingleton(route.query.comment);
+  const queriedVersionId = unwrapSingleton(route.query.version);
 
-watch([isMediaOptimized, file], () => {
-  if (!file.value) return;
-  if (!file.value?.playbackPackagingStatus) {
-    // If packaging status is not available, this file has not yet
-    // been scheduled for encoding. Offer user option to encode
-    if (isMediaOptimized.value === false) {
-      showToast('This media is not optimized or upload did not complete. Playback experience may be degraded.', 'info')
-    }
-  }
-  else if (file.value.playbackPackagingStatus === 'error') {
-    logger.warn(`User attempting to play file with failed encoding file id: '${file.value._id}', filename '${file.value.name}'`);
-    showToast('Media encoding failed for this file. Playback experience may be degraded.', 'info');
-  }
-  else if (file.value.playbackPackagingStatus !== 'success') {
-    // Encoding in progress.
-    showToast('This media is being optimized for playback. Playback experience may be suboptimal until the process is complete.', 'info');
-  }
-});
-
-// we display all the timestamped comments before
-// all non-timestamped comments
-// timestamped comments are display in chronological order
-// based on timestamps
-// then we display comments in chronological order
-// based on creation date
-const sortedComments = computed(() => {
-  const temp = [...comments.value];
-  temp.sort((a, b) => {
-    if (isDefined(a.timestamp) && !isDefined(b.timestamp)) {
-      return -1;
-    }
-
-    if (isDefined(b.timestamp) && !isDefined(a.timestamp)) {
-      return 1;
-    }
-
-    const aDate = new Date(a._createdAt);
-    const bDate = new Date(b._createdAt);
-    const dateDiff =  aDate.getTime() - bDate.getTime();
-
-    if (isDefined(a.timestamp) && isDefined(b.timestamp)) {
-      const timestampDiff = a.timestamp! - b.timestamp!;
-      return timestampDiff === 0 ? dateDiff : timestampDiff;
-    }
-
-    return dateDiff;
-  });
-
-  return temp;
-});
-
-const timedComments = computed<WithChildren<TimedCommentWithAuthor>[]>(() =>
-  sortedComments.value.filter(c => isDefined(c.timestamp)) as WithChildren<TimedCommentWithAuthor>[]);
-
-onMounted(async () => {
-  if (!store.currentAccount.value) return;
-
-  const account = ensure(store.currentAccount.value);
-  const queriedCommentId = Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment;
-  const queriedVersionId = Array.isArray(route.query.version) ? route.query.version[0] : route.query.version;
-
-  try {
+  return wrapError(async () => {
+    const projectId = unwrapSingleton(ensure(route.params.projectId));
+    const mediaId = unwrapSingleton(ensure(route.params.mediaId));
     media.value = await trpcClient.getProjectMediaById.query({
       projectId: route.params.projectId as string,
       mediaId: route.params.mediaId as string
     });
 
     selectedVersionId.value = queriedVersionId && media.value.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : media.value.preferredVersionId;
-    comments.value = media.value.comments;
-    if (queriedCommentId) {
-      const comment = comments.value.find(c => c._id === queriedCommentId);
-      if (comment) {
-        handleVideoCommentClicked(comment);
-      }
-    }
+    selectedCommentId.value = queriedCommentId || undefined;
 
-  }
-  catch (e: any) {
-    error.value = e;
-    logger.error(e.message, e);
-  }
-  finally {
-    loading.value = false;
-  }
-});
+    // fetch files and folders in the same parent folder as the media
+    // to enable navigation in the embedded file browser
+    const result = await trpcClient.getProjectItems.query({
+      projectId,
+      folderId: media.value.folderId ? media.value.folderId : undefined
+    });
+
+    setBrowserItems(result.items, result.folder ? result.folder.path : []);
+  },
+  {
+    finally: () => loading.value = false
+  })
+}, { immediate: true });
 
 async function handleVersionUpload() {
   // TODO: since we don't have the file, for now just reload
@@ -318,124 +95,48 @@ async function handleSelectVersion(versionId: string) {
   router.push({ query: { ...route.query, version: versionId }});
 }
 
-function seekToComment(comment: CommentWithAuthor) {
-  if (!videoPlayer.value) {
-    // if the video ref isn't ready yet (e.g. component just mounted),
-    // wait before we seek
-    nextTick(() => seekToComment(comment));
-    return;
-  }
-
-  if (comment.timestamp === null || comment.timestamp === undefined) {
-    return;
-  }
-
-  videoPlayer.value.seek(comment.timestamp);
-}
-
-function scrollToComment(comment: CommentWithAuthor) {
-  // we wait for the next tick to ensure the comment has been added to the DOM
-  // before we scroll into it
-  nextTick(() => {
-    document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView({
-      block: 'end',
-      inline: 'nearest',
-      behavior: 'smooth'
-    });
-  });
-}
-
-function selectComment(comment: CommentWithAuthor) {
-  selectedCommentId.value = comment._id;
-  router.push({ query: { ...route.query, comment: comment._id }});
-}
-
-function unselectComment() {
-  selectedCommentId.value = undefined;
-}
-
-function handleSeek() {
-  if (!videoPlayer.value) return;
-  currentTimeStamp.value = videoPlayer.value.getCurrentTime();
-}
-
-function handleCommentInputFocus() {
-  if (!videoPlayer.value) return;
-  currentTimeStamp.value = videoPlayer.value.getCurrentTime();
-  videoPlayer.value.pause();
-  unselectComment();
-}
-
 function closePlayer() {
   router.push({ name: 'project-media', params: { projectId: route.params.projectId as string, folderId: media.value?.folderId } })
 }
 
-function getHtmlCommentId(comment: CommentWithAuthor) {
-  return `comment_${comment._id}`;
-}
-
-function handleCommentClicked(comment: CommentWithAuthor) {
-  seekToComment(comment);
-  selectComment(comment);
-}
-
-function handleVideoCommentClicked(comment: CommentWithAuthor) {
-  seekToComment(comment);
-  selectComment(comment);
-  scrollToComment(comment);
-}
-
-async function sendComment() {
-  if (!commentInputText.value) return;
-  if (!media.value) return;
+async function sendComment(args: {
+  text: string;
+  versionId: string;
+  timestamp?: number;
+  parentId?: string;
+}) {
   const projectId = ensure(route.params.projectId) as string;
   const mediaId = ensure(route.params.mediaId) as string;
 
-  try {
-    const comment = await trpcClient.createMediaComment.mutate({
-      projectId: projectId,
-      mediaId: mediaId,
-      mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
-      text: commentInputText.value,
-      timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined
-    });
-    commentInputText.value = '';
-    comments.value.push(comment);
+  const comment = await trpcClient.createMediaComment.mutate({
+    projectId: projectId,
+    mediaId: mediaId,
+    mediaVersionId: args.versionId,
+    text: args.text,
+    timestamp: args.timestamp,
+    parentId: args.parentId
+  });
     
-    
-    scrollToComment(comment);
-  }
-  catch (e: any) {
-    logger.error(e.message, e);
-    showToast(e.message, 'error');
-  }
+  return { ...comment, children: [] };
 }
 
-async function sendCommentReply(text: string, parentId: string) {
-  if (!media.value) return;
-  const projectId = ensure(route.params.projectId) as string;
-  const mediaId = ensure(route.params.mediaId) as string;
-
-  try {
-    // Note: we don't support timestamps for replies
-    const comment = await trpcClient.createMediaComment.mutate({
-      projectId: projectId,
-      mediaId: mediaId,
-      mediaVersionId: selectedVersionId.value || media.value.preferredVersionId,
-      text,
-      parentId
-    });
-
-    const parent = comments.value.find(c => c._id === parentId);
-    if (parent) {
-      parent.children.push(comment);
-    }
-
-    scrollToComment(comment);
-  } catch (e: any) {
-    logger.error(e.message, e);
-    showToast(e.message, 'error');
+async function editComment({ commentId, text }: { commentId: string, text: string }) {
+  if (!media.value) {
+    throw new Error('Media has not loaded.');
   }
+
+  if (!project.value) {
+    throw new Error('Project has not loaded.');
+  }
+
+  const comment = await trpcClient.updateMediaComment.mutate({
+      projectId: media.value.projectId,
+      mediaId: media.value._id,
+      commentId,
+      text
+  });
+
+  return comment;
 }
 
 async function deleteComment({ commentId } : { commentId: string }) {
@@ -447,88 +148,41 @@ async function deleteComment({ commentId } : { commentId: string }) {
   });
 }
 
-async function editComment(commentId: string, text: string) {
-  if (!media.value) return;
-  const projectId = ensure(route.params.projectId) as string;
-  const mediaId = ensure(route.params.mediaId) as string;
-
-  try {
-    const comment = await trpcClient.updateMediaComment.mutate({
-      projectId,
-      mediaId,
-      commentId,
-      text
+async function handleBrowserItemClick(item: ProjectItem) {
+  if (item.type === 'media') {
+    const projectId = unwrapSingleton(ensure(route.params.projectId));
+    router.push({
+      name: 'player',
+      params: {
+        projectId: projectId,
+        mediaId: item._id
+      }
     });
 
-    if (comment.parentId) {
-      const parent = comments.value.find(c => c._id === comment.parentId);
-      if (!parent) {
-        logger.warn(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' after comment update, but did not find it.`);
-        return;
-      }
-
-      const indexToUpdate = parent.children.findIndex(c => c._id === comment._id);
-      if (indexToUpdate === -1) {
-        logger.warn(`Expected to find comment '${comment._id}' as child of '${parent._id}' in comments list after update, but did not find it.`);
-        return;
-      }
-
-      // the comment we get from the server has less fields than the one we have in the client, so we merge
-      // the two instead of a full replacement
-      parent.children[indexToUpdate] = { ...parent.children[indexToUpdate], ...comment };
-      return;
-    }
-
-    const indexToUpdate = comments.value.findIndex(c => c._id === comment._id);
-    if (indexToUpdate === -1) {
-      logger.warn(`Expected to find comment '${comment._id}' in comment list after comment update.`);
-      return;
-    }
-
-    comments.value[indexToUpdate] = { ...comments.value[indexToUpdate], ...comment };
-  } catch (e: any) {
-    logger.error(e.message, e);
-    showToast(e.message, 'error');
-  }
-}
-
-function showDeleteCommentDialog(comment: CommentWithAuthor) {
-  deleteCommentDialog.value?.open(comment);
-}
-
-function handleCommentDeleted(comment: CommentWithAuthor) {
-  if (comment.parentId) {
-    const parent = comments.value.find(c => c._id === comment.parentId);
-    
-    if (!parent) {
-      logger.warn(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' after comment deletion, but did not find it.`);
-      return;
-    }
-
-    // NOTE: we only assume two-levels of nesting
-    const indexToRemove = parent.children.findIndex(c => c._id === comment._id);
-    if (indexToRemove === -1) {
-      logger.warn(`Expected to find comment '${comment._id}' as child of '${parent._id}' in comments list after deletion, but did not find it.`);
-      return;
-    }
-
-    parent.children.splice(indexToRemove, 1);
     return;
   }
 
-  // top-level comment
-  const indexToRemove = comments.value.findIndex(c => c._id === comment._id);
-  if (indexToRemove === -1) {
-    logger.warn(`Expected to find comment '${comment._id}' in comment list after comment deletion.`);
-    return;
-  }
-
-  comments.value.splice(indexToRemove, 1);
+  await navigateBrowserToFolder(item._id);
 }
 
-function handleMediaPlayBackError(error: Error) {
-  showToast(`Error occurred while playing media: ${error.message}`, 'error');
-  logger.error(`Error playing media, id: ${media.value?._id}, filename: ${media.value?.file.name}`, error);
+function handleBrowserToParentFolder() {
+  return navigateBrowserToFolder();
 }
 
+async function navigateBrowserToFolder(folderId?: string) {
+  const projectId = unwrapSingleton(ensure(route.params.projectId));
+  return wrapError(async () => {
+    const result = await trpcClient.getProjectItems.query({
+      projectId,
+      folderId
+    });
+
+    setBrowserItems(result.items, result.folder ? result.folder.path : []);
+  })
+}
+
+function setBrowserItems(items: ProjectItem[], path: FolderPathEntry[]) {
+  browserItems.value = items;
+  browserItemsPath.value = path;
+}
 </script>
