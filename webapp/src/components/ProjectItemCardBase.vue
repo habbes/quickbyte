@@ -28,45 +28,47 @@
             <slot></slot>
           </div>
         </div>
-        <div
-          class="h-12 border-t border-t-[#5e5e8b] bg-[#38364e] flex justify-between flex-row items-center p-2 text-white overflow-hidden"
-          :title="name">
-          <div class="flex flex-col flex-1 gap-1 text-ellipsis whitespace-nowrap overflow-hidden">
-            <div class="flex-1 text-ellipsis whitespace-nowrap overflow-hidden">
-              <slot name="title">
-                <router-link
-                  v-if="link"
-                  :to="link"
-                >
-                  {{ name }}
-                </router-link>
-                <span v-else>{{ name  }}</span>
+        <slot name="footer">
+          <div
+            class="h-12 border-t border-t-[#5e5e8b] bg-[#38364e] flex justify-between flex-row items-center p-2 text-white overflow-hidden"
+            :title="name">
+            <div class="flex flex-col flex-1 gap-1 text-ellipsis whitespace-nowrap overflow-hidden">
+              <div class="flex-1 text-ellipsis whitespace-nowrap overflow-hidden">
+                <slot name="title">
+                  <router-link
+                    v-if="link"
+                    :to="link"
+                  >
+                    {{ name }}
+                  </router-link>
+                  <span v-else>{{ name  }}</span>
+                </slot>
+              </div>
+              <div class="text-xs text-gray-400 flex gap-3 items-center">
+                <slot name="extraDetails"></slot>
+              </div>
+            </div>
+            <div>
+              <slot name="menu">
+                <UiMenu>
+                  <template #trigger>
+                    <EllipsisVerticalIcon class="h-5 w-5" />
+                  </template>
+                  <slot name="menuItems">
+                    <ProjectItemMenuItems
+                      :totalSelectedItems="totalSelectedItems"
+                      @rename="$emit('rename')"
+                      @move="$emit('move')"
+                      @delete="$emit('delete')"
+                      @selectAll="$emit('selectAll')"
+                      @unselectAll="$emit('unselectAll')"
+                    />
+                  </slot>
+                </UiMenu>
               </slot>
             </div>
-            <div class="text-xs text-gray-400 flex gap-3 items-center">
-              <slot name="extraDetails"></slot>
-            </div>
           </div>
-          <div>
-            <slot name="menu">
-              <UiMenu>
-                <template #trigger>
-                  <EllipsisVerticalIcon class="h-5 w-5" />
-                </template>
-                <slot name="menuItems">
-                  <ProjectItemMenuItems
-                    :totalSelectedItems="totalSelectedItems"
-                    @rename="$emit('rename')"
-                    @move="$emit('move')"
-                    @delete="$emit('delete')"
-                    @selectAll="$emit('selectAll')"
-                    @unselectAll="$emit('unselectAll')"
-                  />
-                </slot>
-              </UiMenu>
-            </slot>
-          </div>
-        </div>
+        </slot>
       </div>
     </div>
     <template #menu>
