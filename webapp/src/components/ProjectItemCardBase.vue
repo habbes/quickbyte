@@ -111,6 +111,7 @@ const emit = defineEmits<{
   (e: 'toggleInMultiSelect'): void;
   (e: 'selectAll'): void;
   (e: 'unselectAll'): void;
+  (e: 'click'): void;
 }>();
 
 const router = useRouter();
@@ -143,6 +144,8 @@ function handleClick(event: MouseEvent|TouchEvent) {
   }
 
   if (!props.link) {
+    // if link is not provided, trigger click event instead
+    emit('click');
     return;
   }
 

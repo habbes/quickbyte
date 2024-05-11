@@ -2,6 +2,7 @@
   <PlayerWrapper
     v-if="share && media"
     :media="media"
+    :selectedVersionId="selectedVersionId || media.preferredVersionId"
     :otherItems="otherItems"
     :role="'reviewer'"
     :user="user"
@@ -13,7 +14,8 @@
     :editComment="editComment"
     :deleteComment="deleteComment"
     @close="handleClosePlayer()"
-    
+    @browserItemClick="handleBrowserItemClick($event)"
+    @selectVersion="handleVersionChange($event)"
   />
 </template>
 <script lang="ts" setup>
@@ -29,11 +31,20 @@ const password = projectShareStore.password;
 const route = useRoute();
 const router = useRouter();
 const media = ref<MediaWithFileAndComments>();
+const selectedVersionId = ref<string>();
 const otherItems = ref<ProjectItem[]>([]);
 const user = ref<{ _id: string, name: string }|undefined>();
 
 function handleClosePlayer() {
-  router.push({ name: 'project-share', params: { shareId: share.value?._id, code: code.value }  });
+  router.push({
+    name: 'project-share',
+    params: {
+      shareId: share.value?._id, code: code.value,
+    },
+    query: {
+      version: selectedVersionId.value
+    }
+  });
 }
 
 async function sendComment(args: {
@@ -113,6 +124,8 @@ watch(() => route.params.mediaId, async () => {
       mediaId: mediaId
     });
 
+    selectedVersionId.value = (route.query.version as string|undefined) || media.value.preferredVersionId;
+
     if (media.value.comments.length) {
       // because we can only see the comments from the current user or
       // their replies, we're sure that the author of any top-level comment
@@ -137,4 +150,35 @@ watch(() => route.params.mediaId, async () => {
 }, {
   immediate: true
 });
+
+watch(() => route.query.version, async () => {
+  selectedVersionId.value = route.query.version as string|undefined;
+}, {
+  immediate: true
+});
+
+function handleBrowserItemClick(item: ProjectItem) {
+  if (!share.value || !code.value) {
+    return;
+  }
+
+  if (item.type === 'media') {
+    router.push({
+      name: 'project-share-player',
+      params: {
+        shareId: share.value._id,
+        code: code.value,
+        mediaId: item._id
+    }});
+  }
+}
+
+function handleVersionChange(versionId: string) {
+  if (!media.value) return;
+  if (!share.value) return;
+  if (!code.value) return;
+
+  router.push({ query: { ...route.query, version: versionId } });
+}
+
 </script>

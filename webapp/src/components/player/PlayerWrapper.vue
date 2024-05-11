@@ -108,6 +108,7 @@
             :items="otherItems"
             :getMediaType="getBrowserItemMediaType"
             :selectedItemId="media._id"
+            @itemClick="$emit('browserItemClick', $event)"
           />
         </div>
         <!-- end file list section -->
@@ -155,7 +156,7 @@
 import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { logger, showToast } from "@/app-utils";
-import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren, ProjectFolderItem, MediaType, ProjectItem } from "@quickbyte/common";
+import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren, MediaType, ProjectItem } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
@@ -177,13 +178,13 @@ type SideBarState = 'comments'|'files';
 
 const props = defineProps<{
   media: MediaWithFileAndComments;
-  otherItems: ProjectFolderItem[];
+  otherItems: ProjectItem[];
   role: RoleType;
   allowComments: boolean;
   allowDownload: boolean;
   showAllVersions: boolean;
   allowUploadVersion: boolean;
-  selectedVersionId?: string;
+  selectedVersionId: string;
   selectedCommentId?: string;
   user?: {
     _id: string;
@@ -208,6 +209,7 @@ const emit = defineEmits<{
   (e: 'close'): unknown;
   (e: 'selectVersion', versionId: string): unknown;
   (e: 'newVersionUpload'): unknown;
+  (e: 'browserItemClick', item: ProjectItem): unknown;
 }>();
 
 // had difficulties getting the scrollbar on the comments panel to work
@@ -222,16 +224,7 @@ const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
 
-const selectedVersionId = ref<string>(props.media.preferredVersionId);
-const file = computed(() => {
-  if (!props.media) return;
-  if (!selectedVersionId.value) return;
-
-  const version = ensure(props.media.versions.find(v => v._id === selectedVersionId.value),
-    `Expected version '${selectedVersionId.value}'' to exist for media '${props.media._id}'.`);
-
-  return version.file;
-});
+// const selectedVersionId = ref<string>(props.selectedVersionId || props.media.preferredVersionId);
 
 const comments = ref<WithChildren<CommentWithAuthor>[]>(props.media.comments);
 const selectedCommentId = ref<string>();
@@ -248,6 +241,31 @@ const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
 const user = ref<{ _id: string, name: string }|undefined>(props.user);
 
 const sideBarState = ref<SideBarState>(props.allowComments ? 'comments' : 'files');
+
+// Helps keep track of when the media has changed
+const _media = computed(() => props.media);
+watch(_media, () => {
+  comments.value = props.media.comments;
+  if (props.selectedCommentId) {
+    const comment = comments.value.find(c => c._id === props.selectedCommentId);
+    if (comment) {
+      handleVideoCommentClicked(comment);
+    }
+  }
+
+  // selectedVersionId.value = props.selectedVersionId || _media.value.preferredVersionId;
+}, { immediate: true });
+
+const file = computed(() => {
+  if (!props.media) return;
+  if (!props.selectedVersionId) return;
+
+  const version = ensure(props.media.versions.find(v => v._id === props.selectedVersionId),
+    `Expected version '${props.selectedVersionId}'' to exist for media '${props.media._id}'.`);
+
+  return version.file;
+});
+
 
 const sources = computed<MediaSource[]>(() => {
   if (!props.media) return [];
@@ -335,15 +353,6 @@ const sortedComments = computed(() => {
 
 const timedComments = computed<WithChildren<TimedCommentWithAuthor>[]>(() =>
   sortedComments.value.filter(c => isDefined(c.timestamp)) as WithChildren<TimedCommentWithAuthor>[]);
-
-onMounted(() => {
-  if (props.selectedCommentId) {
-    const comment = comments.value.find(c => c._id === props.selectedCommentId);
-    if (comment) {
-      handleVideoCommentClicked(comment);
-    }
-  }
-});
 
 async function handleVersionUpload() {
   // TODO: we currently don't pass the file or version that was
@@ -433,7 +442,7 @@ async function sendTopLevelComment() {
     const comment = await props.sendComment({
       text: commentInputText.value,
       timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined,
-      versionId: selectedVersionId.value || props.media.preferredVersionId,
+      versionId: props.selectedVersionId || props.media.preferredVersionId,
     });
 
     if (!user.value) {
@@ -460,7 +469,7 @@ async function sendTopLevelComment() {
     const comment = await props.sendComment({
       text,
       parentId,
-      versionId: selectedVersionId.value || props.media.preferredVersionId
+      versionId: props.selectedVersionId || props.media.preferredVersionId
     });
 
     if (!user.value) {
