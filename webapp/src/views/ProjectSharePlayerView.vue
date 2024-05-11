@@ -2,6 +2,7 @@
   <PlayerWrapper
     v-if="share && media"
     :media="media"
+    :otherItems="otherItems"
     :role="'reviewer'"
     :user="user"
     :allowComments="share.allowComments"
@@ -12,6 +13,7 @@
     :editComment="editComment"
     :deleteComment="deleteComment"
     @close="handleClosePlayer()"
+    
   />
 </template>
 <script lang="ts" setup>
@@ -19,7 +21,7 @@ import { ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { PlayerWrapper } from "@/components/player";
 import { projectShareStore, trpcClient, wrapError } from "@/app-utils";
-import type { MediaWithFileAndComments } from "@quickbyte/common";
+import type { MediaWithFileAndComments, ProjectItem } from "@quickbyte/common";
 
 const share = projectShareStore.share;
 const code = projectShareStore.code;
@@ -27,6 +29,7 @@ const password = projectShareStore.password;
 const route = useRoute();
 const router = useRouter();
 const media = ref<MediaWithFileAndComments>();
+const otherItems = ref<ProjectItem[]>([]);
 const user = ref<{ _id: string, name: string }|undefined>();
 
 function handleClosePlayer() {
@@ -116,6 +119,19 @@ watch(() => route.params.mediaId, async () => {
       // is the current user
       const comment = media.value.comments[0];
       user.value = comment.author;
+    }
+
+    // fetch folders/files in the same path to populate
+    // the in-player browser
+    const folderId = media.value.folderId || undefined;
+    const result = await trpcClient.getProjectShareItems.query({
+      shareId: share.value._id,
+      code: code.value,
+      password: password.value,
+      folderId
+    });
+    if ('items' in result) {
+      otherItems.value = result.items;
     }
   });
 }, {

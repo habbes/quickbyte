@@ -6,6 +6,7 @@
       <ProjectItemCardBase
         :name="item.name"
         @click="$emit('itemClick', item)"
+        :selected="item._id === selectedItemId"
       >
         <div class="h-[100px] flex items-center justify-center">
           <MediaTypeIcon sm :mediaType="getMediaType(item)" />

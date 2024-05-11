@@ -28,55 +28,92 @@
       </div>
     </div>
     <div class="flex flex-col-reverse sm:flex-row h-[calc(100dvh-48px)] relative">
-      <!-- start comment sidebar -->
+     
+      <!-- start sidebar -->
       <div class="w-full sm:w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col">
-        
+         <!-- start sidebar header -->
+        <div class="flex items-center h-[30px] border-b border-b-black">
+          <div
+            @click="sideBarState = 'comments'"
+            v-if="allowComments"
+            class="flex flex-1 items-center gap-2 px-2 cursor-pointer"
+            :class="{ 'text-white': sideBarState === 'comments'}"
+          >
+            <ChatBubbleLeftRightIcon class="h-4 w-4" />
+            Comments
+          </div>
+          <div
+            @click="sideBarState = 'files'"
+            class="flex-1 flex items-center gap-2 px-2 cursor-pointer"
+            :class="{ 'text-white': sideBarState === 'files'}"
+          >
+            <ListBulletIcon class="h-4 w-4" />
+            Browse
+          </div>
+        </div>
+        <!-- end sidebar header -->
 
-        <div class="overflow-y-auto flex flex-col h-[calc(100dvh-478px)] sm:h-[calc(100dvh-248px)]">
-          <MediaComment
-            v-if="user"
-            v-for="comment in sortedComments"
-            :key="comment._id"
-            :comment="comment"
-            :htmlId="getHtmlCommentId(comment)"
-            :getHtmlId="getHtmlCommentId"
-            :selected="comment._id === selectedCommentId"
-            :currentUserId="user._id"
-            :currentRole="role"
-            @click="handleCommentClicked($event)"
-            @reply="sendCommentReply"
-            @delete="showDeleteCommentDialog($event)"
-            @edit="editComment"
+        <!-- start comment section -->
+        <div v-if="sideBarState === 'comments'">
+          <div class="overflow-y-auto flex flex-col h-[calc(100dvh-508px)] sm:h-[calc(100dvh-278px)]">
+            <MediaComment
+              v-if="user"
+              v-for="comment in sortedComments"
+              :key="comment._id"
+              :comment="comment"
+              :htmlId="getHtmlCommentId(comment)"
+              :getHtmlId="getHtmlCommentId"
+              :selected="comment._id === selectedCommentId"
+              :currentUserId="user._id"
+              :currentRole="role"
+              @click="handleCommentClicked($event)"
+              @reply="sendCommentReply"
+              @delete="showDeleteCommentDialog($event)"
+              @edit="editComment"
+            />
+          </div>
+
+          <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 sm:h-[200px]">
+            <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
+              <div class="flex flex-row items-center justify-end">
+                <div class="flex flex-row items-center gap-1" title="Save comment at the current timestamp">
+                  <ClockIcon class="h-5 w-5"/>
+                  <span>{{ formatTimestampDuration(currentTimeStamp) }}</span>
+                  <input
+                    v-model="includeTimestamp"
+                    type="checkbox"
+                    class="checkbox checkbox-xs checkbox-accent"
+                  >
+                </div>
+              </div>
+              <textarea
+                class="bg-[#604a59] border-0 hover:border-0 outline-none w-full flex-1 resize-none"
+                placeholder="Type your comment here"
+                @focus="handleCommentInputFocus()"
+                v-model="commentInputText"
+              ></textarea>
+            </div>
+            <div>
+              <button class="btn btn-primary btn-xs" @click="sendTopLevelComment()">Send</button>
+            </div>
+          </div>
+        </div>
+        <!-- end comment section -->
+        <!-- file list section -->
+        <div
+          v-if="sideBarState === 'files'"
+          class="overflow-y-auto h-[calc(100dvh-375px)] sm:h-[calc(100dvh-78px)] mb-4"
+        >
+          <InPlayerMediaBrowser
+            :items="otherItems"
+            :getMediaType="getBrowserItemMediaType"
+            :selectedItemId="media._id"
           />
         </div>
-
-        <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 sm:h-[200px]">
-          <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
-            <div class="flex flex-row items-center justify-end">
-              <div class="flex flex-row items-center gap-1" title="Save comment at the current timestamp">
-                <ClockIcon class="h-5 w-5"/>
-                <span>{{ formatTimestampDuration(currentTimeStamp) }}</span>
-                <input
-                  v-model="includeTimestamp"
-                  type="checkbox"
-                  class="checkbox checkbox-xs checkbox-accent"
-                >
-              </div>
-            </div>
-            <textarea
-              class="bg-[#604a59] border-0 hover:border-0 outline-none w-full flex-1 resize-none"
-              placeholder="Type your comment here"
-              @focus="handleCommentInputFocus()"
-              v-model="commentInputText"
-            ></textarea>
-          </div>
-          <div>
-            <button class="btn btn-primary btn-xs" @click="sendTopLevelComment()">Send</button>
-          </div>
-        </div>
+        <!-- end file list section -->
         
       </div>
-      <!-- end comment sidebar -->
+      <!-- end sidebar -->
       <!-- player container -->
       <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]">
           <div class="h-full max-h-full sm:h-[90%] w-full flex sm:items-center">
@@ -118,14 +155,15 @@
 import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { logger, showToast } from "@/app-utils";
-import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
+import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren, ProjectFolderItem, MediaType, ProjectItem } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
-import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
+import { ClockIcon, XMarkIcon, ArrowDownCircleIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
 import AVPlayer from './AVPlayer.vue';
 import ImageViewer from './ImageViewer.vue';
 import MediaPlayerVersionDropdown from "./MediaPlayerVersionDropdown.vue";
 import MediaComment from "./MediaComment.vue";
+import InPlayerMediaBrowser from './InPlayerMediaBrowser.vue';
 import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
 
@@ -135,8 +173,11 @@ type MediaSource = {
   type: 'hls'|'dash'|'raw'
 };
 
+type SideBarState = 'comments'|'files';
+
 const props = defineProps<{
   media: MediaWithFileAndComments;
+  otherItems: ProjectFolderItem[];
   role: RoleType;
   allowComments: boolean;
   allowDownload: boolean;
@@ -205,6 +246,8 @@ const includeTimestamp = ref<boolean>(true);
 const commentInputText = ref<string>();
 const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
 const user = ref<{ _id: string, name: string }|undefined>(props.user);
+
+const sideBarState = ref<SideBarState>(props.allowComments ? 'comments' : 'files');
 
 const sources = computed<MediaSource[]>(() => {
   if (!props.media) return [];
@@ -514,6 +557,14 @@ function handleCommentDeleted(comment: CommentWithAuthor) {
 function handleMediaPlayBackError(error: Error) {
   showToast(`Error occurred while playing media: ${error.message}`, 'error');
   logger.error(`Error playing media, id: ${props.media?._id}, filename: ${props.media?.file.name}`, error);
+}
+
+function getBrowserItemMediaType(item: ProjectItem): MediaType | 'folder' {
+  if (item.type === 'folder') {
+    return 'folder';
+  }
+
+  return getMediaType(item.item.name);
 }
 
 </script>
