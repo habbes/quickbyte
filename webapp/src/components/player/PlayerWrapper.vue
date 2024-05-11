@@ -32,23 +32,29 @@
       <!-- start sidebar -->
       <div class="w-full sm:w-96 border-r border-r-[#120c11] text-[#d1bfcd] text-xs flex flex-col">
          <!-- start sidebar header -->
-        <div class="flex items-center h-[30px] border-b border-b-black">
+        <div class="flex items-stretch h-[30px] border-b border-b-black">
           <div
             @click="sideBarState = 'comments'"
             v-if="allowComments"
-            class="flex flex-1 items-center gap-2 px-2 cursor-pointer"
-            :class="{ 'text-white': sideBarState === 'comments'}"
+            class="flex-1 flex items-center gap-2 px-4 cursor-pointer"
+            :class="{
+              'text-white': sideBarState === 'comments',
+              'border-b border-b-blue-300': sideBarState === 'comments'
+            }"
           >
             <ChatBubbleLeftRightIcon class="h-4 w-4" />
             Comments
           </div>
           <div
             @click="sideBarState = 'files'"
-            class="flex-1 flex items-center gap-2 px-2 cursor-pointer"
-            :class="{ 'text-white': sideBarState === 'files'}"
+            class="flex-1 flex items-center gap-2 px-4 cursor-pointer"
+            :class="{
+              'text-white': sideBarState === 'files',
+              'border-b border-b-blue-300': sideBarState === 'files'
+            }"
           >
             <ListBulletIcon class="h-4 w-4" />
-            Browse
+            Browse files
           </div>
         </div>
         <!-- end sidebar header -->
