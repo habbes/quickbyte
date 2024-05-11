@@ -3,7 +3,7 @@
     v-if="share && media"
     :media="media"
     :selectedVersionId="selectedVersionId || media.preferredVersionId"
-    :otherItems="otherItems"
+    :otherItems="browserItems"
     :role="'reviewer'"
     :user="user"
     :allowComments="share.allowComments"
@@ -43,7 +43,7 @@ const currentFolderId = ref<string>();
 /**
  * Items to display in the embedded file browser
  */
-const otherItems = ref<ProjectItem[]>([]);
+const browserItems = ref<ProjectItem[]>([]);
 /**
  * The path of the folder containing the items
  * currently displayed in the embedded file browser
@@ -166,9 +166,8 @@ watch(() => route.params.mediaId, async () => {
     });
 
     if ('items' in result) {
-      otherItems.value = result.items;
+      browserItems.value = result.items;
       browserItemsPath.value = result.path;
-      console.log('path', result.path);
     }
   });
 }, {
@@ -210,9 +209,8 @@ async function navigateBrowserToFolder(folderId?: string) {
   });
   
   if ('items' in result) {
-    otherItems.value = result.items;
+    browserItems.value = result.items;
     browserItemsPath.value = result.path;
-    console.log('path', result.path);
   }
 }
 
