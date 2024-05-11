@@ -15,10 +15,7 @@
     @selectAll="$emit('selectAll')"
     @unselectAll="$emit('unselectAll')"
   >
-    <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
-    <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
-    <MusicalNoteIcon v-else-if="mediaType === 'audio'" class="h-10 w-10"/>
-    <DocumentIcon v-else class="h-10 w-10"/>
+    <MediaTypeIcon :mediaType="mediaType" />
     <template #extraDetails>
       <div>
         {{ new Date(media._createdAt).toLocaleDateString() }}
@@ -37,10 +34,10 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import type { Media } from '@/core';
-import { DocumentIcon, PlayIcon, PhotoIcon, MusicalNoteIcon } from '@heroicons/vue/24/solid';
 import { getMediaType } from '@/core/media-types';
 import RenameMediaDialog from '@/components/RenameMediaDialog.vue';
 import ProjectItemCardBase from './ProjectItemCardBase.vue';
+import MediaTypeIcon from './MediaTypeIcon.vue';
 
 const props = defineProps<{
   media: Media,

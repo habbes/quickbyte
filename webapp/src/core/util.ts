@@ -362,3 +362,7 @@ export function debounce<T extends any[]>(fn: (...args: T) => unknown, delay: nu
         }, delay);
     };
 }
+
+export function unwrapSingleton<T>(value: T | T[]): T {
+    return Array.isArray(value) ? value[0] : value;
+}
