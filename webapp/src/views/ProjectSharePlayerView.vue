@@ -17,7 +17,7 @@
 <script lang="ts" setup>
 import { ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import PlayerWrapper from "@/components/PlayerWrapper.vue";
+import { PlayerWrapper } from "@/components/player";
 import { projectShareStore, trpcClient, wrapError } from "@/app-utils";
 import type { MediaWithFileAndComments } from "@quickbyte/common";
 

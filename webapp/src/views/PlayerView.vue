@@ -118,10 +118,7 @@ import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAutho
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
-import AVPlayer from '@/components/AVPlayer.vue';
-import ImageViewer from '@/components/ImageViewer.vue';
-import MediaPlayerVersionDropdown from "@/components/MediaPlayerVersionDropdown.vue";
-import MediaComment from "@/components/MediaComment.vue";
+import { AVPlayer, ImageViewer, MediaPlayerVersionDropdown, MediaComment } from '@/components/player';
 import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
 
