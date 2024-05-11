@@ -1,11 +1,13 @@
 <template>
   <PlayerWrapper
-    v-if="project && media"
+    v-if="project && media && selectedVersionId"
     :media="media"
     :selectedVersionId="selectedVersionId"
     :selectedCommentId="selectedCommentId"
     :role="project.role"
     :user="user"
+    :otherItems="browserItems"
+    :browserHasParentFolder="browserItemsPath.length"
     allowComments
     allowDownload
     showAllVersions
@@ -19,22 +21,22 @@
   />
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick, watch } from "vue"
+import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store, trpcClient, wrapError } from "@/app-utils";
-import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, WithChildren } from "@quickbyte/common";
-import { ensure, isDefined, unwrapSingleton } from "@/core";
-import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
+import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry } from "@quickbyte/common";
+import { ensure, unwrapSingleton } from "@/core";
 import { PlayerWrapper } from "@/components/player";
 
 
 const route = useRoute();
 const router = useRouter();
-const error = ref<Error|undefined>();
 const media = ref<MediaWithFileAndComments>();
 const selectedVersionId = ref<string>();
 const loading = ref(true);
 const selectedCommentId = ref<string>();
+const browserItems = ref<ProjectItem[]>([]);
+const browserItemsPath = ref<FolderPathEntry[]>([]);
 
 const user = store.user;
 const project = computed(() => store.projects.value.find(p => p._id === route.params.projectId));
@@ -45,15 +47,24 @@ watch(() => route.params.mediaId, () => {
   const queriedVersionId = unwrapSingleton(route.query.version);
 
   return wrapError(async () => {
+    const projectId = unwrapSingleton(ensure(route.params.projectId));
+    const mediaId = unwrapSingleton(ensure(route.params.mediaId));
     media.value = await trpcClient.getProjectMediaById.query({
       projectId: route.params.projectId as string,
       mediaId: route.params.mediaId as string
     });
 
-    console.log('media', media.value);
-
     selectedVersionId.value = queriedVersionId && media.value.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : media.value.preferredVersionId;
     selectedCommentId.value = queriedCommentId || undefined;
+
+    // fetch files and folders in the same parent folder as the media
+    // to enable navigation in the embedded file browser
+    const result = await trpcClient.getProjectItems.query({
+      projectId,
+      folderId: media.value.folderId ? media.value.folderId : undefined
+    });
+
+    setBrowserItems(result.items, result.folder ? result.folder.path : []);
   },
   {
     finally: () => loading.value = false
@@ -133,5 +144,10 @@ async function deleteComment({ commentId } : { commentId: string }) {
     commentId: commentId,
     mediaId: media.value._id
   });
+}
+
+function setBrowserItems(items: ProjectItem[], path: FolderPathEntry[]) {
+  browserItems.value = items;
+  browserItemsPath.value = path;
 }
 </script>
