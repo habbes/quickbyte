@@ -59,6 +59,7 @@
                       :totalSelectedItems="totalSelectedItems"
                       @rename="$emit('rename')"
                       @move="$emit('move')"
+                      @share="$emit('share')"
                       @delete="$emit('delete')"
                       @selectAll="$emit('selectAll')"
                       @unselectAll="$emit('unselectAll')"
