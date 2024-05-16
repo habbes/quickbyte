@@ -19,6 +19,7 @@
       @time-update="handleTimeUpdate()"
       @progress="handleProgress($event)"
       @seeked="$emit('seeked')"
+      
     >
       <media-provider>
         <source v-for="src in sources"
@@ -125,11 +126,18 @@
           <SpeakerWaveIcon v-if="!isMuted" class="h-5 w-5 cursor-pointer" @click="mute()"/>
           <SpeakerXMarkIcon v-if="isMuted" class="h-5 w-5 cursor-pointer" @click="unmute()"/>
         </div>
-        <div>
+        <div class="hidden sm:block">
           <Slider :model-value="[volume]" @update:model-value="handleSliderUpdate($event)" :min="0" :max="1" :step="0.01" class="w-[80px]" />
         </div>
       </div>
-      <div>
+      <div class="flex items-center gap-2 ">
+        <span v-if="mediaType === 'video'">
+          <ArrowsPointingOutIcon
+            @click="enterFullScreen()"
+            class="h-4 w-4 cursor-pointer hover:text-white"
+            title="Full screen" 
+          />
+        </span>
         <span class="text-gray-300">{{ formatTimestampDuration(playTime) }}</span> / {{ formatTimestampDuration(duration) }}
       </div>
     </div>
@@ -139,8 +147,8 @@
 import 'vidstack/bundle';
 import { type MediaPlayer } from 'vidstack';
 import { formatTimestampDuration, type TimedComment } from '@/core';
-import { ref, computed, watch } from 'vue';
-import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon} from '@heroicons/vue/24/solid';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
 import { logger } from '@/app-utils';
 import { nextTick } from 'process';
@@ -173,6 +181,7 @@ defineExpose({
 });
 
 const player = ref<MediaPlayer>();
+let unsubscribePlayerEvents: ReturnType<MediaPlayer['subscribe']>|undefined;
 const progressBar = ref<HTMLDivElement>();
 
 const isPlaying = ref(false);
@@ -371,6 +380,30 @@ function handleProgress(event: any) {
     buffered.value = player.value?.buffered;
   }
 }
+
+async function enterFullScreen() {
+  if (!player.value) return;
+  try {
+    await player.value.enterFullscreen();
+  } catch {}
+}
+
+onMounted(() => {
+  unsubscribePlayerEvents = player.value?.subscribe(({ fullscreen }) => {
+    if (!player.value) return;
+    // currently, we don't show our custom controls in full screen mode. We
+    // show the player's built-in controls instead.
+    if (fullscreen) {
+      player.value.controls = true;
+    } else {
+      player.value.controls = false;
+    }
+  });
+});
+
+onUnmounted(() => {
+  unsubscribePlayerEvents && unsubscribePlayerEvents();
+});
 
 function getTimeFromPosition(seekPosition: number): number {
   if (!progressBar.value) return 0;
