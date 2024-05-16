@@ -157,17 +157,43 @@ watch(() => route.params.mediaId, async () => {
 
     // fetch folders/files in the same path to populate
     // the in-player browser
+    // note that it's possible that the parent folder was not
+    // shared, but we don't know that, especially when the url
+    // this page is loaded or reloaded directly, meaning the
+    // client doesn't know which folders the user navigated through
+    // to get here. So we make a request just in case the folder
+    // was shared, if it's not, the server will return
+    // a not found or permission error.
     currentFolderId.value = media.value.folderId || undefined;
-    const result = await trpcClient.getProjectShareItems.query({
-      shareId: share.value._id,
-      code: code.value,
-      password: password.value,
-      folderId: currentFolderId.value
-    });
+    try {
+      const result = await trpcClient.getProjectShareItems.query({
+        shareId: share.value._id,
+        code: code.value,
+        password: password.value,
+        folderId: currentFolderId.value
+      });
 
-    if ('items' in result) {
-      browserItems.value = result.items;
-      browserItemsPath.value = result.path;
+      if ('items' in result) {
+        browserItems.value = result.items;
+        browserItemsPath.value = result.path;
+      }
+    }
+    catch (e: any) {
+      const data = e.data;
+      if (
+        data?.appCode === 'resourceNotFound' ||
+        data?.appCode === 'permissionError' ||
+        data?.httpStatus === 404 ||
+        data?.httpStatus === 403
+      ) {
+        // Permission or not found error means the folder
+        // was not shared. So silently ignore the error
+        // and continue without showing any file in the browser.
+        return;
+      }
+
+      // some unexpected error
+      throw e;
     }
   });
 }, {
