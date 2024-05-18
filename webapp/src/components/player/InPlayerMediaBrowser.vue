@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full px-4 py-2 gap-2 flex flex-col mb-6">
+  <div class="h-full px-4 py-2 gap-2 flex flex-col mb-2">
     <div
       @click="$emit('goToParent')"
       v-if="hasParentFolder"

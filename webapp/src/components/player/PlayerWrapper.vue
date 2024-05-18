@@ -61,7 +61,7 @@
 
         <!-- start comment section -->
         <div v-if="sideBarState === 'comments'">
-          <div class="overflow-y-auto flex flex-col h-[calc(100dvh-508px)] sm:h-[calc(100dvh-278px)]">
+          <div class="commentsList overflow-y-auto flex flex-col sm:h-[calc(100dvh-278px)]">
             <MediaComment
               v-if="user"
               v-for="comment in sortedComments"
@@ -79,7 +79,7 @@
             />
           </div>
 
-          <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 sm:h-[200px]">
+          <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 h-[150px] sm:h-[200px]">
             <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
               <div class="flex flex-row items-center justify-end">
                 <div class="flex flex-row items-center gap-1" title="Save comment at the current timestamp">
@@ -108,7 +108,7 @@
         <!-- file list section -->
         <div
           v-if="sideBarState === 'files'"
-          class="overflow-y-auto h-[calc(100dvh-375px)] sm:h-[calc(100dvh-78px)] mb-4"
+          class="filesList overflow-y-auto sm:h-[calc(100dvh-78px)]"
         >
           <InPlayerMediaBrowser
             :items="otherItems"
@@ -124,7 +124,7 @@
       </div>
       <!-- end sidebar -->
       <!-- player container -->
-      <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]">
+      <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]" :style="`height: ${playerHeight}px`">
           <div class="h-full max-h-full sm:h-[90%] w-full flex sm:items-center">
             <AVPlayer
               v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
@@ -137,6 +137,7 @@
               @clickComment="handleVideoCommentClicked($event)"
               :versionId="selectedVersionId"
               @playBackError="handleMediaPlayBackError($event)"
+              @heightChange="playerHeight = $event"
             />
             <ImageViewer
               v-else-if="file && mediaType === 'image'"
@@ -251,6 +252,27 @@ const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
 const user = ref<{ _id: string, name: string }|undefined>(props.user);
 
 const sideBarState = ref<SideBarState>(props.allowComments ? 'comments' : 'files');
+const playerHeight = ref<number>();
+const commentsListCssHeightSmallScreen = computed(() => {
+  if (!playerHeight.value) return;
+
+  const offset = playerHeight.value
+    + 150 // comment box
+    + 48 // player wrapper header
+    + 30; // sidebar header
+  
+  return `calc(100dvh - ${offset}px)`
+});
+
+const filesListHeightSmallScreen = computed(() => {
+  if (!playerHeight.value) return;
+
+  const offset = playerHeight.value
+  + 48 // player wrapper header
+  + 30; // sidebar header
+
+  return `calc(100dvh - ${offset}px)`;
+});
 
 // Helps keep track of when the media has changed
 const _media = computed(() => props.media);
@@ -587,3 +609,16 @@ function getBrowserItemMediaType(item: ProjectItem): MediaType | 'folder' {
 }
 
 </script>
+<style scoped>
+
+@media (max-width: 640px) {
+  .commentsList {
+    height: v-bind('commentsListCssHeightSmallScreen');
+  }
+
+  .filesList {
+    height: v-bind('filesListHeightSmallScreen');
+  }
+}
+
+</style>

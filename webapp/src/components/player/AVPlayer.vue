@@ -2,6 +2,7 @@
   <div class="w-full h-full max-h-full">
     <div v-if="mediaType === 'video'"
       class="bg-black max-h-full"
+      :style="`height: ${videoHeight}px`"
     >
     <!-- Getting type errors due to the props passed to the media-player.
       Ignoring the errors until I figure out what the causes them.
@@ -171,6 +172,9 @@ const emit = defineEmits<{
   (e: 'seeked'): void;
   (e: 'clickComment', comment: TimedComment): void;
   (e: 'playBackError', error: Error): void;
+  (e: 'fullscreenChange', fullscreen: boolean): void;
+  (e: 'widthChange', width: number): void;
+  (e: 'heightChange', height: number): void;
 }>();
 
 defineExpose({
@@ -198,7 +202,24 @@ const playPercentage = computed(() => {
 /**
  * Used to control whether or not Vidstack's built-in video controls are displayed
  */
- const vidstackControlsDisplay = ref<'block'|'none'>('none');
+const vidstackControlsDisplay = ref<'block'|'none'>('none');
+const videoWidth = ref<number>();
+const videoHeight = ref<number>();
+const playerWithControllerHeight = computed(() => {
+  if (isFullScreen.value) {
+    return videoHeight.value;
+  }
+
+  if (!videoHeight.value) {
+    return;
+  }
+
+  return videoHeight.value
+    + 8 // progress bar
+    + 28 // comments bar
+    + 37; // player controls bar
+})
+const isFullScreen = ref(false);
 
 const buffered = ref<TimeRanges>();
 const bufferedSegments = computed(() => {
@@ -234,6 +255,38 @@ const duration = ref(0);
 const isMuted = ref(false);
 const volume = ref(0);
 const prevVolume = ref(0);
+
+watch(isFullScreen, () => {
+  if (!player.value) return;
+  // currently, we don't show our custom controls in full screen mode. We
+  // show the player's built-in controls instead.
+  // Ideally, we should show our custom controls even in full-screen mode
+  // for better consistency and feature parity. That's something
+  // to look into for the future.
+  if (isFullScreen.value) {
+    // Initially I was using player.value.controls to toggle
+    // control visibility. But for some reason,
+    // after setting player.value.controls to true, the Vidstack's
+    // exit full screen button stopped working
+    // So now I switched to toggling the built-in controls visibility
+    // using css.
+    // player.value.controls = true;
+    vidstackControlsDisplay.value = 'block';
+  } else {
+    player.value.controls = false;
+    vidstackControlsDisplay.value = 'none';
+  }
+});
+
+watch([videoWidth], () => {
+  if (!videoWidth.value) return;
+  emit('widthChange', videoWidth.value)
+});
+
+watch(playerWithControllerHeight, () => {
+  if (!playerWithControllerHeight.value) return;
+  emit('heightChange', playerWithControllerHeight.value);
+});
 
 // This helps keeps track of when the media
 // source changes.
@@ -394,26 +447,10 @@ async function enterFullScreen() {
 }
 
 onMounted(() => {
-  unsubscribePlayerEvents = player.value?.subscribe(({ fullscreen }) => {
-    if (!player.value) return;
-    // currently, we don't show our custom controls in full screen mode. We
-    // show the player's built-in controls instead.
-    // Ideally, we should show our custom controls even in full-screen mode
-    // for better consistency and feature parity. That's something
-    // to look into for the future.
-    if (fullscreen) {
-      // Initially I was using player.value.controls to toggle
-      // control visibility. But for some reason,
-      // after setting player.value.controls to true, the Vidstack's
-      // exit full screen button stopped working
-      // So now I swtiched to toggling the built-in controls visibility
-      // using css.
-      // player.value.controls = true;
-      vidstackControlsDisplay.value = 'block';
-    } else {
-      player.value.controls = false;
-      vidstackControlsDisplay.value = 'none';
-    }
+  unsubscribePlayerEvents = player.value?.subscribe(({ fullscreen, width, height }) => {
+    isFullScreen.value = fullscreen;
+    videoWidth.value = width;
+    videoHeight.value = height;
   });
 });
 
