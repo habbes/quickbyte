@@ -124,8 +124,8 @@
       </div>
       <!-- end sidebar -->
       <!-- player container -->
-      <div class="sm:h-full flex-1 sm:p-5 flex items-stretch justify-center">
-          <div class="h-full max-h-full sm:h-[90%] w-full flex sm:items-center">
+      <div class="sm:h-full flex-1 sm:px-5 sm:items-center flex items-stretch justify-center">
+          <div class="h-full max-h-full w-full flex sm:items-center">
             <AVPlayer
               :style="`height: ${playerHeight}px`"
               v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
