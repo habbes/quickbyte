@@ -33,7 +33,10 @@
       </media-video-layout>
     </media-player>
     </div>
-    <div v-else class="bg-black p-10 flex flex-col items-center justify-center">
+    <div v-else
+      class="bg-black p-10 flex flex-col items-center justify-center"
+      :style="`height: ${audioHeight}px`"
+    >
       <MusicalNoteIcon class="h-24 w-24 text-white" />
       <!-- Getting type errors due to the props passed to the media-player.
         Ignoring the errors until I figure out what the causes them.
@@ -203,22 +206,32 @@ const playPercentage = computed(() => {
  * Used to control whether or not Vidstack's built-in video controls are displayed
  */
 const vidstackControlsDisplay = ref<'block'|'none'>('none');
+const progressBarHeight = 8;
+const commentsBarHeight = 28;
+const controlsBarHeight = 37;
 const videoWidth = ref<number>();
 const videoHeight = ref<number>();
+const audioHeight = 176;
 const playerWithControllerHeight = computed(() => {
-  if (isFullScreen.value) {
-    return videoHeight.value;
-  }
+  if (props.mediaType === 'video') {
+    if (isFullScreen.value) {
+      return videoHeight.value;
+    }
 
-  if (!videoHeight.value) {
-    return;
-  }
+    if (!videoHeight.value) {
+      return;
+    }
 
-  return videoHeight.value
-    + 8 // progress bar
-    + 28 // comments bar
-    + 37; // player controls bar
-})
+    return videoHeight.value
+      + progressBarHeight
+      + commentsBarHeight
+      + controlsBarHeight;
+  } else {
+    return audioHeight + progressBarHeight + commentsBarHeight + controlsBarHeight;
+  }
+  
+});
+
 const isFullScreen = ref(false);
 
 const buffered = ref<TimeRanges>();
