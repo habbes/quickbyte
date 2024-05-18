@@ -19,7 +19,7 @@
       @time-update="handleTimeUpdate()"
       @progress="handleProgress($event)"
       @seeked="$emit('seeked')"
-      
+      fullscreen-orientation="none"
     >
       <media-provider>
         <source v-for="src in sources"
