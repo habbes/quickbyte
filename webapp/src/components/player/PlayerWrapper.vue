@@ -124,9 +124,10 @@
       </div>
       <!-- end sidebar -->
       <!-- player container -->
-      <div class="sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]" :style="`height: ${playerHeight}px`">
+      <div class="sm:h-full flex-1 sm:p-5 flex items-stretch justify-center">
           <div class="h-full max-h-full sm:h-[90%] w-full flex sm:items-center">
             <AVPlayer
+              :style="`height: ${playerHeight}px`"
               v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
               ref="videoPlayer"
               :mediaType="mediaType"
@@ -142,7 +143,7 @@
             <ImageViewer
               v-else-if="file && mediaType === 'image'"
               :src="file.downloadUrl"
-              class="h-[300px] sm:h-auto"
+              class="h-[300px] sm:h-full"
             />
             <div v-else class="h-[300px] sm:h-auto w-full flex items-center justify-center">
               Preview unsupported for this file type.
