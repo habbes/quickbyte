@@ -226,10 +226,9 @@ const playerWithControllerHeight = computed(() => {
       + progressBarHeight
       + commentsBarHeight
       + controlsBarHeight;
-  } else {
-    return audioHeight + progressBarHeight + commentsBarHeight + controlsBarHeight;
   }
   
+  return audioHeight + progressBarHeight + commentsBarHeight + controlsBarHeight;
 });
 
 const isFullScreen = ref(false);
@@ -299,7 +298,7 @@ watch([videoWidth], () => {
 watch(playerWithControllerHeight, () => {
   if (!playerWithControllerHeight.value) return;
   emit('heightChange', playerWithControllerHeight.value);
-});
+}, { immediate: true });
 
 // This helps keeps track of when the media
 // source changes.
@@ -459,13 +458,13 @@ async function enterFullScreen() {
   } catch {}
 }
 
-onMounted(() => {
+watch(player, () => {
   unsubscribePlayerEvents = player.value?.subscribe(({ fullscreen, width, height }) => {
     isFullScreen.value = fullscreen;
     videoWidth.value = width;
     videoHeight.value = height;
   });
-});
+}, { immediate: true });
 
 onUnmounted(() => {
   unsubscribePlayerEvents && unsubscribePlayerEvents();
