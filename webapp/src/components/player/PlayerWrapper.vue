@@ -124,7 +124,7 @@
       </div>
       <!-- end sidebar -->
       <!-- player container -->
-      <div class="h-[250px] sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]" :style="`height: ${playerHeight}px`">
+      <div class="sm:h-full flex-1 sm:p-5 flex items-stretch justify-center bg-[#24141f]" :style="`height: ${playerHeight}px`">
           <div class="h-full max-h-full sm:h-[90%] w-full flex sm:items-center">
             <AVPlayer
               v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
@@ -142,8 +142,9 @@
             <ImageViewer
               v-else-if="file && mediaType === 'image'"
               :src="file.downloadUrl"
+              class="h-[300px] sm:h-auto"
             />
-            <div v-else class="w-full flex items-center justify-center">
+            <div v-else class="h-[300px] sm:h-auto w-full flex items-center justify-center">
               Preview unsupported for this file type.
             </div>
           </div>
@@ -253,23 +254,33 @@ const user = ref<{ _id: string, name: string }|undefined>(props.user);
 
 const sideBarState = ref<SideBarState>(props.allowComments ? 'comments' : 'files');
 const playerHeight = ref<number>();
-const commentsListCssHeightSmallScreen = computed(() => {
-  if (!playerHeight.value) return;
+const commentBoxSmallScreenHeight = 150;
+const headerHeight = 48;
+const sidebarHeaderHeight = 30;
+const imageViewerSmallScreenHeight = 300;
 
-  const offset = playerHeight.value
-    + 150 // comment box
-    + 48 // player wrapper header
-    + 30; // sidebar header
+const commentsListCssHeightSmallScreen = computed(() => {
+  const viewerHeight = playerHeight.value && (mediaType.value === 'video' || mediaType.value === 'audio') ?
+    playerHeight.value :
+    imageViewerSmallScreenHeight;
+
+  const offset = viewerHeight
+    + commentBoxSmallScreenHeight
+    + headerHeight
+    + sidebarHeaderHeight;
   
   return `calc(100dvh - ${offset}px)`
 });
 
 const filesListHeightSmallScreen = computed(() => {
-  if (!playerHeight.value) return;
+  const viewerHeight = playerHeight.value && (mediaType.value === 'video' || mediaType.value === 'audio') ?
+    playerHeight.value :
+    imageViewerSmallScreenHeight;
 
-  const offset = playerHeight.value
-  + 48 // player wrapper header
-  + 30; // sidebar header
+
+  const offset = viewerHeight
+  + headerHeight
+  + sidebarHeaderHeight;
 
   return `calc(100dvh - ${offset}px)`;
 });
