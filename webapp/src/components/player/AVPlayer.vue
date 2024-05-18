@@ -195,6 +195,11 @@ const playPercentage = computed(() => {
   return 100 * current/total;
 });
 
+/**
+ * Used to control whether or not Vidstack's built-in video controls are displayed
+ */
+ const vidstackControlsDisplay = ref<'block'|'none'>('none');
+
 const buffered = ref<TimeRanges>();
 const bufferedSegments = computed(() => {
   if (!buffered.value || !player.value) return [];
@@ -393,10 +398,21 @@ onMounted(() => {
     if (!player.value) return;
     // currently, we don't show our custom controls in full screen mode. We
     // show the player's built-in controls instead.
+    // Ideally, we should show our custom controls even in full-screen mode
+    // for better consistency and feature parity. That's something
+    // to look into for the future.
     if (fullscreen) {
-      player.value.controls = true;
+      // Initially I was using player.value.controls to toggle
+      // control visibility. But for some reason,
+      // after setting player.value.controls to true, the Vidstack's
+      // exit full screen button stopped working
+      // So now I swtiched to toggling the built-in controls visibility
+      // using css.
+      // player.value.controls = true;
+      vidstackControlsDisplay.value = 'block';
     } else {
       player.value.controls = false;
+      vidstackControlsDisplay.value = 'none';
     }
   });
 });
@@ -440,13 +456,12 @@ function handleCommentMouseLeave() {
 }
 </script>
 <style scoped>
-/* Hide Vidstack's playback controls because we use custom ones */
-.vds-time-slider {
-  display: none;
-}
+/* Vidstack video controls are shown or hidden depending on fullscreen state */
 .vds-video-layout {
-  display: none;
+  display: v-bind('vidstackControlsDisplay');
 }
+
+/* Hide audio controls */
 
 .vds-audio-layout {
   display: none;
