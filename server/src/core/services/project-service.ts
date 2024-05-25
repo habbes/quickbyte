@@ -1,10 +1,10 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs, ProjectItemType } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createAuthError, createPermissionError } from "../error.js";
-import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail, getDownloadableFiles, getUserByEmail, getUserByEmailOrCreateGuest, tryGetUserByEmail } from "./index.js";
+import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider, createMediaCommentNotificationEmail, getDownloadableFiles, getUserByEmail, getUserByEmailOrCreateGuest, tryGetUserByEmail } from "./index.js";
 import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs, GetProjectShareMediaByIdArgs, User, GetAllProjectShareFilesForDownloadArgs, ConcurrentTaskQueue, DownloadTransferFileResult, TaskTracker, GetAllProjectShareFilesForDownloadResult, DeleteProjectArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
-import { getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, getProjectShareMediaFilesAndComments, IMediaService  } from "./media-service.js";
+import { addThumbnailUrlsToMedia, getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, getProjectShareMediaFilesAndComments, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { createFilterForDeleteableResource, Database } from "../db.js";
 import { getProjectMembers } from "../db/helpers.js";
@@ -20,10 +20,12 @@ export interface ProjectServiceConfig {
     folders: IFolderService;
     invites: IInviteService;
     access: IAccessHandler;
-    links: LinkGenerator,
-    email: EmailHandler,
-    eventBus: EventDispatcher,
-    projectShares: IProjectShareService
+    links: LinkGenerator;
+    email: EmailHandler;
+    eventBus: EventDispatcher;
+    projectShares: IProjectShareService;
+    storageHandlers: IStorageHandlerProvider;
+    packagers: IPlaybackPackagerProvider;
 }
 
 export class ProjectService {
@@ -156,7 +158,8 @@ export class ProjectService {
             const project = await this.getByIdInternal(id);
             await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor', 'reviewer']);
 
-            const media = await this.config.media.getProjectMediaByFolder(id, args.folderId);
+            const mediaWithoutThumbnails = await this.config.media.getProjectMediaByFolder(id, args.folderId);
+            const media = await addThumbnailUrlsToMedia(this.db, this.config.storageHandlers, this.config.packagers, mediaWithoutThumbnails);
             const folders = await this.config.folders.getFoldersByParent(id, args.folderId);
 
             let folder: FolderWithPath|undefined = undefined;

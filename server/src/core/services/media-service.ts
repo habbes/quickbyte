@@ -392,7 +392,6 @@ export function getProjectMediaByFolder(
             query.folderId = null;
         }
 
-        // now we get
         const media = await db.media().find(query).toArray();
 
         return media;
@@ -497,8 +496,8 @@ export async function getProjectShareMediaFilesAndComments({
 
 export async function addThumbnailUrlsToMedia<TMedia extends Media>(
     db: Database,
-    storageProviders: StorageHandlerProvider,
-    packagers: PlaybackPackagerRegistry,
+    storageProviders: IStorageHandlerProvider,
+    packagers: IPlaybackPackagerProvider,
     media: TMedia[]
 ): Promise<WithThumbnail<TMedia>[]> {
     const mediaToFileMap = new Map<string, string>();
@@ -532,8 +531,8 @@ export async function addThumbnailUrlsToMedia<TMedia extends Media>(
 }
 
 export async function addThumbnailToMedia<TMedia extends Media>(
-    storageProviders: StorageHandlerProvider,
-    packagers: PlaybackPackagerRegistry,
+    storageProviders: IStorageHandlerProvider,
+    packagers: IPlaybackPackagerProvider,
     media: TMedia,
     file: TransferFile
 ): Promise<WithThumbnail<TMedia>> {
