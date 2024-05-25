@@ -42,7 +42,7 @@
   <MediaVersionsDialog 
     ref="dialog"
     :media="media"
-    :allowUpload="allowUpload"
+    :allowUpload="!!allowUpload"
     @update="$emit('update', $event)"
   />
 </template>
