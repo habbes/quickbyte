@@ -227,7 +227,9 @@ export class AccountService {
             }),
             projectShares: new ProjectShareService(this.db, authContext, {
                 events: this.config.eventBus
-            })
+            }),
+            packagers: this.config.playbackPackagers,
+            storageHandlers: this.config.storageHandlers
         });
     }
 

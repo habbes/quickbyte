@@ -15,7 +15,7 @@
     @selectAll="$emit('selectAll')"
     @unselectAll="$emit('unselectAll')"
   >
-    <FolderIcon class="h-10 w-10" />
+    <FolderIcon class="h-10 w-10 text-[#ccd1e7]" />
     <template #extraDetails>
       <div>
         {{ folder._createdAt.toLocaleDateString() }}

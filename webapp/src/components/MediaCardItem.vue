@@ -15,7 +15,23 @@
     @selectAll="$emit('selectAll')"
     @unselectAll="$emit('unselectAll')"
   >
-    <MediaTypeIcon :mediaType="mediaType" />
+    <div
+      class="relative flex flex-1 items-center justify-center h-full w-full"
+    >
+      <div
+        v-if="media.thumbnailUrl"
+        class="absolute top-0 left-0 right-0 bottom-0 bg-no-repeat bg-center bg-contain"
+        :style="{
+          backgroundImage: `url(${media.thumbnailUrl})`
+        }"
+      >
+      </div>
+      <div
+        class="relative flex flex-1 items-center justify-center h-full w-full"
+      >
+        <MediaTypeIcon class="text-[#ccd1e7]" :mediaType="mediaType" />
+      </div>
+    </div>
     <template #extraDetails>
       <div>
         {{ new Date(media._createdAt).toLocaleDateString() }}
@@ -33,14 +49,14 @@
 </template>
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import type { Media } from '@/core';
+import type { Media, WithThumbnail } from '@quickbyte/common';
 import { getMediaType } from '@/core/media-types';
 import RenameMediaDialog from '@/components/RenameMediaDialog.vue';
 import ProjectItemCardBase from './ProjectItemCardBase.vue';
 import MediaTypeIcon from './MediaTypeIcon.vue';
 
 const props = defineProps<{
-  media: Media,
+  media: WithThumbnail<Media>,
   selected?: boolean,
   showSelectCheckbox?: boolean,
   totalSelectedItems?: number,

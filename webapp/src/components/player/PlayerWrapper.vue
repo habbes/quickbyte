@@ -113,6 +113,7 @@
           <InPlayerMediaBrowser
             :items="otherItems"
             :getMediaType="getBrowserItemMediaType"
+            :getThumbnail="getBrowserItemThumbnail"
             :hasParentFolder="browserHasParentFolder"
             :selectedItemId="media._id"
             @itemClick="$emit('browserItemClick', $event)"
@@ -618,6 +619,14 @@ function getBrowserItemMediaType(item: ProjectItem): MediaType | 'folder' {
   }
 
   return getMediaType(item.item.name);
+}
+
+function getBrowserItemThumbnail(item: ProjectItem): string|undefined {
+  if (item.type === 'folder') {
+    return;
+  }
+
+  return item.item.thumbnailUrl;
 }
 
 </script>

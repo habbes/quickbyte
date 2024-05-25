@@ -57,8 +57,8 @@
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick  } from "vue";
-import { useRoute } from "vue-router";
-import { trpcClient, wrapError, projectShareStore } from "@/app-utils";
+import { useRoute, useRouter } from "vue-router";
+import { trpcClient, wrapError, projectShareStore, showToast, logger } from "@/app-utils";
 import { ensure } from "@/core";
 import type { GetProjectShareLinkItemsArgs, ProjectShareItemRef, ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
 import { getRemainingContentHeightCss, layoutDimensions } from "@/styles/dimentions.js";
@@ -68,6 +68,7 @@ import Logo from '@/components/Logo.vue';
 import { ProjectShareDownloadAllButton } from "@/components/project-share";
 
 const route = useRoute();
+const router = useRouter();
 const code = computed(() => ensure(route.params.code as string));
 const loading = ref(false);
 const share = ref<ProjectShareLinkItemsSuccessResult>();
@@ -105,13 +106,13 @@ function downloadItem(item: ProjectShareItemRef) {
   nextTick(() => hiddenDownloader.value?.click());
 }
 
-function loadShare() {
+async function loadShare() {
   const shareId = ensure(route.params.shareId as string);
   const folderId = route.params.folderId as string|undefined;
 
   loading.value = true;
 
-  return wrapError(async () => {
+  try {
     const args: GetProjectShareLinkItemsArgs = {
       shareId: shareId,
       code: code.value
@@ -135,9 +136,38 @@ function loadShare() {
       projectShareStore.setShareCode(code.value);
       projectShareStore.setSharePassword(password.value);
     }
-  }, {
-    finally: () => loading.value = false
-  });
+  }
+  catch (e: any) {
+    const data = e.data;
+    if (
+      (
+        data?.appCode === 'resourceNotFound' ||
+        data?.appCode === 'permissionError' ||
+        data?.httpStatus === 404 ||
+        data?.httpStatus === 403
+      ) && route.query.closePlayer
+    ) {
+      // since we were redirected to this page by closing the player
+      // instead of the user manually entering a url to a folder
+      // that's not shared, let's gracefully fall back by redirecting
+      // to the root of the share
+
+      router.push({
+        name: 'project-share',
+        params: {
+          shareId: share.value?._id, code: code.value
+        }
+      });
+
+      return;
+    }
+
+    showToast(e.message, 'error');
+    logger.error(e.message, e);
+  }
+  finally {
+    loading.value = false
+  };
 }
 
 watch([() => route.params.shareId, () => route.params.code, () => route.params.folderId], async () => {
