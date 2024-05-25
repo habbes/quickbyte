@@ -536,8 +536,9 @@ export async function addThumbnailToMedia<TMedia extends Media>(
     media: TMedia,
     file: TransferFile
 ): Promise<WithThumbnail<TMedia>> {
+    const mediaType = getMediaType(file.name);
     // if file has no packager, the we ignore
-    if (file.playbackPackagingProvider && file.playbackPackagingId) {
+    if ((mediaType === 'video' || mediaType === 'image') && file.playbackPackagingProvider && file.playbackPackagingId) {
         const packager = packagers.getPackager(file.playbackPackagingProvider);
 
         const urls = await packager.getPlaybackUrls(file);
@@ -553,7 +554,7 @@ export async function addThumbnailToMedia<TMedia extends Media>(
             }
         }
     }
-    else if (getMediaType(file.name) === 'image') {
+    else if (mediaType === 'image') {
         // if it's an image, we can fallback to providing the image download url,
         // note that the image would be costly to render
         const storage = storageProviders.getHandler(file.provider);
