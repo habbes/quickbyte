@@ -144,7 +144,7 @@ function save() {
       projectId: props.media.projectId,
       mediaId: props.media._id,
       preferredVersionId: preferredVersionId.value,
-      concurrencyControl: props.media.concurrencyControl
+      concurrencyControl: props.media._cc
     };
 
     if (preferredVersionId.value !== props.media.preferredVersionId) {
