@@ -6,7 +6,9 @@
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
     :totalSelectedItems="totalSelectedItems"
+    :hasVersionManagement="true"
     @rename="rename()"
+    @manageVersions="manageVersions()"
     @delete="$emit('delete', media._id)"
     @move="$emit('move')"
     @share="$emit('share')"
@@ -46,12 +48,19 @@
     :media="media"
     @rename="$emit('update', $event)"
   />
+  <MediaVersionsDialog
+    ref="mediaVersionsDialog"
+    :media="media"
+    @update="$emit('update', $event)"
+    :allowUpload="allowUpload"
+  />
 </template>
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import type { Media, WithThumbnail } from '@quickbyte/common';
 import { getMediaType } from '@/core/media-types';
 import RenameMediaDialog from '@/components/RenameMediaDialog.vue';
+import { MediaVersionsDialog } from "@/components/versions";
 import ProjectItemCardBase from './ProjectItemCardBase.vue';
 import MediaTypeIcon from './MediaTypeIcon.vue';
 
@@ -60,6 +69,7 @@ const props = defineProps<{
   selected?: boolean,
   showSelectCheckbox?: boolean,
   totalSelectedItems?: number,
+  allowUpload?: boolean;
 }>();
 
 defineEmits<{
@@ -74,10 +84,14 @@ defineEmits<{
 }>();
 
 const renameDialog = ref<typeof RenameMediaDialog>();
+const mediaVersionsDialog = ref<typeof MediaVersionsDialog>();
 const mediaType = computed(() => getMediaType(props.media.name));
 
 function rename() {
   renameDialog.value?.open();
 }
 
+function manageVersions() {
+  mediaVersionsDialog.value?.open();
+}
 </script>

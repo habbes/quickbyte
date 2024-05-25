@@ -5,6 +5,7 @@
     :selected="selected"
     :showSelectCheckbox="showSelectCheckbox"
     :totalSelectedItems="totalSelectedItems"
+    :allowUpload="allowUpload"
     @update="$emit('update', { type: 'media', item: $event })"
     @delete="$emit('delete', { type: 'media', itemId: $event })"
     @move="$emit('move', { type: 'media', itemId: item._id })"
@@ -53,6 +54,7 @@ defineProps<{
   selected?: boolean,
   showSelectCheckbox?: boolean,
   totalSelectedItems?: number,
+  allowUpload?: boolean;
 }>();
 
 defineEmits<{
