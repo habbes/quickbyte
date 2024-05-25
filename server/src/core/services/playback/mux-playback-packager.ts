@@ -160,8 +160,8 @@ export class MuxPlaybackPackager implements PlaybackPackager {
             // see: https://docs.mux.com/guides/play-your-videos
             hlsManifestUrl: `https://stream.mux.com/${playbackId.id}.m3u8`,
             // see: https://docs.mux.com/guides/get-images-from-a-video
-            thumbnailUrl: `https://stream.mux.com/${playbackId.id}/thumbnail.webp`,
-            posterUrl: `https://stream.mux.com/${playbackId.id}/thumbnail.webp`,
+            thumbnailUrl: `https://image.mux.com/${playbackId.id}/thumbnail.webp`,
+            posterUrl: `https://image.mux.com/${playbackId.id}/thumbnail.webp`,
         };
 
         return urls;

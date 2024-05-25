@@ -772,6 +772,31 @@ async function createDownloadAndPlayableFile(provider: IStorageHandler, packager
     return downlodableFile;
 }
 
+/**
+ * Gets a download url for the specified file using the specified provider.
+ * The provider should match what was used to upload the file.
+ * @param provider 
+ * @param file 
+ * @param validityInMillis Determines when the download url will expire. If not provided, if 0,
+ * then the the url will be valid for 24 hours..
+ */
+export async function getFileDownloadUrl(provider: IStorageHandler, file: TransferFile, validityInMillis?: number): Promise<string|undefined> {
+    if (!file.accountId) {
+        // TODO: We should ensure all files have an accountId
+        return;
+    }
+
+    // TODO: we should store the blobPath into the file itself to keep file resilient
+    // from design changes on where we store paths
+    const blobName = `${file.transferId}/${file._id}`;
+
+    const expiryDate = validityInMillis ? new Date(Date.now() + validityInMillis) : new Date(Date.now() + DAYS_TO_MILLIS);
+    const fileName = file.name.split('/').at(-1) || file._id;
+    const downloadUrl = await provider.getBlobDownloadUrl(file.region, file.accountId, blobName, expiryDate, fileName);
+
+    return downloadUrl;
+}
+
 export interface GetTransferResult extends Transfer {
     files: GetTransferFileResult[];
 }

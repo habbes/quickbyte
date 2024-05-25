@@ -19,7 +19,19 @@
         @click="$emit('itemClick', item)"
       >
         <div class="h-[100px] flex items-center justify-center">
-          <MediaTypeIcon sm :mediaType="getMediaType(item)" />
+          <div
+            v-if="getThumbnail(item)"
+            class="absolute top-0 left-0 right-0 bottom-0 bg-no-repeat bg-center bg-contain"
+            :style="{
+              backgroundImage: `url(${getThumbnail(item)})`
+            }"
+          >
+          </div>
+          <div
+            class="relative flex flex-1 items-center justify-center h-full w-full"
+          >
+            <MediaTypeIcon class="text-[#ccd1e7]" sm :mediaType="getMediaType(item)" />
+          </div>
         </div>
         <template #footer>
           <div class="flex items-center px-2 py-1 border-t border-t-[#5e5e8b] cursor-pointer">
@@ -41,6 +53,7 @@ const props = defineProps<{
   items: T[];
   selectedItemId?: string;
   getMediaType: (item: T) => MediaType | 'folder';
+  getThumbnail: (item: T) => string|undefined;
   hasParentFolder: boolean;
 }>();
 

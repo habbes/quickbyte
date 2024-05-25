@@ -11,10 +11,24 @@
     @selectAll="$emit('selectAll')"
     @unselectAll="$emit('unselectAll')"
   >
-    <PlayIcon v-if="mediaType === 'video'" class="h-10 w-10"/>
-    <PhotoIcon v-else-if="mediaType === 'image'" class="h-10 w-10"/>
-    <MusicalNoteIcon v-else-if="mediaType === 'audio'" class="h-10 w-10"/>
-    <DocumentIcon v-else class="h-10 w-10"/>
+    <div
+      class="relative flex flex-1 items-center justify-center h-full w-full"
+    >
+      <div
+        v-if="media.thumbnailUrl"
+        class="absolute top-0 left-0 right-0 bottom-0 bg-no-repeat bg-center bg-contain"
+        :style="{
+          backgroundImage: `url(${media.thumbnailUrl})`
+        }"
+      >
+      </div>
+      <div
+        class="relative flex flex-1 items-center justify-center h-full w-full"
+      >
+        <MediaTypeIcon class="text-[#ccd1e7]" :mediaType="mediaType" />
+      </div>
+    </div>
+
     <template #extraDetails>
       <div v-if="showAllVersions && media.versions.length > 1">
         {{ media.versions.length }} versions
@@ -31,14 +45,14 @@
 </template>
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import type { Media } from '@/core';
-import { DocumentIcon, PlayIcon, PhotoIcon, MusicalNoteIcon } from '@heroicons/vue/24/solid';
+import type { Media, WithThumbnail } from '@quickbyte/common';
 import { getMediaType } from '@/core/media-types';
 import ProjectItemCardBase from '@/components/ProjectItemCardBase.vue';
 import ProjectShareItemMenuItems from './ProjectShareItemMenuItems.vue';
+import MediaTypeIcon from '@/components/MediaTypeIcon.vue';
 
 const props = defineProps<{
-  media: Media,
+  media: WithThumbnail<Media>,
   shareId: string;
   shareCode: string;
   selected?: boolean;

@@ -59,11 +59,11 @@
   <a ref="hiddenDownloader" class="hidden" download :href="currentDownloadUrl" />
 </template>
 <script lang="ts" setup>
-import { ref, watch, computed, nextTick  } from "vue";
+import { ref, computed, nextTick  } from "vue";
 import { useRoute } from "vue-router";
-import { trpcClient, wrapError, projectShareStore } from "@/app-utils";
+import { projectShareStore } from "@/app-utils";
 import { ensure } from "@/core";
-import type { GetProjectShareLinkItemsArgs, ProjectShareItemRef, ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
+import type { ProjectShareItemRef } from "@quickbyte/common";
 import { getRemainingContentHeightCss, layoutDimensions } from "@/styles/dimentions.js";
 import { UiLayout, UiContextMenu } from "@/components/ui";
 import { ProjectShareItemCard, ProjectSharePathBreadcrumbs } from "@/components/project-share";
@@ -71,10 +71,7 @@ import { ChevronRightIcon } from "@heroicons/vue/24/outline";
 
 const route = useRoute();
 const code = computed(() => ensure(route.params.code as string));
-const loading = ref(false);
 const share = projectShareStore.share;
-const password = ref<string>();
-const passwordRequired = ref(false);
 const headerHeight = layoutDimensions.projectHeaderHeight;
 const contentOffset = headerHeight + layoutDimensions.navBarHeight + layoutDimensions.projectHeaderHeight + 2;
 const contentHeight = getRemainingContentHeightCss(
