@@ -357,13 +357,18 @@ export class MediaService {
 
                     if (newVersion.name !== oldVersion.name) {
                         newVersion._updatedAt = new Date();
-                        newVersion._updatedBy = { _id: this.authContext.user._id, type: 'user' }
+                        newVersion._updatedBy = { _id: this.authContext.user._id, type: 'user' };
                     }
 
                     newVersions.push(newVersion);
                 }
 
                 const deletedVersions = media.versions.filter(old => !newVersions.some(newV => newV._id === old._id));
+                deletedVersions.forEach(v => {
+                    v.deleted = true;
+                    v.deletedAt = new Date();
+                    v.deletedBy = { _id: this.authContext.user._id, type: 'user' };
+                });
 
                 const allDeletedVersions = (media._deletedVersions || []).concat(deletedVersions);
                 update.versions = newVersions;

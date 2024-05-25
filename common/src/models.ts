@@ -382,7 +382,7 @@ export interface GetProjectItemsResult {
     items: ProjectItem[];
 }
 
-export interface MediaVersion extends PersistedModel {
+export interface MediaVersion extends PersistedModel, Deleteable {
     name: string;
     fileId: string;
 }
