@@ -1,0 +1,1 @@
+export { default as MediaVersionsDialog } from "./MediaVersionsDialog.vue";

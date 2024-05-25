@@ -5,6 +5,7 @@ import { Media, Project, User } from "./models.js";
 import { BackgroundWorker } from "./background-worker.js";
 import { ensureSingleOrEmpty, wrapError } from "./utils.js";
 import { LinkGenerator } from '@quickbyte/common';
+import { addDefaultMediaFindOptions, addRequiredMediaFilters } from "./services/media-service.js";
 
 export class GlobalEventHandler {
     constructor(private config: GlobalEventHandlerConfig) {}
@@ -138,7 +139,10 @@ export class GlobalEventHandler {
             }
 
             // uploading a new versions of existing media
-            const media = await this.config.db.media().findOne<Media>({ _id: transfer.mediaId });
+            const media = await this.config.db.media().findOne<Media>(
+                addRequiredMediaFilters({ _id: transfer.mediaId }),
+                addDefaultMediaFindOptions({})
+            );
             if (!media) {
                 throw createNotFoundError('media');
             }

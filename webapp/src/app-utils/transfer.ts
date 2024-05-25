@@ -1,4 +1,4 @@
-import { ref, type Ref } from "vue";
+import { computed, ref, type Ref } from "vue";
 import { apiClient, store, uploadRecoveryManager, logger, windowUnloadManager, type FilePickerEntry, type DirectoryInfo, taskManager, showToast, trpcClient } from '@/app-utils';
 import { ensure, ApiError, AzUploader, MultiFileUploader, type TransferTask, pluralize, type TrackedTransfer } from "@/core";
 import type { Folder, Media, CreateTransferResult } from '@quickbyte/common';
@@ -38,15 +38,27 @@ export function useFileTransfer() {
     const folders = ref<Folder[]>();
     const error = ref<Error>();
     const downloadUrl = ref<string>();
+    const percentageUploaded = computed(() => {
+        if (uploadProgress.value >= 0 && transfer.value) {
+            return 100 * uploadProgress.value / transfer.value.totalSize;
+        }
+
+        return 0;
+    });
 
     const result = {
+        /**
+         * The amount of bytes uploaded so far. Divide by total size
+         * to get progess rate.
+         */
         uploadProgress,
         uploadState,
         transfer,
         media,
         folders,
         error,
-        downloadUrl
+        downloadUrl,
+        percentageUploaded
     };
 
     const startTransfer = (args: StartFileTransferArgs) => startFileTransferInternal(args, result);

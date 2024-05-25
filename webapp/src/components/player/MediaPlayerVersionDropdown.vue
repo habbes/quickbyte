@@ -17,6 +17,7 @@
         <span>Upload new version</span>
       </UiLayout>
     </UiMenuItem>
+
     <UiMenuItem
       v-for="version in versions"
       @click="selectVersion(version.version._id)"
@@ -29,12 +30,28 @@
         <CheckIcon v-if="version.version._id === selectedVersionId" class="h-4 w-4" />
       </UiLayout>
     </UiMenuItem>
+
+    <UiMenuItem v-if="allowManagement" @click="openDialog()">
+      <UiLayout horizontal gapSm itemsCenter>
+        <Cog6ToothIcon class="h-4 w-4" />
+        <span>Manage versions</span>
+      </UiLayout>
+    </UiMenuItem>
   </UiMenu>
+
+  <MediaVersionsDialog 
+    ref="dialog"
+    :media="media"
+    :allowUpload="!!allowUpload"
+    @update="$emit('update', $event)"
+  />
 </template>
 <script lang="ts" setup>
+import { ref } from "vue";
 import type { Media } from "@quickbyte/common";
 import { UiLayout, UiMenu, UiMenuItem } from "@/components/ui";
-import { CheckIcon, ArrowUpIcon, ChevronDownIcon } from "@heroicons/vue/24/solid";
+import { MediaVersionsDialog } from "@/components/versions";
+import { CheckIcon, ArrowUpIcon, ChevronDownIcon, Cog6ToothIcon } from "@heroicons/vue/24/outline";
 import { useFileTransfer, useFilePicker, showToast } from "@/app-utils";
 import { computed, watch } from "vue";
 import { formatPercentage, pluralize } from "@/core";
@@ -43,10 +60,12 @@ const props = defineProps<{
   media: Media,
   selectedVersionId?: string;
   allowUpload?: boolean;
+  allowManagement?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'versionUpload', updatedMedia: Media): void;
+  (e: 'update', updatedMedia: Media): void;
   (e: 'selectVersion', versionId: string): void;
 }>();
 
@@ -57,16 +76,16 @@ const {
 } = useFilePicker();
 const { startTransfer, media: uploadedMedia, uploadState, uploadProgress, transfer: versionTransfer } = useFileTransfer();
 
+const dialog = ref<typeof MediaVersionsDialog>();
+
 const updatedVersions = computed(() => {
   if (!uploadedMedia.value || !uploadedMedia.value.length) return [];
   return uploadedMedia.value[0].versions;
 });
 
 const versions = computed(() => {
-  // sort in descending chronoligcal order and assign codes such that
-  // the latest version gets code vN and the oldest version v1
-  // TODO: deserialize the date properties in the correct type to avoid converting them here
-  const reversed = [...props.media.versions].sort((v1, v2) => new Date(v2._createdAt).getTime() - new Date(v1._createdAt).getTime());
+  // sort in descending order, from highest to lowest version
+  const reversed = [...props.media.versions].reverse();
   return reversed.map((v, index) => ({
     version: v,
     code: `v${reversed.length - index}`
@@ -92,5 +111,9 @@ onFilesSelected((selectedFiles, selectedDirectories) => {
 
 function selectVersion(id: string) {
   emit('selectVersion', id);
+}
+
+function openDialog() {
+  dialog.value?.open();
 }
 </script>

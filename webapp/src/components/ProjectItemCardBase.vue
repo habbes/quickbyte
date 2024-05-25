@@ -57,7 +57,9 @@
                   <slot name="menuItems">
                     <ProjectItemMenuItems
                       :totalSelectedItems="totalSelectedItems"
+                      :hasVersionManagement="hasVersionManagement"
                       @rename="$emit('rename')"
+                      @manageVersions="$emit('manageVersions')"
                       @move="$emit('move')"
                       @share="$emit('share')"
                       @delete="$emit('delete')"
@@ -76,7 +78,9 @@
       <slot name="menuItems">
         <ProjectItemMenuItems
           :totalSelectedItems="totalSelectedItems"
+          :hasVersionManagement="hasVersionManagement"
           @rename="$emit('rename')"
+          @manageVersions="$emit('manageVersions')"
           @move="$emit('move')"
           @share="$emit('share')"
           @delete="$emit('delete')"
@@ -101,10 +105,12 @@ const props = defineProps<{
   selected?: boolean;
   showSelectCheckbox?: boolean;
   totalSelectedItems?: number;
+  hasVersionManagement?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'rename'): void;
+  (e: 'manageVersions'): void;
   (e: 'delete'): void;
   (e: 'move'): void;
   (e: 'share'): void;
