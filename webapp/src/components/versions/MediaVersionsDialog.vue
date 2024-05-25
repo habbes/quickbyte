@@ -160,6 +160,11 @@ watch(() => props.media, () => {
   preferredVersionId.value = props.media.preferredVersionId;
 });
 
+watch([uploadState], () => {
+  if (uploadState.value === 'complete' && uploadedMedia.value && uploadedMedia.value.length) {
+    emit('update', uploadedMedia.value[0])
+  }
+});
 
 function markForDeletion(versionId: string) {
   if (!canDelete.value) {
