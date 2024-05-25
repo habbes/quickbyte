@@ -722,6 +722,7 @@ export class PublicProjectService {
             
             let media: MediaWithFileAndComments[] = [];
             let folders: Folder[] = [];
+
             if (!args.folderId) {
                 // if no folder is specified, get all items directly shared from the share
                 const sharedFolders = share.items?.filter(i => i.type === 'folder')!;
@@ -737,6 +738,13 @@ export class PublicProjectService {
                 resultPath = folder.path;
             }
 
+            const mediaWithThumbnails = await addThumbnailUrlsToMedia(
+                this.db,
+                this.config.storageHandlers,
+                this.config.packagers,
+                media
+            );
+
             const items: ProjectShareItem[] = [
                 ...folders.map<ProjectShareItem>(f => ({
                     _id: f._id,
@@ -746,7 +754,7 @@ export class PublicProjectService {
                     _updatedAt: f._updatedAt,
                     item: f
                 })),
-                ...media.map<ProjectShareItem>(m => ({
+                ...mediaWithThumbnails.map<ProjectShareItem>(m => ({
                     _id: m._id,
                     name: m.name,
                     type: 'media',
