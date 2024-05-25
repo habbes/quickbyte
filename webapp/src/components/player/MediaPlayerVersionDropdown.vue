@@ -42,7 +42,6 @@
   <MediaVersionsDialog 
     ref="dialog"
     :media="media"
-    :selectedVersionId="selectedVersionId"
     :allowUpload="allowUpload"
     @update="$emit('update', $event)"
   />
@@ -85,10 +84,9 @@ const updatedVersions = computed(() => {
 });
 
 const versions = computed(() => {
-  // sort in descending chronoligcal order and assign codes such that
-  // the latest version gets code vN and the oldest version v1
-  // TODO: deserialize the date properties in the correct type to avoid converting them here
-  const reversed = [...props.media.versions].sort((v1, v2) => new Date(v2._createdAt).getTime() - new Date(v1._createdAt).getTime());
+  // sort in descending order, from highest to lowest version
+  console.log('dropdown updating versions...');
+  const reversed = [...props.media.versions].reverse();
   return reversed.map((v, index) => ({
     version: v,
     code: `v${reversed.length - index}`
