@@ -1,10 +1,11 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, MediaWithUrls, File, TransferFile, getMediaType } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
-import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService } from "./index.js";
+import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider } from "./index.js";
 import { getMediaComments, ICommentService } from "./comment-service.js";
 import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
+import { getFileDownloadUrl } from "./transfer-service.js";
 import { ensure, wrapError } from "../utils.js";
 
 export interface MediaServiceConfig {
@@ -105,7 +106,7 @@ export class MediaService {
         }
     }
 
-    getProjectMediaByFolder(projectId: string, folderId?: string): Promise<Media[]> {
+    getProjectMediaByFolder(projectId: string, folderId?: string): Promise<MediaWithUrls[]> {
         return getProjectMediaByFolder(this.db, projectId, folderId);
     }
 
@@ -375,7 +376,13 @@ export function getMultipleMediaByIds(db: Database, projectId: string, ids: stri
     });
 }
 
-export function getProjectMediaByFolder(db: Database, projectId: string, folderId?: string) {
+export function getProjectMediaByFolder(
+    db: Database,
+    storageProviders: StorageHandlerProvider,
+    packagers: PlaybackPackagerRegistry,
+    projectId: string,
+    folderId?: string
+): Promise<MediaWithUrls[]> {
     return wrapError(async () => {
         const query: Filter<Media> = addRequiredMediaFilters({
             projectId
@@ -387,7 +394,58 @@ export function getProjectMediaByFolder(db: Database, projectId: string, folderI
             query.folderId = null;
         }
 
-        const media = await db.media().find(query).toArray();
+        const mediaWithFiles = await db.media().aggregate<Media & {
+            files?: TransferFile[] 
+        }>([
+            {
+                $match: query
+            },
+            {
+                $lookup: {
+                    from: db.files().collectionName,
+                    localField: 'versions.fileId',
+                    foreignField: '_id',
+                    pipeline: [
+                        {
+                            $project: {
+                                transferId: 1,
+                                provider: 1,
+                                region: 1,
+                                playbackPackagingProvider: 1,
+                                playbackPackagingId: 1
+                            }
+                        }
+                    ],
+                    as: 'files'
+                }
+            }
+        ]).toArray();
+        
+        const media = executeTasksInBatches(mediaWithFiles, async m => {
+            const version = m.versions.find(v => v._id === m.preferredVersionId);
+            // TODO: ensure version exists;
+            // but don't crash system;
+            if (!version) {
+                return m;
+            }
+
+            if (!m.files) {
+                return m;
+            }
+
+            const file = m.files.find(f => f._id === version._id);
+            if (!file) {
+                delete m.files;
+                return m;
+            }
+
+            delete m.files;
+            const mediaWithUrl = await addThumbnailToMedia(storageProviders, packagers, m, file);
+
+            return mediaWithUrl;
+        }, 5);
+
+        // now we get
         return media;
     });
 }
@@ -406,7 +464,8 @@ export function getProjectShareMedia(
         }
         const media = folderId?
             await getProjectMediaByFolder(db, share.projectId, folderId):
-            await getMultipleMediaByIds(db, share.projectId, share.items.filter(i => i.type === 'media').map(i => i._id))
+            await getMultipleMediaByIds(db, share.projectId, share.items.filter(i => i.type === 'media').map(i => i._id));
+
         const mediaWithFiles = executeTasksInBatches(
             media,
             medium => getProjectShareMediaFilesAndComments({
@@ -484,6 +543,40 @@ export async function getProjectShareMediaFilesAndComments({
     const comments = user ? await getMediaComments(db, medium._id, user._id) : [];
 
     return { ...medium, file, versions: versionsWithFiles, comments }
+}
+
+async function addThumbnailToMedia(storageProviders: StorageHandlerProvider, packagers: PlaybackPackagerRegistry, media: Media, file: TransferFile): Promise<MediaWithUrls> {
+    // if file has no packager, the we ignore
+    if (file.playbackPackagingProvider && file.playbackPackagingId) {
+        const packager = packagers.getPackager(file.playbackPackagingProvider);
+
+        const urls = await packager.getPlaybackUrls(file);
+        if (urls.thumbnailUrl) {
+            return {
+                ...media,
+                thumbnailUrl: urls.thumbnailUrl
+            }
+        } else if (urls.posterUrl) {
+            return {
+                ...media,
+                thumbnailUrl: urls.posterUrl
+            }
+        }
+    }
+    else if (getMediaType(file.name) === 'image') {
+        // if it's an image, we can fallback to providing the image download url,
+        // note that the image would be costly to render
+        const storage = storageProviders.getHandler(file.provider);
+
+        const url = await getFileDownloadUrl(storage, file);
+
+        return {
+            ...media,
+            thumbnailUrl: url
+        }
+    }
+
+    return media;
 }
 
 export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;

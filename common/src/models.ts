@@ -342,6 +342,10 @@ export interface Media extends PersistedModel, Deleteable, ParentDeleteable {
     // TODO: add file kind?
 }
 
+export type MediaWithUrls = Media & {
+    thumbnailUrl?: string;
+}
+
 export type ProjectItem = ProjectFolderItem | ProjectMediaItem;
 export type ProjectShareItem = ProjectFolderItem | ProjectShareMediaItem;
 
@@ -414,6 +418,7 @@ export interface MediaWithFileAndComments extends Media {
     versions: MediaVersionWithFile[];
     file: DownloadTransferFileResult;
     comments: WithChildren<CommentWithAuthor>[];
+    thumbnailUrl?: string;
 }
 
 export interface MediaVersionWithFile extends MediaVersion {
