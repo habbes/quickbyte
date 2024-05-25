@@ -339,6 +339,12 @@ export function getProjectShareByCode(
             throw createResourceNotFoundError("The link is invalid or has been disabled.");
         }
 
+        // if code is public, make sure the public link is enabled
+        const sharedWith = share.sharedWith.find(s => s.code === args.code);
+        if (sharedWith && sharedWith.type === 'public' && !share.public) {
+            throw createResourceNotFoundError("This link is invalid or has been disabled.");
+        }
+
         if (share.hasPassword && !args.password) {
             return {
                 passwordRequired: true
