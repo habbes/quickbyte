@@ -492,7 +492,8 @@ export interface GetAllProjectShareFilesForDownloadError {
 export const UpdateMediaVersionsArgs = z.object({
     projectId: z.string().min(1),
     mediaId: z.string().min(1),
-    preferredVersionId: z.string().min(1),
+    preferredVersionId: z.string().min(1).optional(),
+    deleteVersions: z.array(z.string().min(1)).optional()
 });
 
 export type UpdateMediaVersionsArgs = z.infer<typeof UpdateMediaVersionsArgs>;

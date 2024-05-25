@@ -32,14 +32,22 @@
                   {{ formatDateTime(version._createdAt) }}
                 </UiLayout>
               </UiLayout>
-              <UiLayout itemsCenter justifyCenter>
-                <UiLayout v-if="preferredVersionId === version._id" title="Set as current version">
-                  <SolidStarIcon class="h-5 w-5 text-indigo-500" />
+              <UiLayout horizontal gapSm>
+                <UiLayout itemsCenter justifyCenter>
+                  <UiLayout v-if="preferredVersionId === version._id" title="Set as current version">
+                    <SolidStarIcon class="h-5 w-5 text-indigo-500" />
+                  </UiLayout>
+                  <UiLayout v-else title="Set as current version">
+                    <StarIcon
+                      @click="preferredVersionId = version._id"
+                      class="h-5 w-5 text-gray-500 cursor-pointer"
+                    />
+                  </UiLayout>
                 </UiLayout>
-                <UiLayout v-else title="Set as current version">
-                  <StarIcon
-                    @click="preferredVersionId = version._id"
-                    class="h-5 w-5 text-gray-500 cursor-pointer"
+                <UiLayout v-if="canDelete" itemsCenter justifyCenter title="Delete version">
+                  <TrashIcon
+                    @click="markForDeletion(version._id)"
+                    class="h-5 w-5 text-red-500 cursor-pointer"
                   />
                 </UiLayout>
               </UiLayout>
@@ -65,7 +73,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
 import { ArrowUpCircleIcon, StarIcon } from "@heroicons/vue/24/outline";
-import { StarIcon as SolidStarIcon } from "@heroicons/vue/24/solid";
+import { StarIcon as SolidStarIcon, TrashIcon } from "@heroicons/vue/24/solid";
 import { UiDialog, UiLayout, UiButton } from "@/components/ui";
 import type { Media, UpdateMediaVersionsArgs } from "@quickbyte/common";
 import { formatDateTime } from "@/core";
@@ -85,14 +93,36 @@ defineExpose({ open, close });
 
 const dialog = ref<typeof UiDialog>();
 const preferredVersionId = ref(props.media.preferredVersionId);
+const versionsToDelete = ref(new Set<string>());
 const versions = computed(() => {
   // versions are sorted from lowest to highest, but we want to display them in reverse order
-  return [...props.media.versions].reverse();
+  const filtered = props.media.versions.filter(v => !versionsToDelete.value.has(v._id));
+  const sorted = filtered.reverse();
+  return sorted;
 });
+
+const canDelete = computed(() => {
+  return versions.value.length > 1
+});
+
 
 watch(() => props.media, () => {
   preferredVersionId.value = props.media.preferredVersionId
 });
+
+
+function markForDeletion(versionId: string) {
+  if (!canDelete.value) {
+    return;
+  }
+  versionsToDelete.value.add(versionId);
+
+  if (versionId === preferredVersionId.value) {
+    // deleting preferred version, set another version
+    // as preferred
+    preferredVersionId.value = versions.value[0]._id;
+  }
+}
 
 function getVersionNumber(index: number, length: number) {
   // we sort versions from highest to lowest
@@ -100,6 +130,7 @@ function getVersionNumber(index: number, length: number) {
 }
 
 function open() {
+  versionsToDelete.value = new Set();
   dialog.value?.open();
 }
 
