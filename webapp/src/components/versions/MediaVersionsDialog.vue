@@ -143,12 +143,19 @@ function save() {
     const args: UpdateMediaVersionsArgs = {
       projectId: props.media.projectId,
       mediaId: props.media._id,
-      preferredVersionId: preferredVersionId.value
+      preferredVersionId: preferredVersionId.value,
+      concurrencyControl: props.media.concurrencyControl
     };
 
     if (preferredVersionId.value !== props.media.preferredVersionId) {
       args.preferredVersionId = preferredVersionId.value
     }
+
+    if (versions.value.length !== props.media.versions.length) {
+      // some versions have been deleted
+      args.versions = versions.value.map(v => ({ _id: v._id, name: v.name }));
+    }
+
 
     const result = await trpcClient.updateMediaVersions.mutate(args);
     emit('update', result);

@@ -1,6 +1,6 @@
-import { Collection, Filter } from "mongodb";
+import { Collection, Filter, MatchKeysAndValues } from "mongodb";
 import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType, UpdateMediaVersionsArgs } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError, createResourceConflictError, createValidationError } from "../error.js";
 import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider } from "./index.js";
 import { getMediaComments, ICommentService } from "./comment-service.js";
 import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
@@ -285,23 +285,23 @@ export class MediaService {
     }
 
     async updateMediaVersions(args: UpdateMediaVersionsArgs) {
-        const session = this.db.startSession();
-        // we use a transaction for this operation
+        // we use a optimistic concurrency for this operation
         // because of some of the operations on versions
-        // that we can't do atomically, like re-ordering the version
+        // that we can't do atomically, like re-ordering and deleting, the version
         // list.
-        // But some operations might be completed without transactions.
+        // But some operations, like updating the preferred version, might not
+        // need this.
         // If this causes a bottleneck we can consider optimizing
         // such that we only trigger a transaction if we need to perform
         // an update that needs it, otherwise we use findOneAndUpdate
         // atomically.
-        // Besides transactions we can also keep track of a object
-        // version and only update if the version has not changed.
+        
         try {
-            await session.startTransaction();
+            const conflictErrorMessage = 'Media asset or version may have been modified by a different user. Please reload and try again.';
             const query = addRequiredMediaFilters({
                 _id: args.mediaId,
-                projectId: args.projectId
+                projectId: args.projectId,
+                _cc: args.concurrencyControl
             });
 
             if (args.preferredVersionId) {
@@ -309,12 +309,10 @@ export class MediaService {
                 query['versions._id'] = args.preferredVersionId
             }
 
-            const media = await this.db.media().findOne(query, {
-                session
-            });
+            const media = await this.db.media().findOne(query);
 
             if (!media) {
-                throw createNotFoundError('media asset or version');
+                throw createResourceConflictError(conflictErrorMessage);
             }
 
             const update: Partial<Media> = {
@@ -325,29 +323,77 @@ export class MediaService {
                 update.preferredVersionId = args.preferredVersionId
             }
 
-            const result = await this.db.media().findOneAndUpdate({
-                _id: media._id
+            if (args.versions) {
+                const newVersions: MediaVersion[] = [];
+
+                // this loop handles updates to the versions array,
+                // including (implicitly) re-ordering and deletion.
+                // This effectively performs a hard delete, deleting
+                // the version from the db. And since we currently don't
+                // have audit log. We're losing traces of the version.
+                // The underlying file might remain orphaned.
+                // We may still have media comments that are tied to this
+                // version. Should we implement a soft delete instead?
+                // That of course will introduce complexity of having to filter
+                // out the versions in every query.
+                for (const v of args.versions) {
+                    const oldVersion = media.versions.find(other => other._id === v._id);
+                    if (!oldVersion) {
+                        // if we can't find a version it could be that the user has sent invalid versions
+                        // or the the media in the db is different from the version the client has,
+                        // despite the concurrency control being the same. This means
+                        // two clients with the same version are trying to make an update concurrently.
+                        // Let's consider this a conflict and fail.
+
+                        console.warn(`Attempting to update version ${v._id} of media ${media._id} but the version does not exist. Possible conflict.`);
+
+                        throw createResourceConflictError(conflictErrorMessage);
+                    }
+
+                    const newVersion = {
+                        ...oldVersion,
+                        name: v.name
+                    };
+
+                    if (newVersion.name !== oldVersion.name) {
+                        newVersion._updatedAt = new Date();
+                        newVersion._updatedBy = { _id: this.authContext.user._id, type: 'user' }
+                    }
+
+                    newVersions.push(newVersion);
+                }
+
+                update.versions = newVersions;
+            }
+
+            if (update.versions && !update.versions.length) {
+                throw createValidationError("Cannot delete all versions. A media asset should have at least one version.");
+            }
+
+            if (update.versions && args.preferredVersionId) {
+                if (!update.versions.some(v => v._id === args.preferredVersionId)) {
+                    throw createValidationError("The selected preferred version is not one of the media asset's versions.");
+                }
+            }
+
+            const result = await this.db.media().findOneAndUpdate(
+                query
+            , {
+                $set: update,
+                $inc: { _cc: 1 }
             }, {
-                $set: update
-            }, {
-                session,
                 returnDocument: 'after'
             });
 
             if (!result.value) {
-                throw createNotFoundError('media asset or version');
+                throw createResourceConflictError(conflictErrorMessage);
             }
 
-            await session.commitTransaction();
             return result.value;
         }
         catch (e: any) {
-            await session.abortTransaction();
             rethrowIfAppError(e);
             throw createAppError(e);
-        }
-        finally {
-            await session.endSession();
         }
     }
 

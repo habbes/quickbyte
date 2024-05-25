@@ -339,6 +339,12 @@ export interface Media extends PersistedModel, Deleteable, ParentDeleteable {
     preferredVersionId: string;
     versions: MediaVersion[];
     folderId?: string|null;
+    /**
+     * Concurrency control. Used to when updating the versions array
+     * to ensure the client's update request succeeds only if it
+     * has the latest version of the db record.
+     */
+    _cc?: number;
     // TODO: add file kind?
 }
 
