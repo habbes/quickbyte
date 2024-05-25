@@ -1,6 +1,6 @@
 import { Filter, FindOneAndUpdateOptions, FindOptions } from "mongodb";
 import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType, UpdateMediaVersionsArgs } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError, createResourceConflictError, createValidationError } from "../error.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError, createResourceConflictError, createValidationError, createPermissionError } from "../error.js";
 import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider } from "./index.js";
 import { getMediaComments, ICommentService } from "./comment-service.js";
 import { createFilterForDeleteableResource, Database, DbMedia, deleteNowBy, updateNowBy } from "../db.js";
@@ -291,7 +291,7 @@ export class MediaService {
         return this.config.comments.updateMediaComment(args);
     }
 
-    async updateMediaVersions(args: UpdateMediaVersionsArgs) {
+    async updateMediaVersions(args: UpdateMediaVersionsArgs, isAdminOrOwner: boolean) {
         // we use a optimistic concurrency for this operation
         // because of some of the operations on versions
         // that we can't do atomically, like re-ordering and deleting, the version
@@ -371,11 +371,24 @@ export class MediaService {
                 }
 
                 const deletedVersions = media.versions.filter(old => !newVersions.some(newV => newV._id === old._id));
-                deletedVersions.forEach(v => {
+
+                for (const v of deletedVersions) {
+                    // You can delete a version if
+                    // - you're an admin or owner
+                    // - you're the editor who originally uploaded the media item
+                    // - you're the editor who uploaded the version
+
+                    const canDeleteVersion = isAdminOrOwner || this.authContext.user._id === media._createdBy._id ||
+                        this.authContext.user._id === v._createdBy._id;
+                    
+                    if (!canDeleteVersion) {
+                        throw createPermissionError(`You do not have permissions to delete version '${v.name}'`);
+                    }
+
                     v.deleted = true;
                     v.deletedAt = new Date();
                     v.deletedBy = { _id: this.authContext.user._id, type: 'user' };
-                });
+                }
 
                 const allDeletedVersions = (media._deletedVersions || []).concat(deletedVersions);
                 update.versions = newVersions;

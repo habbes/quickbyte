@@ -424,8 +424,8 @@ export class ProjectService {
     updateMediaVersions(args: UpdateMediaVersionsArgs): Promise<Media> {
         return wrapError(async () => {
             const project = await this.getByIdInternal(args.projectId);
-            await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
-            const result = await this.config.media.updateMediaVersions(args);
+            const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+            const result = await this.config.media.updateMediaVersions(args, role === 'admin' || role === 'owner');
 
             return result;
         });
