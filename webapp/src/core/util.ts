@@ -366,3 +366,15 @@ export function debounce<T extends any[]>(fn: (...args: T) => unknown, delay: nu
 export function unwrapSingleton<T>(value: T | T[]): T {
     return Array.isArray(value) ? value[0] : value;
 }
+
+export function formatDateTime(date: Date): string {
+    return `${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`;
+}
+
+export function formatDate(date: Date): string {
+    return date.toLocaleDateString();
+}
+
+export function formatTime(date: Date): string {
+    return date.toLocaleTimeString();
+}

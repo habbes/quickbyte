@@ -1,5 +1,5 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType, UpdateMediaVersionsArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider } from "./index.js";
 import { getMediaComments, ICommentService } from "./comment-service.js";
@@ -282,6 +282,73 @@ export class MediaService {
 
     updateMediaComment(args: UpdateMediaCommentArgs): Promise<Comment> {
         return this.config.comments.updateMediaComment(args);
+    }
+
+    async updateMediaVersions(args: UpdateMediaVersionsArgs) {
+        const session = this.db.startSession();
+        // we use a transaction for this operation
+        // because of some of the operations on versions
+        // that we can't do atomically, like re-ordering the version
+        // list.
+        // But some operations might be completed without transactions.
+        // If this causes a bottleneck we can consider optimizing
+        // such that we only trigger a transaction if we need to perform
+        // an update that needs it, otherwise we use findOneAndUpdate
+        // atomically.
+        // Besides transactions we can also keep track of a object
+        // version and only update if the version has not changed.
+        try {
+            await session.startTransaction();
+            const query = addRequiredMediaFilters({
+                _id: args.mediaId,
+                projectId: args.projectId
+            });
+
+            if (args.preferredVersionId) {
+                // if preferred version is set, make sure it exists
+                query['versions._id'] = args.preferredVersionId
+            }
+
+            const media = await this.db.media().findOne(query, {
+                session
+            });
+
+            if (!media) {
+                throw createNotFoundError('media asset or version');
+            }
+
+            const update: Partial<Media> = {
+                _updatedAt: new Date(),
+                _updatedBy: { _id: this.authContext.user._id, type: 'user' }
+            };
+            if (args.preferredVersionId) {
+                update.preferredVersionId = args.preferredVersionId
+            }
+
+            const result = await this.db.media().findOneAndUpdate({
+                _id: media._id
+            }, {
+                $set: update
+            }, {
+                session,
+                returnDocument: 'after'
+            });
+
+            if (!result.value) {
+                throw createNotFoundError('media asset or version');
+            }
+
+            await session.commitTransaction();
+            return result.value;
+        }
+        catch (e: any) {
+            await session.abortTransaction();
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+        finally {
+            await session.endSession();
+        }
     }
 
     private convertFileToMedia(projectId: string, file: CreateTransferFileResult, pathToFolderMap: Map<string, Folder>) {
@@ -570,4 +637,4 @@ export async function addThumbnailToMedia<TMedia extends Media>(
     return media;
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'|'updateMediaVersions'>;

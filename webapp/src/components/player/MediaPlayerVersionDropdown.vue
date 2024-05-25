@@ -43,6 +43,8 @@
     ref="dialog"
     :media="media"
     :selectedVersionId="selectedVersionId"
+    :allowUpload="allowUpload"
+    @update="$emit('update', $event)"
   />
 </template>
 <script lang="ts" setup>
@@ -50,7 +52,7 @@ import { ref } from "vue";
 import type { Media } from "@quickbyte/common";
 import { UiLayout, UiMenu, UiMenuItem } from "@/components/ui";
 import { MediaVersionsDialog } from "@/components/versions";
-import { CheckIcon, ArrowUpIcon, ChevronDownIcon, Cog6ToothIcon } from "@heroicons/vue/24/solid";
+import { CheckIcon, ArrowUpIcon, ChevronDownIcon, Cog6ToothIcon } from "@heroicons/vue/24/outline";
 import { useFileTransfer, useFilePicker, showToast } from "@/app-utils";
 import { computed, watch } from "vue";
 import { formatPercentage, pluralize } from "@/core";
@@ -64,6 +66,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'versionUpload', updatedMedia: Media): void;
+  (e: 'update', updatedMedia: Media): void;
   (e: 'selectVersion', versionId: string): void;
 }>();
 

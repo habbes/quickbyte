@@ -19,6 +19,7 @@
     @close="closePlayer()"
     @selectVersion="handleSelectVersion($event)"
     @newVersionUpload="handleVersionUpload()"
+    @updateMedia="handleMediaUpdate($event)"
     @browserItemClick="handleBrowserItemClick($event)"
     @browserToParentFolder="handleBrowserToParentFolder()"
   />
@@ -27,7 +28,7 @@
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { apiClient, logger, showToast, store, trpcClient, wrapError } from "@/app-utils";
-import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry } from "@quickbyte/common";
+import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton } from "@/core";
 import { PlayerWrapper } from "@/components/player";
 
@@ -90,6 +91,14 @@ async function handleVersionUpload() {
     logger.error(e.message, e);
   }
 };
+
+function handleMediaUpdate(updatedMedia: Media) {
+   // TODO: since we don't have the file, for now just reload
+  // the entire media object and update the local instance
+  // this is unnecessarily costly, we just need to load
+  // the downloadable file. I'll the update should probably contain media files
+  return handleVersionUpload();
+}
 
 async function handleSelectVersion(versionId: string) {
   selectedVersionId.value = versionId;

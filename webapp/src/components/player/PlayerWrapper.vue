@@ -15,6 +15,7 @@
           :allowUpload="allowUploadVersion"
           :allowManagement="allowVersionManagement"
           @versionUpload="handleVersionUpload()"
+          @update="handleMediaUpdate($event)"
           @selectVersion="handleSelectVersion($event)"
         />
       </UiLayout>
@@ -169,7 +170,7 @@
 import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { logger, showToast } from "@/app-utils";
-import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren, MediaType, ProjectItem, FolderPathEntry } from "@quickbyte/common";
+import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren, MediaType, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
@@ -224,6 +225,7 @@ const emit = defineEmits<{
   (e: 'close'): unknown;
   (e: 'selectVersion', versionId: string): unknown;
   (e: 'newVersionUpload'): unknown;
+  (e: 'updateMedia', updatedMedia: Media): unknown;
   (e: 'browserItemClick', item: ProjectItem): unknown;
   (e: 'browserToParentFolder'): unknown;
 }>();
@@ -401,13 +403,17 @@ const sortedComments = computed(() => {
 const timedComments = computed<WithChildren<TimedCommentWithAuthor>[]>(() =>
   sortedComments.value.filter(c => isDefined(c.timestamp)) as WithChildren<TimedCommentWithAuthor>[]);
 
-async function handleVersionUpload() {
+function handleVersionUpload() {
   // TODO: we currently don't pass the file or version that was
   // uploaded (refactoring maybe needed)
   // As a workaround, parent of this component is expected to reload the media
   // and update the selectedVersionId prop when this event occurrs.
   emit('newVersionUpload');
 };
+
+function handleMediaUpdate(updatedMedia: Media) {
+  emit('updateMedia', updatedMedia)
+}
 
 async function handleSelectVersion(versionId: string) {
   emit('selectVersion', versionId);

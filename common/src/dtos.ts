@@ -489,4 +489,10 @@ export interface GetAllProjectShareFilesForDownloadError {
     error: string;
 }
 
+export const UpdateMediaVersionsArgs = z.object({
+    projectId: z.string().min(1),
+    mediaId: z.string().min(1),
+    preferredVersionId: z.string().min(1),
+});
 
+export type UpdateMediaVersionsArgs = z.infer<typeof UpdateMediaVersionsArgs>;

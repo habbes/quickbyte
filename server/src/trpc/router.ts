@@ -17,7 +17,8 @@ DeleteProjectShareMediaCommentArgs,
 UpdateProjectShareMediaCommentArgs,
 GetProjectShareMediaByIdArgs,
 GetAllProjectShareFilesForDownloadArgs,
-DeleteProjectArgs
+DeleteProjectArgs,
+UpdateMediaVersionsArgs
 } from '@quickbyte/common';
 import { z } from 'zod';
 
@@ -130,6 +131,11 @@ export const appRouter = router({
     .input(UpdateMediaCommentArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.accounts.projects(ctx.auth).updateMediaComment(input.projectId, input.mediaId, input.commentId, input)),
+
+    updateMediaVersions: protectedProcedure
+    .input(UpdateMediaVersionsArgs)
+    .mutation(({ input, ctx }) =>
+        ctx.app.accounts.projects(ctx.auth).updateMediaVersions(input)),
     
     createFolder: protectedProcedure
     .input(CreateFolderArgs)
