@@ -1,9 +1,9 @@
-import { Collection, Filter, MatchKeysAndValues } from "mongodb";
+import { Filter } from "mongodb";
 import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType, UpdateMediaVersionsArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError, createResourceConflictError, createValidationError } from "../error.js";
 import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider } from "./index.js";
 import { getMediaComments, ICommentService } from "./comment-service.js";
-import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
+import { createFilterForDeleteableResource, Database, DbMedia, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
 import { getFileDownloadUrl } from "./transfer-service.js";
 import { ensure, wrapError } from "../utils.js";
@@ -15,10 +15,8 @@ export interface MediaServiceConfig {
 }
 
 export class MediaService {
-    private collection: Collection<Media>;
 
     constructor(private db: Database, private authContext: AuthContext, private config: MediaServiceConfig) {
-        this.collection = db.media();
     }
 
     async uploadMedia(transfer: CreateTransferResult): Promise<{ media: Media[], folders?: Folder[] }> {
@@ -87,7 +85,7 @@ export class MediaService {
             });
 
             const media = files.map(file => this.convertFileToMedia(transfer.projectId!, file, pathToFolderMap));
-            await this.collection.insertMany(media);
+            await this.db.media().insertMany(media);
             const folders = Array.from(pathToFolderMap.values());
             return { media, folders };
         } catch (e: any) {
@@ -98,7 +96,7 @@ export class MediaService {
 
     async getProjectMedia(projectId: string): Promise<Media[]> {
         try {
-            const media = await this.collection.find(addRequiredMediaFilters({ projectId: projectId })).toArray();
+            const media = await this.db.media().find(addRequiredMediaFilters({ projectId: projectId })).toArray();
             return media;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -112,7 +110,9 @@ export class MediaService {
 
     async getMediaById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
         try {
-            const medium = await this.collection.findOne(addRequiredMediaFilters({ projectId: projectId, _id: id }));
+            const medium = await this.db.media().findOne(
+                addRequiredMediaFilters({ projectId: projectId, _id: id })
+            );
             if (!medium) {
                 throw createResourceNotFoundError();
             }
@@ -152,7 +152,7 @@ export class MediaService {
 
     async updateMedia(projectId: string, id: string, args: UpdateMediaArgs): Promise<Media> {
         try {
-            const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
+            const result = await this.db.media().findOneAndUpdate(addRequiredMediaFilters({
                 projectId: projectId,
                 _id: id,
             }), {
@@ -241,7 +241,7 @@ export class MediaService {
             // if the user is a project owner or admin, then allow deleting
             // otherwise, allow deleting only if the user is the author
             const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
-            const result = await this.collection.updateMany(
+            const result = await this.db.media().updateMany(
                 createFilterForDeleteableResource({
                     projectId,
                     _id: { $in: mediaIds },
@@ -262,7 +262,7 @@ export class MediaService {
 
     async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         try {
-            const medium = await this.collection.findOne(addRequiredMediaFilters({ projectId: projectId, _id: mediaId }));
+            const medium = await this.db.media().findOne(addRequiredMediaFilters({ projectId: projectId, _id: mediaId }));
             if (!medium) {
                 throw createNotFoundError('media');
             }
@@ -315,7 +315,7 @@ export class MediaService {
                 throw createResourceConflictError(conflictErrorMessage);
             }
 
-            const update: Partial<Media> = {
+            const update: Partial<DbMedia> = {
                 _updatedAt: new Date(),
                 _updatedBy: { _id: this.authContext.user._id, type: 'user' }
             };
@@ -363,7 +363,12 @@ export class MediaService {
                     newVersions.push(newVersion);
                 }
 
+                const deletedVersions = media.versions.filter(old => !newVersions.some(newV => newV._id === old._id));
+
+                const allDeletedVersions = (media._deletedVersions || []).concat(deletedVersions);
                 update.versions = newVersions;
+                update._deletedVersions = allDeletedVersions;
+                
             }
 
             if (update.versions && !update.versions.length) {
@@ -423,7 +428,7 @@ export class MediaService {
             
             const newPreferredVersionId = newVersions[0]._id;
 
-            const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
+            const result = await this.db.media().findOneAndUpdate(addRequiredMediaFilters({
                 _id: mediaId
             }), {
                 $push: { versions: { $each: newVersions } },
