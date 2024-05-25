@@ -342,9 +342,7 @@ export interface Media extends PersistedModel, Deleteable, ParentDeleteable {
     // TODO: add file kind?
 }
 
-export type MediaWithUrls = Media & {
-    thumbnailUrl?: string;
-}
+export type WithThumbnail<T> = T & { thumbnailUrl?: string };
 
 export type ProjectItem = ProjectFolderItem | ProjectMediaItem;
 export type ProjectShareItem = ProjectFolderItem | ProjectShareMediaItem;

@@ -1,5 +1,5 @@
 import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, MediaWithUrls, File, TransferFile, getMediaType } from "../models.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
 import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider } from "./index.js";
 import { getMediaComments, ICommentService } from "./comment-service.js";
@@ -106,7 +106,7 @@ export class MediaService {
         }
     }
 
-    getProjectMediaByFolder(projectId: string, folderId?: string): Promise<MediaWithUrls[]> {
+    getProjectMediaByFolder(projectId: string, folderId?: string): Promise<Media[]> {
         return getProjectMediaByFolder(this.db, projectId, folderId);
     }
 
@@ -378,11 +378,9 @@ export function getMultipleMediaByIds(db: Database, projectId: string, ids: stri
 
 export function getProjectMediaByFolder(
     db: Database,
-    storageProviders: StorageHandlerProvider,
-    packagers: PlaybackPackagerRegistry,
     projectId: string,
     folderId?: string
-): Promise<MediaWithUrls[]> {
+): Promise<Media[]> {
     return wrapError(async () => {
         const query: Filter<Media> = addRequiredMediaFilters({
             projectId
@@ -394,58 +392,9 @@ export function getProjectMediaByFolder(
             query.folderId = null;
         }
 
-        const mediaWithFiles = await db.media().aggregate<Media & {
-            files?: TransferFile[] 
-        }>([
-            {
-                $match: query
-            },
-            {
-                $lookup: {
-                    from: db.files().collectionName,
-                    localField: 'versions.fileId',
-                    foreignField: '_id',
-                    pipeline: [
-                        {
-                            $project: {
-                                transferId: 1,
-                                provider: 1,
-                                region: 1,
-                                playbackPackagingProvider: 1,
-                                playbackPackagingId: 1
-                            }
-                        }
-                    ],
-                    as: 'files'
-                }
-            }
-        ]).toArray();
-        
-        const media = executeTasksInBatches(mediaWithFiles, async m => {
-            const version = m.versions.find(v => v._id === m.preferredVersionId);
-            // TODO: ensure version exists;
-            // but don't crash system;
-            if (!version) {
-                return m;
-            }
-
-            if (!m.files) {
-                return m;
-            }
-
-            const file = m.files.find(f => f._id === version._id);
-            if (!file) {
-                delete m.files;
-                return m;
-            }
-
-            delete m.files;
-            const mediaWithUrl = await addThumbnailToMedia(storageProviders, packagers, m, file);
-
-            return mediaWithUrl;
-        }, 5);
-
         // now we get
+        const media = await db.media().find(query).toArray();
+
         return media;
     });
 }
@@ -545,7 +494,49 @@ export async function getProjectShareMediaFilesAndComments({
     return { ...medium, file, versions: versionsWithFiles, comments }
 }
 
-async function addThumbnailToMedia(storageProviders: StorageHandlerProvider, packagers: PlaybackPackagerRegistry, media: Media, file: TransferFile): Promise<MediaWithUrls> {
+
+export async function addThumbnailUrlsToMedia<TMedia extends Media>(
+    db: Database,
+    storageProviders: StorageHandlerProvider,
+    packagers: PlaybackPackagerRegistry,
+    media: TMedia[]
+): Promise<WithThumbnail<TMedia>[]> {
+    const mediaToFileMap = new Map<string, string>();
+    const fileIds = [];
+    for (let medium of media) {
+        const version = medium.versions.find(v => v._id === medium.preferredVersionId);
+        if (!version) {
+            // TODO: emit warning, this an invalid state, but I don't think
+            // it's worth throwing an error for, but definitely
+            // something to investigate
+            continue;
+        }
+
+        fileIds.push(version.fileId);
+        mediaToFileMap.set(medium._id, version.fileId);
+    }
+
+    const files = await db.files().find({ _id: { $in: fileIds } }).toArray();
+    const mediaWithThumbnails = await executeTasksInBatches(media, async (m) => {
+        const fileId = mediaToFileMap.get(m._id);
+        const file = files.find(f => f._id === fileId);
+        if (!file) {
+            return m;
+        }
+
+        const mediumWithThumb = await addThumbnailToMedia(storageProviders, packagers, m, file);
+        return mediumWithThumb;
+    }, 5);
+
+    return mediaWithThumbnails;
+}
+
+export async function addThumbnailToMedia<TMedia extends Media>(
+    storageProviders: StorageHandlerProvider,
+    packagers: PlaybackPackagerRegistry,
+    media: TMedia,
+    file: TransferFile
+): Promise<WithThumbnail<TMedia>> {
     // if file has no packager, the we ignore
     if (file.playbackPackagingProvider && file.playbackPackagingId) {
         const packager = packagers.getPackager(file.playbackPackagingProvider);
