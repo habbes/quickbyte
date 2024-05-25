@@ -17,6 +17,7 @@
         <span>Upload new version</span>
       </UiLayout>
     </UiMenuItem>
+
     <UiMenuItem
       v-for="version in versions"
       @click="selectVersion(version.version._id)"
@@ -29,12 +30,27 @@
         <CheckIcon v-if="version.version._id === selectedVersionId" class="h-4 w-4" />
       </UiLayout>
     </UiMenuItem>
+
+    <UiMenuItem v-if="allowManagement" @click="openDialog()">
+      <UiLayout horizontal gapSm itemsCenter>
+        <Cog6ToothIcon class="h-4 w-4" />
+        <span>Manage versions</span>
+      </UiLayout>
+    </UiMenuItem>
   </UiMenu>
+
+  <MediaVersionsDialog 
+    ref="dialog"
+    :media="media"
+    :selectedVersionId="selectedVersionId"
+  />
 </template>
 <script lang="ts" setup>
+import { ref } from "vue";
 import type { Media } from "@quickbyte/common";
 import { UiLayout, UiMenu, UiMenuItem } from "@/components/ui";
-import { CheckIcon, ArrowUpIcon, ChevronDownIcon } from "@heroicons/vue/24/solid";
+import { MediaVersionsDialog } from "@/components/versions";
+import { CheckIcon, ArrowUpIcon, ChevronDownIcon, Cog6ToothIcon } from "@heroicons/vue/24/solid";
 import { useFileTransfer, useFilePicker, showToast } from "@/app-utils";
 import { computed, watch } from "vue";
 import { formatPercentage, pluralize } from "@/core";
@@ -43,6 +59,7 @@ const props = defineProps<{
   media: Media,
   selectedVersionId?: string;
   allowUpload?: boolean;
+  allowManagement?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -56,6 +73,8 @@ const {
   reset
 } = useFilePicker();
 const { startTransfer, media: uploadedMedia, uploadState, uploadProgress, transfer: versionTransfer } = useFileTransfer();
+
+const dialog = ref<typeof MediaVersionsDialog>();
 
 const updatedVersions = computed(() => {
   if (!uploadedMedia.value || !uploadedMedia.value.length) return [];
@@ -92,5 +111,9 @@ onFilesSelected((selectedFiles, selectedDirectories) => {
 
 function selectVersion(id: string) {
   emit('selectVersion', id);
+}
+
+function openDialog() {
+  dialog.value?.open();
 }
 </script>

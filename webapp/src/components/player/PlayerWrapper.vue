@@ -13,6 +13,7 @@
           :media="media"
           :selectedVersionId="selectedVersionId"
           :allowUpload="allowUploadVersion"
+          :allowManagement="allowVersionManagement"
           @versionUpload="handleVersionUpload()"
           @selectVersion="handleSelectVersion($event)"
         />
@@ -196,6 +197,7 @@ const props = defineProps<{
   allowDownload: boolean;
   showAllVersions: boolean;
   allowUploadVersion: boolean;
+  allowVersionManagement?: boolean;
   selectedVersionId: string;
   selectedCommentId?: string;
   user?: {

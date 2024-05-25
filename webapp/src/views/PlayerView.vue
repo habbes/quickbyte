@@ -12,6 +12,7 @@
     allowDownload
     showAllVersions
     :allowUploadVersion="project.role === 'admin' || project.role === 'owner' || project.role === 'editor'"
+    :allowVersionManagement="project.role === 'admin' || project.role === 'owner' || project.role === 'editor'"
     :sendComment="sendComment"
     :editComment="editComment"
     :deleteComment="deleteComment"
