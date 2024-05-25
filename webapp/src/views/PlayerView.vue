@@ -84,7 +84,10 @@ async function handleVersionUpload() {
   // endpoints and maybe optmize later.
   try {
     const account = ensure(store.currentAccount.value);
-    media.value = await apiClient.getProjectMediumById(account._id, route.params.projectId as string, route.params.mediaId as string);
+    media.value = await trpcClient.getProjectMediaById.query({
+      projectId: route.params.projectId as string,
+      mediaId: route.params.mediaId as string
+    });
     selectedVersionId.value = media.value.preferredVersionId;
   } catch (e: any) {
     showToast(e.message, 'error');
