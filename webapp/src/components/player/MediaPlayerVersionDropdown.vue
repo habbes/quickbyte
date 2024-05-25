@@ -85,7 +85,6 @@ const updatedVersions = computed(() => {
 
 const versions = computed(() => {
   // sort in descending order, from highest to lowest version
-  console.log('dropdown updating versions...');
   const reversed = [...props.media.versions].reverse();
   return reversed.map((v, index) => ({
     version: v,

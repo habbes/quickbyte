@@ -6,10 +6,33 @@
     <UiLayout>
       <UiLayout gapSm>
         <UiLayout v-if="allowUpload">
-          <div class="p-4 text-gray-500 border-2 border-gray-200 border-dashed rounded-md flex items-center justify-center">
-            <UiLayout horizontal  gapSm>
+          <div v-if="uploadState === 'progress'"
+            class=" h-[55px] flex flex-col justify-center items-center border-gray-200 text-gray-600 border-2 border-dashed rounded-md"
+          >
+            <div>
+              <span>
+                Uploading {{ percentageUploaded.toFixed(2) }}% 
+              </span>
+              <span v-if="versionTransfer">
+                ({{ humanizeSize(uploadProgress) }} / {{ humanizeSize(versionTransfer.totalSize) }})
+              </span>
+            </div>
+            <div class="text-xs">
+              Upload will continue in the background if you close this dialog.
+            </div>
+          </div>
+          <div ref="dropzone"
+            @click="openFilePicker()"
+            v-else
+            class="p-4 h-[55px] text-gray-500 border-gray-200 border-dashed rounded-md flex items-center justify-center cursor-pointer"
+            :class="{ 'border-4': isOverDropZone, 'border-2': !isOverDropZone }"
+          >
+            <UiLayout v-if="!isOverDropZone" horizontal  gapSm>
               <ArrowUpCircleIcon class="h-5 w-5" />
               <span>Upload new versions</span>
+            </UiLayout>
+            <UiLayout v-else="isOverDropZone" horizontal>
+              <span class="text-lg">Drop files to upload new versions</span>
             </UiLayout>
           </div>
         </UiLayout>
@@ -47,7 +70,7 @@
                   <UiLayout v-if="canDelete" itemsCenter justifyCenter title="Delete version">
                     <TrashIcon
                       @click="markForDeletion(version._id)"
-                      class="h-5 w-5 text-red-500 cursor-pointer"
+                      class="h-5 w-5 text-gray-500 cursor-pointer"
                     />
                   </UiLayout>
                 </UiLayout>
@@ -77,8 +100,8 @@ import { ArrowUpCircleIcon, StarIcon } from "@heroicons/vue/24/outline";
 import { StarIcon as SolidStarIcon, TrashIcon } from "@heroicons/vue/24/solid";
 import { UiDialog, UiLayout, UiButton } from "@/components/ui";
 import type { Media, UpdateMediaVersionsArgs } from "@quickbyte/common";
-import { formatDateTime } from "@/core";
-import { showToast, trpcClient, wrapError } from "@/app-utils";
+import { formatDateTime, humanizeSize } from "@/core";
+import { showToast, trpcClient, wrapError, useFilePicker, useFileTransfer } from "@/app-utils";
 
 const props = defineProps<{
   media: Media,
@@ -92,8 +115,34 @@ const emit = defineEmits<{
 defineExpose({ open, close });
 
 const dialog = ref<typeof UiDialog>();
+const dropzone = ref<HTMLDivElement>();
 const preferredVersionId = ref(props.media.preferredVersionId);
 const versionsToDelete = ref(new Set<string>());
+
+const {
+  onFilesSelected,
+  openFilePicker,
+  reset,
+  useDropZone
+} = useFilePicker();
+const { isOverDropZone } = useDropZone(dropzone);
+const {
+  startTransfer,
+  media: uploadedMedia,
+  uploadState,
+  uploadProgress,
+  percentageUploaded,
+  transfer: versionTransfer,
+} = useFileTransfer();
+
+onFilesSelected((selectedFiles, selectedDirectories) => {
+  startTransfer({
+    projectId: props.media.projectId,
+    mediaId: props.media._id,
+    files: selectedFiles,
+    directories: selectedDirectories
+  });
+});
 
 const filteredVersions = computed(() => {
   // versions are sorted from lowest to highest, but we want to display them in reverse order

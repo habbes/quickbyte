@@ -83,7 +83,6 @@ async function handleVersionUpload() {
   // but wanted to get this done quickly by re-using existing
   // endpoints and maybe optmize later.
   try {
-    const account = ensure(store.currentAccount.value);
     media.value = await trpcClient.getProjectMediaById.query({
       projectId: route.params.projectId as string,
       mediaId: route.params.mediaId as string
