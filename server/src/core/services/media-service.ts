@@ -1,4 +1,4 @@
-import { Filter } from "mongodb";
+import { Filter, FindOneAndUpdateOptions, FindOptions } from "mongodb";
 import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType, UpdateMediaVersionsArgs } from "../models.js";
 import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError, createResourceConflictError, createValidationError } from "../error.js";
 import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider } from "./index.js";
@@ -96,7 +96,10 @@ export class MediaService {
 
     async getProjectMedia(projectId: string): Promise<Media[]> {
         try {
-            const media = await this.db.media().find(addRequiredMediaFilters({ projectId: projectId })).toArray();
+            const media = await this.db.media().find(
+                addRequiredMediaFilters({ projectId: projectId }),
+                addDefaultMediaFindOptions({})
+            ).toArray();
             return media;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -111,7 +114,8 @@ export class MediaService {
     async getMediaById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
         try {
             const medium = await this.db.media().findOne(
-                addRequiredMediaFilters({ projectId: projectId, _id: id })
+                addRequiredMediaFilters({ projectId: projectId, _id: id }),
+                addDefaultMediaFindOptions({})
             );
             if (!medium) {
                 throw createResourceNotFoundError();
@@ -162,7 +166,8 @@ export class MediaService {
                     _updatedBy: { type: 'user', _id: this.authContext.user._id }
                 }
             }, {
-                returnDocument: 'after'
+                returnDocument: 'after',
+                ...addDefaultMediaFindOptions({})
             });
 
             if (!result.value) {
@@ -219,9 +224,8 @@ export class MediaService {
                 createFilterForDeleteableResource({
                     _id: { $in: args.mediaIds },
                     projectId: args.projectId
-                }), {
-                    session
-                }
+                }), 
+                addDefaultMediaFindOptions({ session })
             ).toArray();
 
             await session.commitTransaction();
@@ -262,7 +266,10 @@ export class MediaService {
 
     async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         try {
-            const medium = await this.db.media().findOne(addRequiredMediaFilters({ projectId: projectId, _id: mediaId }));
+            const medium = await this.db.media().findOne(
+                addRequiredMediaFilters({ projectId: projectId, _id: mediaId }),
+                addDefaultMediaFindOptions({})
+            );
             if (!medium) {
                 throw createNotFoundError('media');
             }
@@ -309,7 +316,7 @@ export class MediaService {
                 query['versions._id'] = args.preferredVersionId
             }
 
-            const media = await this.db.media().findOne(query);
+            const media = await this.db.media().findOne(query, addDefaultMediaFindOptions({}));
 
             if (!media) {
                 throw createResourceConflictError(conflictErrorMessage);
@@ -391,9 +398,9 @@ export class MediaService {
             , {
                 $set: update,
                 $inc: { _cc: 1 }
-            }, {
-                returnDocument: 'after'
-            });
+            }, 
+                addDefaultMediaFindOptions<FindOneAndUpdateOptions>({ returnDocument: 'after' })
+            );
 
             if (!result.value) {
                 throw createResourceConflictError(conflictErrorMessage);
@@ -442,7 +449,7 @@ export class MediaService {
                     _updatedAt: new Date(),
                     _updatedBy: { type: 'user', _id: this.authContext.user._id }
                 }
-            });
+            }, addDefaultMediaFindOptions({}));
 
             if (!result.value) {
                 throw createNotFoundError('media');
@@ -465,8 +472,15 @@ export class MediaService {
     }
 }
 
-export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
+export function addRequiredMediaFilters(filter: Filter<DbMedia>): Filter<Media> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
+}
+
+export function addDefaultMediaFindOptions<TOptions extends FindOptions<DbMedia>>(options: TOptions): TOptions {
+    return {
+        ...options,
+        projection: { _deletedVersions: 0 }
+    };
 }
 
 export function getPlainMediaById(db: Database, projectId: string, id: string): Promise<Media> {
@@ -475,7 +489,8 @@ export function getPlainMediaById(db: Database, projectId: string, id: string): 
             addRequiredMediaFilters({
                 projectId,
                 _id: id
-            })
+            }),
+            addDefaultMediaFindOptions({})
         )
 
         if (!media) {
@@ -492,7 +507,8 @@ export function getMultipleMediaByIds(db: Database, projectId: string, ids: stri
             addRequiredMediaFilters({
                 projectId,
                 _id: { $in: ids }
-            })
+            }),
+            addDefaultMediaFindOptions({})
         ).toArray();
 
         return media
@@ -515,7 +531,7 @@ export function getProjectMediaByFolder(
             query.folderId = null;
         }
 
-        const media = await db.media().find(query).toArray();
+        const media = await db.media().find(query, addDefaultMediaFindOptions({})).toArray();
 
         return media;
     });
