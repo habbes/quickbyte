@@ -361,7 +361,7 @@ export interface ProjectFolderItem extends BaseProjectItem {
 
 export interface ProjectMediaItem extends BaseProjectItem {
     type: "media";
-    item: Media
+    item: WithThumbnail<Media>
 }
 
 export interface ProjectShareMediaItem extends BaseProjectItem {
