@@ -163,10 +163,12 @@
             >
               
                 <ProjectItemCard
+                  v-if="project"
                   :item="item"
                   :selected="isItemSelected(item._id)"
                   :showSelectCheckbox="selectedItemIds.size > 0"
                   :totalSelectedItems="selectedItemIds.size"
+                  :allowUpload="project.role === 'owner' || project.role === 'admin' || project.role === 'editor'"
                   @update="handleItemUpdate($event)"
                   @delete="handleDeleteRequested($event)"
                   @move="handleMoveRequested($event)"
@@ -502,7 +504,6 @@ function handleToggleInMultiSelect(args: { type: ProjectItemType, itemId: string
 }
 
 function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
-  // TODO: handle folder update
   const index = items.value.findIndex(m => m._id === update.item._id && m.type === update.type);
   if (index < 0) return;
   

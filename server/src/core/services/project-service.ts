@@ -2,7 +2,7 @@ import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs, ProjectItemType } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createAuthError, createPermissionError } from "../error.js";
 import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider, createMediaCommentNotificationEmail, getDownloadableFiles, getUserByEmail, getUserByEmailOrCreateGuest, tryGetUserByEmail } from "./index.js";
-import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs, GetProjectShareMediaByIdArgs, User, GetAllProjectShareFilesForDownloadArgs, ConcurrentTaskQueue, DownloadTransferFileResult, TaskTracker, GetAllProjectShareFilesForDownloadResult, DeleteProjectArgs } from '@quickbyte/common';
+import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs, GetProjectShareMediaByIdArgs, User, GetAllProjectShareFilesForDownloadArgs, ConcurrentTaskQueue, DownloadTransferFileResult, TaskTracker, GetAllProjectShareFilesForDownloadResult, DeleteProjectArgs, UpdateMediaVersionsArgs } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { addThumbnailUrlsToMedia, getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, getProjectShareMediaFilesAndComments, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -419,6 +419,16 @@ export class ProjectService {
             rethrowIfAppError(e);
             throw createAppError(e);
         }
+    }
+
+    updateMediaVersions(args: UpdateMediaVersionsArgs): Promise<Media> {
+        return wrapError(async () => {
+            const project = await this.getByIdInternal(args.projectId);
+            const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
+            const result = await this.config.media.updateMediaVersions(args, role === 'admin' || role === 'owner');
+
+            return result;
+        });
     }
 
     async inviteUsers(id: string, args: InviteUserArgs): Promise<void> {

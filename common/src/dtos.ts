@@ -489,4 +489,25 @@ export interface GetAllProjectShareFilesForDownloadError {
     error: string;
 }
 
+export const UpdateMediaVersionsArgs = z.object({
+    projectId: z.string().min(1),
+    mediaId: z.string().min(1),
+    preferredVersionId: z.string().min(1).optional(),
+    // this updates the versions array, it's used
+    // to rename, re-order or delete versions.
+    // It essentially replaces the current version array.
+    // As a result, we use the concurrency check to ensure
+    // no concurrent updates occur. The update will only succeed
+    // if the version that the client has is the most recent
+    versions: z.array(
+        z.object({
+            _id: z.string().min(1),
+            name: z.string().min(1)
+        })
+    ).optional(),
+    // use to make sure we have the latest version of the record
+    // before we make an update
+    concurrencyControl: z.number().optional()
+});
 
+export type UpdateMediaVersionsArgs = z.infer<typeof UpdateMediaVersionsArgs>;

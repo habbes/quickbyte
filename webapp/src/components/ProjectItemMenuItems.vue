@@ -5,6 +5,12 @@
         <span>Rename</span>
       </UiLayout>
     </UiMenuItem>
+    <UiMenuItem @click="$emit('manageVersions')">
+      <UiLayout horizontal itemsCenter gapSm>
+        <ClipboardDocumentIcon class="h-4 w-4" />
+        <span>Manage versions</span>
+      </UiLayout>
+    </UiMenuItem>
     <UiMenuItem @click="$emit('move')">
       <UiLayout horizontal itemsCenter gapSm>
         <ArrowRightCircleIcon class="w-4 h-4" />
@@ -47,16 +53,18 @@
 </template>
 <script lang="ts" setup>
 import { UiMenuItem, UiLayout } from "@/components/ui";
-import { PencilIcon, TrashIcon, ArrowRightCircleIcon, DocumentPlusIcon, DocumentMinusIcon, ShareIcon } from '@heroicons/vue/24/outline';
+import { PencilIcon, TrashIcon, ArrowRightCircleIcon, DocumentPlusIcon, DocumentMinusIcon, ShareIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
 import { computed } from "vue";
 import { pluralize } from "@/core";
 
 const props = defineProps<{
   totalSelectedItems?: number;
+  hasVersionManagement?: boolean;
 }>();
 
 defineEmits<{
   (e: 'rename'): unknown;
+  (e: 'manageVersions'): unknown;
   (e: 'delete'): unknown;
   (e: 'move'): unknown;
   (e: 'share'): unknown;

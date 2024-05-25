@@ -1,9 +1,9 @@
-import { Collection, Filter } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError } from "../error.js";
+import { Filter, FindOneAndUpdateOptions, FindOptions } from "mongodb";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType, UpdateMediaVersionsArgs } from "../models.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError, createResourceConflictError, createValidationError, createPermissionError } from "../error.js";
 import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider } from "./index.js";
 import { getMediaComments, ICommentService } from "./comment-service.js";
-import { createFilterForDeleteableResource, Database, deleteNowBy, updateNowBy } from "../db.js";
+import { createFilterForDeleteableResource, Database, DbMedia, deleteNowBy, updateNowBy } from "../db.js";
 import { IFolderService } from "./folder-service.js";
 import { getFileDownloadUrl } from "./transfer-service.js";
 import { ensure, wrapError } from "../utils.js";
@@ -15,10 +15,8 @@ export interface MediaServiceConfig {
 }
 
 export class MediaService {
-    private collection: Collection<Media>;
 
     constructor(private db: Database, private authContext: AuthContext, private config: MediaServiceConfig) {
-        this.collection = db.media();
     }
 
     async uploadMedia(transfer: CreateTransferResult): Promise<{ media: Media[], folders?: Folder[] }> {
@@ -87,7 +85,7 @@ export class MediaService {
             });
 
             const media = files.map(file => this.convertFileToMedia(transfer.projectId!, file, pathToFolderMap));
-            await this.collection.insertMany(media);
+            await this.db.media().insertMany(media);
             const folders = Array.from(pathToFolderMap.values());
             return { media, folders };
         } catch (e: any) {
@@ -98,7 +96,10 @@ export class MediaService {
 
     async getProjectMedia(projectId: string): Promise<Media[]> {
         try {
-            const media = await this.collection.find(addRequiredMediaFilters({ projectId: projectId })).toArray();
+            const media = await this.db.media().find(
+                addRequiredMediaFilters({ projectId: projectId }),
+                addDefaultMediaFindOptions({})
+            ).toArray();
             return media;
         } catch (e: any) {
             rethrowIfAppError(e);
@@ -112,7 +113,10 @@ export class MediaService {
 
     async getMediaById(projectId: string, id: string): Promise<MediaWithFileAndComments> {
         try {
-            const medium = await this.collection.findOne(addRequiredMediaFilters({ projectId: projectId, _id: id }));
+            const medium = await this.db.media().findOne(
+                addRequiredMediaFilters({ projectId: projectId, _id: id }),
+                addDefaultMediaFindOptions({})
+            );
             if (!medium) {
                 throw createResourceNotFoundError();
             }
@@ -152,7 +156,7 @@ export class MediaService {
 
     async updateMedia(projectId: string, id: string, args: UpdateMediaArgs): Promise<Media> {
         try {
-            const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
+            const result = await this.db.media().findOneAndUpdate(addRequiredMediaFilters({
                 projectId: projectId,
                 _id: id,
             }), {
@@ -162,7 +166,8 @@ export class MediaService {
                     _updatedBy: { type: 'user', _id: this.authContext.user._id }
                 }
             }, {
-                returnDocument: 'after'
+                returnDocument: 'after',
+                ...addDefaultMediaFindOptions({})
             });
 
             if (!result.value) {
@@ -219,9 +224,8 @@ export class MediaService {
                 createFilterForDeleteableResource({
                     _id: { $in: args.mediaIds },
                     projectId: args.projectId
-                }), {
-                    session
-                }
+                }), 
+                addDefaultMediaFindOptions({ session })
             ).toArray();
 
             await session.commitTransaction();
@@ -241,7 +245,7 @@ export class MediaService {
             // if the user is a project owner or admin, then allow deleting
             // otherwise, allow deleting only if the user is the author
             const userAccessFilter = isOwnerOrAdmin ? {} : { '_createdBy._id': this.authContext.user._id };
-            const result = await this.collection.updateMany(
+            const result = await this.db.media().updateMany(
                 createFilterForDeleteableResource({
                     projectId,
                     _id: { $in: mediaIds },
@@ -262,7 +266,10 @@ export class MediaService {
 
     async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         try {
-            const medium = await this.collection.findOne(addRequiredMediaFilters({ projectId: projectId, _id: mediaId }));
+            const medium = await this.db.media().findOne(
+                addRequiredMediaFilters({ projectId: projectId, _id: mediaId }),
+                addDefaultMediaFindOptions({})
+            );
             if (!medium) {
                 throw createNotFoundError('media');
             }
@@ -282,6 +289,142 @@ export class MediaService {
 
     updateMediaComment(args: UpdateMediaCommentArgs): Promise<Comment> {
         return this.config.comments.updateMediaComment(args);
+    }
+
+    async updateMediaVersions(args: UpdateMediaVersionsArgs, isAdminOrOwner: boolean) {
+        // we use a optimistic concurrency for this operation
+        // because of some of the operations on versions
+        // that we can't do atomically, like re-ordering and deleting, the version
+        // list.
+        // But some operations, like updating the preferred version, might not
+        // need this.
+        // If this causes a bottleneck we can consider optimizing
+        // such that we only trigger a transaction if we need to perform
+        // an update that needs it, otherwise we use findOneAndUpdate
+        // atomically.
+        
+        try {
+            const conflictErrorMessage = 'Media asset or version may have been modified by a different user. Please reload and try again.';
+            const query = addRequiredMediaFilters({
+                _id: args.mediaId,
+                projectId: args.projectId,
+                _cc: args.concurrencyControl
+            });
+
+            if (args.preferredVersionId) {
+                // if preferred version is set, make sure it exists
+                query['versions._id'] = args.preferredVersionId
+            }
+
+            const media = await this.db.media().findOne(query, addDefaultMediaFindOptions({}));
+
+            if (!media) {
+                throw createResourceConflictError(conflictErrorMessage);
+            }
+
+            const update: Partial<DbMedia> = {
+                _updatedAt: new Date(),
+                _updatedBy: { _id: this.authContext.user._id, type: 'user' }
+            };
+            if (args.preferredVersionId) {
+                update.preferredVersionId = args.preferredVersionId
+            }
+
+            if (args.versions) {
+                const newVersions: MediaVersion[] = [];
+
+                // this loop handles updates to the versions array,
+                // including (implicitly) re-ordering and deletion.
+                // This effectively performs a hard delete, deleting
+                // the version from the db. And since we currently don't
+                // have audit log. We're losing traces of the version.
+                // The underlying file might remain orphaned.
+                // We may still have media comments that are tied to this
+                // version. Should we implement a soft delete instead?
+                // That of course will introduce complexity of having to filter
+                // out the versions in every query.
+                for (const v of args.versions) {
+                    const oldVersion = media.versions.find(other => other._id === v._id);
+                    if (!oldVersion) {
+                        // if we can't find a version it could be that the user has sent invalid versions
+                        // or the the media in the db is different from the version the client has,
+                        // despite the concurrency control being the same. This means
+                        // two clients with the same version are trying to make an update concurrently.
+                        // Let's consider this a conflict and fail.
+
+                        console.warn(`Attempting to update version ${v._id} of media ${media._id} but the version does not exist. Possible conflict.`);
+
+                        throw createResourceConflictError(conflictErrorMessage);
+                    }
+
+                    const newVersion = {
+                        ...oldVersion,
+                        name: v.name
+                    };
+
+                    if (newVersion.name !== oldVersion.name) {
+                        newVersion._updatedAt = new Date();
+                        newVersion._updatedBy = { _id: this.authContext.user._id, type: 'user' };
+                    }
+
+                    newVersions.push(newVersion);
+                }
+
+                const deletedVersions = media.versions.filter(old => !newVersions.some(newV => newV._id === old._id));
+
+                for (const v of deletedVersions) {
+                    // You can delete a version if
+                    // - you're an admin or owner
+                    // - you're the editor who originally uploaded the media item
+                    // - you're the editor who uploaded the version
+
+                    const canDeleteVersion = isAdminOrOwner || this.authContext.user._id === media._createdBy._id ||
+                        this.authContext.user._id === v._createdBy._id;
+                    
+                    if (!canDeleteVersion) {
+                        throw createPermissionError(`You do not have permissions to delete version '${v.name}'`);
+                    }
+
+                    v.deleted = true;
+                    v.deletedAt = new Date();
+                    v.deletedBy = { _id: this.authContext.user._id, type: 'user' };
+                }
+
+                const allDeletedVersions = (media._deletedVersions || []).concat(deletedVersions);
+                update.versions = newVersions;
+                update._deletedVersions = allDeletedVersions;
+                
+            }
+
+            if (update.versions && !update.versions.length) {
+                throw createValidationError("Cannot delete all versions. A media asset should have at least one version.");
+            }
+
+            if (update.versions && args.preferredVersionId) {
+                if (!update.versions.some(v => v._id === args.preferredVersionId)) {
+                    throw createValidationError("The selected preferred version is not one of the media asset's versions.");
+                }
+            }
+
+            const result = await this.db.media().findOneAndUpdate(
+                query
+            , {
+                $set: update,
+                $inc: { _cc: 1 }
+            }, 
+                addDefaultMediaFindOptions<FindOneAndUpdateOptions>({ returnDocument: 'after' })
+            );
+
+            if (!result.value) {
+                throw createResourceConflictError(conflictErrorMessage);
+            }
+
+            return result.value;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
     }
 
     private convertFileToMedia(projectId: string, file: CreateTransferFileResult, pathToFolderMap: Map<string, Folder>) {
@@ -310,7 +453,7 @@ export class MediaService {
             
             const newPreferredVersionId = newVersions[0]._id;
 
-            const result = await this.collection.findOneAndUpdate(addRequiredMediaFilters({
+            const result = await this.db.media().findOneAndUpdate(addRequiredMediaFilters({
                 _id: mediaId
             }), {
                 $push: { versions: { $each: newVersions } },
@@ -319,7 +462,7 @@ export class MediaService {
                     _updatedAt: new Date(),
                     _updatedBy: { type: 'user', _id: this.authContext.user._id }
                 }
-            });
+            }, addDefaultMediaFindOptions({}));
 
             if (!result.value) {
                 throw createNotFoundError('media');
@@ -342,8 +485,15 @@ export class MediaService {
     }
 }
 
-export function addRequiredMediaFilters(filter: Filter<Media>): Filter<Media> {
+export function addRequiredMediaFilters(filter: Filter<DbMedia>): Filter<Media> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } }
+}
+
+export function addDefaultMediaFindOptions<TOptions extends FindOptions<DbMedia>>(options: TOptions): TOptions {
+    return {
+        ...options,
+        projection: { _deletedVersions: 0 }
+    };
 }
 
 export function getPlainMediaById(db: Database, projectId: string, id: string): Promise<Media> {
@@ -352,7 +502,8 @@ export function getPlainMediaById(db: Database, projectId: string, id: string): 
             addRequiredMediaFilters({
                 projectId,
                 _id: id
-            })
+            }),
+            addDefaultMediaFindOptions({})
         )
 
         if (!media) {
@@ -369,7 +520,8 @@ export function getMultipleMediaByIds(db: Database, projectId: string, ids: stri
             addRequiredMediaFilters({
                 projectId,
                 _id: { $in: ids }
-            })
+            }),
+            addDefaultMediaFindOptions({})
         ).toArray();
 
         return media
@@ -392,7 +544,7 @@ export function getProjectMediaByFolder(
             query.folderId = null;
         }
 
-        const media = await db.media().find(query).toArray();
+        const media = await db.media().find(query, addDefaultMediaFindOptions({})).toArray();
 
         return media;
     });
@@ -570,4 +722,4 @@ export async function addThumbnailToMedia<TMedia extends Media>(
     return media;
 }
 
-export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'>;
+export type IMediaService = Pick<MediaService, 'uploadMedia'|'getMediaById'|'getProjectMedia'| 'getProjectMediaByFolder'|'createMediaComment'|'updateMedia'|'deleteMedia'|'deleteMediaComment'|'updateMediaComment'|'moveMediaToFolder'|'updateMediaVersions'>;
