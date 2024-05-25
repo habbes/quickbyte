@@ -515,4 +515,8 @@ function handleCommentMouseLeave() {
 .vds-audio-layout {
   display: none;
 }
+
+[data-media-provider] {
+  border-radius: 0px;
+}
 </style>
