@@ -157,6 +157,17 @@ watch(() => route.params.mediaId, async () => {
 
     // fetch folders/files in the same path to populate
     // the in-player browser
+
+    // It's possible that the media asset's folder is different
+    // from the path we used to get here. This would be the case
+    // if the media asset was shared directly, and is there for at the
+    // root of the share, and also happens to be inside another folder
+    // that's also shared. However, since that occurrence is unlikely
+    // due to the hierarchical nature of the UI, I don't think
+    // it's worth the effort to handle. It's also north a huge risk,
+    // it would be a minor annoyance if it occurs, and if customers report
+    // it we would fix it then.
+
     // note that it's possible that the parent folder was not
     // shared, but we don't know that, especially when the url
     // this page is loaded or reloaded directly, meaning the
@@ -187,9 +198,9 @@ watch(() => route.params.mediaId, async () => {
         data?.httpStatus === 403
       ) {
         // Permission or not found error means the folder
-        // was not shared. It's likely this file was shared directly and
-        // is the root of the share. So let's make another request to fetch
-        // all root files.
+        // was not shared. Then this file was probably shared directly and
+        // is at the root of the share. So let's make another request to fetch
+        // all root items.
 
         // Also, nested try and if blocks? Yuck. Refactor this some day.
 
