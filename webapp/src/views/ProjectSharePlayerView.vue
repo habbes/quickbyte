@@ -58,7 +58,11 @@ function handleClosePlayer() {
       shareId: share.value?._id, code: code.value, folderId: currentFolderId.value
     },
     query: {
-      version: selectedVersionId.value
+      // Since we're potentially redirecting to a folder
+      // without verifying whether it's shared, let's signal
+      // that the redict is coming from the player so that we can
+      // gracefully handle the potential permission error
+      closePlayer: "1"
     }
   });
 }
