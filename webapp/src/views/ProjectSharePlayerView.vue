@@ -187,8 +187,38 @@ watch(() => route.params.mediaId, async () => {
         data?.httpStatus === 403
       ) {
         // Permission or not found error means the folder
-        // was not shared. So silently ignore the error
-        // and continue without showing any file in the browser.
+        // was not shared. It's likely this file was shared directly and
+        // is the root of the share. So let's make another request to fetch
+        // all root files.
+
+        // Also, nested try and if blocks? Yuck. Refactor this some day.
+
+        try {
+          const fallbackResult = await trpcClient.getProjectShareItems.query({
+            shareId: share.value._id,
+            code: code.value,
+            password: password.value,
+          });
+
+          if ('items' in fallbackResult) {
+            browserItems.value = fallbackResult.items;
+            browserItemsPath.value = fallbackResult.path;
+          }
+        } catch (e: any) {
+          const data = e.data;
+          if (
+            data?.appCode === 'resourceNotFound' ||
+            data?.appCode === 'permissionError' ||
+            data?.httpStatus === 404 ||
+            data?.httpStatus === 403
+          ) {
+            // Still getting a 404/403 error? Fail silently.
+            return;
+          }
+
+          throw e;
+        }
+
         return;
       }
 
