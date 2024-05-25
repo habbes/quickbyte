@@ -9,5 +9,4 @@
 </template>
 <script lang="ts" setup>
 import AppNavBar from '@/components/AppNavBar.vue';
-import FooterSection from '@/components/Sections/FooterSection.vue';
 </script>
