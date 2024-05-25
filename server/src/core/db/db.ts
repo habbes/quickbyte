@@ -1,5 +1,5 @@
 import { Db, Filter, MongoClient } from 'mongodb';
-import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder, Deleteable, ParentDeleteable, Principal, PersistedModel, ProjectShare } from '../models.js';
+import { Account, Project, Comment, UserInvite, UserRole, Subscription, Transaction, TransferFile, DbTransfer, DownloadRequest, UserVerification, UserInDb, AuthToken, Folder, Deleteable, ParentDeleteable, Principal, PersistedModel, ProjectShare, MediaVersion } from '../models.js';
 import { Media } from '../models.js';
 
 export class Database {
@@ -32,7 +32,7 @@ export class Database {
 
     comments = () => this.db.collection<Comment>('comments');
 
-    media = () => this.db.collection<Media>("media");
+    media = () => this.db.collection<DbMedia>("media");
 
     folders = () => this.db.collection<Folder>("folders");
 
@@ -78,6 +78,15 @@ export interface DbProjectShare extends ProjectShare {
     password?: string;
 }
 
+export interface DbMedia extends Media {
+    // We store deleted versions to implement "soft deletes",
+    // We store them in a separate field instead of keeping them
+    // in the versions array marked as deleted because we may
+    // easily forget to filter out deleted versions with $elemMatch
+    // projections and end up leaking deleted versions to the UI
+    _deletedVersions?: MediaVersion[];
+}
+
 export function createFilterForDeleteableResource<T extends Deleteable | ParentDeleteable>(filter: Filter<T>): Filter<T> {
     return { ...filter, deleted: { $ne: true }, parentDeleted: { $ne: true } };
 }
@@ -103,4 +112,10 @@ export function getSafeProjectShare<T extends DbProjectShare>(dbShare: T): Omit<
     const share = { ...dbShare };
     delete share.password;
     return share;
+}
+
+export function getSafeMedia<T extends DbMedia>(dbMedia: T): Omit<T, '_deletedVersions'> {
+    const media = { ...dbMedia };
+    delete media._deletedVersions;
+    return media;
 }
