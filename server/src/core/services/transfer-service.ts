@@ -800,7 +800,7 @@ async function createDownloadAndPlayableFile(provider: IStorageHandler, packager
                 downlodableFile = { ...downlodableFile, playbackPackagingStatus: updatedFile.playbackPackagingStatus };
             }
         } else {
-            console.warn(`Skipping packaging attempt for file '${file._id}' because transfer '${transfer._id}' is not complete. Status is '${transfer.status}'`);
+            console.warn(`Skipping packaging attempt for file '${file._id}' upload status is not complete. Status is '${uploadStatus}'`);
         }
     }
 
