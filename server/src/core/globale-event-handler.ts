@@ -1,4 +1,4 @@
-import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging, createProjectSharedForReviewNotificationEmail, ProjectShareInviteEvent, findProjectShares, IAlertService } from "./services/index.js";
+import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging, createProjectSharedForReviewNotificationEmail, ProjectShareInviteEvent, findProjectShares, IAlertService, FileUploadCompleteEvent, queueFileForPackaging } from "./services/index.js";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, rethrowIfAppError } from "./error.js";
 import { Database, getProjectMembersById } from "./db/index.js";
 import { Media, Project, User } from "./models.js";
@@ -12,6 +12,7 @@ export class GlobalEventHandler {
 
     registerEvents(eventBus: EventBus) {
         eventBus.on('transferComplete', (event) => this.handleTransferComplete(event));
+        eventBus.on('fileUploadComplete', (event) => this.handleFileUploadComplete(event));
         eventBus.on('folderDeleted', (event) => this.handleFolderDeleted(event));
         eventBus.on('projectMemberRemoved', (event) => this.handleProjectMemberRemoved(event));
         eventBus.on('filePlaybackPackagingUpdated', (event) => this.handleFilePlaybackPackagingUpdated(event));
@@ -86,22 +87,34 @@ export class GlobalEventHandler {
         }
     }
 
+    private async handleFileUploadComplete(event: Event): Promise<void> {
+        
+        const data = this.getEventData<FileUploadCompleteEvent>('fileUploadComplete', event);
+        console.log(`Handle fileUploadeComplete event for file '${data.fileId}'`);
+        await queueFileForPackaging(data.fileId, {
+            db: this.config.db,
+            queue: this.config.backgroundWorker,
+            packagers: this.config.playbackPackagers
+        });
+    }
+
     private async handleTransferComplete(event: Event): Promise<void> {
         try {
             const data = this.getEventData<TransferCompleteEvent>('transferComplete', event);
             const transfer = data.transfer;
+            
+            console.log(`Handle transferComplete event for '${transfer._id}'`);        
             // currently we only care about transfers tied to project uploads
-            console.log(`Handle transferComplete event for '${transfer._id}'`);
+            if (!transfer.projectId) {
+                console.log('Transfer has not project. Skip...');
+                return;
+            }
+
             console.log(`Queuing transfer ${transfer._id} files for packaging...`);
             await queueTransferFilesForPackaging(
                 transfer._id,
                 { db: this.config.db, queue: this.config.backgroundWorker, packagers: this.config.playbackPackagers }
             );
-
-            if (!transfer.projectId) {
-                console.log('Transfer has not project. Skip...');
-                return;
-            }
 
             // find project collaborators
             const project = await this.config.db.projects().findOne<Project>({ _id: transfer.projectId });

@@ -200,7 +200,7 @@ export interface TransferFile extends PersistedModel {
     playbackPackagingMetadata?: Record<string, any>;
 }
 
-export type FileUploadStatus = 'pending' | 'progress' | 'completed';
+export type FileUploadStatus = 'pending' | 'progress' | 'completed' | 'failed';
 
 export interface Upload extends PersistedModel {
     fileId: string;

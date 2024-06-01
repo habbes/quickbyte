@@ -263,6 +263,13 @@ export class TransferService {
                 )
             ]);
 
+            this.config.eventBus.send({
+                type: 'fileUploadComplete',
+                data: {
+                    fileId: file._id
+                }
+            });
+
         }
         catch (e: any) {
             rethrowIfAppError(e);
@@ -447,7 +454,7 @@ export async function queueTransferFilesForPackaging(
     }
 ) {
     return wrapError(async () => {
-        const files = await context.db.files().find({ transferId }).toArray();
+        const files = await context.db.files().find({ transferId, playbackPackagingId: { $exists: false } }).toArray();
         for (let file of files) {
             if (file.playbackPackagingId) {
                 continue;
@@ -462,6 +469,26 @@ export async function queueTransferFilesForPackaging(
                 }
             ));
         }
+    });
+}
+
+export async function queueFileForPackaging(
+    fileId: string,
+    context: {
+        db: Database,
+        packagers: IPlaybackPackagerProvider,
+        queue: BackgroundWorker
+    }
+) {
+    return wrapError(async () => {
+        console.log(`Queuing file ${fileId} for packaging.`);
+        context.queue.queueJob(() => tryStartPackagingFile(
+            fileId,
+            {
+                packagers: context.packagers,
+                db: context.db
+            }
+        ));
     });
 }
 
