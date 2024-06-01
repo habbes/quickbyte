@@ -1,4 +1,4 @@
-import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging, createProjectSharedForReviewNotificationEmail, ProjectShareInviteEvent, findProjectShares, IAlertService, FileUploadCompleteEvent, queueFileForPackaging } from "./services/index.js";
+import { EventBus, Event, getEventType, EmailHandler, createProjectMediaUploadNotificationEmail, sendEmailToMany, createProjectMediaVersionUploadNotificationEmail, createProjectMediaMultipleVersionsUploadNotificationEmail, FolderDeletedEvent, TransferCompleteEvent, ProjectMemberRemovedEvent, createYouHaveBeenemovedFromProjectNoticiationEmail, FilePlaybackPackagingUpdatedEvent, updateFilePackagingMetadata, IPlaybackPackagerProvider, queueTransferFilesForPackaging, createProjectSharedForReviewNotificationEmail, ProjectShareInviteEvent, findProjectShares, IAlertService, FileUploadCompleteEvent, queueFileForPackaging, markTransferFilesUploadStatusAsCompleted } from "./services/index.js";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createResourceNotFoundError, rethrowIfAppError } from "./error.js";
 import { Database, getProjectMembersById } from "./db/index.js";
 import { Media, Project, User } from "./models.js";
@@ -109,6 +109,11 @@ export class GlobalEventHandler {
                 console.log('Transfer has not project. Skip...');
                 return;
             }
+
+            // This is meant to support older versions that do not update
+            // file statuses
+            console.log(`Updating transfer file upload statuses...`);
+            await markTransferFilesUploadStatusAsCompleted(this.config.db, transfer._id);
 
             console.log(`Queuing transfer ${transfer._id} files for packaging...`);
             await queueTransferFilesForPackaging(

@@ -832,6 +832,21 @@ export async function getFileDownloadUrl(provider: IStorageHandler, file: Transf
     return downloadUrl;
 }
 
+export function markTransferFilesUploadStatusAsCompleted(db: Database, transferId: string) {
+    return wrapError(() => {
+        return db.files().updateMany({
+            transferId,
+            uploadStatus: { $ne: 'completed' }
+        }, {
+            $set: {
+                uploadStatus: 'completed',
+                _updatedAt: new Date(),
+                _updatedBy: { type: 'system', _id: 'system' }
+            }
+        });
+    });
+}
+
 async function getFileUploadStatus<T extends TransferFile>(file: T, blobName: string, db: Database, storageHandler: IStorageHandler): Promise<FileUploadStatus> {
     if (file.uploadStatus) {
         return Promise.resolve(file.uploadStatus);
@@ -884,6 +899,8 @@ async function getFileUploadStatus<T extends TransferFile>(file: T, blobName: st
     // that the transfer might complete on that older version. So if we set the file's status to pending, then
     // we'll never check whether the transfer is complete. To address that, we'll update the statuses of all
     // the files without statuses in a background job after the transfer completes.
+
+    console.log(`File ${file._id} does not exist at storage provider. Mark file as pending.`);
 
     await db.files().updateOne({ _id: file._id }, {
         $set: {
