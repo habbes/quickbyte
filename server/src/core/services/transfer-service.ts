@@ -172,7 +172,8 @@ export class TransferService {
                 { _id: args.fileId, transferId: args.transferId },
                 {
                     $set: {
-                        fileUploadStatus: 'progress',
+                        uploadStatus: 'progress',
+                        uploadStartAt: new Date(),
                         _updatedAt: new Date(),
                         _updatedBy: {
                             _id: this.authContext.user._id,
@@ -251,6 +252,7 @@ export class TransferService {
                     {
                         $set: {
                             uploadStatus: 'completed',
+                            uploadCompletedAt: new Date(),
                             _updatedAt: new Date(),
                             _updatedBy: {
                                 _id: this.authContext.user._id,

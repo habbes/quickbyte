@@ -190,6 +190,8 @@ export interface TransferFile extends PersistedModel {
      * When all file records have the status set, we should mark the field as required.
      */
     uploadStatus?: FileUploadStatus;
+    uploadStartAt?: Date;
+    uploadCompletedAt?: Date;
     playbackPackagingProvider?: string;
     playbackPackagingId?: string;
     playbackPackagingStatus?: PlaybackPackagingStatus;
