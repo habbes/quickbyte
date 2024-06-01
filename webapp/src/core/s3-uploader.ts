@@ -112,9 +112,7 @@ export class S3Uploader {
                     providerArgs: S3CompleteFileUploadProviderArgs.parse({
                         uploadId,
                         blocks: uploadedBlocks,
-                    }),
-                    uploadId: uploadId,
-                    blocks: uploadedBlocks
+                    })
                 });
 
                 retry = false;

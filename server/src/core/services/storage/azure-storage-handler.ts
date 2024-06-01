@@ -147,6 +147,14 @@ export class AzureStorageHandler implements IStorageHandler {
             throw createAppError(e);
         }
     }
+
+    initBlobUpload(region: string, account: string, blobName: string, size: number, blockSize: number): Promise<unknown> {
+        return Promise.resolve();
+    }
+
+    completeBlobUpload(region: string, account: string, blobName: string, providerArgs: unknown): Promise<unknown> {
+        return Promise.resolve();
+    }
 }
 
 /**

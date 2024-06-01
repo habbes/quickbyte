@@ -194,7 +194,7 @@ export class TransferService {
             // with a single presigned url that will be used for all the files.
             // On S3 we have to initiate a multipart upload first to get the upload id
             // then we have to presign each part individually and attach the upload id
-            // to it. To make uplaods efficient, this endpoint is used
+            // to it. To make uploads efficient, this endpoint is used
             // to initate the upload and presign all the blocks in advance.
             // TODO: we should probably limit how many pre-signed urls we generate
             // in one request.

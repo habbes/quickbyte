@@ -204,12 +204,7 @@ export type S3InitFileUploadResult = z.infer<typeof S3InitFileUploadResult>;
 export const CompleteFileUploadArgs = z.object({
     transferId: z.string().min(1),
     fileId: z.string().min(1),
-    providerArgs: z.any(),
-    uploadId: z.string().min(1),
-    blocks: z.array(z.object({
-        index: z.number(),
-        etag: z.string()
-    }))
+    providerArgs: z.any()
 });
 
 export type CompleteFileUploadArgs = z.infer<typeof CompleteFileUploadArgs>;
