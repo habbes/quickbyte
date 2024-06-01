@@ -283,7 +283,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
-import { ensure, pluralize } from '@/core';
+import { ensure, pluralize, unwrapSingleton, unwrapSingletonOrUndefined } from '@/core';
 import type {
   WithRole, Project, ProjectItem, Folder,
   ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
@@ -635,9 +635,9 @@ function handleDragSelect(dragSelected: Set<unknown>|Array<unknown>) {
 }
 
 async function loadData(to: RouteLocationNormalizedLoaded) {
-  const projectId = ensure(to.params.projectId) as string;
+  const projectId = unwrapSingleton(to.params.projectId);
   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
-  const folderId = to.params.folderId as string || undefined;
+  const folderId = unwrapSingletonOrUndefined(to.params.folderId);
   loading.value = true;
 
   try {
