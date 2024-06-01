@@ -2,7 +2,8 @@ import { S3Client, GetObjectCommand, PutObjectCommand, PutBucketCorsCommand, Cre
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { IStorageHandler, StorageRegionInfo } from "./types.js";
 import { createAppError, createInvalidAppStateError, createResourceNotFoundError } from "../../error.js";
-import { executeTasksInBatches } from "@quickbyte/common";
+import { executeTasksInBatches, S3CompleteFileUploadProviderArgs, S3InitFileUploadResult } from "@quickbyte/common";
+import { ensureValidWithSchema } from "../../utils.js";
 
 
 export class S3StorageHandler implements IStorageHandler {
@@ -124,7 +125,16 @@ export class S3StorageHandler implements IStorageHandler {
         return url;
     }
 
-    async initMultitpartUpload(region: string, account: string, blobName: string, size: number, blockSize: number) {
+    initBlobUpload(region: string, account: string, blobName: string, size: number, blockSize: number): Promise<any> {
+        return this.initMultitpartUpload(region, account, blobName, size, blockSize);
+    }
+
+    completeBlobUpload(region: string, account: string, blobName: string, providerArgs: any): Promise<any> {
+        const args = ensureValidWithSchema(providerArgs, S3CompleteFileUploadProviderArgs);
+        return this.completeMultiPartUpload(region, account, blobName, args.uploadId, args.blocks);
+    }
+
+    private async initMultitpartUpload(region: string, account: string, blobName: string, size: number, blockSize: number): Promise<S3InitFileUploadResult> {
         this.ensureInitialized();
 
         if (!(region in this.regions)) {
@@ -183,7 +193,7 @@ export class S3StorageHandler implements IStorageHandler {
         };
     }
 
-    async completeMultiPartUpload(region: string, account: string, blobName: string, uploadId: string, blocks: { index: number, etag: string }[]) {
+    private async completeMultiPartUpload(region: string, account: string, blobName: string, uploadId: string, blocks: { index: number, etag: string }[]) {
         this.ensureInitialized();
 
         if (!(region in this.regions)) {

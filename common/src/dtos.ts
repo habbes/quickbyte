@@ -188,9 +188,23 @@ export const InitTransferFileUploadArgs = z.object({
 
 export type InitTransferFileUploadArgs = z.infer<typeof InitTransferFileUploadArgs>;
 
+export const S3InitFileUploadResult = z.object({
+    uploadId: z.string().optional(),
+    blockSize: z.number(),
+    size: z.number(),
+    blocks: z.object({
+        index: z.number(),
+        size: z.number(),
+        url: z.string(),
+    }).array()
+});
+
+export type S3InitFileUploadResult = z.infer<typeof S3InitFileUploadResult>;
+
 export const CompleteFileUploadArgs = z.object({
     transferId: z.string().min(1),
     fileId: z.string().min(1),
+    providerArgs: z.any(),
     uploadId: z.string().min(1),
     blocks: z.array(z.object({
         index: z.number(),
@@ -199,6 +213,22 @@ export const CompleteFileUploadArgs = z.object({
 });
 
 export type CompleteFileUploadArgs = z.infer<typeof CompleteFileUploadArgs>;
+
+export const S3CompleteFileUploadProviderArgs = z.object({
+    uploadId: z.string(),
+    blocks: z.object({
+        index: z.number(),
+        etag: z.string()
+    }).array()
+});
+
+export type S3CompleteFileUploadProviderArgs = z.infer<typeof S3CompleteFileUploadProviderArgs>;
+
+export const S3CompleteFileUploadResult = z.object({
+    etag: z.string()
+});
+
+export type S3CompleteFileUploadResult = z.infer<typeof S3CompleteFileUploadResult>;
 
 export const UpdateProjectArgs = z.object({
     id: z.string().min(1),
