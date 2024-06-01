@@ -228,7 +228,7 @@ export class TransferService {
 
             if (file.provider !== 's3') {
                 console.log(`CompleteFileUpload endpoint unexpectedly called with storage handler '${file.provider}', only 's3' is supported.`);
-                throw createOperationNotSupportedError("This operation is supported for the specified transfer provider");
+                throw createOperationNotSupportedError("This operation is not supported for the specified transfer provider");
             }
 
             const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
