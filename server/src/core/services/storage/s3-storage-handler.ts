@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, PutObjectCommand, PutBucketCorsCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand, PutBucketCorsCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { IStorageHandler, StorageRegionInfo } from "./types.js";
 import { createAppError, createInvalidAppStateError, createResourceNotFoundError } from "../../error.js";
@@ -123,6 +123,27 @@ export class S3StorageHandler implements IStorageHandler {
 
         const url = await getSignedUrl(client, command, { expiresIn: expiresInSeconds });
         return url;
+    }
+
+    async blobExists(region: string, account: string, blobName: string): Promise<boolean> {
+        this.ensureInitialized();
+
+        if (!(region in this.regions)) {
+            throw createResourceNotFoundError(`Unknown region '${region}' for the specified provider '${this.name()}'`);
+        }
+
+        const { client, bucket } = this.regions[region];
+        const command = new HeadObjectCommand({
+            Bucket: bucket,
+            Key: `data/${account}/${blobName}`,
+        });
+
+        try {
+            await client.send(command);
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 
     initBlobUpload(region: string, account: string, blobName: string, size: number, blockSize: number): Promise<unknown> {

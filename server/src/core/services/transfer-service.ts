@@ -780,7 +780,7 @@ async function createDownloadAndPlayableFile(provider: IStorageHandler, packager
     }
     else {
         console.log(`Media download file ${file._id} has no packager. Attempting to initiate packaging...`);
-        const uploadStatus = await getFileUploadStatus(file, db);
+        const uploadStatus = await getFileUploadStatus(file, blobName, db, provider);
         // we should only try to package when we're sure upload is complete otherwise
         // packaging (and playback) will fail
 
@@ -832,7 +832,7 @@ export async function getFileDownloadUrl(provider: IStorageHandler, file: Transf
     return downloadUrl;
 }
 
-async function getFileUploadStatus<T extends TransferFile>(file: T, db: Database): Promise<FileUploadStatus> {
+async function getFileUploadStatus<T extends TransferFile>(file: T, blobName: string, db: Database, storageHandler: IStorageHandler): Promise<FileUploadStatus> {
     if (file.uploadStatus) {
         return Promise.resolve(file.uploadStatus);
     }
@@ -861,7 +861,38 @@ async function getFileUploadStatus<T extends TransferFile>(file: T, db: Database
         return 'completed';
     }
 
-    // TODO: check whether file exists
+    console.log(`Transfer ${transfer._id} for file ${file._id} is not complete. Check whether file exists at storage provider...`);
+    const existsAtStorageHandler = await storageHandler.blobExists(file.region, file.accountId || transfer.accountId, blobName);
+    if (existsAtStorageHandler) {
+        console.log(`File ${file._id} exists at storage provider. Mark file upload as completed.`);
+        await db.files().updateOne({
+            _id: file._id
+        }, {
+            $set: {
+                uploadStatus: 'completed',
+                _updatedAt: new Date(),
+                _updatedBy: { type: 'system', _id: 'system' }
+            }
+        });
+
+        return 'completed';
+    }
+
+    // If the file does not exist, then we could set its status to pending, and it if it's actually in progress
+    // then it will be updated when the upload completes. However, it's possible that the file and transfer
+    // we created by an older version of Quickbyte that doesn't update the file upload status, and it's possible
+    // that the transfer might complete on that older version. So if we set the file's status to pending, then
+    // we'll never check whether the transfer is complete. To address that, we'll update the statuses of all
+    // the files without statuses in a background job after the transfer completes.
+
+    await db.files().updateOne({ _id: file._id }, {
+        $set: {
+            uploadStatus: 'pending',
+            _updatedAt: new Date(),
+            _updatedBy: { type: 'system', _id: 'system' }
+        }
+    });
+
     return 'pending';
 }
 

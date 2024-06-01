@@ -148,6 +148,21 @@ export class AzureStorageHandler implements IStorageHandler {
         }
     }
 
+    async blobExists(region: string, account: string, blobName: string): Promise<boolean> {
+        const container = this.regionAccounts[region].container;
+        const blobPath = `${account}/${blobName}`;
+        const blob = container.getBlobClient(blobPath);
+
+        try {
+            const exists = await blob.exists();
+            return exists;
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     initBlobUpload(region: string, account: string, blobName: string, size: number, blockSize: number): Promise<unknown> {
         return Promise.resolve();
     }
