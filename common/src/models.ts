@@ -173,6 +173,9 @@ export interface TransferFile extends PersistedModel {
     // TODO: this should be required, but was introduced later
     // we should update all existing transfer files with an account id
     accountId?: string;
+    // TODO: this should be required, but was introduced later
+    // we should update all existing files with an upload status
+    fileUploadStatus?: FileUploadStatus;
     playbackPackagingProvider?: string;
     playbackPackagingId?: string;
     playbackPackagingStatus?: PlaybackPackagingStatus;
@@ -180,6 +183,8 @@ export interface TransferFile extends PersistedModel {
     playbackPackagingErrorReason?: PlaybackPackagingErrorReason;
     playbackPackagingMetadata?: Record<string, any>;
 }
+
+export type FileUploadStatus = 'pending' | 'progress' | 'completed';
 
 export interface Upload extends PersistedModel {
     fileId: string;
