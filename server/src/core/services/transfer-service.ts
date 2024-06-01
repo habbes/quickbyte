@@ -173,7 +173,6 @@ export class TransferService {
                 throw createNotFoundError('file');
             }
 
-            // This is currently only supported by the S3 provider.
             // On Azure, we can initiate a multipart upload
             // with a single presigned url that will be used for all the files.
             // On S3 we have to initiate a multipart upload first to get the upload id
@@ -183,12 +182,7 @@ export class TransferService {
             // TODO: we should probably limit how many pre-signed urls we generate
             // in one request.
 
-            if (file.provider !== 's3') {
-                console.log(`InitFileUpload endpoint unexpectedly called with storage handler '${file.provider}', only 's3' is supported.`);
-                throw createOperationNotSupportedError("This operation is supported for the specified transfer provider");
-            }
-
-            const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
+            const provider = this.config.providerRegistry.getHandler(file.provider);
             const blobName = `${transfer._id}/${file._id}`;
             const result = await provider.initBlobUpload(
                 file.region,
@@ -226,12 +220,7 @@ export class TransferService {
                 throw createNotFoundError('file');
             }
 
-            if (file.provider !== 's3') {
-                console.log(`CompleteFileUpload endpoint unexpectedly called with storage handler '${file.provider}', only 's3' is supported.`);
-                throw createOperationNotSupportedError("This operation is not supported for the specified transfer provider");
-            }
-
-            const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
+            const provider = this.config.providerRegistry.getHandler(file.provider);
             const blobName = `${transfer._id}/${file._id}`;
             await provider.completeBlobUpload(
                 file.region,
