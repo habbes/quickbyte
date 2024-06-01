@@ -39,17 +39,21 @@
         <UiLayout class="h-[250px] overflow-y-auto">
           <UiLayout gapSm>
             <div
-              v-for="(version, index) in filteredVersions"
+              v-for="(version, index) in sortedVersions"
               :key="version._id"
               class="p-2 border border-gray-200 rounded-md w-full"
             >
               <UiLayout horizontal gapMd>
                 <UiLayout class="items-center justify-center">
-                  <span class="text-gray-500">v{{ getVersionNumber(index, filteredVersions.length) }}</span>
+                  <span class="text-gray-500">v{{ getVersionNumber(index, sortedVersions.length) }}</span>
                 </UiLayout>
                 <UiLayout class="gap-1" fill>
-                  <UiLayout>
+                  <!-- <UiLayout>
                     {{ version.name }}
+                    
+                  </UiLayout> -->
+                  <UiLayout>
+                    <UiTextInput v-model="version.name" fullWidth flat/>
                   </UiLayout>
                   <UiLayout class="text-xs text-gray-500">
                     {{ formatDateTime(version._createdAt) }}
@@ -85,7 +89,7 @@
         <UiButton @click="close()">
           Cancel
         </UiButton>
-        <UiButton primary @click="save()">
+        <UiButton primary @click="save()" :disabled="!hasChanges">
           Save
         </UiButton>
       </UiLayout>
@@ -98,8 +102,8 @@
 import { ref, computed, watch } from "vue";
 import { ArrowUpCircleIcon, StarIcon } from "@heroicons/vue/24/outline";
 import { StarIcon as SolidStarIcon, TrashIcon } from "@heroicons/vue/24/solid";
-import { UiDialog, UiLayout, UiButton } from "@/components/ui";
-import type { Media, UpdateMediaVersionsArgs } from "@quickbyte/common";
+import { UiDialog, UiLayout, UiButton, UiTextInput } from "@/components/ui";
+import type { Media, UpdateMediaVersionsArgs, MediaVersion } from "@quickbyte/common";
 import { formatDateTime, humanizeSize } from "@/core";
 import { showToast, trpcClient, wrapError, useFilePicker, useFileTransfer } from "@/app-utils";
 
@@ -117,7 +121,6 @@ defineExpose({ open, close });
 const dialog = ref<typeof UiDialog>();
 const dropzone = ref<HTMLDivElement>();
 const preferredVersionId = ref(props.media.preferredVersionId);
-const versionsToDelete = ref(new Set<string>());
 
 const {
   onFilesSelected,
@@ -144,20 +147,26 @@ onFilesSelected((selectedFiles, selectedDirectories) => {
   });
 });
 
-const filteredVersions = computed(() => {
+const updatedVersions = ref<MediaVersion[]>(props.media.versions.map(v => ({ ...v })));
+
+const sortedVersions = computed(() => {
   // versions are sorted from lowest to highest, but we want to display them in reverse order
-  const filtered = props.media.versions.filter(v => !versionsToDelete.value.has(v._id));
-  const sorted = filtered.reverse();
+  // const filtered = rawVersions.value.filter(v => !versionsToDelete.value.has(v._id));
+  const sorted = [...updatedVersions.value].reverse();
   return sorted;
 });
 
 const canDelete = computed(() => {
-  return filteredVersions.value.length > 1
+  return updatedVersions.value.length > 1
 });
 
 
 watch(() => props.media, () => {
   preferredVersionId.value = props.media.preferredVersionId;
+
+  // copy versions because they might be modified (re-order, renamed)
+  updatedVersions.value = props.media.versions.map(v => ({ ...v}));
+  console.log('rawVersions', updatedVersions.value);
 });
 
 watch([uploadState], () => {
@@ -170,12 +179,18 @@ function markForDeletion(versionId: string) {
   if (!canDelete.value) {
     return;
   }
-  versionsToDelete.value.add(versionId);
+
+  const index = updatedVersions.value.findIndex(v => v._id === versionId);
+  if (index === -1) {
+    return;
+  }
+
+  updatedVersions.value.splice(index, 1);
 
   if (versionId === preferredVersionId.value) {
     // deleting preferred version, set another version
     // as preferred
-    preferredVersionId.value = filteredVersions.value[0]._id;
+    preferredVersionId.value = updatedVersions.value[0]._id;
   }
 }
 
@@ -185,13 +200,30 @@ function getVersionNumber(index: number, length: number) {
 }
 
 function open() {
-  versionsToDelete.value = new Set();
   dialog.value?.open();
 }
 
 function close() {
   dialog.value?.close();
 }
+
+const hasVersionsListChanged = computed(() => {
+  return updatedVersions.value.length !== props.media.versions.length ||
+    // check whether any version has been renamed
+    updatedVersions.value.some(current => {
+      const original = props.media.versions.find(v => v._id === current._id);
+      if (!original) {
+        return true;
+      }
+
+      return original.name !== current.name;
+    });
+});
+
+const hasChanges = computed(() => {
+  return preferredVersionId.value !== props.media.preferredVersionId
+    || hasVersionsListChanged.value;
+});
 
 function save() {
   return wrapError(async () => {
@@ -206,9 +238,8 @@ function save() {
       args.preferredVersionId = preferredVersionId.value
     }
 
-    if (filteredVersions.value.length !== props.media.versions.length) {
-      // some versions have been deleted
-      args.versions = filteredVersions.value.map(v => ({ _id: v._id, name: v.name }));
+    if (hasVersionsListChanged.value) {
+      args.versions = updatedVersions.value.map(v => ({ _id: v._id, name: v.name }));
     }
 
 
