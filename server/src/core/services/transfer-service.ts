@@ -168,10 +168,27 @@ export class TransferService {
                 throw createNotFoundError('transfer');
             }
 
-            const file = await this.filesCollection.findOne({ _id: args.fileId, transferId: args.transferId });
-            if (!file) {
+            const fileResult = await this.filesCollection.findOneAndUpdate(
+                { _id: args.fileId, transferId: args.transferId },
+                {
+                    $set: {
+                        fileUploadStatus: 'progress',
+                        _updatedAt: new Date(),
+                        _updatedBy: {
+                            _id: this.authContext.user._id,
+                            type: 'user'
+                        }
+                    }
+                },
+                {
+                    returnDocument: 'after'
+                }
+            );
+            if (!fileResult.value) {
                 throw createNotFoundError('file');
             }
+
+            const file = fileResult.value;
 
             // On Azure, we can initiate a multipart upload
             // with a single presigned url that will be used for all the files.
@@ -222,12 +239,28 @@ export class TransferService {
 
             const provider = this.config.providerRegistry.getHandler(file.provider);
             const blobName = `${transfer._id}/${file._id}`;
-            await provider.completeBlobUpload(
-                file.region,
-                transfer.accountId,
-                blobName,
-                args.providerArgs
-            );
+            await Promise.all([
+                provider.completeBlobUpload(
+                    file.region,
+                    transfer.accountId,
+                    blobName,
+                    args.providerArgs
+                ),
+                this.filesCollection.updateOne(
+                    { _id: args.fileId, transferId: args.transferId },
+                    {
+                        $set: {
+                            uploadStatus: 'completed',
+                            _updatedAt: new Date(),
+                            _updatedBy: {
+                                _id: this.authContext.user._id,
+                                type: 'user'
+                            }
+                        }
+                    }
+                )
+            ]);
+
         }
         catch (e: any) {
             rethrowIfAppError(e);
@@ -561,14 +594,15 @@ export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDow
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
     const baseModel = createPersistedModel(transfer._createdBy);
-    const file = {
+    const file: TransferFile = {
         ...baseModel,
         transferId: transfer._id,
         name: args.name,
         size: args.size,
         provider: transfer.provider,
         region: transfer.region,
-        accountId: transfer.accountId
+        accountId: transfer.accountId,
+        uploadStatus: 'pending'
     };
 
     return file;
