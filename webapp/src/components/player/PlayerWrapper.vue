@@ -6,7 +6,7 @@
       </div>
       <UiLayout horizontal itemsCenter gapSm class="overflow-hidden">
         <div class="max-w-[200px] sm:max-w-max overflow-hidden text-ellipsis">
-          <span :title="file?.name" class="text-white text-md overflow-hidden whitespace-nowrap">{{ file?.name }}</span>
+          <span :title="selectedVersion?.name" class="text-white text-md overflow-hidden whitespace-nowrap">{{ selectedVersion?.name }}</span>
         </div>
         <MediaPlayerVersionDropdown
           v-if="showAllVersions"
@@ -305,14 +305,22 @@ watch(_media, () => {
   // selectedVersionId.value = props.selectedVersionId || _media.value.preferredVersionId;
 }, { immediate: true });
 
-const file = computed(() => {
+const selectedVersion = computed(() => {
   if (!props.media) return;
   if (!props.selectedVersionId) return;
 
   const version = ensure(props.media.versions.find(v => v._id === props.selectedVersionId),
     `Expected version '${props.selectedVersionId}'' to exist for media '${props.media._id}'.`);
+  
+  return version;
+});
 
-  return version.file;
+const file = computed(() => {
+  if (!selectedVersion.value) {
+    return;
+  }
+
+  return selectedVersion.value.file;
 });
 
 
