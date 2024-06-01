@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { apiClient, logger, showToast, store, trpcClient, wrapError } from "@/app-utils";
+import { logger, showToast, store, trpcClient, wrapError } from "@/app-utils";
 import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton } from "@/core";
 import { PlayerWrapper } from "@/components/player";
@@ -54,8 +54,8 @@ watch(() => route.params.mediaId, () => {
     const projectId = unwrapSingleton(ensure(route.params.projectId));
     const mediaId = unwrapSingleton(ensure(route.params.mediaId));
     media.value = await trpcClient.getProjectMediaById.query({
-      projectId: route.params.projectId as string,
-      mediaId: route.params.mediaId as string
+      projectId: projectId,
+      mediaId: mediaId
     });
 
     selectedVersionId.value = queriedVersionId && media.value.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : media.value.preferredVersionId;

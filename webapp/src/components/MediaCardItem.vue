@@ -85,6 +85,9 @@ defineEmits<{
 
 const renameDialog = ref<typeof RenameMediaDialog>();
 const mediaVersionsDialog = ref<typeof MediaVersionsDialog>();
+// TODO: we should use file name to detect media type.
+// Ideally we should store the media type as field in the db,
+// based on the file
 const mediaType = computed(() => getMediaType(props.media.name));
 
 function rename() {

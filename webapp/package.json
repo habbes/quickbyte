@@ -23,6 +23,8 @@
     "@paystack/inline-js": "^2.13.0",
     "@sentry/vite-plugin": "^2.4.0",
     "@sentry/vue": "^7.60.0",
+    "@tanstack/vue-query": "^5.40.0",
+    "@tanstack/vue-query-devtools": "^5.40.0",
     "@trpc/client": "^10.45.0",
     "@trpc/server": "^10.45.0",
     "@vueuse/core": "^10.2.0",
