@@ -689,7 +689,7 @@ export async function addThumbnailToMedia<TMedia extends Media>(
     file: TransferFile
 ): Promise<WithThumbnail<TMedia>> {
     const mediaType = getMediaType(file.name);
-    // if file has no packager, the we ignore
+    // if file has no packager, then we ignore
     if ((mediaType === 'video' || mediaType === 'image') && file.playbackPackagingProvider && file.playbackPackagingId) {
         const packager = packagers.getPackager(file.playbackPackagingProvider);
 

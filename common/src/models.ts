@@ -173,6 +173,25 @@ export interface TransferFile extends PersistedModel {
     // TODO: this should be required, but was introduced later
     // we should update all existing transfer files with an account id
     accountId?: string;
+    /**
+     * The current known upload status of the file. This field
+     * does not exist for some older files. In such cases, we cannot
+     * make assumptions about what the actual status is.
+     *
+     * If this field is missing, we should try the following steps
+     * to determine the status:
+     * - check the related transfer record, if the transfer status is complete,
+     * then this file (and all files in the transfer) have finished uploading.
+     * Set the status to completed.
+     * - if the transfer status is not complete, check the whether the file exists
+     * in the storage provider. If it does, mark as completed.
+     * - If the file does not exist in the storage provider, mark as pending.
+     * 
+     * When all file records have the status set, we should mark the field as required.
+     */
+    uploadStatus?: FileUploadStatus;
+    uploadStartAt?: Date;
+    uploadCompletedAt?: Date;
     playbackPackagingProvider?: string;
     playbackPackagingId?: string;
     playbackPackagingStatus?: PlaybackPackagingStatus;
@@ -180,6 +199,8 @@ export interface TransferFile extends PersistedModel {
     playbackPackagingErrorReason?: PlaybackPackagingErrorReason;
     playbackPackagingMetadata?: Record<string, any>;
 }
+
+export type FileUploadStatus = 'pending' | 'progress' | 'completed' | 'failed';
 
 export interface Upload extends PersistedModel {
     fileId: string;

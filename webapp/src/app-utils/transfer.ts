@@ -167,7 +167,10 @@ async function startFileTransferInternal(args: StartFileTransferArgs, result: St
                         }),
                         onProgress: onFileProgress,
                         logger,
-                        concurrencyStrategy: transfer.value?.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
+                        concurrencyStrategy: transfer.value?.files.length === 1 ? 'maxParallelism' : 'fixedWorkers',
+                        fileId: fileToTrack._id,
+                        transferId: ensure(transfer.value)._id,
+                        apiClient: trpcClient
                     });
                 } else {
                     return new S3Uploader({
@@ -311,7 +314,10 @@ async function resumeTransferInternal(args: ResumeFileTransferArgs, result: Star
                         }),
                         onProgress: onFileProgress,
                         logger,
-                        concurrencyStrategy: transfer.value.files.length === 1 ? 'maxParallelism' : 'fixedWorkers'
+                        concurrencyStrategy: transfer.value.files.length === 1 ? 'maxParallelism' : 'fixedWorkers',
+                        fileId: fileToTrack._id,
+                        transferId: ensure(transfer.value)._id,
+                        apiClient: trpcClient
                     });
                 } else {
                     return new S3Uploader({
