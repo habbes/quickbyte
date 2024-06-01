@@ -125,11 +125,11 @@ export class S3StorageHandler implements IStorageHandler {
         return url;
     }
 
-    initBlobUpload(region: string, account: string, blobName: string, size: number, blockSize: number): Promise<any> {
+    initBlobUpload(region: string, account: string, blobName: string, size: number, blockSize: number): Promise<unknown> {
         return this.initMultitpartUpload(region, account, blobName, size, blockSize);
     }
 
-    completeBlobUpload(region: string, account: string, blobName: string, providerArgs: any): Promise<any> {
+    completeBlobUpload(region: string, account: string, blobName: string, providerArgs: unknown): Promise<unknown> {
         const args = ensureValidWithSchema(providerArgs, S3CompleteFileUploadProviderArgs);
         return this.completeMultiPartUpload(region, account, blobName, args.uploadId, args.blocks);
     }

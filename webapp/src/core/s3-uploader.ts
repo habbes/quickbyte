@@ -1,7 +1,7 @@
 import type { FileTracker, S3PresignedBlock } from "./upload-recovery";
 import type { Logger } from "./logger";
 import type { TrpcApiClient } from "./trpc-client";
-import { executeTasksInBatches } from "@quickbyte/common";
+import { executeTasksInBatches, S3CompleteFileUploadProviderArgs, S3InitFileUploadResult } from "@quickbyte/common";
 
 export type UploadProgressCallback = (progress: number) => any;
 
@@ -70,11 +70,13 @@ export class S3Uploader {
         const started = new Date();
         // if this is a recovered upload, then we need to get the id and blocks from the tracker
         
-        const initUploadResult = await this.config.apiClient.initTransferFileUpload.mutate({
+        const rawResult = await this.config.apiClient.initTransferFileUpload.mutate({
             transferId: this.config.transferId,
             fileId: this.config.fileId,
             blockSize: this.config.blockSize
         });
+
+        const initUploadResult = S3InitFileUploadResult.parse(rawResult);
 
         // TODO: we need to track the uploadId
         let presignedBlocks: S3PresignedBlock[];
@@ -105,13 +107,19 @@ export class S3Uploader {
                 await this.config.apiClient.completeTransferFileUpload.mutate({
                     transferId: this.config.transferId,
                     fileId: this.config.fileId,
+                    // We're parsing explicitly to show the intended
+                    // type and fail early if validation fails
+                    providerArgs: S3CompleteFileUploadProviderArgs.parse({
+                        uploadId,
+                        blocks: uploadedBlocks,
+                    }),
                     uploadId: uploadId,
                     blocks: uploadedBlocks
                 });
 
                 retry = false;
             } catch (e: any) {
-                this.config.logger?.error('error committing blocks', e);
+                this.config.logger?.error(`Error completing upload of file ${this.config.fileId} in transfer ${this.config.transferId}`, e);
                 if (e instanceof TypeError) {
                     retry = true;
                 } else {

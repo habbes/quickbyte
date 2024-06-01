@@ -190,7 +190,7 @@ export class TransferService {
 
             const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
             const blobName = `${transfer._id}/${file._id}`;
-            const result = await provider.initMultitpartUpload(
+            const result = await provider.initBlobUpload(
                 file.region,
                 transfer.accountId,
                 blobName,
@@ -233,20 +233,12 @@ export class TransferService {
 
             const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
             const blobName = `${transfer._id}/${file._id}`;
-            const result = await provider.completeMultiPartUpload(
+            await provider.completeBlobUpload(
                 file.region,
                 transfer.accountId,
                 blobName,
-                args.uploadId,
-                args.blocks
+                args.providerArgs
             );
-
-            return {
-                transferId: args.transferId,
-                file: file._id,
-                etag: result.etag,
-                uploadId: args.uploadId
-            }
         }
         catch (e: any) {
             rethrowIfAppError(e);
