@@ -512,7 +512,7 @@ function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'me
   items.value[index] = Object.assign(original, {
     name: update.item.name,
     _updatedAt: update.item._updatedAt,
-    item: update.item
+    item: { ...original.item, ...update.item }
   });
 }
 

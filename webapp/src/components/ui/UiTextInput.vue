@@ -13,7 +13,7 @@
         :type="type || 'text'"
         :placeholder="placeholder"
         :required="required"
-        class="flex-1 border px-4 py-2 rounded-md outline-none focus:ring-1"
+        class="flex-1 border px-4 py-2 rounded-md outline-none"
         :class="classes"
         :disabled="disabled"
       >
@@ -35,6 +35,10 @@ const props = defineProps<{
   dark?: boolean;
   hasError?: boolean;
   disabled?: boolean;
+  /**
+   * When enabled, removes borders and padding
+   */
+  flat?: boolean;
 }>();
 
 defineExpose({ focus });
@@ -52,7 +56,12 @@ const classes = computed(() => {
     'bg-white': !props.dark,
     'text-white bg-transparent': props.dark,
     'border-gray-300 focus:border-blue-400': !props.hasError,
-    'focus:border-red-400 border-red-500': props.hasError
+    'focus:border-red-400 border-red-500': props.hasError,
+    'border-0': props.flat,
+    'px-0': props.flat,
+    'py-0': props.flat,
+    'focus:ring-1': !props.flat,
+    'focus:border-b focus:rounded-none focus:border-gray-300 focus:px-1': props.flat
   }
 });
 
