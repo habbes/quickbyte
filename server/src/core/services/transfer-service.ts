@@ -4,7 +4,7 @@ import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, 
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
 import { IPlaybackPackagerProvider, ITransactionService, PlaybackPackager } from "./index.js";
 import { Database, updateNowBy } from "../db.js";
-import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult, PlaybackPackagingResult } from "@quickbyte/common";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult, PlaybackPackagingResult, FileUploadStatus } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
 import { wrapError } from "../utils.js";
 import { BackgroundWorker } from "../background-worker.js";
@@ -780,24 +780,15 @@ async function createDownloadAndPlayableFile(provider: IStorageHandler, packager
     }
     else {
         console.log(`Media download file ${file._id} has no packager. Attempting to initiate packaging...`);
+        const uploadStatus = await getFileUploadStatus(file, db);
         // we should only try to package when we're sure upload is complete otherwise
         // packaging (and playback) will fail
-        const transfer = await db.transfers().findOne({ _id: file.transferId });
-        if (!transfer) {
-            throw createInvalidAppStateError(`Could not find transfer '${file.transferId}' of file '${file._id}'`);
-        }
-        // TODO: checking for transfer status is problematic
-        // first, it's a separate db request, which adds to the request's latency
-        // second, it's possible that the file upload has completed but the overall
-        // transfer is still in progress
-        // it's possible that the file upload is complete but the transfer may never complete
-        // because we depend on the client sending a finalize request to mark the transfer as
-        // complete. We should do a better job of tracking per-file upload status and readiness.
-        if (transfer.status === 'completed') {
+
+        if (uploadStatus === 'completed') {
             // if no packager is assigned to the file, then it was probably uploaded
             // before the encoding feature was rolled out. Let's schedule it
             // for packaging
-            console.log(`Found completed transfer ${transfer._id} for file ${file._id}, try start packaging...`);
+            console.log(`Upload status is completed for file ${file._id}, try start packaging...`);
             const updatedFile = await tryStartPackagingFile(file._id, { db, packagers});
             // TODO: it's possible that this file has not been packaged because it's not a supported media file
             // (e.g. not an audio or video file). In which case, we'll always try to package and abort each
@@ -839,6 +830,39 @@ export async function getFileDownloadUrl(provider: IStorageHandler, file: Transf
     const downloadUrl = await provider.getBlobDownloadUrl(file.region, file.accountId, blobName, expiryDate, fileName);
 
     return downloadUrl;
+}
+
+async function getFileUploadStatus<T extends TransferFile>(file: T, db: Database): Promise<FileUploadStatus> {
+    if (file.uploadStatus) {
+        return Promise.resolve(file.uploadStatus);
+    }
+
+    // if does not have status, check whether transfer is complete
+    console.log(`File ${file._id} does not have upload status. Fetching transfer...`);
+    const transfer = await db.transfers().findOne({ _id: file.transferId });
+    if (!transfer) {
+        throw createInvalidAppStateError(`Could not find transfer '${file.transferId}' of file '${file._id}'`);
+    }
+
+    if (transfer.status === 'completed') {
+        console.log(`Transfer ${transfer._id} for file ${file._id} is completed, mark file as completed.`)
+        // update file status
+        await db.files().updateOne(
+            { _id: file._id },
+            {
+                $set: {
+                    uploadStatus: 'completed',
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'system', _id: 'system' }
+                }
+            }
+        );
+
+        return 'completed';
+    }
+
+    // TODO: check whether file exists
+    return 'pending';
 }
 
 export interface GetTransferResult extends Transfer {
