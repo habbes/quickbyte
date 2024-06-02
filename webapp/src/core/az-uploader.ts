@@ -1,6 +1,7 @@
 import { BlockBlobClient } from "@azure/storage-blob";
 import type { FileTracker } from "./upload-recovery";
 import type { Logger } from "./logger";
+import type { TrpcApiClient } from "./trpc-client";
 
 export type UploadProgressCallback = (progress: number) => any;
 
@@ -31,7 +32,10 @@ export interface FileUploaderArgs {
      * How to manage concurrent upload of individual
      * file blocks.
      */
-    concurrencyStrategy: ConcurrencyStrategy
+    concurrencyStrategy: ConcurrencyStrategy,
+    apiClient: TrpcApiClient;
+    transferId: string,
+    fileId: string,
 }
 
 export class AzUploader {
@@ -55,6 +59,14 @@ export class AzUploader {
             );
         }
 
+        // We don't await this because we don't want to delay the upload,
+        // we just want the server to update its status
+        this.config.apiClient.initTransferFileUpload.mutate({
+            transferId: this.config.transferId,
+            fileId: this.config.fileId,
+            blockSize: this.config.blockSize
+        });
+
         const blob = new BlockBlobClient(this.config.uploadUrl);
         const numBlocks = Math.ceil(this.config.file.size / this.config.blockSize);
         const blockList = [];
@@ -71,6 +83,7 @@ export class AzUploader {
         }
 
         const started = new Date();
+        
         await this.uploadBlockList(blockList);
 
         // naive approach to network resiliency
@@ -83,6 +96,29 @@ export class AzUploader {
             } catch (e) {
                 this.config.logger?.error('error committing blocks', e);
                 retry = true;
+            }
+        }
+
+        // We retry this operation in case of network error, because
+        // it triggers the server to start post-processing the uploaded
+        // file
+        retry = true;
+        while (retry) {
+            try {
+                await this.config.apiClient.completeTransferFileUpload.mutate({
+                    transferId: this.config.transferId,
+                    fileId: this.config.fileId,
+                    providerArgs: {}
+                });
+
+                retry = false;
+            } catch (e) {
+                this.config.logger?.error(`Error while marking file ${this.config.fileId} of transfer ${this.config.transferId} as complete`, e);
+                if (e instanceof TypeError) {
+                    retry = true;
+                } else {
+                    retry = false;
+                }
             }
         }
 

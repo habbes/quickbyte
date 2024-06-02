@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
-import { createAppError, createInvalidAppStateError, rethrowIfAppError } from './error.js';
+import { createAppError, createInvalidAppStateError, createValidationError, rethrowIfAppError } from './error.js';
 import * as bcrypt from "bcrypt";
+import z, { ZodSchema } from "zod";
 
 export function generateId() {
     return randomBytes(16).toString('base64url');
@@ -57,6 +58,15 @@ export function ensure<T>(value: T|null|undefined, errorMessage?: string): T {
     return value;
 }
 
+export function ensureValidWithSchema<T>(value: unknown, schema: ZodSchema<T>): T {
+    try {
+        return schema.parse(value);
+    }
+    catch (e: any) {
+        throw createValidationError(e.message);
+    }
+}
+
 export function hashPassword(plaintext: string): Promise<string> {
     return bcrypt.hash(plaintext, 10);
 }
@@ -64,3 +74,5 @@ export function hashPassword(plaintext: string): Promise<string> {
 export function verifyPassword(plaintext: string, hashed: string): Promise<boolean> {
     return bcrypt.compare(plaintext, hashed);
 }
+
+const s = z.object({ name: z.string() });

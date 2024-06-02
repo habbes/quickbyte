@@ -4,7 +4,7 @@ import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer, 
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
 import { IPlaybackPackagerProvider, ITransactionService, PlaybackPackager } from "./index.js";
 import { Database, updateNowBy } from "../db.js";
-import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult, PlaybackPackagingResult } from "@quickbyte/common";
+import { CreateShareableTransferArgs, CreateProjectMediaUploadArgs, CreateTransferArgs, CreateTransferFileArgs, DownloadTransferFileResult, InitTransferFileUploadArgs, CompleteFileUploadArgs, FinalizeTransferArgs, CreateTransferResult, CreateTransferFileResult, PlaybackPackagingResult, FileUploadStatus } from "@quickbyte/common";
 import { EventDispatcher } from "./event-bus/index.js";
 import { wrapError } from "../utils.js";
 import { BackgroundWorker } from "../background-worker.js";
@@ -168,29 +168,41 @@ export class TransferService {
                 throw createNotFoundError('transfer');
             }
 
-            const file = await this.filesCollection.findOne({ _id: args.fileId, transferId: args.transferId });
-            if (!file) {
+            const fileResult = await this.filesCollection.findOneAndUpdate(
+                { _id: args.fileId, transferId: args.transferId },
+                {
+                    $set: {
+                        uploadStatus: 'progress',
+                        uploadStartAt: new Date(),
+                        _updatedAt: new Date(),
+                        _updatedBy: {
+                            _id: this.authContext.user._id,
+                            type: 'user'
+                        }
+                    }
+                },
+                {
+                    returnDocument: 'after'
+                }
+            );
+            if (!fileResult.value) {
                 throw createNotFoundError('file');
             }
 
-            // This is currently only supported by the S3 provider.
+            const file = fileResult.value;
+
             // On Azure, we can initiate a multipart upload
             // with a single presigned url that will be used for all the files.
             // On S3 we have to initiate a multipart upload first to get the upload id
             // then we have to presign each part individually and attach the upload id
-            // to it. To make uplaods efficient, this endpoint is used
+            // to it. To make uploads efficient, this endpoint is used
             // to initate the upload and presign all the blocks in advance.
             // TODO: we should probably limit how many pre-signed urls we generate
             // in one request.
 
-            if (file.provider !== 's3') {
-                console.log(`InitFileUpload endpoint unexpectedly called with storage handler '${file.provider}', only 's3' is supported.`);
-                throw createOperationNotSupportedError("This operation is supported for the specified transfer provider");
-            }
-
-            const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
+            const provider = this.config.providerRegistry.getHandler(file.provider);
             const blobName = `${transfer._id}/${file._id}`;
-            const result = await provider.initMultitpartUpload(
+            const result = await provider.initBlobUpload(
                 file.region,
                 transfer.accountId,
                 blobName,
@@ -226,27 +238,38 @@ export class TransferService {
                 throw createNotFoundError('file');
             }
 
-            if (file.provider !== 's3') {
-                console.log(`CompleteFileUpload endpoint unexpectedly called with storage handler '${file.provider}', only 's3' is supported.`);
-                throw createOperationNotSupportedError("This operation is supported for the specified transfer provider");
-            }
-
-            const provider = this.config.providerRegistry.getHandler('s3') as S3StorageHandler;
+            const provider = this.config.providerRegistry.getHandler(file.provider);
             const blobName = `${transfer._id}/${file._id}`;
-            const result = await provider.completeMultiPartUpload(
-                file.region,
-                transfer.accountId,
-                blobName,
-                args.uploadId,
-                args.blocks
-            );
+            await Promise.all([
+                provider.completeBlobUpload(
+                    file.region,
+                    transfer.accountId,
+                    blobName,
+                    args.providerArgs
+                ),
+                this.filesCollection.updateOne(
+                    { _id: args.fileId, transferId: args.transferId },
+                    {
+                        $set: {
+                            uploadStatus: 'completed',
+                            uploadCompletedAt: new Date(),
+                            _updatedAt: new Date(),
+                            _updatedBy: {
+                                _id: this.authContext.user._id,
+                                type: 'user'
+                            }
+                        }
+                    }
+                )
+            ]);
 
-            return {
-                transferId: args.transferId,
-                file: file._id,
-                etag: result.etag,
-                uploadId: args.uploadId
-            }
+            this.config.eventBus.send({
+                type: 'fileUploadComplete',
+                data: {
+                    fileId: file._id
+                }
+            });
+
         }
         catch (e: any) {
             rethrowIfAppError(e);
@@ -431,7 +454,7 @@ export async function queueTransferFilesForPackaging(
     }
 ) {
     return wrapError(async () => {
-        const files = await context.db.files().find({ transferId }).toArray();
+        const files = await context.db.files().find({ transferId, playbackPackagingId: { $exists: false } }).toArray();
         for (let file of files) {
             if (file.playbackPackagingId) {
                 continue;
@@ -446,6 +469,26 @@ export async function queueTransferFilesForPackaging(
                 }
             ));
         }
+    });
+}
+
+export async function queueFileForPackaging(
+    fileId: string,
+    context: {
+        db: Database,
+        packagers: IPlaybackPackagerProvider,
+        queue: BackgroundWorker
+    }
+) {
+    return wrapError(async () => {
+        console.log(`Queuing file ${fileId} for packaging.`);
+        context.queue.queueJob(() => tryStartPackagingFile(
+            fileId,
+            {
+                packagers: context.packagers,
+                db: context.db
+            }
+        ));
     });
 }
 
@@ -580,14 +623,15 @@ export type ITransferDownloadService = Pick<TransferDownloadService, 'requestDow
 
 function createTransferFile(transfer: Transfer, args: CreateTransferFileArgs): TransferFile {
     const baseModel = createPersistedModel(transfer._createdBy);
-    const file = {
+    const file: TransferFile = {
         ...baseModel,
         transferId: transfer._id,
         name: args.name,
         size: args.size,
         provider: transfer.provider,
         region: transfer.region,
-        accountId: transfer.accountId
+        accountId: transfer.accountId,
+        uploadStatus: 'pending'
     };
 
     return file;
@@ -736,24 +780,15 @@ async function createDownloadAndPlayableFile(provider: IStorageHandler, packager
     }
     else {
         console.log(`Media download file ${file._id} has no packager. Attempting to initiate packaging...`);
+        const uploadStatus = await getFileUploadStatus(file, blobName, db, provider);
         // we should only try to package when we're sure upload is complete otherwise
         // packaging (and playback) will fail
-        const transfer = await db.transfers().findOne({ _id: file.transferId });
-        if (!transfer) {
-            throw createInvalidAppStateError(`Could not find transfer '${file.transferId}' of file '${file._id}'`);
-        }
-        // TODO: checking for transfer status is problematic
-        // first, it's a separate db request, which adds to the request's latency
-        // second, it's possible that the file upload has completed but the overall
-        // transfer is still in progress
-        // it's possible that the file upload is complete but the transfer may never complete
-        // because we depend on the client sending a finalize request to mark the transfer as
-        // complete. We should do a better job of tracking per-file upload status and readiness.
-        if (transfer.status === 'completed') {
+
+        if (uploadStatus === 'completed') {
             // if no packager is assigned to the file, then it was probably uploaded
             // before the encoding feature was rolled out. Let's schedule it
             // for packaging
-            console.log(`Found completed transfer ${transfer._id} for file ${file._id}, try start packaging...`);
+            console.log(`Upload status is completed for file ${file._id}, try start packaging...`);
             const updatedFile = await tryStartPackagingFile(file._id, { db, packagers});
             // TODO: it's possible that this file has not been packaged because it's not a supported media file
             // (e.g. not an audio or video file). In which case, we'll always try to package and abort each
@@ -765,7 +800,7 @@ async function createDownloadAndPlayableFile(provider: IStorageHandler, packager
                 downlodableFile = { ...downlodableFile, playbackPackagingStatus: updatedFile.playbackPackagingStatus };
             }
         } else {
-            console.warn(`Skipping packaging attempt for file '${file._id}' because transfer '${transfer._id}' is not complete. Status is '${transfer.status}'`);
+            console.warn(`Skipping packaging attempt for file '${file._id}' upload status is not complete. Status is '${uploadStatus}'`);
         }
     }
 
@@ -795,6 +830,87 @@ export async function getFileDownloadUrl(provider: IStorageHandler, file: Transf
     const downloadUrl = await provider.getBlobDownloadUrl(file.region, file.accountId, blobName, expiryDate, fileName);
 
     return downloadUrl;
+}
+
+export function markTransferFilesUploadStatusAsCompleted(db: Database, transferId: string) {
+    return wrapError(() => {
+        return db.files().updateMany({
+            transferId,
+            uploadStatus: { $ne: 'completed' }
+        }, {
+            $set: {
+                uploadStatus: 'completed',
+                _updatedAt: new Date(),
+                _updatedBy: { type: 'system', _id: 'system' }
+            }
+        });
+    });
+}
+
+async function getFileUploadStatus<T extends TransferFile>(file: T, blobName: string, db: Database, storageHandler: IStorageHandler): Promise<FileUploadStatus> {
+    if (file.uploadStatus) {
+        return Promise.resolve(file.uploadStatus);
+    }
+
+    // if does not have status, check whether transfer is complete
+    console.log(`File ${file._id} does not have upload status. Fetching transfer...`);
+    const transfer = await db.transfers().findOne({ _id: file.transferId });
+    if (!transfer) {
+        throw createInvalidAppStateError(`Could not find transfer '${file.transferId}' of file '${file._id}'`);
+    }
+
+    if (transfer.status === 'completed') {
+        console.log(`Transfer ${transfer._id} for file ${file._id} is completed, mark file as completed.`)
+        // update file status
+        await db.files().updateOne(
+            { _id: file._id },
+            {
+                $set: {
+                    uploadStatus: 'completed',
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'system', _id: 'system' }
+                }
+            }
+        );
+
+        return 'completed';
+    }
+
+    console.log(`Transfer ${transfer._id} for file ${file._id} is not complete. Check whether file exists at storage provider...`);
+    const existsAtStorageHandler = await storageHandler.blobExists(file.region, file.accountId || transfer.accountId, blobName);
+    if (existsAtStorageHandler) {
+        console.log(`File ${file._id} exists at storage provider. Mark file upload as completed.`);
+        await db.files().updateOne({
+            _id: file._id
+        }, {
+            $set: {
+                uploadStatus: 'completed',
+                _updatedAt: new Date(),
+                _updatedBy: { type: 'system', _id: 'system' }
+            }
+        });
+
+        return 'completed';
+    }
+
+    // If the file does not exist, then we could set its status to pending, and it if it's actually in progress
+    // then it will be updated when the upload completes. However, it's possible that the file and transfer
+    // we created by an older version of Quickbyte that doesn't update the file upload status, and it's possible
+    // that the transfer might complete on that older version. So if we set the file's status to pending, then
+    // we'll never check whether the transfer is complete. To address that, we'll update the statuses of all
+    // the files without statuses in a background job after the transfer completes.
+
+    console.log(`File ${file._id} does not exist at storage provider. Mark file as pending.`);
+
+    await db.files().updateOne({ _id: file._id }, {
+        $set: {
+            uploadStatus: 'pending',
+            _updatedAt: new Date(),
+            _updatedBy: { type: 'system', _id: 'system' }
+        }
+    });
+
+    return 'pending';
 }
 
 export interface GetTransferResult extends Transfer {

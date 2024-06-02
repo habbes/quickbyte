@@ -80,13 +80,21 @@ export type Event = TransferCompleteEvent
     | FolderDeletedEvent
     | ProjectMemberRemovedEvent
     | FilePlaybackPackagingUpdatedEvent
-    | ProjectShareInviteEvent;
+    | ProjectShareInviteEvent
+    | FileUploadCompleteEvent;
 
 export type TransferCompleteEvent = {
     type: 'transferComplete',
     data: {
         transfer: Transfer
     },
+}
+
+export type FileUploadCompleteEvent = {
+    type: 'fileUploadComplete',
+    data: {
+        fileId: string;
+    }
 }
 
 export type FolderDeletedEvent = {
