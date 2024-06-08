@@ -1,21 +1,23 @@
 <template>
-  <UiDialog ref="dialog" :title="'Rename media file'">
-    <input
-      autofocus
-      v-model="name"
-      type="text"
-      class="input w-full"
-    />
-    <template #actions>
-      <div class="flex gap-2">
-        <UiButton @click="close()">Cancel</UiButton>
-        <UiButton @click="rename()" primary>Rename</UiButton>
-      </div>
-    </template>
+  <UiDialog ref="dialog" :title="'Rename media asset'">
+    <UiLayout>
+      <UiForm @submit="rename()">
+        <UiLayout gapSm>
+          <UiTextInput
+            v-model="name"
+            fullWidth
+          />
+          <UiLayout horizontal itemsCenter justifyEnd gapSm>
+            <UiButton @click="close()">Cancel</UiButton>
+            <UiButton submit primary>Rename</UiButton>
+          </UiLayout>
+        </UiLayout>
+      </UiForm>
+    </UiLayout>
   </UiDialog>
 </template>
 <script lang="ts" setup>
-import { UiDialog, UiButton } from "@/components/ui";
+import { UiDialog, UiLayout, UiForm, UiTextInput, UiButton } from "@/components/ui";
 import type { Media } from "@quickbyte/common";
 import { ref } from "vue";
 import { logger, showToast, trpcClient } from "@/app-utils";
