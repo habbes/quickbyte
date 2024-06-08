@@ -282,7 +282,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
+import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient, useProjectItemsQuery, addProjectItems } from '@/app-utils';
 import { ensure, pluralize, unwrapSingleton, unwrapSingletonOrUndefined } from '@/core';
 import type {
   WithRole, Project, ProjectItem, Folder,
@@ -329,12 +329,7 @@ const projectId = computed(() => unwrapSingleton(route.params.projectId));
 const folderId = computed(() => unwrapSingletonOrUndefined(route.params.folderId || undefined));
 const itemsQueryEnabled = computed(() => !!projectId.value);
 
-const itemsQuery = useQuery({
-  queryKey: [projectId, folderId, 'items'],
-  queryFn: () => trpcClient.getProjectItems.query({ projectId: projectId.value, folderId: folderId.value }),
-  enabled: itemsQueryEnabled,
-  staleTime: 30000,
-});
+const itemsQuery = useProjectItemsQuery(projectId, folderId);
 
 const items = computed(() => itemsQuery.data.value ? itemsQuery.data.value.items : []);
 
@@ -381,7 +376,7 @@ const {
 } = useFileTransfer();
 
 watch([newMedia], () => {
-  newMedia.value?.filter(m => {
+  const newMediaInCurrentFolder = newMedia.value?.filter(m => {
     if (currentFolder.value) {
       return currentFolder.value._id === m.folderId
     } else {
@@ -394,7 +389,13 @@ watch([newMedia], () => {
     _createdAt: m._createdAt,
     _updatedAt: m._updatedAt,
     item: m
-  })).forEach(item => items.value.push(item))
+  }));
+
+  if (!newMediaInCurrentFolder) {
+    return;
+  }
+
+  addProjectItems(queryClient, projectId, folderId, ...newMediaInCurrentFolder);
 });
 
 watch([newFolders], () => {
@@ -412,15 +413,9 @@ watch([newFolders], () => {
       _updatedAt: f._updatedAt
     }));
 
-    folderItems?.forEach(item => {
-      const currentIndex = items.value.findIndex(f => f.type === item.type && f._id === item._id);
-      if (currentIndex !== -1) {
-        items.value[currentIndex] = Object.assign(items.value[currentIndex], item);
-        return;
-      }
-
-      items.value.push(item);
-    });
+    if (folderItems) {
+      addProjectItems(queryClient, projectId, folderId, ...folderItems);
+    }
 });
 
 watch(itemsQuery.error, (error) => {
@@ -639,22 +634,7 @@ function handleCreatedFolder(newFolder: Folder) {
     item: newFolder
   };
 
-  // if it already exists, then no need to add it
-  if (items.value.findIndex(f => f._id === item._id) >= 0) {
-    return;
-  }
-
-  // items.value.push(item);
-  queryClient.setQueryData<GetProjectItemsResult>([projectId.value, folderId.value, 'items'], oldData => {
-    if (!oldData) {
-      return { items: [item], folder: undefined }
-    }
-    const items = [...oldData.items, item];
-    return {
-      ...oldData,
-      items
-    };
-  })
+  addProjectItems(queryClient, projectId, folderId, item);
 }
 
 function createFolder() {
