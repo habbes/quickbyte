@@ -556,6 +556,9 @@ function handleItemsDeleted(
     unselectItem(deletedItem._id);
   }
 
+  // TODO: Instead of manually updating the query cache from here, we should create reusable
+  // mutations with useMutation to perform mutation requests, and we should handle cache data updates
+  // and invalidations centrally from the mutations result.
   deleteProjectItemsInQuery(queryClient, projectId, folderId, ...requestedItems);
 }
 
