@@ -1,11 +1,11 @@
 import { useQuery, QueryClient } from '@tanstack/vue-query'
 import { trpcClient } from './api';
 import type { MaybeRef } from 'vue';
-import type { GetProjectItemsResult, ProjectItem, ProjectItemRef, ProjectShareItemRef } from "@quickbyte/common";
+import type { GetProjectItemsResult, ProjectItem, ProjectItemRef } from "@quickbyte/common";
 import { unref } from "vue";
 
 export function getProjectItemsQueryKey(projectId: MaybeRef<string>, folderId?: MaybeRef<string|undefined>) {
-    return ['projects', projectId, folderId, 'items'];
+    return ['projectItems', projectId, folderId];
 }
 
 export function useProjectItemsQuery(projectId: MaybeRef<string>, folderId?: MaybeRef<string|undefined>) {
