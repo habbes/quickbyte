@@ -114,7 +114,7 @@
 
     <!-- start content -->
     <UiContextMenu>
-    <UiLayout ref="dropzone" v-if="itemsQuery.isPending" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
+    <UiLayout ref="dropzone" v-if="!itemsQuery.isPending" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
       :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
     >
       <div v-if="isOverDropZone" class="absolute w-full h-full flex items-center justify-center">
