@@ -576,36 +576,28 @@ function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
 }
 
 function handleItemsMoved(items: ProjectItem[]) {
-  for (let item of items) {
-    handleItemMoved(item);
-  }
-}
+  // In all cases, we assume that the items are being moved from the current folder
+  // to some target folder, since that's what the UI enables to do. Under this assumption,
+  // we can simply remove all moved items from the current folder and add them to the
+  // respective current folders. We don't have to worry about other folders.
+  // If this assumption does not hold anymore, we should invalidate all cached project items query data under this
+  // project because we don't know which other folders have lost items to the move operation.
 
-function handleItemMoved(item: ProjectItem) {
-  const index = items.value.findIndex(i => i._id === item._id);
-  const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
-  
-  const isMovedToThisFolder =  (!itemFolderId && !currentFolder.value) || itemFolderId === currentFolder.value?._id;
-  if (index === -1 && isMovedToThisFolder) {
-    // the item is being moved to this folder, but is not in the list of items
-    // add it to the list
-    items.value.push(item);
+  // TODO: is there any reason for this grouping? Given the current UI
+  // aren't all items getting moved to the same target folder?
+  const itemsByTargetFolder = new Map<string|undefined, ProjectItem[]>();
+  for (const item of items) {
+    const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
+    const groupedItems = itemsByTargetFolder.get(itemFolderId || undefined) || [];
+    groupedItems.push(item);
+    itemsByTargetFolder.set(itemFolderId || undefined, groupedItems);
   }
-  else if (index !== -1 && isMovedToThisFolder) {
-    // the item is being moved to this folder, but is already
-    // in the list of item. 
-    // updated it
-    items.value[index] = Object.assign(items.value[index], item);
+
+  deleteProjectItemsInQuery(queryClient, projectId, folderId, ...items);
+  for (const [targetFolder, movedItems] of itemsByTargetFolder) {
+    upsertProjectItemsInQuery(queryClient, projectId, targetFolder, ...movedItems);
   }
-  else if (index !== -1 && !isMovedToThisFolder) {
-    // the item is in the current list of items, but
-    // is moved to a different folder
-    // remove the item from the list
-    items.value.splice(index, 1);
-    unselectItem(item._id);
-  }
-  // last possibility: item does not exist in the current list
-  // and is not being moved to this folder. Ignore it.
+
 }
 
 function handleShareProjectItems(item?: { type: ProjectItemType, itemId: string }) {
@@ -658,27 +650,4 @@ function handleDragSelect(dragSelected: Set<unknown>|Array<unknown>) {
     addToSelection(itemId as string);
   }
 }
-
-// async function loadData(to: RouteLocationNormalizedLoaded) {
-//   const projectId = unwrapSingleton(to.params.projectId);
-//   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
-//   const folderId = unwrapSingletonOrUndefined(to.params.folderId);
-//   loading.value = true;
-
-//   try {
-//     const result = await trpcClient.getProjectItems.query({ projectId: project.value._id, folderId: folderId });
-//     items.value = result.items;
-//     selectedItemIds.value.clear();
-//     currentFolder.value = result.folder;
-//     updateCurrentFolderPath && updateCurrentFolderPath(result.folder?.path || []);
-//   } catch (e: any) {
-//     logger.error(e.message, e);
-//     showToast(e.message, 'error');
-    
-//   } finally {
-//     loading.value = false;
-//   }
-// }
-
-// watch(route, async () => await loadData(route), { immediate: true });
 </script>
