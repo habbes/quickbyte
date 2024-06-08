@@ -114,7 +114,7 @@
 
     <!-- start content -->
     <UiContextMenu>
-    <UiLayout ref="dropzone" v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
+    <UiLayout ref="dropzone" v-if="itemsQuery.isPending" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
       :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
     >
       <div v-if="isOverDropZone" class="absolute w-full h-full flex items-center justify-center">
@@ -304,6 +304,7 @@ import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox, UiCont
 import { DragSelect, DragSelectOption } from "@coleqiu/vue-drag-select";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 import { injectFolderPathSetter } from "./project-utils";
+import { useQueryClient, useQuery, useMutation } from '@tanstack/vue-query'
 
 const headerHeight = layoutDimensions.projectMediaHeaderHeight;
 // tried different things to get the positioning to look right
@@ -311,6 +312,8 @@ const contentOffset = headerHeight + layoutDimensions.navBarHeight + layoutDimen
 const contentHeight = getRemainingContentHeightCss(
   contentOffset
 );
+
+
 
 const updateCurrentFolderPath = injectFolderPathSetter();
 const route = useRoute();
@@ -321,9 +324,25 @@ const createProjectShareDialog = ref<typeof CreateProjectShareDialog>();
 const loading = ref(true);
 const searchTerm = ref('');
 
+const projectId = computed(() => unwrapSingleton(route.params.projectId));
+const folderId = computed(() => unwrapSingletonOrUndefined(route.params.folderId || undefined));
+const itemsQueryEnabled = computed(() => !!projectId.value);
+
+const itemsQuery = useQuery({
+  queryKey: [projectId, folderId, 'items'],
+  queryFn: () => trpcClient.getProjectItems.query({ projectId: projectId.value, folderId: folderId.value }),
+  enabled: itemsQueryEnabled
+});
+
+const items = computed(() => itemsQuery.data.value ? itemsQuery.data.value.items : []);
+
 const { sortFields, queryOptions, selectedSortField, selectSortField } = store.projectItemsQueryOptions;
 
-const project = ref<WithRole<Project>>();
+//const project = ref<WithRole<Project>>();
+const project = computed(() =>
+  ensure(store.projects.value.find(p => p._id === projectId.value, `Expected project '${projectId.value}' to be in store on media page.`))
+);
+
 const {
   openFilePicker,
   directoryPickerSupported,
@@ -337,12 +356,12 @@ const {
 const dropzone = ref<HTMLDivElement>();
 const { isOverDropZone } = useDropZone(dropzone);
 
-const items = ref<ProjectItem[]>([]);
+// const items = ref<ProjectItem[]>([]);
 const currentFolder = ref<FolderWithPath|undefined>();
 const selectedItemIds = ref<Set<string>>(new Set());
 const selectedItems = computed(() => items.value.filter(item => isItemSelected(item._id)));
 const multiSelectCheckBoxState = computed<'indeterminate'|boolean>(() => {
-  const state = items.value.length === 0 ? false
+  const state = items.value?.length === 0 ? false
   : selectedItemIds.value.size === items.value.length ? true
   : selectedItemIds.value.size === 0 ? false
   : 'indeterminate';
@@ -634,26 +653,26 @@ function handleDragSelect(dragSelected: Set<unknown>|Array<unknown>) {
   }
 }
 
-async function loadData(to: RouteLocationNormalizedLoaded) {
-  const projectId = unwrapSingleton(to.params.projectId);
-  project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
-  const folderId = unwrapSingletonOrUndefined(to.params.folderId);
-  loading.value = true;
+// async function loadData(to: RouteLocationNormalizedLoaded) {
+//   const projectId = unwrapSingleton(to.params.projectId);
+//   project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
+//   const folderId = unwrapSingletonOrUndefined(to.params.folderId);
+//   loading.value = true;
 
-  try {
-    const result = await trpcClient.getProjectItems.query({ projectId: project.value._id, folderId: folderId });
-    items.value = result.items;
-    selectedItemIds.value.clear();
-    currentFolder.value = result.folder;
-    updateCurrentFolderPath && updateCurrentFolderPath(result.folder?.path || []);
-  } catch (e: any) {
-    logger.error(e.message, e);
-    showToast(e.message, 'error');
+//   try {
+//     const result = await trpcClient.getProjectItems.query({ projectId: project.value._id, folderId: folderId });
+//     items.value = result.items;
+//     selectedItemIds.value.clear();
+//     currentFolder.value = result.folder;
+//     updateCurrentFolderPath && updateCurrentFolderPath(result.folder?.path || []);
+//   } catch (e: any) {
+//     logger.error(e.message, e);
+//     showToast(e.message, 'error');
     
-  } finally {
-    loading.value = false;
-  }
-}
+//   } finally {
+//     loading.value = false;
+//   }
+// }
 
-watch(route, async () => await loadData(route), { immediate: true });
+// watch(route, async () => await loadData(route), { immediate: true });
 </script>
