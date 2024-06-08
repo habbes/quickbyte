@@ -22,4 +22,5 @@ export * from "./context-menu";
 export { UiCheckbox } from "./checkbox";
 export * from "./radio-list/index.js";
 export { default as UiRadialProgress } from './UiRadialProgress.vue';
+export { default as UiForm } from './UiForm.vue';
 
