@@ -1,7 +1,7 @@
 import { useQuery, QueryClient } from '@tanstack/vue-query'
 import { trpcClient } from './api';
 import type { MaybeRef } from 'vue';
-import type { GetProjectItemsResult, ProjectItem } from "@quickbyte/common";
+import type { GetProjectItemsResult, ProjectItem, ProjectItemRef, ProjectShareItemRef } from "@quickbyte/common";
 import { unref } from "vue";
 
 export function getProjectItemsQueryKey(projectId: MaybeRef<string>, folderId?: MaybeRef<string|undefined>) {
@@ -22,14 +22,18 @@ export function useProjectItemsQuery(projectId: MaybeRef<string>, folderId?: May
     return result;
 }
 
-export function addProjectItems(queryClient: QueryClient, projectId: MaybeRef<string>, folderId: MaybeRef<string|undefined>, ...itemsToAdd: ProjectItem[]) {
+export function upsertProjectItemsInQuery(
+    queryClient: QueryClient,
+    projectId: MaybeRef<string>,
+    folderId: MaybeRef<string|undefined>,
+    ...itemsToAdd: ProjectItem[]
+) {
     const queryKey = getProjectItemsQueryKey(projectId, folderId);
     queryClient.setQueryData<GetProjectItemsResult>(queryKey, oldData => {
         if (!oldData) {
-            return {
-                folder: undefined,
-                items: itemsToAdd
-            };
+            // if data doesn't exist, we don't initialize the data with the items to add
+            // because we don't have enough information to construct the folder with path
+            return;
         }
 
         const updatedItems = [...oldData.items];
@@ -48,5 +52,27 @@ export function addProjectItems(queryClient: QueryClient, projectId: MaybeRef<st
             ...oldData,
             items: updatedItems
         };
-    })
+    });
+}
+
+export function deleteProjectItemsInQuery(
+    queryClient: QueryClient,
+    projectId: MaybeRef<string>,
+    folderId: MaybeRef<string|undefined>,
+    ...itemsToDelete: ProjectItemRef[]
+) {
+    const queryKey = getProjectItemsQueryKey(projectId, folderId);
+    queryClient.setQueryData<GetProjectItemsResult>(queryKey, oldData => {
+        if (!oldData) {
+            return;
+        }
+    
+        const updatedItems = oldData.items.filter(item => 
+                !itemsToDelete.some(toDelete => item._id === toDelete._id && item.type === toDelete.type));
+        
+        return {
+            ...oldData,
+            items: updatedItems
+        };
+    });
 }

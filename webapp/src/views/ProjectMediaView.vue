@@ -282,7 +282,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient, useProjectItemsQuery, addProjectItems } from '@/app-utils';
+import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient, useProjectItemsQuery, upsertProjectItemsInQuery, deleteProjectItemsInQuery } from '@/app-utils';
 import { ensure, pluralize, unwrapSingleton, unwrapSingletonOrUndefined } from '@/core';
 import type {
   WithRole, Project, ProjectItem, Folder,
@@ -395,7 +395,7 @@ watch([newMedia], () => {
     return;
   }
 
-  addProjectItems(queryClient, projectId, folderId, ...newMediaInCurrentFolder);
+  upsertProjectItemsInQuery(queryClient, projectId, folderId, ...newMediaInCurrentFolder);
 });
 
 watch([newFolders], () => {
@@ -414,7 +414,7 @@ watch([newFolders], () => {
     }));
 
     if (folderItems) {
-      addProjectItems(queryClient, projectId, folderId, ...folderItems);
+      upsertProjectItemsInQuery(queryClient, projectId, folderId, ...folderItems);
     }
 });
 
@@ -561,14 +561,10 @@ function handleItemsDeleted(
   { deletedCount: number, requestedItems: Array<{ _id: string, type: ProjectItemType }>}
 ) {
   for (let deletedItem of requestedItems) {
-    const index = items.value.findIndex(item => item._id === deletedItem._id && item.type === deletedItem.type);
-    if (index === -1) return;
-
     unselectItem(deletedItem._id);
-    items.value.splice(index, 1);
   }
 
-  
+  deleteProjectItemsInQuery(queryClient, projectId, folderId, ...requestedItems);
 }
 
 function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
@@ -634,7 +630,7 @@ function handleCreatedFolder(newFolder: Folder) {
     item: newFolder
   };
 
-  addProjectItems(queryClient, projectId, folderId, item);
+  upsertProjectItemsInQuery(queryClient, projectId, folderId, item);
 }
 
 function createFolder() {
