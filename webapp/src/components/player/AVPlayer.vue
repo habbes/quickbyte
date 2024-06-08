@@ -21,7 +21,7 @@
         @progress="handleProgress($event)"
         @seeked="$emit('seeked')"
         fullscreen-orientation="none"
-        @click="togglePlay()"
+        @click.stop="togglePlay()"
       >
         <media-provider>
           <source v-for="src in sources"
@@ -37,6 +37,7 @@
     <div v-else
       class="bg-black p-10 flex flex-col items-center justify-center"
       :style="`height: ${audioHeight}px`"
+      @click="togglePlay()"
     >
       <MusicalNoteIcon class="h-24 w-24 text-white" />
       <!-- Getting type errors due to the props passed to the media-player.
@@ -56,7 +57,7 @@
         @time-update="handleTimeUpdate()"
         @progress="handleProgress($event)"
         @seeked="$emit('seeked')"
-        @click="togglePlay()"
+        @click.stop="togglePlay()"
       >
         <media-provider>
           <source v-for="src in sources"
