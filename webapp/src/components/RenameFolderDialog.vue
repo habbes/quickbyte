@@ -1,21 +1,22 @@
 <template>
   <UiDialog ref="dialog" :title="'Rename folder'">
-    <input
-      autofocus
-      v-model="name"
-      type="text"
-      class="input w-full"
-    />
-    <template #actions>
-      <div class="flex gap-2">
-        <UiButton @click="close()">Cancel</UiButton>
-        <UiButton @click="rename()" primary>Rename</UiButton>
-      </div>
-    </template>
+    <UiForm @submit="rename()">
+      <UiLayout gapMd>
+        <UiTextInput
+          autofocus
+          v-model="name"
+          fullWidth
+        />
+        <UiLayout horizontal justifyEnd itemsCenter gapSm>
+            <UiButton @click="close()">Cancel</UiButton>
+            <UiButton primary submit>Rename</UiButton>
+        </UiLayout>
+      </UiLayout>
+    </UiForm>
   </UiDialog>
 </template>
 <script lang="ts" setup>
-import { UiDialog, UiButton } from "@/components/ui";
+import { UiDialog, UiLayout, UiButton, UiForm, UiTextInput } from "@/components/ui";
 import type { Folder } from "@quickbyte/common";
 import { ref } from "vue";
 import { logger, showToast, trpcClient } from "@/app-utils";

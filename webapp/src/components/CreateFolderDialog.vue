@@ -1,20 +1,22 @@
 <template>
   <UiDialog ref="dialog" title="New folder">
-    <UiLayout gapSm>
-      <UiLayout>
-        <UiTextInput fullWidth v-model="name" label="Folder name" placeholder="Enter folder name" />
+    <UiForm @submit="createFolder()">
+      <UiLayout gapSm>
+        <UiLayout>
+          <UiTextInput fullWidth v-model="name" label="Folder name" placeholder="Enter folder name" />
+        </UiLayout>
+        <UiLayout horizontal gapSm justifyEnd>
+          <UiButton submit primary>Create folder</UiButton>
+          <UiButton @click="close()">Cancel</UiButton>
+        </UiLayout>
       </UiLayout>
-      <UiLayout horizontal gapSm justifyEnd>
-        <UiButton @click="createFolder()" primary>Create folder</UiButton>
-        <UiButton @click="close()">Cancel</UiButton>
-      </UiLayout>
-    </UiLayout>
+    </UiForm>
   </UiDialog>
 </template>
 <script lang="ts" setup>
 import { ref } from "vue";
 import { wrapError, trpcClient, showToast } from "@/app-utils";
-import { UiDialog, UiTextInput, UiLayout, UiButton } from "@/components/ui";
+import { UiDialog, UiTextInput, UiLayout, UiButton, UiForm } from "@/components/ui";
 import type { CreateFolderArgs, Folder } from "@quickbyte/common";
 
 const props = defineProps<{

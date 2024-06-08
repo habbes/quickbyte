@@ -364,6 +364,11 @@ export function debounce<T extends any[]>(fn: (...args: T) => unknown, delay: nu
 }
 
 export function unwrapSingleton<T>(value: T | T[]): T {
+    const singleton = unwrapSingletonOrUndefined(value);
+    return ensure(singleton);
+}
+
+export function unwrapSingletonOrUndefined<T>(value: T | T[] | undefined): T|undefined {
     return Array.isArray(value) ? value[0] : value;
 }
 

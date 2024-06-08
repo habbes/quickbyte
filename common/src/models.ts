@@ -1,3 +1,5 @@
+import { string } from "zod";
+
 export interface PersistedModel {
     _id: string;
     _createdAt: Date;
@@ -402,6 +404,11 @@ export interface GetProjectItemsResult {
     folder?: FolderWithPath;
     items: ProjectItem[];
 }
+
+export interface ProjectItemRef {
+    _id: string,
+    type: ProjectItemType
+};
 
 export interface MediaVersion extends PersistedModel, Deleteable {
     name: string;

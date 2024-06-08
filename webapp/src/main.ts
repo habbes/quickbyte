@@ -7,6 +7,8 @@ import { router } from './router'
 import VueSmoothScroll from 'vue3-smooth-scroll'
 import 'aos/dist/aos.css';
 import { initGoogleAuth } from './app-utils/google-auth';
+import { VueQueryPlugin } from '@tanstack/vue-query'
+import { initializeSpaceBarWatcher } from './app-utils/spacebar-watcher';
 
 // @ts-ignore
 window.VIDEOJS_NO_DYNAMIC_STYLE = true
@@ -14,6 +16,8 @@ initGoogleAuth(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 const app = createApp(App)
 app.use(VueSmoothScroll)
 app.use(VueDragSelect)
+app.use(VueQueryPlugin)
+initializeSpaceBarWatcher();
 
 Sentry.init({
     app,
