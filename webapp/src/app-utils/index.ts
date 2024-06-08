@@ -16,3 +16,4 @@ export * from './wrap-error.js';
 export * from './link-generator.js';
 export * from './project-share-store.js';
 export * from './queries/index.js';
+export * from './spacebar-watcher.js';

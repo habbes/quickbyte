@@ -157,7 +157,7 @@ import { formatTimestampDuration, type TimedComment } from '@/core';
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
-import { logger } from '@/app-utils';
+import { logger, isSpaceBarPressed } from '@/app-utils';
 import { nextTick } from 'process';
 
 type MediaSource = {
@@ -203,6 +203,13 @@ const playPercentage = computed(() => {
   const current = playTime.value;
   const total = player.value.duration;
   return 100 * current/total;
+});
+
+watch(isSpaceBarPressed, (newVal, oldVal) => {
+  // detect when space bar goes from pressed to release
+  if (oldVal && !newVal) {
+    togglePlay();
+  }
 });
 
 /**
