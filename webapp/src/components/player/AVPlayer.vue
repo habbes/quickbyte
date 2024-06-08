@@ -8,30 +8,31 @@
       Ignoring the errors until I figure out what the causes them.
     -->
     <!-- @vue-ignore -->
-    <media-player
-      ref="player"
-      view-type="video"
-      stream-type="on-demand"
-      playsInline
-      @can-play="handleCanPlay()"
-      @play="isPlaying = true"
-      @pause="isPlaying = false"
-      @timeupdate="handleTimeUpdate()"
-      @time-update="handleTimeUpdate()"
-      @progress="handleProgress($event)"
-      @seeked="$emit('seeked')"
-      fullscreen-orientation="none"
-    >
-      <media-provider>
-        <source v-for="src in sources"
-          :key="src.url"
-          :src="src.url"
-          :type="src.mimeType"
-        />
-      </media-provider>
-      <media-video-layout>
-      </media-video-layout>
-    </media-player>
+      <media-player
+        ref="player"
+        view-type="video"
+        stream-type="on-demand"
+        playsInline
+        @can-play="handleCanPlay()"
+        @play="isPlaying = true"
+        @pause="isPlaying = false"
+        @timeupdate="handleTimeUpdate()"
+        @time-update="handleTimeUpdate()"
+        @progress="handleProgress($event)"
+        @seeked="$emit('seeked')"
+        fullscreen-orientation="none"
+        @click="togglePlay()"
+      >
+        <media-provider>
+          <source v-for="src in sources"
+            :key="src.url"
+            :src="src.url"
+            :type="src.mimeType"
+          />
+        </media-provider>
+        <media-video-layout>
+        </media-video-layout>
+      </media-player>
     </div>
     <div v-else
       class="bg-black p-10 flex flex-col items-center justify-center"
@@ -55,6 +56,7 @@
         @time-update="handleTimeUpdate()"
         @progress="handleProgress($event)"
         @seeked="$emit('seeked')"
+        @click="togglePlay()"
       >
         <media-provider>
           <source v-for="src in sources"
@@ -351,6 +353,14 @@ const seekingHoverTime = computed<number|undefined>(() => {
 function seek(to: number) {
   if (!player.value) return;
   player.value.currentTime = to;
+}
+
+function togglePlay() {
+  if (isPlaying.value) {
+    pause();
+  } else {
+    play();
+  }
 }
 
 function pause() {
