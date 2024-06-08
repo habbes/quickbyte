@@ -281,13 +281,13 @@
 </template>
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch } from 'vue';
-import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient, useProjectItemsQuery, upsertProjectItemsInQuery, deleteProjectItemsInQuery } from '@/app-utils';
+import { useRoute } from 'vue-router';
+import { showToast, store, logger, useFilePicker, useFileTransfer, useProjectItemsQuery, upsertProjectItemsInQuery, deleteProjectItemsInQuery, updateProjectItemsInQuery } from '@/app-utils';
 import { ensure, pluralize, unwrapSingleton, unwrapSingletonOrUndefined } from '@/core';
 import type {
-  WithRole, Project, ProjectItem, Folder,
+  ProjectItem, Folder,
   ProjectItemType, ProjectFolderItem, FolderWithPath, Media, 
-GetProjectItemsResult} from "@quickbyte/common";
+} from "@quickbyte/common";
 import {
   PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon,
   FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon,
@@ -305,7 +305,7 @@ import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox, UiCont
 import { DragSelect, DragSelectOption } from "@coleqiu/vue-drag-select";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 import { injectFolderPathSetter } from "./project-utils";
-import { useQueryClient, useQuery, useMutation } from '@tanstack/vue-query'
+import { useQueryClient } from '@tanstack/vue-query'
 
 const headerHeight = layoutDimensions.projectMediaHeaderHeight;
 // tried different things to get the positioning to look right
@@ -322,12 +322,10 @@ const createFolderDialog = ref<typeof CreateFolderDialog>();
 const deleteItemsDialog = ref<typeof DeleteProjectItemsDialog>();
 const moveItemsDialog = ref<typeof MoveProjectItemsDialog>();
 const createProjectShareDialog = ref<typeof CreateProjectShareDialog>();
-const loading = ref(true);
 const searchTerm = ref('');
 
 const projectId = computed(() => unwrapSingleton(route.params.projectId));
 const folderId = computed(() => unwrapSingletonOrUndefined(route.params.folderId || undefined));
-const itemsQueryEnabled = computed(() => !!projectId.value);
 
 const itemsQuery = useProjectItemsQuery(projectId, folderId);
 
@@ -353,7 +351,6 @@ const {
 const dropzone = ref<HTMLDivElement>();
 const { isOverDropZone } = useDropZone(dropzone);
 
-// const items = ref<ProjectItem[]>([]);
 const currentFolder = ref<FolderWithPath|undefined>();
 const selectedItemIds = ref<Set<string>>(new Set());
 const selectedItems = computed(() => items.value.filter(item => isItemSelected(item._id)));
@@ -427,8 +424,8 @@ watch(itemsQuery.error, (error) => {
 
 watch(itemsQuery.data, (data) => {
   if (!data) return;
-  // TODO: we should not clear data has changed but the path
-  // has not
+  // TODO: we should not clear selectedItems if data has changed but the path
+  // has not, data might be updated due to background re-fetch
   selectedItemIds.value.clear();
   currentFolder.value = data.folder;
   updateCurrentFolderPath && updateCurrentFolderPath(data.folder?.path || []);
@@ -536,15 +533,10 @@ function handleToggleInMultiSelect(args: { type: ProjectItemType, itemId: string
 }
 
 function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
-  const index = items.value.findIndex(m => m._id === update.item._id && m.type === update.type);
-  if (index < 0) return;
-  
-  const original = items.value[index];
-
-  items.value[index] = Object.assign(original, {
-    name: update.item.name,
-    _updatedAt: update.item._updatedAt,
-    item: { ...original.item, ...update.item }
+  updateProjectItemsInQuery(queryClient, projectId, folderId, {
+    type: update.type,
+    item: update.item,
+    _id: update.item._id
   });
 }
 
