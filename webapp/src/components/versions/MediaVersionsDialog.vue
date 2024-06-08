@@ -151,7 +151,6 @@ const updatedVersions = ref<MediaVersion[]>(props.media.versions.map(v => ({ ...
 
 const sortedVersions = computed(() => {
   // versions are sorted from lowest to highest, but we want to display them in reverse order
-  // const filtered = rawVersions.value.filter(v => !versionsToDelete.value.has(v._id));
   const sorted = [...updatedVersions.value].reverse();
   return sorted;
 });
@@ -166,7 +165,6 @@ watch(() => props.media, () => {
 
   // copy versions because they might be modified (re-order, renamed)
   updatedVersions.value = props.media.versions.map(v => ({ ...v}));
-  console.log('rawVersions', updatedVersions.value);
 });
 
 watch([uploadState], () => {

@@ -114,7 +114,7 @@
 
     <!-- start content -->
     <UiContextMenu>
-    <UiLayout ref="dropzone" v-if="!loading" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
+    <UiLayout ref="dropzone" v-if="itemsQuery.isPending" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
       :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
     >
       <div v-if="isOverDropZone" class="absolute w-full h-full flex items-center justify-center">
@@ -281,12 +281,13 @@
 </template>
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch } from 'vue';
-import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } from '@/app-utils';
-import { ensure, pluralize } from '@/core';
+import { useRoute } from 'vue-router';
+import { showToast, store, logger, useFilePicker, useFileTransfer, useProjectItemsQuery, upsertProjectItemsInQuery, deleteProjectItemsInQuery, updateProjectItemsInQuery } from '@/app-utils';
+import { ensure, pluralize, unwrapSingleton, unwrapSingletonOrUndefined } from '@/core';
 import type {
-  WithRole, Project, ProjectItem, Folder,
-  ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
+  ProjectItem, Folder,
+  ProjectItemType, ProjectFolderItem, FolderWithPath, Media, 
+} from "@quickbyte/common";
 import {
   PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon,
   FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon,
@@ -304,6 +305,7 @@ import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox, UiCont
 import { DragSelect, DragSelectOption } from "@coleqiu/vue-drag-select";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 import { injectFolderPathSetter } from "./project-utils";
+import { useQueryClient } from '@tanstack/vue-query'
 
 const headerHeight = layoutDimensions.projectMediaHeaderHeight;
 // tried different things to get the positioning to look right
@@ -312,18 +314,30 @@ const contentHeight = getRemainingContentHeightCss(
   contentOffset
 );
 
+
+const queryClient = useQueryClient();
 const updateCurrentFolderPath = injectFolderPathSetter();
 const route = useRoute();
 const createFolderDialog = ref<typeof CreateFolderDialog>();
 const deleteItemsDialog = ref<typeof DeleteProjectItemsDialog>();
 const moveItemsDialog = ref<typeof MoveProjectItemsDialog>();
 const createProjectShareDialog = ref<typeof CreateProjectShareDialog>();
-const loading = ref(true);
 const searchTerm = ref('');
+
+const projectId = computed(() => unwrapSingleton(route.params.projectId));
+const folderId = computed(() => unwrapSingletonOrUndefined(route.params.folderId || undefined));
+
+const itemsQuery = useProjectItemsQuery(projectId, folderId);
+
+const items = computed(() => itemsQuery.data.value ? itemsQuery.data.value.items : []);
 
 const { sortFields, queryOptions, selectedSortField, selectSortField } = store.projectItemsQueryOptions;
 
-const project = ref<WithRole<Project>>();
+//const project = ref<WithRole<Project>>();
+const project = computed(() =>
+  ensure(store.projects.value.find(p => p._id === projectId.value, `Expected project '${projectId.value}' to be in store on media page.`))
+);
+
 const {
   openFilePicker,
   directoryPickerSupported,
@@ -337,12 +351,11 @@ const {
 const dropzone = ref<HTMLDivElement>();
 const { isOverDropZone } = useDropZone(dropzone);
 
-const items = ref<ProjectItem[]>([]);
 const currentFolder = ref<FolderWithPath|undefined>();
 const selectedItemIds = ref<Set<string>>(new Set());
 const selectedItems = computed(() => items.value.filter(item => isItemSelected(item._id)));
 const multiSelectCheckBoxState = computed<'indeterminate'|boolean>(() => {
-  const state = items.value.length === 0 ? false
+  const state = items.value?.length === 0 ? false
   : selectedItemIds.value.size === items.value.length ? true
   : selectedItemIds.value.size === 0 ? false
   : 'indeterminate';
@@ -360,7 +373,7 @@ const {
 } = useFileTransfer();
 
 watch([newMedia], () => {
-  newMedia.value?.filter(m => {
+  const newMediaInCurrentFolder = newMedia.value?.filter(m => {
     if (currentFolder.value) {
       return currentFolder.value._id === m.folderId
     } else {
@@ -373,7 +386,13 @@ watch([newMedia], () => {
     _createdAt: m._createdAt,
     _updatedAt: m._updatedAt,
     item: m
-  })).forEach(item => items.value.push(item))
+  }));
+
+  if (!newMediaInCurrentFolder) {
+    return;
+  }
+
+  upsertProjectItemsInQuery(queryClient, projectId, folderId, ...newMediaInCurrentFolder);
 });
 
 watch([newFolders], () => {
@@ -391,15 +410,25 @@ watch([newFolders], () => {
       _updatedAt: f._updatedAt
     }));
 
-    folderItems?.forEach(item => {
-      const currentIndex = items.value.findIndex(f => f.type === item.type && f._id === item._id);
-      if (currentIndex !== -1) {
-        items.value[currentIndex] = Object.assign(items.value[currentIndex], item);
-        return;
-      }
+    if (folderItems) {
+      upsertProjectItemsInQuery(queryClient, projectId, folderId, ...folderItems);
+    }
+});
 
-      items.value.push(item);
-    });
+watch(itemsQuery.error, (error) => {
+  if (error) {
+    logger?.error(error.message, error);
+    showToast(error.message, 'error');
+  }
+});
+
+watch(itemsQuery.data, (data) => {
+  if (!data) return;
+  // TODO: we should not clear selectedItems if data has changed but the path
+  // has not, data might be updated due to background re-fetch
+  selectedItemIds.value.clear();
+  currentFolder.value = data.folder;
+  updateCurrentFolderPath && updateCurrentFolderPath(data.folder?.path || []);
 });
 
 const filteredItems = computed(() => {
@@ -504,15 +533,10 @@ function handleToggleInMultiSelect(args: { type: ProjectItemType, itemId: string
 }
 
 function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
-  const index = items.value.findIndex(m => m._id === update.item._id && m.type === update.type);
-  if (index < 0) return;
-  
-  const original = items.value[index];
-
-  items.value[index] = Object.assign(original, {
-    name: update.item.name,
-    _updatedAt: update.item._updatedAt,
-    item: { ...original.item, ...update.item }
+  updateProjectItemsInQuery(queryClient, projectId, folderId, {
+    type: update.type,
+    item: update.item,
+    _id: update.item._id
   });
 }
 
@@ -529,12 +553,13 @@ function handleItemsDeleted(
   { deletedCount: number, requestedItems: Array<{ _id: string, type: ProjectItemType }>}
 ) {
   for (let deletedItem of requestedItems) {
-    const index = items.value.findIndex(item => item._id === deletedItem._id && item.type === deletedItem.type);
-    if (index === -1) return;
-
     unselectItem(deletedItem._id);
-    items.value.splice(index, 1);
   }
+
+  // TODO: Instead of manually updating the query cache from here, we should create reusable
+  // mutations with useMutation to perform mutation requests, and we should handle cache data updates
+  // and invalidations centrally from the mutations result.
+  deleteProjectItemsInQuery(queryClient, projectId, folderId, ...requestedItems);
 }
 
 function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
@@ -546,36 +571,28 @@ function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
 }
 
 function handleItemsMoved(items: ProjectItem[]) {
-  for (let item of items) {
-    handleItemMoved(item);
-  }
-}
+  // In all cases, we assume that the items are being moved from the current folder
+  // to some target folder, since that's what the UI enables to do. Under this assumption,
+  // we can simply remove all moved items from the current folder and add them to the
+  // respective current folders. We don't have to worry about other folders.
+  // If this assumption does not hold anymore, we should invalidate all cached project items query data under this
+  // project because we don't know which other folders have lost items to the move operation.
 
-function handleItemMoved(item: ProjectItem) {
-  const index = items.value.findIndex(i => i._id === item._id);
-  const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
-  
-  const isMovedToThisFolder =  (!itemFolderId && !currentFolder.value) || itemFolderId === currentFolder.value?._id;
-  if (index === -1 && isMovedToThisFolder) {
-    // the item is being moved to this folder, but is not in the list of items
-    // add it to the list
-    items.value.push(item);
+  // TODO: is there any reason for this grouping? Given the current UI
+  // aren't all items getting moved to the same target folder?
+  const itemsByTargetFolder = new Map<string|undefined, ProjectItem[]>();
+  for (const item of items) {
+    const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
+    const groupedItems = itemsByTargetFolder.get(itemFolderId || undefined) || [];
+    groupedItems.push(item);
+    itemsByTargetFolder.set(itemFolderId || undefined, groupedItems);
   }
-  else if (index !== -1 && isMovedToThisFolder) {
-    // the item is being moved to this folder, but is already
-    // in the list of item. 
-    // updated it
-    items.value[index] = Object.assign(items.value[index], item);
+
+  deleteProjectItemsInQuery(queryClient, projectId, folderId, ...items);
+  for (const [targetFolder, movedItems] of itemsByTargetFolder) {
+    upsertProjectItemsInQuery(queryClient, projectId, targetFolder, ...movedItems);
   }
-  else if (index !== -1 && !isMovedToThisFolder) {
-    // the item is in the current list of items, but
-    // is moved to a different folder
-    // remove the item from the list
-    items.value.splice(index, 1);
-    unselectItem(item._id);
-  }
-  // last possibility: item does not exist in the current list
-  // and is not being moved to this folder. Ignore it.
+
 }
 
 function handleShareProjectItems(item?: { type: ProjectItemType, itemId: string }) {
@@ -600,12 +617,7 @@ function handleCreatedFolder(newFolder: Folder) {
     item: newFolder
   };
 
-  // if it already exists, then no need to add it
-  if (items.value.findIndex(f => f._id === item._id) >= 0) {
-    return;
-  }
-
-  items.value.push(item);
+  upsertProjectItemsInQuery(queryClient, projectId, folderId, item);
 }
 
 function createFolder() {
@@ -633,27 +645,4 @@ function handleDragSelect(dragSelected: Set<unknown>|Array<unknown>) {
     addToSelection(itemId as string);
   }
 }
-
-async function loadData(to: RouteLocationNormalizedLoaded) {
-  const projectId = ensure(to.params.projectId) as string;
-  project.value = ensure(store.projects.value.find(p => p._id === projectId, `Expected project '${projectId}' to be in store on media page.`));
-  const folderId = to.params.folderId as string || undefined;
-  loading.value = true;
-
-  try {
-    const result = await trpcClient.getProjectItems.query({ projectId: project.value._id, folderId: folderId });
-    items.value = result.items;
-    selectedItemIds.value.clear();
-    currentFolder.value = result.folder;
-    updateCurrentFolderPath && updateCurrentFolderPath(result.folder?.path || []);
-  } catch (e: any) {
-    logger.error(e.message, e);
-    showToast(e.message, 'error');
-    
-  } finally {
-    loading.value = false;
-  }
-}
-
-watch(route, async () => await loadData(route), { immediate: true });
 </script>

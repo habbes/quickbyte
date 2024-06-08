@@ -8,34 +8,36 @@
       Ignoring the errors until I figure out what the causes them.
     -->
     <!-- @vue-ignore -->
-    <media-player
-      ref="player"
-      view-type="video"
-      stream-type="on-demand"
-      playsInline
-      @can-play="handleCanPlay()"
-      @play="isPlaying = true"
-      @pause="isPlaying = false"
-      @timeupdate="handleTimeUpdate()"
-      @time-update="handleTimeUpdate()"
-      @progress="handleProgress($event)"
-      @seeked="$emit('seeked')"
-      fullscreen-orientation="none"
-    >
-      <media-provider>
-        <source v-for="src in sources"
-          :key="src.url"
-          :src="src.url"
-          :type="src.mimeType"
-        />
-      </media-provider>
-      <media-video-layout>
-      </media-video-layout>
-    </media-player>
+      <media-player
+        ref="player"
+        view-type="video"
+        stream-type="on-demand"
+        playsInline
+        @can-play="handleCanPlay()"
+        @play="isPlaying = true"
+        @pause="isPlaying = false"
+        @timeupdate="handleTimeUpdate()"
+        @time-update="handleTimeUpdate()"
+        @progress="handleProgress($event)"
+        @seeked="$emit('seeked')"
+        fullscreen-orientation="none"
+        @click.stop="togglePlay()"
+      >
+        <media-provider>
+          <source v-for="src in sources"
+            :key="src.url"
+            :src="src.url"
+            :type="src.mimeType"
+          />
+        </media-provider>
+        <media-video-layout>
+        </media-video-layout>
+      </media-player>
     </div>
     <div v-else
       class="bg-black p-10 flex flex-col items-center justify-center"
       :style="`height: ${audioHeight}px`"
+      @click="togglePlay()"
     >
       <MusicalNoteIcon class="h-24 w-24 text-white" />
       <!-- Getting type errors due to the props passed to the media-player.
@@ -55,6 +57,7 @@
         @time-update="handleTimeUpdate()"
         @progress="handleProgress($event)"
         @seeked="$emit('seeked')"
+        @click.stop="togglePlay()"
       >
         <media-provider>
           <source v-for="src in sources"
@@ -154,7 +157,7 @@ import { formatTimestampDuration, type TimedComment } from '@/core';
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
-import { logger } from '@/app-utils';
+import { logger, isSpaceBarPressed } from '@/app-utils';
 import { nextTick } from 'process';
 
 type MediaSource = {
@@ -200,6 +203,13 @@ const playPercentage = computed(() => {
   const current = playTime.value;
   const total = player.value.duration;
   return 100 * current/total;
+});
+
+watch(isSpaceBarPressed, (newVal, oldVal) => {
+  // detect when space bar goes from pressed to release
+  if (oldVal && !newVal) {
+    togglePlay();
+  }
 });
 
 /**
@@ -351,6 +361,14 @@ const seekingHoverTime = computed<number|undefined>(() => {
 function seek(to: number) {
   if (!player.value) return;
   player.value.currentTime = to;
+}
+
+function togglePlay() {
+  if (isPlaying.value) {
+    pause();
+  } else {
+    play();
+  }
 }
 
 function pause() {
