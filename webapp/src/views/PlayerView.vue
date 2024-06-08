@@ -27,11 +27,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { logger, showToast, store, trpcClient, wrapError } from "@/app-utils";
+import { logger, showToast, store, trpcClient, useProjectItemsQuery, wrapError } from "@/app-utils";
 import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { PlayerWrapper } from "@/components/player";
-
 
 const route = useRoute();
 const router = useRouter();
@@ -39,11 +38,16 @@ const media = ref<MediaWithFileAndComments>();
 const selectedVersionId = ref<string>();
 const loading = ref(true);
 const selectedCommentId = ref<string>();
-const browserItems = ref<ProjectItem[]>([]);
-const browserItemsPath = ref<FolderPathEntry[]>([]);
 
 const user = store.user;
-const project = computed(() => store.projects.value.find(p => p._id === route.params.projectId));
+const projectId = computed(() => unwrapSingleton(route.params.projectId));
+const project = computed(() => store.projects.value.find(p => p._id === projectId.value));
+
+const browserItemsQueryEnabled = computed(() => !!media.value);
+const browserItemsFolderId = ref<string>();
+const browserItemsQuery = useProjectItemsQuery(projectId, browserItemsFolderId, { enabled: browserItemsQueryEnabled });
+const browserItems = computed(() => browserItemsQuery.data.value?.items || []);
+const browserItemsPath = computed(() => browserItemsQuery.data.value?.folder?.path || []);
 
 
 watch(() => route.params.mediaId, () => {
@@ -63,12 +67,7 @@ watch(() => route.params.mediaId, () => {
 
     // fetch files and folders in the same parent folder as the media
     // to enable navigation in the embedded file browser
-    const result = await trpcClient.getProjectItems.query({
-      projectId,
-      folderId: media.value.folderId ? media.value.folderId : undefined
-    });
-
-    setBrowserItems(result.items, result.folder ? result.folder.path : []);
+    navigateBrowserToFolder(media.value.folderId || undefined);
   },
   {
     finally: () => loading.value = false
@@ -182,19 +181,7 @@ function handleBrowserToParentFolder() {
 }
 
 async function navigateBrowserToFolder(folderId?: string) {
-  const projectId = unwrapSingleton(ensure(route.params.projectId));
-  return wrapError(async () => {
-    const result = await trpcClient.getProjectItems.query({
-      projectId,
-      folderId
-    });
-
-    setBrowserItems(result.items, result.folder ? result.folder.path : []);
-  })
+  browserItemsFolderId.value = folderId;
 }
 
-function setBrowserItems(items: ProjectItem[], path: FolderPathEntry[]) {
-  browserItems.value = items;
-  browserItemsPath.value = path;
-}
 </script>

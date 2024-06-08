@@ -1,6 +1,6 @@
 import { useQuery, QueryClient } from '@tanstack/vue-query'
 import { trpcClient } from '../api';
-import type { MaybeRef } from 'vue';
+import type { MaybeRef, MaybeRefOrGetter } from 'vue';
 import type { Folder, GetProjectItemsResult, Media, ProjectItem, ProjectItemRef } from "@quickbyte/common";
 import { unref } from "vue";
 
@@ -8,7 +8,11 @@ export function getProjectItemsQueryKey(projectId: MaybeRef<string>, folderId?: 
     return ['projectItems', projectId, folderId];
 }
 
-export function useProjectItemsQuery(projectId: MaybeRef<string>, folderId?: MaybeRef<string|undefined>) {
+export interface ProjectItemsQueryOptions {
+    enabled?: MaybeRefOrGetter<boolean>;
+}
+
+export function useProjectItemsQuery(projectId: MaybeRef<string>, folderId?: MaybeRef<string|undefined>, opts?: ProjectItemsQueryOptions) {
     const queryKey = getProjectItemsQueryKey(projectId, folderId);
     const result = useQuery({
         queryKey,
@@ -16,7 +20,8 @@ export function useProjectItemsQuery(projectId: MaybeRef<string>, folderId?: May
             projectId: unref(projectId),
             folderId: unref(folderId)
         }),
-        staleTime: 300_000 // 5 minutes
+        staleTime: 300_000, // 5 minutes,
+        enabled: opts?.enabled
     });
 
     return result;
