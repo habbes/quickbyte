@@ -286,7 +286,8 @@ import { showToast, store, logger, useFilePicker, useFileTransfer, trpcClient } 
 import { ensure, pluralize, unwrapSingleton, unwrapSingletonOrUndefined } from '@/core';
 import type {
   WithRole, Project, ProjectItem, Folder,
-  ProjectItemType, ProjectFolderItem, FolderWithPath, Media } from "@quickbyte/common";
+  ProjectItemType, ProjectFolderItem, FolderWithPath, Media, 
+GetProjectItemsResult} from "@quickbyte/common";
 import {
   PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon,
   FolderPlusIcon, DocumentArrowUpIcon, CloudArrowUpIcon,
@@ -314,7 +315,7 @@ const contentHeight = getRemainingContentHeightCss(
 );
 
 
-
+const queryClient = useQueryClient();
 const updateCurrentFolderPath = injectFolderPathSetter();
 const route = useRoute();
 const createFolderDialog = ref<typeof CreateFolderDialog>();
@@ -431,6 +432,8 @@ watch(itemsQuery.error, (error) => {
 
 watch(itemsQuery.data, (data) => {
   if (!data) return;
+  // TODO: we should not clear data has changed but the path
+  // has not
   selectedItemIds.value.clear();
   currentFolder.value = data.folder;
   updateCurrentFolderPath && updateCurrentFolderPath(data.folder?.path || []);
@@ -641,7 +644,17 @@ function handleCreatedFolder(newFolder: Folder) {
     return;
   }
 
-  items.value.push(item);
+  // items.value.push(item);
+  queryClient.setQueryData<GetProjectItemsResult>([projectId.value, folderId.value, 'items'], oldData => {
+    if (!oldData) {
+      return { items: [item], folder: undefined }
+    }
+    const items = [...oldData.items, item];
+    return {
+      ...oldData,
+      items
+    };
+  })
 }
 
 function createFolder() {
