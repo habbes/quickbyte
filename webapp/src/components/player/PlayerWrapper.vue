@@ -20,10 +20,10 @@
         />
       </UiLayout>
       <div>
-        <a v-if="allowDownload" class="flex items-center gap-2 hover:text-white" download :href="media.file.downloadUrl">
+        <a v-if="allowDownload && selectedVersion" class="flex items-center gap-2 hover:text-white" download :href="selectedVersion.file.downloadUrl">
           <div class="inline-block">
             <span class="hidden sm:inline">Download </span>
-            <span class="whitespace-nowrap">{{ humanizeSize(media.file.size) }}</span>
+            <span class="whitespace-nowrap">{{ humanizeSize(selectedVersion.file.size) }}</span>
           </div>
           <ArrowDownCircleIcon class="h-4 w-4 inline" />
         </a>
