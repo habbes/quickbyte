@@ -29,7 +29,7 @@ import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { logger, showToast, store, trpcClient, wrapError } from "@/app-utils";
 import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
-import { ensure, unwrapSingleton } from "@/core";
+import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { PlayerWrapper } from "@/components/player";
 
 
@@ -47,8 +47,8 @@ const project = computed(() => store.projects.value.find(p => p._id === route.pa
 
 
 watch(() => route.params.mediaId, () => {
-  const queriedCommentId = unwrapSingleton(route.query.comment);
-  const queriedVersionId = unwrapSingleton(route.query.version);
+  const queriedCommentId = unwrapSingletonOrUndefined(route.query.comment || undefined);
+  const queriedVersionId = unwrapSingletonOrUndefined(route.query.version || undefined);
 
   return wrapError(async () => {
     const projectId = unwrapSingleton(ensure(route.params.projectId));
