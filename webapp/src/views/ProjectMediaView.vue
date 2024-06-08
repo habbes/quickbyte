@@ -331,7 +331,8 @@ const itemsQueryEnabled = computed(() => !!projectId.value);
 const itemsQuery = useQuery({
   queryKey: [projectId, folderId, 'items'],
   queryFn: () => trpcClient.getProjectItems.query({ projectId: projectId.value, folderId: folderId.value }),
-  enabled: itemsQueryEnabled
+  enabled: itemsQueryEnabled,
+  staleTime: 30000,
 });
 
 const items = computed(() => itemsQuery.data.value ? itemsQuery.data.value.items : []);
@@ -419,6 +420,20 @@ watch([newFolders], () => {
 
       items.value.push(item);
     });
+});
+
+watch(itemsQuery.error, (error) => {
+  if (error) {
+    logger?.error(error.message, error);
+    showToast(error.message, 'error');
+  }
+});
+
+watch(itemsQuery.data, (data) => {
+  if (!data) return;
+  selectedItemIds.value.clear();
+  currentFolder.value = data.folder;
+  updateCurrentFolderPath && updateCurrentFolderPath(data.folder?.path || []);
 });
 
 const filteredItems = computed(() => {
@@ -554,6 +569,8 @@ function handleItemsDeleted(
     unselectItem(deletedItem._id);
     items.value.splice(index, 1);
   }
+
+  
 }
 
 function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
