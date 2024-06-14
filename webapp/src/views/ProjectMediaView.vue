@@ -129,12 +129,15 @@
           </div>
           <div class="absolute w-full h-full bg-black opacity-75"></div>
         </div>
-        <div v-if="items.length === 0 && !itemsQuery.isPending" class="flex flex-1 flex-col items-center justify-center gap-2">
+        <div v-if="items.length === 0 && !itemsQueryPending" class="flex flex-1 flex-col items-center justify-center gap-2">
           <div class="text-center">
             You have no media in this {{ currentFolder ? 'folder' : 'project' }}. Upload some files using the button below.
           </div>
 
           <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
+        </div>
+        <div v-else-if="itemsQueryPending" class="flex flex-1 flex-col items-center justify-center gap-2">
+          loading...
         </div>
         <!--
           The DragSelect captures clicks on the DragSelectOption and interferes with
@@ -328,7 +331,7 @@ const projectId = computed(() => unwrapSingleton(route.params.projectId));
 const folderId = computed(() => unwrapSingletonOrUndefined(route.params.folderId || undefined));
 
 const itemsQuery = useProjectItemsQuery(projectId, folderId);
-
+const itemsQueryPending = computed(() => itemsQuery.isPending.value);
 const items = computed(() => itemsQuery.data.value ? itemsQuery.data.value.items : []);
 
 const { sortFields, queryOptions, selectedSortField, selectSortField } = store.projectItemsQueryOptions;
