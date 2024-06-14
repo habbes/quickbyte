@@ -444,7 +444,7 @@ watch(itemsQuery.data, (data) => {
   selectedItemIds.value.clear();
   currentFolder.value = data.folder;
   updateCurrentFolderPath && updateCurrentFolderPath(data.folder?.path || []);
-});
+}, { immediate: true });
 
 const filteredItems = computed(() => {
   if (!searchTerm.value && !queryOptions.value) return items.value;
