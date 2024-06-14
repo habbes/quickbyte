@@ -114,141 +114,141 @@
 
     <!-- start content -->
     <UiContextMenu>
-    <UiLayout ref="dropzone" v-if="!itemsQuery.isPending" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
-      :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
-    >
-      <div v-if="isOverDropZone" class="absolute w-full h-full flex items-center justify-center">
-        
-        <div class="text-white text-lg flex flex-col items-center justify-center z-10">
-          <div>
-            <ArrowUpCircleIcon class=" h-12 w-12" />
-          </div>
-          <div>
-            Drop files to upload
-          </div>
-        </div>
-        <div class="absolute w-full h-full bg-black opacity-75"></div>
-      </div>
-      <div v-if="items.length === 0" class="flex flex-1 flex-col items-center justify-center gap-2">
-        <div class="text-center">
-          You have no media in this {{ currentFolder ? 'folder' : 'project' }}. Upload some files using the button below.
-        </div>
-
-        <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
-      </div>
-      <!--
-        The DragSelect captures clicks on the DragSelectOption and interferes with
-        click events from the ProjectItemCard, that's why we disable
-        the clickOptionToSelect and draggableOnOption props.
-        The downside is that you have to trag from outside a ProjectItemCard
-        to effectively drag-select elements. If you drag from inside a ProjectItemCard,
-        the item from which you started dragging will not be included in the selection.
-        I think that's a lesser evil.
-      -->
-      <DragSelect
-        v-else
-        :modelValue="selectedItemIds"
-        @update:modelValue="handleDragSelect($event)"
-        :clickOptionToSelect="false"
-        :draggableOnOption="false"
+      <UiLayout ref="dropzone" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
+        :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
       >
-        <div
+        <div v-if="isOverDropZone" class="absolute w-full h-full flex items-center justify-center">
           
-          class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
-        >
-          
-          <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id">
-            <div
-              class="w-full aspect-square"
-            >
-              
-                <ProjectItemCard
-                  v-if="project"
-                  :item="item"
-                  :selected="isItemSelected(item._id)"
-                  :showSelectCheckbox="selectedItemIds.size > 0"
-                  :totalSelectedItems="selectedItemIds.size"
-                  :allowUpload="project.role === 'owner' || project.role === 'admin' || project.role === 'editor'"
-                  @update="handleItemUpdate($event)"
-                  @delete="handleDeleteRequested($event)"
-                  @move="handleMoveRequested($event)"
-                  @share="handleShareProjectItems($event)"
-                  @toggleSelect="handleToggleSelect($event)"
-                  @toggleInMultiSelect="handleToggleInMultiSelect($event)"
-                  @selectAll="handleSelectAll()"
-                  @unselectAll="handleUnselectAll()"
-                />
+          <div class="text-white text-lg flex flex-col items-center justify-center z-10">
+            <div>
+              <ArrowUpCircleIcon class=" h-12 w-12" />
             </div>
-              
-            
-          </DragSelectOption>
+            <div>
+              Drop files to upload
+            </div>
+          </div>
+          <div class="absolute w-full h-full bg-black opacity-75"></div>
         </div>
-      </DragSelect>
-    </UiLayout>
-    <template #menu v-if="project">
-      <RequireRole :accepted="['owner', 'admin', 'editor']" :current="project.role">
-        <UiMenuItem @click="openFilePicker()">
-          <UiLayout horizontal itemsCenter gapSm>
-            <DocumentArrowUpIcon class="h-5 w-5" /> Upload files
-          </UiLayout>
-        </UiMenuItem>
-        <UiMenuItem v-if="directoryPickerSupported" @click="openDirectoryPicker()">
-          <UiLayout horizontal itemsCenter gapSm>
-            <CloudArrowUpIcon class="h-5 w-5" /> Upload folder
-          </UiLayout>
-        </UiMenuItem>
-        <UiMenuSeparator />
-        <UiMenuItem @click="createFolder()">
-          <UiLayout horizontal itemsCenter gapSm>
-            <FolderPlusIcon class="h-5 w-5" /> Create folder
-          </UiLayout>
-        </UiMenuItem>
-        <template v-if="selectedItemIds.size > 0">
+        <div v-if="items.length === 0 && !itemsQuery.isPending" class="flex flex-1 flex-col items-center justify-center gap-2">
+          <div class="text-center">
+            You have no media in this {{ currentFolder ? 'folder' : 'project' }}. Upload some files using the button below.
+          </div>
+
+          <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
+        </div>
+        <!--
+          The DragSelect captures clicks on the DragSelectOption and interferes with
+          click events from the ProjectItemCard, that's why we disable
+          the clickOptionToSelect and draggableOnOption props.
+          The downside is that you have to trag from outside a ProjectItemCard
+          to effectively drag-select elements. If you drag from inside a ProjectItemCard,
+          the item from which you started dragging will not be included in the selection.
+          I think that's a lesser evil.
+        -->
+        <DragSelect
+          v-else
+          :modelValue="selectedItemIds"
+          @update:modelValue="handleDragSelect($event)"
+          :clickOptionToSelect="false"
+          :draggableOnOption="false"
+        >
+          <div
+            
+            class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
+          >
+            
+            <DragSelectOption v-for="item in filteredItems" :key="item._id" :value="item._id">
+              <div
+                class="w-full aspect-square"
+              >
+                
+                  <ProjectItemCard
+                    v-if="project"
+                    :item="item"
+                    :selected="isItemSelected(item._id)"
+                    :showSelectCheckbox="selectedItemIds.size > 0"
+                    :totalSelectedItems="selectedItemIds.size"
+                    :allowUpload="project.role === 'owner' || project.role === 'admin' || project.role === 'editor'"
+                    @update="handleItemUpdate($event)"
+                    @delete="handleDeleteRequested($event)"
+                    @move="handleMoveRequested($event)"
+                    @share="handleShareProjectItems($event)"
+                    @toggleSelect="handleToggleSelect($event)"
+                    @toggleInMultiSelect="handleToggleInMultiSelect($event)"
+                    @selectAll="handleSelectAll()"
+                    @unselectAll="handleUnselectAll()"
+                  />
+              </div>
+                
+              
+            </DragSelectOption>
+          </div>
+        </DragSelect>
+      </UiLayout>
+      <template #menu v-if="project">
+        <RequireRole :accepted="['owner', 'admin', 'editor']" :current="project.role">
+          <UiMenuItem @click="openFilePicker()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <DocumentArrowUpIcon class="h-5 w-5" /> Upload files
+            </UiLayout>
+          </UiMenuItem>
+          <UiMenuItem v-if="directoryPickerSupported" @click="openDirectoryPicker()">
+            <UiLayout horizontal itemsCenter gapSm>
+              <CloudArrowUpIcon class="h-5 w-5" /> Upload folder
+            </UiLayout>
+          </UiMenuItem>
           <UiMenuSeparator />
-          <UiMenuItem @click="handleShareProjectItems()">
+          <UiMenuItem @click="createFolder()">
             <UiLayout horizontal itemsCenter gapSm>
-              <ShareIcon class="h-5 w-5" />
-              <span>Share {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
+              <FolderPlusIcon class="h-5 w-5" /> Create folder
             </UiLayout>
           </UiMenuItem>
-          <UiMenuItem @click="handleMoveRequested()">
-            <UiLayout horizontal itemsCenter gapSm>
-              <ArrowRightCircleIcon class="w-5 h-5" />
-              <span>Move {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }} to...</span>
-            </UiLayout>
-          </UiMenuItem>
-          <UiMenuItem @click="handleDeleteRequested()">
-            <UiLayout horizontal itemsCenter gapSm>
-              <TrashIcon class="w-5 h-5" />
-              <span>Delete {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
-            </UiLayout>
-          </UiMenuItem>
+          <template v-if="selectedItemIds.size > 0">
+            <UiMenuSeparator />
+            <UiMenuItem @click="handleShareProjectItems()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <ShareIcon class="h-5 w-5" />
+                <span>Share {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuItem @click="handleMoveRequested()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <ArrowRightCircleIcon class="w-5 h-5" />
+                <span>Move {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }} to...</span>
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuItem @click="handleDeleteRequested()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <TrashIcon class="w-5 h-5" />
+                <span>Delete {{ selectedItemIds.size }} {{ pluralize('item', selectedItemIds.size) }}</span>
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuSeparator />
+            <UiMenuItem @click="handleSelectAll()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <DocumentPlusIcon class="w-5 h-5" />
+                <span>Select all</span>
+              </UiLayout>
+            </UiMenuItem>
+            <UiMenuSeparator />
+            <UiMenuItem @click="handleUnselectAll()">
+              <UiLayout horizontal itemsCenter gapSm>
+                <DocumentMinusIcon class="w-5 h-5" />
+                <span>Unselect all</span>
+              </UiLayout>
+            </UiMenuItem>
+          </template>
           <UiMenuSeparator />
-          <UiMenuItem @click="handleSelectAll()">
+        </RequireRole>
+        <UiMenuItem>
+          <router-link :to="{ name: 'project-settings', params: { projectId: project._id } }">
             <UiLayout horizontal itemsCenter gapSm>
-              <DocumentPlusIcon class="w-5 h-5" />
-              <span>Select all</span>
+              <Cog8ToothIcon class="h-5 w-5" /> Project settings
             </UiLayout>
-          </UiMenuItem>
-          <UiMenuSeparator />
-          <UiMenuItem @click="handleUnselectAll()">
-            <UiLayout horizontal itemsCenter gapSm>
-              <DocumentMinusIcon class="w-5 h-5" />
-              <span>Unselect all</span>
-            </UiLayout>
-          </UiMenuItem>
-        </template>
-        <UiMenuSeparator />
-      </RequireRole>
-      <UiMenuItem>
-        <router-link :to="{ name: 'project-settings', params: { projectId: project._id } }">
-          <UiLayout horizontal itemsCenter gapSm>
-            <Cog8ToothIcon class="h-5 w-5" /> Project settings
-          </UiLayout>
-        </router-link>
-      </UiMenuItem>
-    </template>
-  </UiContextMenu>
+          </router-link>
+        </UiMenuItem>
+      </template>
+    </UiContextMenu>
     <!--end content -->
   </UiLayout>
   <CreateFolderDialog
