@@ -136,27 +136,17 @@
 
           <UiButton @click="openFilePicker()" primary lg>Upload Files</UiButton>
         </div>
-        <div v-else-if="!itemsQueryPending" class="flex flex-1 flex-col items-center gap-2">
+        <div v-else-if="itemsQueryPending" class="flex flex-1 flex-col items-center gap-2">
           
           <div
             
-            class="grid grid-cols-2 gap-2 overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
+            class="grid grid-cols-2 gap-2 w-full overflow-y-auto sm:gap-4 sm:grid-cols-3 lg:w-full lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]"
           >
             <div
               class="w-full aspect-square"
-              v-for="_ in [0, 1, 2, 3, 4, 6, 7, 8]"
+              v-for="_ in 12"
             >
-              <div class="h-full w-full flex flex-col">
-                <div class="flex h-full flex-col space-y-3">
-                  <div class="flex-1">
-                    <Skeleton class="h-full w-full rounded-xl" />
-                  </div>
-                  <div class="h-12 space-y-2">
-                    <Skeleton class="h-4 w-full" />
-                    <Skeleton class="h-4 w-full" />
-                  </div>
-                </div>
-              </div>
+              <ProjectItemSkeleton />
             </div>
           </div>
         </div>
@@ -319,14 +309,14 @@ import {
   DocumentPlusIcon, DocumentMinusIcon,
   ShareIcon } from '@heroicons/vue/24/outline'
 import ProjectItemCard from '@/components/ProjectItemCard.vue';
+import ProjectItemSkeleton from '@/components/ProjectItemSkeleton.vue';
 import DeleteProjectItemsDialog from '@/components/DeleteProjectItemsDialog.vue';
 import MoveProjectItemsDialog from '@/components/MoveProjectItemsDialog.vue';
 import RequireRole from '@/components/RequireRole.vue';
 import CreateFolderDialog from "@/components/CreateFolderDialog.vue";
 import { CreateProjectShareDialog } from "@/components/project-share";
 import UiSearchInput from '@/components/ui/UiSearchInput.vue';
-import { Skeleton } from '@/components/ui/skeleton';
-import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox, UiContextMenu, UiMenuSeparator } from "@/components/ui";
+import { UiMenu, UiMenuItem, UiMenuLabel, UiLayout, UiButton, UiCheckbox, UiContextMenu, UiMenuSeparator, UiSkeleton } from "@/components/ui";
 import { DragSelect, DragSelectOption } from "@coleqiu/vue-drag-select";
 import { getRemainingContentHeightCss, layoutDimensions } from '@/styles/dimentions';
 import { injectFolderPathSetter } from "./project-utils";
