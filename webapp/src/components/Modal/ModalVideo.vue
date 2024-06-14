@@ -5,7 +5,7 @@
             @click="modalOpen = true" aria-label="Watch the video">
             <img class="transition-shadow duration-300 ease-in-out shadow-2xl rounded-3xl"
                 src="https://img.youtube.com/vi/pbxZ6RPGBps/hqdefault.jpg"
-                width="768" height="432" alt="Modal video thumbnail" />
+                width="768" height="432" alt="Quickbyte tour video" />
             <svg class="absolute transition-transform duration-300 ease-in-out pointer-events-none group-hover:scale-110"
                 xmlns="<http://www.w3.org/2000/svg>" width="72" height="72">
                 <circle class="fill-white" cx="36" cy="36" r="36" fill-opacity=".8" />

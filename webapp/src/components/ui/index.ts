@@ -23,4 +23,4 @@ export { UiCheckbox } from "./checkbox";
 export * from "./radio-list/index.js";
 export { default as UiRadialProgress } from './UiRadialProgress.vue';
 export { default as UiForm } from './UiForm.vue';
-
+export { default as UiSkeleton } from './skeleton/Skeleton.vue';
