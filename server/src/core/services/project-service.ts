@@ -269,6 +269,13 @@ export class ProjectService {
                 })
             ]);
 
+            const mediaWithThumbnails = await addThumbnailUrlsToMedia(
+                this.db,
+                this.config.storageHandlers,
+                this.config.packagers,
+                media
+            );
+            
             const result = [
                 ...folders.map<ProjectItem>(f => ({
                     _id: f._id,
@@ -278,7 +285,7 @@ export class ProjectService {
                     _createdAt: f._createdAt,
                     _updatedAt: f._updatedAt
                 })),
-                ...media.map<ProjectItem>(m => ({
+                ...mediaWithThumbnails.map<ProjectItem>(m => ({
                     _id: m._id,
                     name: m.name,
                     item: m,

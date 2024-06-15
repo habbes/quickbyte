@@ -298,8 +298,8 @@ import { useRoute } from 'vue-router';
 import { showToast, store, logger, useFilePicker, useFileTransfer, useProjectItemsQuery, upsertProjectItemsInQuery, deleteProjectItemsInQuery } from '@/app-utils';
 import { ensure, pluralize, unwrapSingleton, unwrapSingletonOrUndefined } from '@/core';
 import type {
-  ProjectItem, Folder,
-  ProjectItemType, ProjectFolderItem, FolderWithPath, Media, 
+  ProjectItem,
+  ProjectItemType, FolderWithPath, 
 } from "@quickbyte/common";
 import {
   PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon,
