@@ -1,7 +1,7 @@
 import { useQuery, QueryClient, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { trpcClient } from '../api';
 import type { MaybeRef, MaybeRefOrGetter } from 'vue';
-import type { Folder, DeleteProjectItemsArgs, DeletionCountResult, GetProjectItemsResult, Media, ProjectItem, ProjectItemRef } from "@quickbyte/common";
+import type { Folder, DeleteProjectItemsArgs, DeletionCountResult, GetProjectItemsResult, Media, ProjectItem, ProjectItemRef, MoveProjectItemsToFolderArgs } from "@quickbyte/common";
 import { unref } from "vue";
 
 export function getProjectItemsQueryKey(projectId: MaybeRef<string>, folderId?: MaybeRef<string|undefined>) {
@@ -42,6 +42,29 @@ export function useDeleteProjectItemsMutation() {
                 args.folderId,
                 ...args.items.map(({ id, type }) => ({ type, _id: id}))
             );
+        }
+    });
+
+    return mutation;
+}
+
+export function useMoveProjectItemsMutation() {
+    const client = useQueryClient();
+    const mutation = useMutation<ProjectItem[], Error, MoveProjectItemsToFolderArgs & { sourceFolderId?: string }>({
+        mutationFn: ({ projectId, targetFolderId, items }) => trpcClient.moveProjectItemsToFolder.mutate({
+            projectId,
+            targetFolderId,
+            items
+        }),
+        onSuccess: (result, args) => {
+            if (!result.length) return;
+            
+            // TODO: this assumes all the items are moved from the same source folder.
+            // While this is the only scenario currently suppored in the UI, the API
+            // endpoint doesn't care about the source folder. If the UI extends to
+            // support moving multiple items from different folders, we should update this.
+            deleteProjectItemsInQuery(client, args.projectId, args.sourceFolderId, ...result);
+            upsertProjectItemsInQuery(client, args.projectId, args.targetFolderId || undefined, ...result);
         }
     });
 

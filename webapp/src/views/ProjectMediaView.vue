@@ -282,8 +282,8 @@
     v-if="project"
     ref="moveItemsDialog"
     :projectId="project._id"
+    :sourceFolderId="currentFolder?._id"
     :items="selectedItems"
-    @move="handleItemsMoved($event)"
   />
   <CreateProjectShareDialog
     v-if="project"
@@ -569,31 +569,6 @@ function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
   }
 
   nextTick(() => moveItemsDialog.value?.open());
-}
-
-function handleItemsMoved(items: ProjectItem[]) {
-  // In all cases, we assume that the items are being moved from the current folder
-  // to some target folder, since that's what the UI enables to do. Under this assumption,
-  // we can simply remove all moved items from the current folder and add them to the
-  // respective current folders. We don't have to worry about other folders.
-  // If this assumption does not hold anymore, we should invalidate all cached project items query data under this
-  // project because we don't know which other folders have lost items to the move operation.
-
-  // TODO: is there any reason for this grouping? Given the current UI
-  // aren't all items getting moved to the same target folder?
-  const itemsByTargetFolder = new Map<string|undefined, ProjectItem[]>();
-  for (const item of items) {
-    const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
-    const groupedItems = itemsByTargetFolder.get(itemFolderId || undefined) || [];
-    groupedItems.push(item);
-    itemsByTargetFolder.set(itemFolderId || undefined, groupedItems);
-  }
-
-  deleteProjectItemsInQuery(queryClient, projectId, folderId, ...items);
-  for (const [targetFolder, movedItems] of itemsByTargetFolder) {
-    upsertProjectItemsInQuery(queryClient, projectId, targetFolder, ...movedItems);
-  }
-
 }
 
 function handleShareProjectItems(item?: { type: ProjectItemType, itemId: string }) {

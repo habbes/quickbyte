@@ -80,14 +80,15 @@
 <script lang="ts" setup>
 import { ref, watch, computed } from "vue";
 import { UiDialog, UiLayout, UiTextInput, UiButton } from "@/components/ui";
-import { showToast, trpcClient, wrapError } from "@/app-utils";
+import { showToast, trpcClient, useMoveProjectItemsMutation, wrapError } from "@/app-utils";
 import type { FolderWithPath, ProjectItem } from "@quickbyte/common";
 import { FolderIcon, HomeIcon } from "@heroicons/vue/24/solid";
 import { ensure, pluralize, debounce } from "@/core";
 
 const props = defineProps<{
-  projectId: string,
-  items: ProjectItem[]
+  projectId: string;
+  items: ProjectItem[];
+  sourceFolderId?: string;
 }>();
 
 defineExpose({ open, close });
@@ -96,6 +97,7 @@ const emit = defineEmits<{
   (e: 'move', movedItems: ProjectItem[]): unknown;
 }>();
 
+const mutation = useMoveProjectItemsMutation();
 const dialog = ref<typeof UiDialog>();
 const folders = ref<FolderWithPath[]>([]);
 const selectedFolderId = ref<string>();
@@ -161,10 +163,11 @@ function moveItems() {
 
     const targetFolder = selectedRoot.value ? null : folders.value.find(f => f._id === selectedFolderId.value);
     
-    const movedItems = await trpcClient.moveProjectItemsToFolder.mutate({
+    const movedItems = await mutation.mutateAsync({
       projectId: props.projectId,
       targetFolderId: selectedRoot.value ? null : ensure(selectedFolderId.value),
-      items: props.items.map(item => ({ id: item._id, type: item.type }))
+      items: props.items.map(item => ({ id: item._id, type: item.type })),
+      sourceFolderId: props.sourceFolderId
     });
 
     emit('move', movedItems);
