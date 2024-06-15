@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="toasts.length"
-    class="toast toast-top toast-center z-50 max-w-[100vw] w-full sm:max-w-[500px]"
+    class="toast toast-bottom toast-right z-50 max-w-[100vw] w-full sm:max-w-[500px]"
   >
     <div
       v-for="toast in toasts"
