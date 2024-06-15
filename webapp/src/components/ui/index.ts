@@ -24,3 +24,4 @@ export * from "./radio-list/index.js";
 export { default as UiRadialProgress } from './UiRadialProgress.vue';
 export { default as UiForm } from './UiForm.vue';
 export { default as UiSkeleton } from './skeleton/Skeleton.vue';
+export { default as UiSpinner } from './UiSpinner.vue';
