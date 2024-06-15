@@ -21,7 +21,7 @@
   />
   <PlayerSkeleton
     v-else-if="!media"
-    :allowComments="share?.allowComments"
+    :allowComments="!!(share?.allowComments)"
     @close="handleClosePlayer()"
   />
 </template>
