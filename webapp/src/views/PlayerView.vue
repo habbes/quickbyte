@@ -33,8 +33,8 @@
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useQueryClient } from "@tanstack/vue-query";
-import { logger, showToast, store, trpcClient, useProjectItemsQuery, useMediaAssetQuery, wrapError, invalidMediaAssetQuery } from "@/app-utils";
-import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
+import { logger, showToast, store, trpcClient, useProjectItemsQuery, useMediaAssetQuery, invalidMediaAssetQuery } from "@/app-utils";
+import type { ProjectItem, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
 
@@ -89,15 +89,18 @@ async function handleVersionUpload() {
   // but wanted to get this done quickly by re-using existing
   // endpoints and maybe optmize later.
   invalidMediaAssetQuery(queryClient, projectId, mediaId);
-  // selectedVersionId.value = media.value.preferredVersionId;
+  // Since this changes the preferred version, refresh the page in order to
+  // reset the current selected version to match the new preferred version
+  router.push({ name: 'player', params: { projectId: projectId.value, mediaId: mediaId.value } })
 };
 
 function handleMediaUpdate(updatedMedia: Media) {
-   // TODO: since we don't have the file, for now just reload
-  // the entire media object and update the local instance
-  // this is unnecessarily costly, we just need to load
-  // the downloadable file. I'll the update should probably contain media files
-  return handleVersionUpload();
+  if (media.value?.preferredVersionId !== updatedMedia.preferredVersionId) {
+    // preferred version has changed, reset the currently selected version
+    return handleVersionUpload();
+  } else {
+    invalidMediaAssetQuery(queryClient, projectId, mediaId);
+  }
 }
 
 async function handleSelectVersion(versionId: string) {
