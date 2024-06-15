@@ -1,7 +1,7 @@
-import { useQuery, QueryClient } from '@tanstack/vue-query'
+import { useQuery, QueryClient, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { trpcClient } from '../api';
 import type { MaybeRef, MaybeRefOrGetter } from 'vue';
-import type { Folder, GetProjectItemsResult, Media, ProjectItem, ProjectItemRef } from "@quickbyte/common";
+import type { Folder, DeleteProjectItemsArgs, DeletionCountResult, GetProjectItemsResult, Media, ProjectItem, ProjectItemRef, MoveProjectItemsToFolderArgs } from "@quickbyte/common";
 import { unref } from "vue";
 
 export function getProjectItemsQueryKey(projectId: MaybeRef<string>, folderId?: MaybeRef<string|undefined>) {
@@ -25,6 +25,50 @@ export function useProjectItemsQuery(projectId: MaybeRef<string>, folderId?: May
     });
 
     return result;
+}
+
+export function useDeleteProjectItemsMutation() {
+    const client = useQueryClient();
+    const mutation = useMutation<DeletionCountResult, Error, DeleteProjectItemsArgs & { folderId?: string }>({
+        mutationFn: ({ projectId, items }) => trpcClient.deleteProjectItems.mutate({ projectId, items }),
+        onSuccess: (result, args) => {
+            // NOTE: This assumes all items are deleted from the same folder.
+            // Currently the UI only supports this scenario (but the API endpoint doesn't have that restriction).
+            // If our UI supports deleting items from different folders in one request, we should
+            // update this method.
+            deleteProjectItemsInQuery(
+                client,
+                args.projectId,
+                args.folderId,
+                ...args.items.map(({ id, type }) => ({ type, _id: id}))
+            );
+        }
+    });
+
+    return mutation;
+}
+
+export function useMoveProjectItemsMutation() {
+    const client = useQueryClient();
+    const mutation = useMutation<ProjectItem[], Error, MoveProjectItemsToFolderArgs & { sourceFolderId?: string }>({
+        mutationFn: ({ projectId, targetFolderId, items }) => trpcClient.moveProjectItemsToFolder.mutate({
+            projectId,
+            targetFolderId,
+            items
+        }),
+        onSuccess: (result, args) => {
+            if (!result.length) return;
+            
+            // TODO: this assumes all the items are moved from the same source folder.
+            // While this is the only scenario currently suppored in the UI, the API
+            // endpoint doesn't care about the source folder. If the UI extends to
+            // support moving multiple items from different folders, we should update this.
+            deleteProjectItemsInQuery(client, args.projectId, args.sourceFolderId, ...result);
+            upsertProjectItemsInQuery(client, args.projectId, args.targetFolderId || undefined, ...result);
+        }
+    });
+
+    return mutation;
 }
 
 /**
@@ -57,52 +101,8 @@ export function upsertProjectItemsInQuery(
                 updatedItems.push(newItem);
             }
             else {
-                updatedItems[currentIndex] = Object.assign({}, updatedItems[currentIndex], newItem);
+                updatedItems[currentIndex] = mergeItems(updatedItems[currentIndex], newItem);
             }
-        }
-
-        return {
-            ...oldData,
-            items: updatedItems
-        };
-    });
-}
-
-/**
- * Updates the specified items in the
- * project items query data cache.
- * @param queryClient 
- * @param projectId 
- * @param folderId 
- * @param itemsToUpdate 
- */
-export function updateProjectItemsInQuery(
-    queryClient: QueryClient,
-    projectId: MaybeRef<string>,
-    folderId: MaybeRef<string|undefined>,
-    ...itemsToUpdate:  Array<{ _id: string } & ({ type: 'folder', item: Partial<Folder> } | { type: 'media', item: Partial<Media> })>
-) {
-    const queryKey = getProjectItemsQueryKey(projectId, folderId);
-    queryClient.setQueryData<GetProjectItemsResult>(queryKey, oldData => {
-        if (!oldData) {
-            return;
-        }
-
-        const updatedItems: ProjectItem[] = oldData.items.concat([]);
-        for (const item of itemsToUpdate) {
-            const index = updatedItems.findIndex(i => i._id === item._id && i.type === item.type);
-            if (index === -1) {
-                continue;
-            }
-
-            const original = updatedItems[index];
-            updatedItems[index] = Object.assign({}, original, {
-                ...({
-                    item: { ...original.item, ...item.item },
-                    name: item.item.name,
-                    _updatedAt: item.item._updatedAt
-                })
-            });
         }
 
         return {
@@ -140,4 +140,10 @@ export function deleteProjectItemsInQuery(
             items: updatedItems
         };
     });
+}
+
+function mergeItems<TItem extends { item: any }, TResult extends TItem>(oldItem: TItem, newItem: TItem): TResult {
+    const mergedInnerItem = Object.assign({}, oldItem.item, newItem.item);
+    const mergedItem = { ...oldItem, ...newItem, item: mergedInnerItem };
+    return mergedItem as TResult;
 }

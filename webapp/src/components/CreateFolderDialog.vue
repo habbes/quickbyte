@@ -15,7 +15,7 @@
 </template>
 <script lang="ts" setup>
 import { ref } from "vue";
-import { wrapError, trpcClient, showToast } from "@/app-utils";
+import { wrapError, trpcClient, showToast, useCreateFolderMutation } from "@/app-utils";
 import { UiDialog, UiTextInput, UiLayout, UiButton, UiForm } from "@/components/ui";
 import type { CreateFolderArgs, Folder } from "@quickbyte/common";
 
@@ -30,6 +30,7 @@ const emit = defineEmits<{
 
 defineExpose({ open, close });
 
+const mutation = useCreateFolderMutation();
 const dialog = ref<typeof UiDialog>();
 const name = ref<string>();
 
@@ -57,7 +58,7 @@ async function createFolder() {
       args.parentId = props.parentId;
     }
 
-    const result = await trpcClient.createFolder.mutate(args);
+    const result = await mutation.mutateAsync(args);
     emit('createFolder', result);
     showToast(`Folder '${result.name}' has been created successfully`, 'info');
     close();

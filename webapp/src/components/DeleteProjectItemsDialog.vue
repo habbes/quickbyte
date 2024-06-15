@@ -14,7 +14,7 @@
 import { UiDialog, UiButton } from "@/components/ui";
 import type { Folder, ProjectItemType, ProjectItem } from "@quickbyte/common";
 import { computed, ref } from "vue";
-import { logger, showToast, trpcClient } from "@/app-utils";
+import { logger, showToast, trpcClient, useDeleteProjectItemsMutation } from "@/app-utils";
 import { pluralize } from "@/core";
 
 type DeleteEvent = {
@@ -28,6 +28,8 @@ type DeleteEvent = {
 const props = defineProps<{
   items: ProjectItem[];
   projectId: string;
+  // folder from which items are deleted
+  folderId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -36,6 +38,7 @@ const emit = defineEmits<{
 
 defineExpose({ open, close });
 
+const mutation = useDeleteProjectItemsMutation();
 const dialog = ref<typeof UiDialog>();
 const name = computed(() => props.items.length === 1 ? props.items[0].name : undefined)
 
@@ -53,9 +56,10 @@ function close() {
 
 async function deleteItems() {
   try {
-    const result = await trpcClient.deleteProjectItems.mutate({
+    const result = await mutation.mutateAsync({
       items: props.items.map(item => ({ id: item._id, type: item.type })),
-      projectId: props.projectId
+      projectId: props.projectId,
+      folderId: props.folderId
     });
 
     emit('delete', {

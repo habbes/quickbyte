@@ -33,7 +33,7 @@
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useQueryClient } from "@tanstack/vue-query";
-import { logger, showToast, store, trpcClient, useProjectItemsQuery, useMediaAssetQuery, invalidMediaAssetQuery } from "@/app-utils";
+import { logger, showToast, store, useProjectItemsQuery, useMediaAssetQuery, invalidateMediaAssetQuery, useCreateMediaCommentMutation, useDeleteMediaCommentMutation, useUpdateMediaCommentMutation } from "@/app-utils";
 import type { ProjectItem, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
@@ -58,6 +58,9 @@ const browserItemsQuery = useProjectItemsQuery(projectId, browserItemsFolderId, 
 const browserItems = computed(() => browserItemsQuery.data.value?.items || []);
 const browserItemsPath = computed(() => browserItemsQuery.data.value?.folder?.path || []);
 
+const createCommentMutation = useCreateMediaCommentMutation();
+const updateCommentMutation = useUpdateMediaCommentMutation();
+const deleteCommentMutation = useDeleteMediaCommentMutation();
 
 watch(media, () => {
   if (!media.value) {
@@ -88,7 +91,7 @@ async function handleVersionUpload() {
   // the downloadable file for the new preferred version
   // but wanted to get this done quickly by re-using existing
   // endpoints and maybe optmize later.
-  invalidMediaAssetQuery(queryClient, projectId, mediaId);
+  invalidateMediaAssetQuery(queryClient, projectId, mediaId);
   // Since this changes the preferred version, refresh the page in order to
   // reset the current selected version to match the new preferred version
   router.push({ name: 'player', params: { projectId: projectId.value, mediaId: mediaId.value } })
@@ -99,7 +102,7 @@ function handleMediaUpdate(updatedMedia: Media) {
     // preferred version has changed, reset the currently selected version
     return handleVersionUpload();
   } else {
-    invalidMediaAssetQuery(queryClient, projectId, mediaId);
+    invalidateMediaAssetQuery(queryClient, projectId, mediaId);
   }
 }
 
@@ -121,7 +124,7 @@ async function sendComment(args: {
   const projectId = ensure(route.params.projectId) as string;
   const mediaId = ensure(route.params.mediaId) as string;
 
-  const comment = await trpcClient.createMediaComment.mutate({
+  const comment = await createCommentMutation.mutateAsync({
     projectId: projectId,
     mediaId: mediaId,
     mediaVersionId: args.versionId,
@@ -142,7 +145,7 @@ async function editComment({ commentId, text }: { commentId: string, text: strin
     throw new Error('Project has not loaded.');
   }
 
-  const comment = await trpcClient.updateMediaComment.mutate({
+  const comment = await updateCommentMutation.mutateAsync({
       projectId: media.value.projectId,
       mediaId: media.value._id,
       commentId,
@@ -152,12 +155,13 @@ async function editComment({ commentId, text }: { commentId: string, text: strin
   return comment;
 }
 
-async function deleteComment({ commentId } : { commentId: string }) {
+async function deleteComment({ commentId, parentId } : { commentId: string; parentId?: string }) {
   if (!media.value) return;
-  await trpcClient.deleteMediaComment.mutate({
+  await deleteCommentMutation.mutateAsync({
     projectId: media.value.projectId,
     commentId: commentId,
-    mediaId: media.value._id
+    mediaId: media.value._id,
+    parentId
   });
 }
 

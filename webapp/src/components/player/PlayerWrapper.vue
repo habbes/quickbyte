@@ -217,7 +217,8 @@ const props = defineProps<{
     text: string;
   }) => Promise<Comment>;
   deleteComment?: (args: {
-    commentId: string
+    commentId: string;
+    parentId?: string;
   }) => Promise<unknown>;
 }>();
 
@@ -304,6 +305,7 @@ watch(_media, () => {
 
   // selectedVersionId.value = props.selectedVersionId || _media.value.preferredVersionId;
 }, { immediate: true });
+
 
 const selectedVersion = computed(() => {
   if (!props.media) return;
@@ -511,8 +513,14 @@ async function sendTopLevelComment() {
     };
   
     commentInputText.value = '';
-    comments.value.push(comment);
-    
+    const commentIndex = comments.value.findIndex(c => c._id === comment._id);
+    // Since the media comments maybe updated by the implementation of
+    // props.sendComment, check first before adding the created comment to the list.
+    // Ideally, we should refactor things such that the comments props are
+    // updated by the caller whenever the a comment is added
+    if (commentIndex === -1) {
+      comments.value.push(comment);
+    }
     
     scrollToComment(comment);
   }
@@ -537,9 +545,18 @@ async function sendTopLevelComment() {
       user.value = comment.author
     };
 
-    const parent = comments.value.find(c => c._id === parentId);
-    if (parent) {
-      parent.children.push(comment);
+    const parentIndex = comments.value.findIndex(c => c._id === parentId);
+    if (parentIndex !== -1) {
+      const parent = comments.value[parentIndex];
+      const childIndex = parent.children.findIndex(c => c._id === comment._id);
+      // TODO: we push the comment here for backwards compatibility
+      // The parent component should be responsible of updating the local
+      // comments collection when a comment is sent. Once we've updated
+      // scenarios that use this component, remove this code
+      if (childIndex === -1) {
+        const children = parent.children.concat([comment]);
+        comments.value[parentIndex] = { ...parent, children }
+      }
     }
 
     scrollToComment(comment);
@@ -558,12 +575,18 @@ async function editComment(commentId: string, text: string) {
       text
     });
 
+    // TODO: we're performing this update for backwards compatibility
+    // but the parent component should be responsible for updating
+    // the comments collection. Once we refactor all scenarios
+    // that use this component, we should remove this local update code.
     if (comment.parentId) {
-      const parent = comments.value.find(c => c._id === comment.parentId);
-      if (!parent) {
+      const parentIndex = comments.value.findIndex(c => c._id === comment.parentId);
+      if (parentIndex === -1) {
         logger.warn(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' after comment update, but did not find it.`);
         return;
       }
+
+      const parent = comments.value[parentIndex];
 
       const indexToUpdate = parent.children.findIndex(c => c._id === comment._id);
       if (indexToUpdate === -1) {
@@ -573,13 +596,14 @@ async function editComment(commentId: string, text: string) {
 
       // the comment we get from the server has less fields than the one we have in the client, so we merge
       // the two instead of a full replacement
-      parent.children[indexToUpdate] = { ...parent.children[indexToUpdate], ...comment };
+      const children = [...parent.children];
+      children[indexToUpdate] = { ...children[indexToUpdate], ...comment };
+      comments.value[parentIndex] = { ...parent, children };
       return;
     }
 
     const indexToUpdate = comments.value.findIndex(c => c._id === comment._id);
     if (indexToUpdate === -1) {
-      logger.warn(`Expected to find comment '${comment._id}' in comment list after comment update.`);
       return;
     }
 
@@ -599,14 +623,17 @@ function handleCommentDeleted(comment: CommentWithAuthor) {
     const parent = comments.value.find(c => c._id === comment.parentId);
     
     if (!parent) {
-      logger.warn(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' after comment deletion, but did not find it.`);
       return;
     }
 
+    // TODO: we're performing this update for backwards compatibility
+    // but the parent component should be responsible for updating
+    // the comments collection. Once we refactor all scenarios
+    // that use this component, we should remove this local update code.
+  
     // NOTE: we only assume two-levels of nesting
     const indexToRemove = parent.children.findIndex(c => c._id === comment._id);
     if (indexToRemove === -1) {
-      logger.warn(`Expected to find comment '${comment._id}' as child of '${parent._id}' in comments list after deletion, but did not find it.`);
       return;
     }
 
@@ -617,7 +644,6 @@ function handleCommentDeleted(comment: CommentWithAuthor) {
   // top-level comment
   const indexToRemove = comments.value.findIndex(c => c._id === comment._id);
   if (indexToRemove === -1) {
-    logger.warn(`Expected to find comment '${comment._id}' in comment list after comment deletion.`);
     return;
   }
 

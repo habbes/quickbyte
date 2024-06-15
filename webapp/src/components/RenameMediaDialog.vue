@@ -20,7 +20,7 @@
 import { UiDialog, UiLayout, UiForm, UiTextInput, UiButton } from "@/components/ui";
 import type { Media } from "@quickbyte/common";
 import { ref } from "vue";
-import { logger, showToast, trpcClient } from "@/app-utils";
+import { logger, showToast, useUpdateMediaMutation } from "@/app-utils";
 
 const props = defineProps<{
   media: Media
@@ -32,6 +32,7 @@ const emit = defineEmits<{
 
 defineExpose({ open, close });
 
+const mutation = useUpdateMediaMutation();
 const dialog = ref<typeof UiDialog>();
 const name = ref<string>();
 
@@ -47,7 +48,7 @@ function close() {
 async function rename() {
   if (!name.value) return;
   try {
-    const result = await trpcClient.updateMedia.mutate({
+    const result = await mutation.mutateAsync({
       name: name.value,
       id: props.media._id,
       projectId: props.media.projectId
