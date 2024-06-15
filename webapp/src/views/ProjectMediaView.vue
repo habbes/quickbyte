@@ -267,7 +267,6 @@
   <CreateFolderDialog
     v-if="project"
     ref="createFolderDialog"
-    @createFolder="handleCreatedFolder($event)"
     :projectId="project._id"
     :parentId="currentFolder?._id"
   />
@@ -610,20 +609,6 @@ function handleShareProjectItems(item?: { type: ProjectItemType, itemId: string 
     return;
   }
   nextTick(() => createProjectShareDialog.value?.open());
-}
-
-
-function handleCreatedFolder(newFolder: Folder) {
-  const item: ProjectFolderItem = {
-    _id: newFolder._id,
-    _createdAt: newFolder._createdAt,
-    _updatedAt: newFolder._updatedAt,
-    type: 'folder',
-    name: newFolder.name,
-    item: newFolder
-  };
-
-  upsertProjectItemsInQuery(queryClient, projectId, folderId, item);
 }
 
 function createFolder() {

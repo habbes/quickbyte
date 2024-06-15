@@ -1,7 +1,19 @@
 import { useQueryClient, useMutation } from '@tanstack/vue-query'
 import { trpcClient } from '../api';
 import { upsertProjectItemsInQuery } from './project-items-queries';
-import type { Folder, UpdateFolderArgs, ProjectFolderItem } from "@quickbyte/common";
+import type { Folder, UpdateFolderArgs, CreateFolderArgs, ProjectFolderItem } from "@quickbyte/common";
+
+export function useCreateFolderMutation() {
+    const client = useQueryClient();
+    const mutation = useMutation<Folder, Error, CreateFolderArgs>({
+        mutationFn: (args) => trpcClient.createFolder.mutate(args),
+        onSuccess: (result) => {
+            upsertProjectItemsInQuery(client, result.projectId, result.parentId || undefined, converFolderToProjectItem(result));
+        }
+    });
+
+    return mutation;
+}
 
 export function useUpdateFolderMutation() {
     const client = useQueryClient();
