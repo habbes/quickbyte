@@ -33,7 +33,7 @@
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useQueryClient } from "@tanstack/vue-query";
-import { logger, showToast, store, trpcClient, useProjectItemsQuery, useMediaAssetQuery, invalidateMediaAssetQuery, useCreateMediaCommentMutation, useDeleteMediaCommentMutation } from "@/app-utils";
+import { logger, showToast, store, useProjectItemsQuery, useMediaAssetQuery, invalidateMediaAssetQuery, useCreateMediaCommentMutation, useDeleteMediaCommentMutation, useUpdateMediaCommentMutation } from "@/app-utils";
 import type { ProjectItem, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
@@ -59,6 +59,7 @@ const browserItems = computed(() => browserItemsQuery.data.value?.items || []);
 const browserItemsPath = computed(() => browserItemsQuery.data.value?.folder?.path || []);
 
 const createCommentMutation = useCreateMediaCommentMutation();
+const updateCommentMutation = useUpdateMediaCommentMutation();
 const deleteCommentMutation = useDeleteMediaCommentMutation();
 
 watch(media, () => {
@@ -144,7 +145,7 @@ async function editComment({ commentId, text }: { commentId: string, text: strin
     throw new Error('Project has not loaded.');
   }
 
-  const comment = await trpcClient.updateMediaComment.mutate({
+  const comment = await updateCommentMutation.mutateAsync({
       projectId: media.value.projectId,
       mediaId: media.value._id,
       commentId,

@@ -3,7 +3,7 @@ import { trpcClient } from '../api';
 import type { MaybeRef, MaybeRefOrGetter } from 'vue';
 import { unref, watch } from "vue";
 import { upsertProjectItemsInQuery } from './project-items-queries';
-import type { ProjectMediaItem, UpdateMediaVersionsArgs, Media, MediaWithFileAndComments, UpdateMediaArgs, CreateMediaCommentArgs, Comment, WithChildren, CommentWithAuthor, DeleteMediaCommentArgs } from "@quickbyte/common";
+import type { ProjectMediaItem, UpdateMediaVersionsArgs, Media, MediaWithFileAndComments, UpdateMediaArgs, CreateMediaCommentArgs, Comment, WithChildren, CommentWithAuthor, DeleteMediaCommentArgs, UpdateMediaCommentArgs } from "@quickbyte/common";
 import { logger } from '../logger';
 
 export function getMediaAssetQueryKey(projectId: MaybeRef<string>, mediaId?: MaybeRef<string>) {
@@ -72,6 +72,18 @@ export function useCreateMediaCommentMutation() {
         mutationFn: (args) => trpcClient.createMediaComment.mutate(args),
         onSuccess: (result) => {
             upsertMediaCommentInQuery(client, result);
+        }
+    });
+
+    return mutation;
+}
+
+export function useUpdateMediaCommentMutation() {
+    const client = useQueryClient();
+    const mutation = useMutation<Comment, Error, UpdateMediaCommentArgs>({
+        mutationFn: (args) => trpcClient.updateMediaComment.mutate(args),
+        onSuccess: (result) => {
+            updateMediaCommentInQuery(client, result)
         }
     });
 
@@ -181,16 +193,34 @@ export function updateMediaCommentInQuery(client: QueryClient, comment: Comment)
         if (!oldData) {
             return;
         }
-
-        // TODO: consider parent
         const oldComments = oldData.comments;
-        const index = oldComments.findIndex(c => c._id === comment._id);
-        if (index === -1) {
-            return;
-        }
+        const newComments = [...oldData.comments];
 
-        const newComments = [...oldComments];
-        newComments[index] = Object.assign({}, oldComments[index], comment);
+        if (comment.parentId) {
+            const parentIndex = oldComments.findIndex(p => p._id === comment.parentId);
+            if (parentIndex === -1) {
+                logger.error(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' in query cache of media ${comment.mediaId} but did not.`);
+                return;
+            }
+
+            const parent = newComments[parentIndex];
+            const children = [...parent.children];
+            const childIndex = children.findIndex(c => c._id === comment._id);
+            if (childIndex === -1) {
+                return;
+            }
+
+            children[childIndex] = { ...children[childIndex], ...comment };
+            newComments[parentIndex] = { ...newComments[parentIndex], children };
+        }
+        else {
+            const index = oldComments.findIndex(c => c._id === comment._id);
+            if (index === -1) {
+                return;
+            }
+
+            newComments[index] = Object.assign({}, oldComments[index], comment);
+        }
 
         return { ...oldData, comments: newComments };
     });
