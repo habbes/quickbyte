@@ -3,7 +3,8 @@ import { trpcClient } from '../api';
 import type { MaybeRef, MaybeRefOrGetter } from 'vue';
 import { unref, watch } from "vue";
 import { upsertProjectItemsInQuery } from './project-items-queries';
-import type { ProjectMediaItem, UpdateMediaVersionsArgs, Media, MediaWithFileAndComments, UpdateMediaArgs } from "@quickbyte/common";
+import type { ProjectMediaItem, UpdateMediaVersionsArgs, Media, MediaWithFileAndComments, UpdateMediaArgs, CreateMediaCommentArgs, Comment, WithChildren, CommentWithAuthor } from "@quickbyte/common";
+import { logger } from '../logger';
 
 export function getMediaAssetQueryKey(projectId: MaybeRef<string>, mediaId?: MaybeRef<string>) {
     return ['media', projectId, mediaId];
@@ -65,6 +66,18 @@ export function useUpdateMediaVersionsMutation() {
     return mutation
 }
 
+export function useCreateMediaCommentMutation() {
+    const client = useQueryClient();
+    const mutation = useMutation<WithChildren<CommentWithAuthor>, Error, CreateMediaCommentArgs>({
+        mutationFn: (args) => trpcClient.createMediaComment.mutate(args),
+        onSuccess: (result) => {
+            upsertMediaCommentInQuery(client, result);
+        }
+    });
+
+    return mutation;
+}
+
 export function invalidateMediaAssetQuery(client: QueryClient, projectId: MaybeRef<string>, mediaId: MaybeRef<string>) {
     client.invalidateQueries({ queryKey: getMediaAssetQueryKey(projectId, mediaId) });
 }
@@ -101,6 +114,81 @@ export function updateMediaAssetInQuery<TMedia extends Media>(
         const updatedData = { ...oldData, ...update, versions: updatedVersions };
 
         return updatedData
+    });
+}
+
+export function upsertMediaCommentInQuery(client: QueryClient, comment: WithChildren<CommentWithAuthor>) {
+    const queryKey = getMediaAssetQueryKey(comment.projectId, comment.mediaId);
+    client.setQueryData<MediaWithFileAndComments>(queryKey, oldData => {
+        if (!oldData) {
+            return;
+        }
+
+        const oldComments = oldData.comments;
+        const newComments = [...oldComments];
+
+        if (comment.parentId) {
+            const parentIndex = oldComments.findIndex(c => c._id === comment.parentId);
+            if (parentIndex === -1) {
+                logger.error(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' in query cache of media ${comment.mediaId} but did not.`);
+                return;
+            }
+
+            const parent = Object.assign({}, oldComments[parentIndex]);
+            const index = parent.children.findIndex(c => c._id === comment._id);
+            if (index === -1) {
+                parent.children.push(comment);
+            } else {
+                parent.children[index] = Object.assign({}, parent.children[index], comment);
+            }
+
+            newComments[parentIndex] = parent;
+        }
+        else {
+            const index = newComments.findIndex(c => c._id === comment._id);
+            if (index === -1) {
+                newComments.push(comment)
+            } else {
+                newComments[index] = Object.assign({}, newComments[index], comment);
+            }
+        }
+
+        return { ...oldData, comments: newComments };
+    });
+}
+
+export function updateMediaCommentInQuery(client: QueryClient, comment: Comment) {
+    const queryKey = getMediaAssetQueryKey(comment.projectId, comment.mediaId);
+    client.setQueryData<MediaWithFileAndComments>(queryKey, oldData => {
+        if (!oldData) {
+            return;
+        }
+
+        const oldComments = oldData.comments;
+        const index = oldComments.findIndex(c => c._id === comment._id);
+        if (index === -1) {
+            return;
+        }
+
+        const newComments = [...oldComments];
+        newComments[index] = Object.assign({}, oldComments[index], comment);
+
+        return { ...oldData, comments: newComments };
+    });
+}
+
+export function deleteMediaCommentInQuery(client: QueryClient, comment: Comment) {
+    const queryKey = getMediaAssetQueryKey(comment.projectId, comment.mediaId);
+    client.setQueryData<MediaWithFileAndComments>(queryKey, oldData => {
+        if (!oldData) {
+            return;
+        }
+
+        const oldComments = oldData.comments;
+
+        const newComments = oldComments.filter(c => c._id !== comment._id);
+
+        return { ...oldData, comments: newComments };
     });
 }
 

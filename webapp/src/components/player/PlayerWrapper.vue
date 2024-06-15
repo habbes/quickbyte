@@ -305,6 +305,7 @@ watch(_media, () => {
   // selectedVersionId.value = props.selectedVersionId || _media.value.preferredVersionId;
 }, { immediate: true });
 
+
 const selectedVersion = computed(() => {
   if (!props.media) return;
   if (!props.selectedVersionId) return;
@@ -511,8 +512,14 @@ async function sendTopLevelComment() {
     };
   
     commentInputText.value = '';
-    comments.value.push(comment);
-    
+    const commentIndex = comments.value.findIndex(c => c._id === comment._id);
+    // Since the media comments maybe updated by the implementation of
+    // props.sendComment, check first before adding the created comment to the list.
+    // Ideally, we should refactor things such that the comments props are
+    // updated by the caller whenever the a comment is added
+    if (commentIndex === -1) {
+      comments.value.push(comment);
+    }
     
     scrollToComment(comment);
   }

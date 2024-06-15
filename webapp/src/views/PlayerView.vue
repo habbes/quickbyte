@@ -33,7 +33,7 @@
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useQueryClient } from "@tanstack/vue-query";
-import { logger, showToast, store, trpcClient, useProjectItemsQuery, useMediaAssetQuery, invalidateMediaAssetQuery } from "@/app-utils";
+import { logger, showToast, store, trpcClient, useProjectItemsQuery, useMediaAssetQuery, invalidateMediaAssetQuery, useCreateMediaCommentMutation } from "@/app-utils";
 import type { ProjectItem, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
@@ -57,6 +57,8 @@ const browserItemsFolderId = ref<string>();
 const browserItemsQuery = useProjectItemsQuery(projectId, browserItemsFolderId, { enabled: browserItemsQueryEnabled });
 const browserItems = computed(() => browserItemsQuery.data.value?.items || []);
 const browserItemsPath = computed(() => browserItemsQuery.data.value?.folder?.path || []);
+
+const createCommentMutation = useCreateMediaCommentMutation();
 
 
 watch(media, () => {
@@ -121,7 +123,7 @@ async function sendComment(args: {
   const projectId = ensure(route.params.projectId) as string;
   const mediaId = ensure(route.params.mediaId) as string;
 
-  const comment = await trpcClient.createMediaComment.mutate({
+  const comment = await createCommentMutation.mutateAsync({
     projectId: projectId,
     mediaId: mediaId,
     mediaVersionId: args.versionId,
