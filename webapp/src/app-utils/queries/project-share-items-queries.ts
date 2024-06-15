@@ -5,7 +5,7 @@ import { GetProjectShareLinkItemsArgs } from "@quickbyte/common";
 
 export function getProjectShareItemsQueryKey(
     shareId: MaybeRef<string>,
-    code: MaybeRef<string>,
+    code: MaybeRef<string|undefined>,
     folderId: MaybeRef<string|undefined>,
     password: MaybeRef<string|undefined>
 ) {
@@ -14,7 +14,7 @@ export function getProjectShareItemsQueryKey(
 
 export interface ProjectShareItemQueryArgs {
     shareId: MaybeRef<string>;
-    code: MaybeRef<string>;
+    code: MaybeRef<string|undefined>;
     folderId: MaybeRef<string|undefined>;
     password: MaybeRef<string|undefined>;
 }
@@ -32,6 +32,9 @@ export function useProjectShareItemsQuery(
     const query = useQuery({
         queryKey,
         queryFn: ({ queryKey: [_key, shareId, code, folderId, password]}) => {
+            if (!code) {
+                return;
+            }
             const args: GetProjectShareLinkItemsArgs = {
                 shareId: shareId,
                 code: code

@@ -61,7 +61,6 @@ import { useRoute, useRouter } from "vue-router";
 import { projectShareStore, showToast, logger, useProjectShareItemsQuery } from "@/app-utils";
 import { unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import type { ProjectShareLinkItemsSuccessResult } from "@quickbyte/common";
-import { layoutDimensions } from "@/styles/dimentions.js";
 import { UiLayout, UiTextInput, UiButton } from "@/components/ui";
 import NavBarBase from '@/components/NavBarBase.vue';
 import Logo from '@/components/Logo.vue';
@@ -78,7 +77,6 @@ const share = ref<ProjectShareLinkItemsSuccessResult>();
 const rawPasswordInput = ref<string>();
 const password = ref<string>();
 const passwordRequired = ref(false);
-const headerHeight = layoutDimensions.projectHeaderHeight;
 
 const hiddenDownloader = ref<HTMLAnchorElement>();
 const currentDownloadUrl = ref<string>();
