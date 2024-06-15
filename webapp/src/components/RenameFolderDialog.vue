@@ -19,7 +19,7 @@
 import { UiDialog, UiLayout, UiButton, UiForm, UiTextInput } from "@/components/ui";
 import type { Folder } from "@quickbyte/common";
 import { ref } from "vue";
-import { logger, showToast, trpcClient } from "@/app-utils";
+import { logger, showToast, useUpdateFolderMutation } from "@/app-utils";
 
 const props = defineProps<{
   folder: Folder
@@ -31,6 +31,7 @@ const emit = defineEmits<{
 
 defineExpose({ open, close });
 
+const mutation = useUpdateFolderMutation();
 const dialog = ref<typeof UiDialog>();
 const name = ref<string>();
 
@@ -46,7 +47,7 @@ function close() {
 async function rename() {
   if (!name.value) return;
   try {
-    const result = await trpcClient.updateFolder.mutate({
+    const result = await mutation.mutateAsync({
       name: name.value,
       id: props.folder._id,
       projectId: props.folder.projectId
