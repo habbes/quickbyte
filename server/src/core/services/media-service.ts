@@ -147,7 +147,7 @@ export class MediaService {
 
             const file = preferredVersion.file;
 
-            return { ...medium, file, versions: versionsWithFiles, comments }
+            return { ...medium, file, versions: versionsWithFiles, comments, thumbnailUrl: file.thumbnailUrl }
         } catch (e: any) {
             rethrowIfAppError(e);
             throw createAppError(e);

@@ -23,11 +23,15 @@
       @click="selectVersion(version.version._id)"
     >
       <UiLayout horizontal itemsCenter justifyBetween fullWidth>
+       
         <UiLayout horizontal fill gapSm itemsCenter class="overflow-hidden" :title="version.version.name">
           <span class="text-gray-500">{{ version.code }}</span>
+          
           <span class="overflow-hidden whitespace-nowrap text-ellipsis">{{ version.version.name }}</span>
         </UiLayout>
+        <StarIcon title="Preferred version" v-if="version.version._id === media.preferredVersionId" class="h-4 w-4 text-slate-300" />
         <CheckIcon v-if="version.version._id === selectedVersionId" class="h-4 w-4" />
+        
       </UiLayout>
     </UiMenuItem>
 
@@ -52,6 +56,7 @@ import type { Media } from "@quickbyte/common";
 import { UiLayout, UiMenu, UiMenuItem } from "@/components/ui";
 import { MediaVersionsDialog } from "@/components/versions";
 import { CheckIcon, ArrowUpIcon, ChevronDownIcon, Cog6ToothIcon } from "@heroicons/vue/24/outline";
+import { StarIcon } from "@heroicons/vue/24/solid";
 import { useFileTransfer, useFilePicker, showToast } from "@/app-utils";
 import { computed, watch } from "vue";
 import { formatPercentage, pluralize } from "@/core";
