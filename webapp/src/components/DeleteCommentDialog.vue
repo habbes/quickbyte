@@ -21,6 +21,7 @@ import { ensure } from "@/core";
 const props = defineProps<{
   deleteComment: (args: {
     commentId: string;
+    parentId?: string;
   }) => Promise<unknown>;
 }>();
 
@@ -60,7 +61,8 @@ async function deleteComment() {
   try {
 
     await props.deleteComment({
-      commentId: comment.value._id
+      commentId: comment.value._id,
+      parentId: comment.value.parentId
     });
     
     emit('deleted', comment.value);

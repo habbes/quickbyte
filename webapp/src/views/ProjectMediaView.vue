@@ -183,7 +183,6 @@
                     :showSelectCheckbox="selectedItemIds.size > 0"
                     :totalSelectedItems="selectedItemIds.size"
                     :allowUpload="project.role === 'owner' || project.role === 'admin' || project.role === 'editor'"
-                    @update="handleItemUpdate($event)"
                     @delete="handleDeleteRequested($event)"
                     @move="handleMoveRequested($event)"
                     @share="handleShareProjectItems($event)"
@@ -268,7 +267,6 @@
   <CreateFolderDialog
     v-if="project"
     ref="createFolderDialog"
-    @createFolder="handleCreatedFolder($event)"
     :projectId="project._id"
     :parentId="currentFolder?._id"
   />
@@ -277,14 +275,15 @@
     ref="deleteItemsDialog"
     :projectId="project._id"
     :items="selectedItems"
+    :folderId="currentFolder?._id"
     @delete="handleItemsDeleted($event)"
   />
   <MoveProjectItemsDialog
     v-if="project"
     ref="moveItemsDialog"
     :projectId="project._id"
+    :sourceFolderId="currentFolder?._id"
     :items="selectedItems"
-    @move="handleItemsMoved($event)"
   />
   <CreateProjectShareDialog
     v-if="project"
@@ -296,11 +295,11 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { showToast, store, logger, useFilePicker, useFileTransfer, useProjectItemsQuery, upsertProjectItemsInQuery, deleteProjectItemsInQuery, updateProjectItemsInQuery } from '@/app-utils';
+import { showToast, store, logger, useFilePicker, useFileTransfer, useProjectItemsQuery, upsertProjectItemsInQuery, deleteProjectItemsInQuery } from '@/app-utils';
 import { ensure, pluralize, unwrapSingleton, unwrapSingletonOrUndefined } from '@/core';
 import type {
-  ProjectItem, Folder,
-  ProjectItemType, ProjectFolderItem, FolderWithPath, Media, 
+  ProjectItem,
+  ProjectItemType, FolderWithPath, 
 } from "@quickbyte/common";
 import {
   PlusIcon, ArrowUpCircleIcon, ArrowsUpDownIcon, CheckIcon,
@@ -547,14 +546,6 @@ function handleToggleInMultiSelect(args: { type: ProjectItemType, itemId: string
   toggleItemInMultiSelect(args.itemId);
 }
 
-function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
-  updateProjectItemsInQuery(queryClient, projectId, folderId, {
-    type: update.type,
-    item: update.item,
-    _id: update.item._id
-  });
-}
-
 function handleDeleteRequested(args?: { type: ProjectItemType, itemId: string }) {
   if (args && !isItemSelected(args.itemId)) {
     addToSelection(args.itemId);
@@ -570,11 +561,6 @@ function handleItemsDeleted(
   for (let deletedItem of requestedItems) {
     unselectItem(deletedItem._id);
   }
-
-  // TODO: Instead of manually updating the query cache from here, we should create reusable
-  // mutations with useMutation to perform mutation requests, and we should handle cache data updates
-  // and invalidations centrally from the mutations result.
-  deleteProjectItemsInQuery(queryClient, projectId, folderId, ...requestedItems);
 }
 
 function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
@@ -583,31 +569,6 @@ function handleMoveRequested(args?: { type: ProjectItemType, itemId: string }) {
   }
 
   nextTick(() => moveItemsDialog.value?.open());
-}
-
-function handleItemsMoved(items: ProjectItem[]) {
-  // In all cases, we assume that the items are being moved from the current folder
-  // to some target folder, since that's what the UI enables to do. Under this assumption,
-  // we can simply remove all moved items from the current folder and add them to the
-  // respective current folders. We don't have to worry about other folders.
-  // If this assumption does not hold anymore, we should invalidate all cached project items query data under this
-  // project because we don't know which other folders have lost items to the move operation.
-
-  // TODO: is there any reason for this grouping? Given the current UI
-  // aren't all items getting moved to the same target folder?
-  const itemsByTargetFolder = new Map<string|undefined, ProjectItem[]>();
-  for (const item of items) {
-    const itemFolderId = item.type === 'folder' ? item.item.parentId : item.item.folderId;
-    const groupedItems = itemsByTargetFolder.get(itemFolderId || undefined) || [];
-    groupedItems.push(item);
-    itemsByTargetFolder.set(itemFolderId || undefined, groupedItems);
-  }
-
-  deleteProjectItemsInQuery(queryClient, projectId, folderId, ...items);
-  for (const [targetFolder, movedItems] of itemsByTargetFolder) {
-    upsertProjectItemsInQuery(queryClient, projectId, targetFolder, ...movedItems);
-  }
-
 }
 
 function handleShareProjectItems(item?: { type: ProjectItemType, itemId: string }) {
@@ -619,20 +580,6 @@ function handleShareProjectItems(item?: { type: ProjectItemType, itemId: string 
     return;
   }
   nextTick(() => createProjectShareDialog.value?.open());
-}
-
-
-function handleCreatedFolder(newFolder: Folder) {
-  const item: ProjectFolderItem = {
-    _id: newFolder._id,
-    _createdAt: newFolder._createdAt,
-    _updatedAt: newFolder._updatedAt,
-    type: 'folder',
-    name: newFolder.name,
-    item: newFolder
-  };
-
-  upsertProjectItemsInQuery(queryClient, projectId, folderId, item);
 }
 
 function createFolder() {

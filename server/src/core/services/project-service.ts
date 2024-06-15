@@ -1,8 +1,8 @@
 import { Collection } from "mongodb";
 import { AuthContext, Comment, Media, Project, RoleType, WithRole, ProjectMember, createPersistedModel, UpdateMediaArgs, ProjectItemType } from "../models.js";
 import { rethrowIfAppError, createAppError, createSubscriptionRequiredError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createAuthError, createPermissionError } from "../error.js";
-import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider, createMediaCommentNotificationEmail, getDownloadableFiles, getUserByEmail, getUserByEmailOrCreateGuest, tryGetUserByEmail } from "./index.js";
-import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, ProjectShareItemRef, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs, GetProjectShareMediaByIdArgs, User, GetAllProjectShareFilesForDownloadArgs, ConcurrentTaskQueue, DownloadTransferFileResult, TaskTracker, GetAllProjectShareFilesForDownloadResult, DeleteProjectArgs, UpdateMediaVersionsArgs } from '@quickbyte/common';
+import { EmailHandler, EventDispatcher, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransactionService, ITransferService, createMediaCommentNotificationEmail, getDownloadableFiles, getUserByEmail, getUserByEmailOrCreateGuest, tryGetUserByEmail } from "./index.js";
+import { LinkGenerator, CreateProjectMediaUploadArgs, MediaWithFileAndComments, CreateMediaCommentArgs, CommentWithAuthor, WithChildren, UpdateMediaCommentArgs, UpdateProjectArgs, ChangeProjectMemmberRoleArgs, RemoveProjectMemberArgs, ProjectItem, GetProjectItemsArgs, UpdateFolderArgs, Folder, CreateFolderArgs, GetProjectItemsResult, FolderWithPath, UploadMediaResult, SearchProjectFolderArgs, DeleteProjectItemsArgs, DeletionCountResult, MoveProjectItemsToFolderArgs, CreateProjectShareArgs, ProjectShare, UpdateProjectShareArgs, DeleteProjectShareArgs, WithCreator, GetProjectShareLinkItemsArgs, GetProjectShareLinkItemsResult, ProjectShareItem, FolderPathEntry, CreateProjectShareMediaCommentArgs, DeleteProjectShareMediaCommentArgs, UpdateProjectShareMediaCommentArgs, GetProjectShareMediaByIdArgs, GetAllProjectShareFilesForDownloadArgs, ConcurrentTaskQueue, DownloadTransferFileResult, TaskTracker, GetAllProjectShareFilesForDownloadResult, UpdateMediaVersionsArgs, WithThumbnail } from '@quickbyte/common';
 import { IInviteService } from "./invite-service.js";
 import { addThumbnailUrlsToMedia, getMultipleMediaByIds, getPlainMediaById, getProjectMediaByFolder, getProjectShareMedia, getProjectShareMediaFilesAndComments, IMediaService  } from "./media-service.js";
 import { IAccessHandler } from "./access-handler.js";
@@ -269,6 +269,13 @@ export class ProjectService {
                 })
             ]);
 
+            const mediaWithThumbnails = await addThumbnailUrlsToMedia(
+                this.db,
+                this.config.storageHandlers,
+                this.config.packagers,
+                media
+            );
+            
             const result = [
                 ...folders.map<ProjectItem>(f => ({
                     _id: f._id,
@@ -278,7 +285,7 @@ export class ProjectService {
                     _createdAt: f._createdAt,
                     _updatedAt: f._updatedAt
                 })),
-                ...media.map<ProjectItem>(m => ({
+                ...mediaWithThumbnails.map<ProjectItem>(m => ({
                     _id: m._id,
                     name: m.name,
                     item: m,
@@ -421,13 +428,13 @@ export class ProjectService {
         }
     }
 
-    updateMediaVersions(args: UpdateMediaVersionsArgs): Promise<Media> {
+    updateMediaVersions(args: UpdateMediaVersionsArgs): Promise<WithThumbnail<Media>> {
         return wrapError(async () => {
             const project = await this.getByIdInternal(args.projectId);
             const role = await this.config.access.requireRoleOrOwner(this.authContext.user._id, 'project', project, ['owner', 'admin', 'editor']);
             const result = await this.config.media.updateMediaVersions(args, role === 'admin' || role === 'owner');
-
-            return result;
+            const [resultWithThumbnail] = await addThumbnailUrlsToMedia(this.db, this.config.storageHandlers, this.config.packagers, [result]);
+            return resultWithThumbnail;
         });
     }
 

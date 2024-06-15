@@ -461,8 +461,11 @@ export class MediaService {
                     preferredVersionId: newPreferredVersionId,
                     _updatedAt: new Date(),
                     _updatedBy: { type: 'user', _id: this.authContext.user._id }
-                }
-            }, addDefaultMediaFindOptions({}));
+                },
+            }, {
+                ...addDefaultMediaFindOptions({}),
+                returnDocument: 'after'
+            });
 
             if (!result.value) {
                 throw createNotFoundError('media');
