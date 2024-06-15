@@ -74,6 +74,13 @@ watch(media, () => {
   navigateBrowserToFolder(media.value.folderId || undefined);
 }, { immediate: true });
 
+watch(mediaQuery.error, (error) => {
+  if (error) {
+    logger?.error(error.message, error);
+    showToast(error.message, 'error');
+  }
+});
+
 async function handleVersionUpload() {
   // TODO: since we don't have the file, for now just reload
   // the entire media object and update the local instance
