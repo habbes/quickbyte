@@ -32,21 +32,25 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { logger, showToast, store, trpcClient, useProjectItemsQuery, wrapError } from "@/app-utils";
-import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
+import { useQueryClient } from "@tanstack/vue-query";
+import { logger, showToast, store, trpcClient, useProjectItemsQuery, useMediaAssetQuery, invalidMediaAssetQuery } from "@/app-utils";
+import type { ProjectItem, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
 
+const queryClient = useQueryClient();
 const route = useRoute();
 const router = useRouter();
-const media = ref<MediaWithFileAndComments>();
 const selectedVersionId = ref<string>();
-const loading = ref(true);
 const selectedCommentId = ref<string>();
 
 const user = store.user;
 const projectId = computed(() => unwrapSingleton(route.params.projectId));
 const project = computed(() => store.projects.value.find(p => p._id === projectId.value));
+
+const mediaId = computed(() => unwrapSingleton(route.params.mediaId));
+const mediaQuery = useMediaAssetQuery(projectId, mediaId);
+const media = computed(() => mediaQuery.data.value);
 
 const browserItemsQueryEnabled = computed(() => !!media.value);
 const browserItemsFolderId = ref<string>();
@@ -55,29 +59,27 @@ const browserItems = computed(() => browserItemsQuery.data.value?.items || []);
 const browserItemsPath = computed(() => browserItemsQuery.data.value?.folder?.path || []);
 
 
-watch(() => route.params.mediaId, () => {
-  const queriedCommentId = unwrapSingletonOrUndefined(route.query.comment || undefined);
-  const queriedVersionId = unwrapSingletonOrUndefined(route.query.version || undefined);
+watch(media, () => {
+  if (!media.value) {
+    return;
+  }
+  const queriedCommentId = unwrapSingletonOrUndefined(route.query.comment);
+  const queriedVersionId = unwrapSingletonOrUndefined(route.query.version);
 
-  return wrapError(async () => {
-    const projectId = unwrapSingleton(ensure(route.params.projectId));
-    const mediaId = unwrapSingleton(ensure(route.params.mediaId));
-    media.value = await trpcClient.getProjectMediaById.query({
-      projectId: projectId,
-      mediaId: mediaId
-    });
+  selectedVersionId.value = queriedVersionId && media.value?.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : media.value.preferredVersionId;
+  selectedCommentId.value = queriedCommentId || undefined;
 
-    selectedVersionId.value = queriedVersionId && media.value.versions.find(v => v._id === queriedVersionId) ? queriedVersionId : media.value.preferredVersionId;
-    selectedCommentId.value = queriedCommentId || undefined;
-
-    // fetch files and folders in the same parent folder as the media
-    // to enable navigation in the embedded file browser
-    navigateBrowserToFolder(media.value.folderId || undefined);
-  },
-  {
-    finally: () => loading.value = false
-  })
+  // fetch files and folders in the same parent folder as the media
+  // to enable navigation in the embedded file browser
+  navigateBrowserToFolder(media.value.folderId || undefined);
 }, { immediate: true });
+
+watch(mediaQuery.error, (error) => {
+  if (error) {
+    logger?.error(error.message, error);
+    showToast(error.message, 'error');
+  }
+});
 
 async function handleVersionUpload() {
   // TODO: since we don't have the file, for now just reload
@@ -86,24 +88,19 @@ async function handleVersionUpload() {
   // the downloadable file for the new preferred version
   // but wanted to get this done quickly by re-using existing
   // endpoints and maybe optmize later.
-  try {
-    media.value = await trpcClient.getProjectMediaById.query({
-      projectId: route.params.projectId as string,
-      mediaId: route.params.mediaId as string
-    });
-    selectedVersionId.value = media.value.preferredVersionId;
-  } catch (e: any) {
-    showToast(e.message, 'error');
-    logger.error(e.message, e);
-  }
+  invalidMediaAssetQuery(queryClient, projectId, mediaId);
+  // Since this changes the preferred version, refresh the page in order to
+  // reset the current selected version to match the new preferred version
+  router.push({ name: 'player', params: { projectId: projectId.value, mediaId: mediaId.value } })
 };
 
 function handleMediaUpdate(updatedMedia: Media) {
-   // TODO: since we don't have the file, for now just reload
-  // the entire media object and update the local instance
-  // this is unnecessarily costly, we just need to load
-  // the downloadable file. I'll the update should probably contain media files
-  return handleVersionUpload();
+  if (media.value?.preferredVersionId !== updatedMedia.preferredVersionId) {
+    // preferred version has changed, reset the currently selected version
+    return handleVersionUpload();
+  } else {
+    invalidMediaAssetQuery(queryClient, projectId, mediaId);
+  }
 }
 
 async function handleSelectVersion(versionId: string) {

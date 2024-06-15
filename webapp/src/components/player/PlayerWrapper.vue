@@ -244,7 +244,7 @@ const error = ref<Error|undefined>();
 
 // const selectedVersionId = ref<string>(props.selectedVersionId || props.media.preferredVersionId);
 
-const comments = ref<WithChildren<CommentWithAuthor>[]>(props.media.comments);
+const comments = ref<WithChildren<CommentWithAuthor>[]>([...props.media.comments]);
 const selectedCommentId = ref<string>();
 const mediaType = computed(() => {
   if (!props.media) return 'unknown';
@@ -294,7 +294,7 @@ const filesListHeightSmallScreen = computed(() => {
 // Helps keep track of when the media has changed
 const _media = computed(() => props.media);
 watch(_media, () => {
-  comments.value = props.media.comments;
+  comments.value = [...props.media.comments];
   if (props.selectedCommentId) {
     const comment = comments.value.find(c => c._id === props.selectedCommentId);
     if (comment) {
