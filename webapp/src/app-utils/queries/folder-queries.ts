@@ -8,7 +8,7 @@ export function useUpdateFolderMutation() {
     const mutation = useMutation<Folder, Error, UpdateFolderArgs>({
         mutationFn: (args) => trpcClient.updateFolder.mutate(args),
         onSuccess: (result) => {
-            upsertProjectItemsInQuery(client, result.projectId, result._id || undefined, converFolderToProjectItem(result));
+            upsertProjectItemsInQuery(client, result.projectId, result.parentId || undefined, converFolderToProjectItem(result));
         }
     });
 

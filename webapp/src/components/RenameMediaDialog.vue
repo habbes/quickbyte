@@ -20,7 +20,7 @@
 import { UiDialog, UiLayout, UiForm, UiTextInput, UiButton } from "@/components/ui";
 import type { Media } from "@quickbyte/common";
 import { ref } from "vue";
-import { logger, showToast, trpcClient, useUpdateMediaMutation } from "@/app-utils";
+import { logger, showToast, useUpdateMediaMutation } from "@/app-utils";
 
 const props = defineProps<{
   media: Media

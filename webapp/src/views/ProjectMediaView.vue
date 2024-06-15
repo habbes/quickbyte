@@ -183,7 +183,6 @@
                     :showSelectCheckbox="selectedItemIds.size > 0"
                     :totalSelectedItems="selectedItemIds.size"
                     :allowUpload="project.role === 'owner' || project.role === 'admin' || project.role === 'editor'"
-                    @update="handleItemUpdate($event)"
                     @delete="handleDeleteRequested($event)"
                     @move="handleMoveRequested($event)"
                     @share="handleShareProjectItems($event)"
@@ -296,7 +295,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { showToast, store, logger, useFilePicker, useFileTransfer, useProjectItemsQuery, upsertProjectItemsInQuery, deleteProjectItemsInQuery, updateProjectItemsInQuery } from '@/app-utils';
+import { showToast, store, logger, useFilePicker, useFileTransfer, useProjectItemsQuery, upsertProjectItemsInQuery, deleteProjectItemsInQuery } from '@/app-utils';
 import { ensure, pluralize, unwrapSingleton, unwrapSingletonOrUndefined } from '@/core';
 import type {
   ProjectItem, Folder,
@@ -545,14 +544,6 @@ function handleToggleSelect(args: { type: ProjectItemType, itemId: string }) {
 
 function handleToggleInMultiSelect(args: { type: ProjectItemType, itemId: string }) {
   toggleItemInMultiSelect(args.itemId);
-}
-
-function handleItemUpdate(update: { type: 'folder', item: Folder } | { type: 'media', item: Media }) {
-  updateProjectItemsInQuery(queryClient, projectId, folderId, {
-    type: update.type,
-    item: update.item,
-    _id: update.item._id
-  });
 }
 
 function handleDeleteRequested(args?: { type: ProjectItemType, itemId: string }) {

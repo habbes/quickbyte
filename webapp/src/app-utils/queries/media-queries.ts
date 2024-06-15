@@ -100,7 +100,6 @@ export function updateMediaAssetInQuery<TMedia extends Media>(
 
         const updatedData = { ...oldData, ...update, versions: updatedVersions };
 
-        console.log('updated media', updatedData);
         return updatedData
     });
 }

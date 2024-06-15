@@ -57,52 +57,8 @@ export function upsertProjectItemsInQuery(
                 updatedItems.push(newItem);
             }
             else {
-                updatedItems[currentIndex] = Object.assign({}, updatedItems[currentIndex], newItem);
+                updatedItems[currentIndex] = mergeItems(updatedItems[currentIndex], newItem);
             }
-        }
-
-        return {
-            ...oldData,
-            items: updatedItems
-        };
-    });
-}
-
-/**
- * Updates the specified items in the
- * project items query data cache.
- * @param queryClient 
- * @param projectId 
- * @param folderId 
- * @param itemsToUpdate 
- */
-export function updateProjectItemsInQuery(
-    queryClient: QueryClient,
-    projectId: MaybeRef<string>,
-    folderId: MaybeRef<string|undefined>,
-    ...itemsToUpdate:  Array<{ _id: string } & ({ type: 'folder', item: Partial<Folder> } | { type: 'media', item: Partial<Media> })>
-) {
-    const queryKey = getProjectItemsQueryKey(projectId, folderId);
-    queryClient.setQueryData<GetProjectItemsResult>(queryKey, oldData => {
-        if (!oldData) {
-            return;
-        }
-
-        const updatedItems: ProjectItem[] = oldData.items.concat([]);
-        for (const item of itemsToUpdate) {
-            const index = updatedItems.findIndex(i => i._id === item._id && i.type === item.type);
-            if (index === -1) {
-                continue;
-            }
-
-            const original = updatedItems[index];
-            updatedItems[index] = Object.assign({}, original, {
-                ...({
-                    item: { ...original.item, ...item.item },
-                    name: item.item.name,
-                    _updatedAt: item.item._updatedAt
-                })
-            });
         }
 
         return {
@@ -140,4 +96,10 @@ export function deleteProjectItemsInQuery(
             items: updatedItems
         };
     });
+}
+
+function mergeItems<TItem extends { item: any }, TResult extends TItem>(oldItem: TItem, newItem: TItem): TResult {
+    const mergedInnerItem = Object.assign({}, oldItem.item, newItem.item);
+    const mergedItem = { ...oldItem, ...newItem, item: mergedInnerItem };
+    return mergedItem as TResult;
 }
