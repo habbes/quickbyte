@@ -29,7 +29,7 @@
 import { ref, watch, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
-import { projectShareStore, trpcClient, wrapError } from "@/app-utils";
+import { logger, projectShareStore, showToast, trpcClient, useProjectShareItemsQuery, wrapError } from "@/app-utils";
 import type { FolderPathEntry, MediaWithFileAndComments, ProjectItem } from "@quickbyte/common";
 import { ensure } from "@/core";
 
@@ -44,7 +44,7 @@ const user = ref<{ _id: string, name: string }|undefined>();
 /**
  * Folder containing the current media
  */
-const currentFolderId = ref<string>();
+const currentFolderId = computed(() => media.value?.folderId || undefined);
 /**
  * Items to display in the embedded file browser
  */
@@ -56,6 +56,65 @@ const browserItems = ref<ProjectItem[]>([]);
 const browserItemsPath = ref<FolderPathEntry[]>([]);
 const browserHasParentFolder = computed(() => browserItemsPath.value.length > 0);
 
+const browserItemsFolderId = ref<string>();
+const shareId = computed(() => ensure(share.value)._id);
+const queryEnabled = computed(() => !!media.value && !!code.value);
+const browserItemsQuery = useProjectShareItemsQuery({
+  shareId,
+  code,
+  password,
+  folderId: browserItemsFolderId
+}, { enabled: queryEnabled, errorImmediately: true });
+
+watch(browserItemsQuery.data, (result) => {
+  if (!result) {
+    return;
+  }
+
+  if ('items' in result) {
+    browserItems.value = result.items;
+    browserItemsPath.value = result.path;
+  }
+});
+
+watch(browserItemsQuery.error, (e: any) => {
+  // note that it's possible that the parent folder was not
+  // shared, but we don't know that, especially when the url
+  // this page is loaded or reloaded directly, meaning the
+  // client doesn't know which folders the user navigated through
+  // to get here. So we make a request just in case the folder
+  // was shared, if it's not, the server will return
+  // a not found or permission error.
+  const data = e.data;
+  if (
+    data?.appCode === 'resourceNotFound' ||
+    data?.appCode === 'permissionError' ||
+    data?.httpStatus === 404 ||
+    data?.httpStatus === 403
+  ) {
+    // Permission or not found error means the folder
+    // was not shared. Then this file was probably shared directly and
+    // is at the root of the share. So let's make another request to fetch
+    // all root items.
+
+    if (browserItemsFolderId.value) {
+      // reset the folder so we can retry the request
+      // from the project share's root
+      browserItemsFolderId.value = undefined;
+      return;
+    } else {
+      // if we got a 404/403 and we had not specified a folder,
+      // then the user probably doesn't have permission to access
+      // the share anymore, or it doesn't exist. Fail silently
+      return;
+    }
+  }
+
+  // some unexpected error
+  logger?.error(e.message, e);
+  showToast(e.message, 'error');
+});
+
 function handleClosePlayer() {
   router.push({
     name: 'project-share',
@@ -65,7 +124,7 @@ function handleClosePlayer() {
     query: {
       // Since we're potentially redirecting to a folder
       // without verifying whether it's shared, let's signal
-      // that the redict is coming from the player so that we can
+      // that the redirect is coming from the player so that we can
       // gracefully handle the potential permission error
       closePlayer: "1"
     }
@@ -164,9 +223,8 @@ watch(() => route.params.mediaId, async () => {
       user.value = comment.author;
     }
 
-    // fetch folders/files in the same path to populate
-    // the in-player browser
-
+    // We want to display other files in the media's parent folder
+    // in the sidebar browser.
     // It's possible that the media asset's folder is different
     // from the path we used to get here. This would be the case
     // if the media asset was shared directly, and is there for at the
@@ -177,74 +235,8 @@ watch(() => route.params.mediaId, async () => {
     // it would be a minor annoyance if it occurs, and if customers report
     // it we would fix it then.
 
-    // note that it's possible that the parent folder was not
-    // shared, but we don't know that, especially when the url
-    // this page is loaded or reloaded directly, meaning the
-    // client doesn't know which folders the user navigated through
-    // to get here. So we make a request just in case the folder
-    // was shared, if it's not, the server will return
-    // a not found or permission error.
-    currentFolderId.value = media.value.folderId || undefined;
-    try {
-      const result = await trpcClient.getProjectShareItems.query({
-        shareId: share.value._id,
-        code: code.value,
-        password: password.value,
-        folderId: currentFolderId.value
-      });
-
-      if ('items' in result) {
-        browserItems.value = result.items;
-        browserItemsPath.value = result.path;
-      }
-    }
-    catch (e: any) {
-      const data = e.data;
-      if (
-        data?.appCode === 'resourceNotFound' ||
-        data?.appCode === 'permissionError' ||
-        data?.httpStatus === 404 ||
-        data?.httpStatus === 403
-      ) {
-        // Permission or not found error means the folder
-        // was not shared. Then this file was probably shared directly and
-        // is at the root of the share. So let's make another request to fetch
-        // all root items.
-
-        // Also, nested try and if blocks? Yuck. Refactor this some day.
-
-        try {
-          const fallbackResult = await trpcClient.getProjectShareItems.query({
-            shareId: share.value._id,
-            code: code.value,
-            password: password.value,
-          });
-
-          if ('items' in fallbackResult) {
-            browserItems.value = fallbackResult.items;
-            browserItemsPath.value = fallbackResult.path;
-          }
-        } catch (e: any) {
-          const data = e.data;
-          if (
-            data?.appCode === 'resourceNotFound' ||
-            data?.appCode === 'permissionError' ||
-            data?.httpStatus === 404 ||
-            data?.httpStatus === 403
-          ) {
-            // Still getting a 404/403 error? Fail silently.
-            return;
-          }
-
-          throw e;
-        }
-
-        return;
-      }
-
-      // some unexpected error
-      throw e;
-    }
+    // set the parent folder to fetch files to populate the sidebar browser
+    browserItemsFolderId.value = media.value.folderId || undefined;
   });
 }, {
   immediate: true
@@ -277,17 +269,7 @@ async function handleBrowserItemClick(item: ProjectItem) {
 }
 
 async function navigateBrowserToFolder(folderId?: string) {
-  const result = await trpcClient.getProjectShareItems.query({
-    shareId: ensure(share.value)._id,
-    code: ensure(code.value),
-    password: password.value,
-    folderId
-  });
-  
-  if ('items' in result) {
-    browserItems.value = result.items;
-    browserItemsPath.value = result.path;
-  }
+  browserItemsFolderId.value = folderId;
 }
 
 function handleBrowserToParentFolder() {
@@ -307,6 +289,4 @@ function handleVersionChange(versionId: string) {
 
   router.push({ query: { ...route.query, version: versionId } });
 }
-
-
 </script>
