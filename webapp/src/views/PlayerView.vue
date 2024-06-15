@@ -26,6 +26,7 @@
   <PlayerSkeleton
     v-else-if="!media"
     allowComments
+    @close="closePlayer()"
   />
 </template>
 <script setup lang="ts">
