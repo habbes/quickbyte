@@ -19,11 +19,16 @@
     @browserToParentFolder="handleBrowserToParentFolder()"
     @selectVersion="handleVersionChange($event)"
   />
+  <PlayerSkeleton
+    v-else-if="!media"
+    :allowComments="share?.allowComments"
+    @close="handleClosePlayer()"
+  />
 </template>
 <script lang="ts" setup>
 import { ref, watch, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { PlayerWrapper } from "@/components/player";
+import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
 import { projectShareStore, trpcClient, wrapError } from "@/app-utils";
 import type { FolderPathEntry, MediaWithFileAndComments, ProjectItem } from "@quickbyte/common";
 import { ensure } from "@/core";
