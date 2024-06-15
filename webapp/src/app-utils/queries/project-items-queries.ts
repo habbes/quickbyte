@@ -61,8 +61,6 @@ export function upsertProjectItemsInQuery(
             }
         }
 
-        console.log('updated project item', updatedItems);
-
         return {
             ...oldData,
             items: updatedItems

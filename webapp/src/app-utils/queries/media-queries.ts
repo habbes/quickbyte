@@ -33,7 +33,6 @@ export function useMediaAssetQuery(projectId: MaybeRef<string>, mediaId: MaybeRe
             return;
         }
 
-        console.log('data refetched', media);
         upsertProjectItemsInQuery(client, projectId, media.folderId || undefined, convertMediaToProjectItem(media));
     });
 
@@ -45,7 +44,7 @@ export function useUpdateMediaVersionsMutation() {
     const mutation = useMutation<Media, Error, UpdateMediaVersionsArgs>({
         mutationFn: (args) => trpcClient.updateMediaVersions.mutate(args),
         onSuccess: (result) => {
-            updateMediaAssetInQuery(client, result.projectId, result._id, result);
+            updateMediaAssetInQuery(client, result);
             upsertProjectItemsInQuery(client, result.projectId, result.folderId || undefined, convertMediaToProjectItem(result));
         }
     });
@@ -57,16 +56,13 @@ export function invalidateMediaAssetQuery(client: QueryClient, projectId: MaybeR
     client.invalidateQueries({ queryKey: getMediaAssetQueryKey(projectId, mediaId) });
 }
 
-export function updateMediaAssetInQuery<TMedia extends Partial<Media>>(
+export function updateMediaAssetInQuery<TMedia extends Media>(
     client: QueryClient,
-    projectId: MaybeRef<string>,
-    mediaId: MaybeRef<string>,
     update: TMedia,
 )
 {
-    const queryKey = getMediaAssetQueryKey(projectId, mediaId);
+    const queryKey = getMediaAssetQueryKey(update.projectId, update._id);
     client.setQueryData<MediaWithFileAndComments>(queryKey, oldData => {
-        console.log('attempt to update', queryKey, oldData);
         if (!oldData) {
             // if the item doesn't already exist, we abort instead of attempting to
             // add the update to the query. We do this because the media we cache
@@ -74,8 +70,6 @@ export function updateMediaAssetInQuery<TMedia extends Partial<Media>>(
             // of media update operation do not contain this extra information.
             return;
         }
-
-        console.log('about to update', queryKey, oldData);
 
         // don't overwrite versions array because the incoming update
         // might not contain the expanded files
