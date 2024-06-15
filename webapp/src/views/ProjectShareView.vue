@@ -79,7 +79,6 @@ const rawPasswordInput = ref<string>();
 const password = ref<string>();
 const passwordRequired = ref(false);
 const headerHeight = layoutDimensions.projectHeaderHeight;
-const contentOffset = headerHeight + layoutDimensions.navBarHeight + layoutDimensions.projectHeaderHeight + 2;
 
 const hiddenDownloader = ref<HTMLAnchorElement>();
 const currentDownloadUrl = ref<string>();
