@@ -33,7 +33,7 @@
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useQueryClient } from "@tanstack/vue-query";
-import { logger, showToast, store, trpcClient, useProjectItemsQuery, useMediaAssetQuery, invalidateMediaAssetQuery, useCreateMediaCommentMutation } from "@/app-utils";
+import { logger, showToast, store, trpcClient, useProjectItemsQuery, useMediaAssetQuery, invalidateMediaAssetQuery, useCreateMediaCommentMutation, useDeleteMediaCommentMutation } from "@/app-utils";
 import type { ProjectItem, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
@@ -59,7 +59,7 @@ const browserItems = computed(() => browserItemsQuery.data.value?.items || []);
 const browserItemsPath = computed(() => browserItemsQuery.data.value?.folder?.path || []);
 
 const createCommentMutation = useCreateMediaCommentMutation();
-
+const deleteCommentMutation = useDeleteMediaCommentMutation();
 
 watch(media, () => {
   if (!media.value) {
@@ -154,12 +154,13 @@ async function editComment({ commentId, text }: { commentId: string, text: strin
   return comment;
 }
 
-async function deleteComment({ commentId } : { commentId: string }) {
+async function deleteComment({ commentId, parentId } : { commentId: string; parentId?: string }) {
   if (!media.value) return;
-  await trpcClient.deleteMediaComment.mutate({
+  await deleteCommentMutation.mutateAsync({
     projectId: media.value.projectId,
     commentId: commentId,
-    mediaId: media.value._id
+    mediaId: media.value._id,
+    parentId
   });
 }
 

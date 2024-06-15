@@ -217,7 +217,8 @@ const props = defineProps<{
     text: string;
   }) => Promise<Comment>;
   deleteComment?: (args: {
-    commentId: string
+    commentId: string;
+    parentId?: string;
   }) => Promise<unknown>;
 }>();
 
@@ -544,9 +545,18 @@ async function sendTopLevelComment() {
       user.value = comment.author
     };
 
-    const parent = comments.value.find(c => c._id === parentId);
-    if (parent) {
-      parent.children.push(comment);
+    const parentIndex = comments.value.findIndex(c => c._id === parentId);
+    if (parentIndex !== -1) {
+      const parent = comments.value[parentIndex];
+      const childIndex = parent.children.findIndex(c => c._id === comment._id);
+      // TODO: we push the comment here for backwards compatibility
+      // The parent component should be responsible of updating the local
+      // comments collection when a comment is sent. Once we've updated
+      // scenarios that use this component, remove this code
+      if (childIndex === -1) {
+        const children = parent.children.concat([comment]);
+        comments.value[parentIndex] = { ...parent, children }
+      }
     }
 
     scrollToComment(comment);

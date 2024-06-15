@@ -3,7 +3,7 @@ import { trpcClient } from '../api';
 import type { MaybeRef, MaybeRefOrGetter } from 'vue';
 import { unref, watch } from "vue";
 import { upsertProjectItemsInQuery } from './project-items-queries';
-import type { ProjectMediaItem, UpdateMediaVersionsArgs, Media, MediaWithFileAndComments, UpdateMediaArgs, CreateMediaCommentArgs, Comment, WithChildren, CommentWithAuthor } from "@quickbyte/common";
+import type { ProjectMediaItem, UpdateMediaVersionsArgs, Media, MediaWithFileAndComments, UpdateMediaArgs, CreateMediaCommentArgs, Comment, WithChildren, CommentWithAuthor, DeleteMediaCommentArgs } from "@quickbyte/common";
 import { logger } from '../logger';
 
 export function getMediaAssetQueryKey(projectId: MaybeRef<string>, mediaId?: MaybeRef<string>) {
@@ -78,6 +78,22 @@ export function useCreateMediaCommentMutation() {
     return mutation;
 }
 
+export function useDeleteMediaCommentMutation() {
+    const client = useQueryClient();
+    const mutation = useMutation<void, Error, DeleteMediaCommentArgs & { parentId?: string }>({
+        mutationFn: ({ projectId, mediaId, commentId }) => trpcClient.deleteMediaComment.mutate({
+            projectId,
+            mediaId,
+            commentId
+        }),
+        onSuccess: (result, args) => {
+            deleteMediaCommentInQuery(client, args.projectId, args.mediaId, args.parentId, args.commentId);
+        }
+    });
+
+    return mutation;
+}
+
 export function invalidateMediaAssetQuery(client: QueryClient, projectId: MaybeRef<string>, mediaId: MaybeRef<string>) {
     client.invalidateQueries({ queryKey: getMediaAssetQueryKey(projectId, mediaId) });
 }
@@ -128,21 +144,23 @@ export function upsertMediaCommentInQuery(client: QueryClient, comment: WithChil
         const newComments = [...oldComments];
 
         if (comment.parentId) {
+            // We only support 2 levels of nesting, so the parent must be top-level
             const parentIndex = oldComments.findIndex(c => c._id === comment.parentId);
             if (parentIndex === -1) {
                 logger.error(`Expected to find parent '${comment.parentId}' of comment '${comment._id}' in query cache of media ${comment.mediaId} but did not.`);
                 return;
             }
 
-            const parent = Object.assign({}, oldComments[parentIndex]);
-            const index = parent.children.findIndex(c => c._id === comment._id);
+            const oldParent = oldComments[parentIndex];
+            const children = [...oldParent.children];
+            const index = children.findIndex(c => c._id === comment._id);
             if (index === -1) {
-                parent.children.push(comment);
+                children.push(comment);
             } else {
-                parent.children[index] = Object.assign({}, parent.children[index], comment);
+                children[index] = Object.assign({}, children[index], comment);
             }
 
-            newComments[parentIndex] = parent;
+            newComments[parentIndex] = { ...oldParent, children };
         }
         else {
             const index = newComments.findIndex(c => c._id === comment._id);
@@ -164,6 +182,7 @@ export function updateMediaCommentInQuery(client: QueryClient, comment: Comment)
             return;
         }
 
+        // TODO: consider parent
         const oldComments = oldData.comments;
         const index = oldComments.findIndex(c => c._id === comment._id);
         if (index === -1) {
@@ -177,16 +196,31 @@ export function updateMediaCommentInQuery(client: QueryClient, comment: Comment)
     });
 }
 
-export function deleteMediaCommentInQuery(client: QueryClient, comment: Comment) {
-    const queryKey = getMediaAssetQueryKey(comment.projectId, comment.mediaId);
+export function deleteMediaCommentInQuery(client: QueryClient, projectId: string, mediaId: string, parentId: string|undefined, commentId: string) {
+    const queryKey = getMediaAssetQueryKey(projectId, mediaId);
     client.setQueryData<MediaWithFileAndComments>(queryKey, oldData => {
         if (!oldData) {
             return;
         }
 
         const oldComments = oldData.comments;
+        const newComments = [...oldComments];
 
-        const newComments = oldComments.filter(c => c._id !== comment._id);
+        if (parentId) {
+            // We only support 2 levels of nesting, so the parent must be top-level
+            const parentIndex = oldComments.findIndex(c => c._id === parentId);
+            if (parentIndex === -1) {
+                logger.error(`Expected to find parent '${parentId}' of comment '${commentId}' in query cache of media ${mediaId} but did not.`);
+                return;
+            }
+
+            const parent = Object.assign({}, oldComments[parentIndex]);
+            parent.children = parent.children.filter(c => c._id !== commentId);
+            newComments[parentIndex] = parent;
+        } else {
+            const index = newComments.findIndex(c => c._id === commentId);
+            newComments.splice(index, 1);
+        }
 
         return { ...oldData, comments: newComments };
     });
