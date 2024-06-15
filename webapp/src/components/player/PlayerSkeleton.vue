@@ -65,8 +65,9 @@
       <!-- end sidebar -->
       <!-- player container -->
       <div class="sm:h-full flex-1 sm:px-5 sm:items-center flex items-stretch justify-center">
-          <div class="h-full max-h-full w-full flex sm:items-center">
+          <div class="h-full max-h-full w-full flex items-center justify-center">
             <!-- placeholder for the player container -->
+            <UiSpinner v-if="showSpinner" />
           </div>
       </div>
       <!-- end player container -->
@@ -74,28 +75,9 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick, watch } from "vue"
-import { useRoute, useRouter } from "vue-router"
-import { logger, showToast } from "@/app-utils";
-import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren, MediaType, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
-import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
-import { ClockIcon, XMarkIcon, ArrowDownCircleIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
-import { UiLayout, UiSkeleton } from '@/components/ui';
-import AVPlayer from './AVPlayer.vue';
-import ImageViewer from './ImageViewer.vue';
-import MediaPlayerVersionDropdown from "./MediaPlayerVersionDropdown.vue";
-import MediaComment from "./MediaComment.vue";
-import InPlayerMediaBrowser from './InPlayerMediaBrowser.vue';
-import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
-import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
-
-type MediaSource = {
-  url: string;
-  mimeType?: string;
-  type: 'hls'|'dash'|'raw'
-};
-
-type SideBarState = 'comments'|'files';
+import { ref, onUnmounted } from "vue"
+import { XMarkIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
+import { UiLayout, UiSkeleton, UiSpinner } from '@/components/ui';
 
 defineProps<{
   allowComments: boolean
@@ -117,17 +99,21 @@ const headerClasses = {
   height: `${headerSize}px`
 };
 
-</script>
-<style scoped>
-/*
-@media (max-width: 640px) {
-  .commentsList {
-    height: v-bind('commentsListCssHeightSmallScreen');
-  }
+const showSpinner = ref(false);
 
-  .filesList {
-    height: v-bind('filesListHeightSmallScreen');
-  }
-}
-*/
-</style>
+// If the actual media player loads quickly enough,
+// we don't want to show the spinner immediately, it might
+// give impression that the site is slow or heavy.
+// But if the skeleton is rendered for longer period (see timeout threshold below)
+// then show the spinner so the user can tell that there's
+// some activity/loading taking place
+const timer = setTimeout(() => {
+  showSpinner.value = true;
+  // Picked the threshold after experimenting with a few values
+  // Open to adjusting this threshold based on experience
+}, 700);
+
+onUnmounted(() => {
+  clearTimeout(timer);
+});
+</script>
