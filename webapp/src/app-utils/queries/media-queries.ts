@@ -3,7 +3,7 @@ import { trpcClient } from '../api';
 import type { MaybeRef, MaybeRefOrGetter } from 'vue';
 import { unref, watch } from "vue";
 import { upsertProjectItemsInQuery } from './project-items-queries';
-import type { ProjectMediaItem, UpdateMediaVersionsArgs, Media, MediaWithFileAndComments } from "@quickbyte/common";
+import type { ProjectMediaItem, UpdateMediaVersionsArgs, Media, MediaWithFileAndComments, UpdateMediaArgs } from "@quickbyte/common";
 
 export function getMediaAssetQueryKey(projectId: MaybeRef<string>, mediaId?: MaybeRef<string>) {
     return ['media', projectId, mediaId];
@@ -37,6 +37,19 @@ export function useMediaAssetQuery(projectId: MaybeRef<string>, mediaId: MaybeRe
     });
 
     return result;
+}
+
+export function useUpdateMediaMutation() {
+    const client = useQueryClient();
+    const mutation = useMutation<Media, Error, UpdateMediaArgs>({
+        mutationFn: (args) => trpcClient.updateMedia.mutate(args),
+        onSuccess: (result) => {
+            updateMediaAssetInQuery(client, result);
+            upsertProjectItemsInQuery(client, result.projectId, result.folderId || undefined, convertMediaToProjectItem(result));
+        }
+    });
+
+    return mutation;
 }
 
 export function useUpdateMediaVersionsMutation() {
