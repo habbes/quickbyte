@@ -1,7 +1,7 @@
-import { useQuery, QueryClient } from '@tanstack/vue-query'
+import { useQuery, QueryClient, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { trpcClient } from '../api';
 import type { MaybeRef, MaybeRefOrGetter } from 'vue';
-import type { Folder, GetProjectItemsResult, Media, ProjectItem, ProjectItemRef } from "@quickbyte/common";
+import type { Folder, DeleteProjectItemsArgs, DeletionCountResult, GetProjectItemsResult, Media, ProjectItem, ProjectItemRef } from "@quickbyte/common";
 import { unref } from "vue";
 
 export function getProjectItemsQueryKey(projectId: MaybeRef<string>, folderId?: MaybeRef<string|undefined>) {
@@ -25,6 +25,27 @@ export function useProjectItemsQuery(projectId: MaybeRef<string>, folderId?: May
     });
 
     return result;
+}
+
+export function useDeleteProjectItemsMutation() {
+    const client = useQueryClient();
+    const mutation = useMutation<DeletionCountResult, Error, DeleteProjectItemsArgs & { folderId?: string }>({
+        mutationFn: ({ projectId, items }) => trpcClient.deleteProjectItems.mutate({ projectId, items }),
+        onSuccess: (result, args) => {
+            // NOTE: This assumes all items are deleted from the same folder.
+            // Currently the UI only supports this scenario (but the API endpoint doesn't have that restriction).
+            // If our UI supports deleting items from different folders in one request, we should
+            // update this method.
+            deleteProjectItemsInQuery(
+                client,
+                args.projectId,
+                args.folderId,
+                ...args.items.map(({ id, type }) => ({ type, _id: id}))
+            );
+        }
+    });
+
+    return mutation;
 }
 
 /**
