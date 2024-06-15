@@ -23,6 +23,10 @@
     @browserItemClick="handleBrowserItemClick($event)"
     @browserToParentFolder="handleBrowserToParentFolder()"
   />
+  <PlayerSkeleton
+    v-else-if="!media"
+    allowComments
+  />
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from "vue"
@@ -30,7 +34,7 @@ import { useRoute, useRouter } from "vue-router"
 import { logger, showToast, store, trpcClient, useProjectItemsQuery, wrapError } from "@/app-utils";
 import type { MediaWithFileAndComments, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
-import { PlayerWrapper } from "@/components/player";
+import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
 
 const route = useRoute();
 const router = useRouter();
