@@ -105,7 +105,7 @@ import { StarIcon as SolidStarIcon, TrashIcon } from "@heroicons/vue/24/solid";
 import { UiDialog, UiLayout, UiButton, UiTextInput } from "@/components/ui";
 import type { Media, UpdateMediaVersionsArgs, MediaVersion } from "@quickbyte/common";
 import { formatDateTime, humanizeSize } from "@/core";
-import { showToast, trpcClient, wrapError, useFilePicker, useFileTransfer } from "@/app-utils";
+import { showToast, trpcClient, wrapError, useFilePicker, useFileTransfer, useUpdateMediaVersionsMutation } from "@/app-utils";
 
 const props = defineProps<{
   media: Media,
@@ -121,6 +121,8 @@ defineExpose({ open, close });
 const dialog = ref<typeof UiDialog>();
 const dropzone = ref<HTMLDivElement>();
 const preferredVersionId = ref(props.media.preferredVersionId);
+
+const mutation = useUpdateMediaVersionsMutation();
 
 const {
   onFilesSelected,
@@ -241,7 +243,10 @@ function save() {
     }
 
 
-    const result = await trpcClient.updateMediaVersions.mutate(args);
+    const result = await mutation.mutateAsync(args);
+    // We send the update event for backwards compatibility.
+    // Since we use a mutation which updates the query data,
+    // consumers should watch the query key for any updates
     emit('update', result);
     showToast('Versions have been updated successfully.', 'info');
     close();
