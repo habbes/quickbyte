@@ -31,9 +31,10 @@
             >Recommended</span>
 
             <div class="flex items-center mt-5 space-x-2" v-if="!plan.freeTrial">
-              <div class="w-full text-center">
+              <div class="w-full justify-center text-center flex items-center gap-2">
+                <span class="text-sm text-white ">Starting from</span>
                 <span class="text-4xl font-bold text-white md:text-4xl ">{{ isToggled ? plan.annualPrice : plan.monthlyPrice }}</span>
-                <span class="ml-3 text-gray-200">{{ plan.priceUnit }}</span>
+                <span class="text-gray-200">{{ plan.priceUnit }}</span>
               </div>
             </div>
 
@@ -164,7 +165,7 @@ const pricingPlans = [
     planDescription: 'For solo teams and solo creators.',
     monthlyPrice: '$9',
     annualPrice: '$7',
-    priceUnit: '/ user / month',
+    priceUnit: '/ month',
     recommended: false,
     freeTrial: false,
     comingSoon: true,
