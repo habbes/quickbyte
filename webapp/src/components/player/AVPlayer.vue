@@ -1,13 +1,17 @@
 <template>
   <div class="w-full h-full max-h-full">
     <div v-if="mediaType === 'video'"
-      class="bg-black max-h-full"
+      class="bg-black max-h-full relative"
       :style="`height: ${videoHeight}px`"
     >
     <!-- Getting type errors due to the props passed to the media-player.
       Ignoring the errors until I figure out what the causes them.
     -->
     <!-- @vue-ignore -->
+      <div class="absolute z-10">
+        <AnnotationsCanvas :height="videoHeight" :width="videoWidth" />
+      </div>
+      
       <media-player
         ref="player"
         view-type="video"
@@ -154,9 +158,10 @@
 import 'vidstack/bundle';
 import { type MediaPlayer } from 'vidstack';
 import { formatTimestampDuration, type TimedComment } from '@/core';
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
+import AnnotationsCanvas from './AnnotationsCanvas.vue';
 import { logger, isSpaceBarPressed } from '@/app-utils';
 import { nextTick } from 'process';
 
