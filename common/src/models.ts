@@ -602,12 +602,13 @@ export interface FrameAnnotationCollection {
     annotations: FrameAnnotationShape[]
 }
 
-export type FrameAnnotationShape = FrameAnnotationLine | FrameAnnotationCircle;
+export type FrameAnnotationShape = FrameAnnotationPath | FrameAnnotationCircle;
+export type AnnotationShapeType = FrameAnnotationShape["type"];
 
-export interface FrameAnnotationLine {
-    type: "line",
+export interface FrameAnnotationPath {
+    type: "path",
     id: string;
-    stroke: string;
+    strokeColor: string;
     strokeWidth: number;
     points: number[]
 }
@@ -615,7 +616,7 @@ export interface FrameAnnotationLine {
 export interface FrameAnnotationCircle {
     type: "circle",
     id: string;
-    stroke: string;
+    strokeColor: string;
     fill: string;
     strokeWidth: number;
     x: number;
