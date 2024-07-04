@@ -11,35 +11,53 @@
   >
     <KonvaLayer ref="layerWrapper">
       <KonvaCircle :config="configCircle"></KonvaCircle>
+      <KonvaLine v-for="line in lines" :config="line"></KonvaLine>
     </KonvaLayer>
   </KonvaStage>
 </template>
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import konva from 'konva';
 
 const stage = ref<{ getStage: () => konva.Stage }>();
 const layerWrapper = ref<{ getNode: () => konva.Layer }>();
 
+const baseWidth = 1980;
+
 const props = defineProps<{
   height: number;
   width: number;
 }>()
+
 const configKonva = computed(() => ({
   width: props.width,
   height: props.height
 }));
 
-const configCircle = {
-  x: 100,
-  y: 100,
-  radius: 70,
+const scaleFactor = computed(() => configKonva.value.width / baseWidth);
+
+watch(configKonva, () => {
+  console.log('config', configKonva.value);
+});
+
+const configCircle = computed(() => ({
+  x: 100 * scaleFactor.value,
+  y: 100 * scaleFactor.value,
+  radius: 70 * scaleFactor.value,
   fill: "red",
   stroke: "black",
-  strokeWidth: 4
-}
+  strokeWidth: 4 * scaleFactor.value
+}));
 
-let lastLine: konva.Line;
+const lineSources = ref<konva.LineConfig[]>([]);
+
+const lines = computed(() => lineSources.value.map(l => ({
+  ...l,
+  strokeWidth: l.strokeWidth! * scaleFactor.value,
+  points: (l.points || []).map(p => p * scaleFactor.value)
+})));
+
+
 let isPaint = false;
 
 function handleStageMouseDown(e: konva.KonvaPointerEvent) {
@@ -53,18 +71,18 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
   
   const layer = layerWrapper.value.getNode();
 
-  lastLine = new konva.Line({
+  const newLine: konva.LineConfig = {
     stroke: '#df4b26',
-    strokeWidth: 5,
+    strokeWidth: 5 / scaleFactor.value,
     globalCompositeOperation: 'source-over',
     // round cap for smoother lines
     lineCap: 'round',
     lineJoin: 'round',
     // add point twice, so we have some drawings even on a simple click
-    points: [pos.x, pos.y, pos.x, pos.y],
-  });
+    points: [pos.x / scaleFactor.value, pos.y / scaleFactor.value, pos.x / scaleFactor.value, pos.y / scaleFactor.value],
+  };
 
-  layer.add(lastLine)
+  lineSources.value.push(newLine)
   
 }
 
@@ -77,8 +95,9 @@ function handleStageMouseMove(e: konva.KonvaPointerEvent) {
   e.evt.preventDefault();
 
   const pos = e.target.getStage()!.getPointerPosition()!;
-  var newPoints = lastLine.points().concat([pos.x, pos.y]);
-  lastLine.points(newPoints);
+  const lastLine = lineSources.value.at(-1);
+  var newPoints = [...lastLine!.points!, pos.x / scaleFactor.value, pos.y / scaleFactor.value];
+  lastLine!.points = newPoints;
 }
 
 function handleStageMouseUp(e: konva.KonvaPointerEvent) {
