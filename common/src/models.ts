@@ -595,3 +595,30 @@ export type WithCreator<T> = T & {
         name: string;
     }
 };
+
+export interface FrameAnnotationCollection {
+    width: number;
+    height: number;
+    annotations: FrameAnnotationShape[]
+}
+
+export type FrameAnnotationShape = FrameAnnotationLine | FrameAnnotationCircle;
+
+export interface FrameAnnotationLine {
+    type: "line",
+    id: string;
+    stroke: string;
+    strokeWidth: number;
+    points: number[]
+}
+
+export interface FrameAnnotationCircle {
+    type: "circle",
+    id: string;
+    stroke: string;
+    fill: string;
+    strokeWidth: number;
+    x: number;
+    y: number;
+    radius: number;
+}
