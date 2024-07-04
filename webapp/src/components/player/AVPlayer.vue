@@ -161,7 +161,7 @@ import { formatTimestampDuration, type TimedComment } from '@/core';
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
-import AnnotationsCanvas from './AnnotationsCanvas.vue';
+import AnnotationsCanvas from '@/components/canvas/AnnotationsCanvas.vue';
 import { logger, isSpaceBarPressed } from '@/app-utils';
 import { nextTick } from 'process';
 
