@@ -4,13 +4,15 @@ import type {
     FrameAnnotationPath,
 FrameAnnotationCircle,
 FrameAnnotationRect,
-FrameAnnotationLine
+FrameAnnotationLine,
+FrameAnnotationText
 } from '@quickbyte/common';
 import konva from "konva";
 import { PencilTool } from './pencil-tool.js';
 import { CircleTool } from './circle-tool.js';
 import { RectTool } from "./rect-tool";
 import { LineTool } from "./line-tool";
+import { TextTool } from "./text-tool";
 
 
 /**
@@ -29,6 +31,8 @@ export function createDrawingTool(shapeId: string, config: DrawingToolConfig, on
             return new RectTool(config.config, shapeId, onShapeUpdate);
         case 'line':
             return new LineTool(config.config, shapeId, onShapeUpdate);
+        case 'text':
+            return new TextTool(config.config, shapeId, onShapeUpdate);
     }
 }
 
@@ -43,6 +47,16 @@ export function scaleStrokeWidth(width: number, factor: number): number {
     return Math.max(width * factor, MIN_STROKE_WIDTH);
 }
 
+export function scaleTextShape(shape: FrameAnnotationText, factor: number): FrameAnnotationText {
+    return {
+        ...shape,
+        x: shape.x * factor,
+        y: shape.y * factor,
+        width: shape.width * factor,
+        fontSize: shape.fontSize * factor
+    };
+}
+
 export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 1): konva.ShapeConfig {
     switch (shape.type) {
         case 'path':
@@ -53,6 +67,8 @@ export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 
             return rectToKonva(shape, scaleFactor);
         case 'line':
             return lineToKonva(shape, scaleFactor);
+        case 'text':
+            return textToKonva(shape, scaleFactor);
     }
 }
 
@@ -99,5 +115,17 @@ function lineToKonva(shape: FrameAnnotationLine, scaleFactor: number = 1): konva
         // round cap for smoother lines
         lineCap: 'round',
         lineJoin: 'round',
+    };
+}
+
+function textToKonva(shape: FrameAnnotationText, scaleFactor: number = 1): konva.TextConfig {
+    return {
+        x: shape.x * scaleFactor,
+        y: shape.y * scaleFactor,
+        width: shape.width * scaleFactor,
+        fontSize: shape.fontSize,
+        fontFamily: shape.fontFamily,
+        fill: shape.color,
+        text: shape.text
     };
 }
