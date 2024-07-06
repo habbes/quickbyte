@@ -85,15 +85,13 @@
             <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
               
               <div class="flex flex-row items-center justify-between">
-                <div>
-                  <DrawingTools
-                    v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
-                    v-model:active="drawingToolsActive"
-                    @selectTool="annotationsDrawingTool = $event"
-                  />
-                </div>
+                <DrawingTools
+                  v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
+                  v-model:active="drawingToolsActive"
+                  @selectTool="annotationsDrawingTool = $event"
+                />
                 <div
-                  v-if="mediaType === 'video' || mediaType === 'audio'"
+                  v-if="(mediaType === 'video' || mediaType === 'audio') && !drawingToolsActive"
                   class="flex flex-row items-center gap-1" title="Save comment at the current timestamp"
                 >
                   <ClockIcon class="h-5 w-5"/>

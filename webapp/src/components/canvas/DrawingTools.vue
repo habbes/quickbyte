@@ -1,11 +1,15 @@
 <template>
   <div
-    class="flex gap-3 flex-row items-center transition-all ease-in-out"
+    class="flex gap-5 flex-row items-center justify-between transition-all ease-in-out"
     :class="{
-      'bg-slate-800 rounded-xl px-2 py-[2px] shadow-md': true
+      'bg-slate-800 rounded-xl px-2 py-[2px] shadow-md': true,
+      'w-full': isActive
     }"
   >
-    <div>
+    <!-- open close container -->
+    <div
+      class="flex items-center"
+    >
       <div
         v-if="!isActive"
         @click="isActive = true"
@@ -27,32 +31,68 @@
       />
       </div>
     </div>
-    <div v-if="isActive" class="flex gap-3 items-center">
-      <div class="flex items-center gap-1">
+     <!-- end open close container -->
+    <div v-if="isActive" class="flex gap-5 items-center justify-between">
+      <div class="flex items-center gap-3">
         <div
-          @click="selectedTool = 'pencil'" title="Draw an arbitrary a line"
+          @click="selectedTool = 'pencil'" title="Draw an arbitrary a line."
+          role="button"
+          :class="{
+            'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[2px]': selectedTool === 'pencil',
+          }"
+          
         >
-          <PencilIcon class="h-3 w-3 cursor-pointer" role="button" />
+          <PencilIcon
+            :class="{
+              'h-3 w-3': selectedTool !== 'pencil',
+              'h-2 w-2': selectedTool === 'pencil'
+            }"
+          />
         </div>
         <div
-          @click="selectedTool = 'circle'" title="Draw a circle"
-          class="h-3 w-3 cursor-pointer border rounded-full"
+          @click="selectedTool = 'circle'" title="Draw circle."
           role="button"
+          :class="{
+            'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[1px]': selectedTool === 'circle',
+          }"
+          
         >
+          <div
+            class="h-3 w-3 cursor-pointer border rounded-full"
+          >
+          </div>
         </div>
         <div
-          @click="selectedTool = 'rect'" title="Draw a rectangle"
-          class="h-3 w-3 cursor-pointer border rounded-sm"
+          @click="selectedTool = 'rect'" title="Draw a rectangle."
           role="button"
+          :class="{
+            'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[1px]': selectedTool === 'rect',
+          }"
         >
+          <div
+            class="cursor-pointer border rounded-sm"
+            :class="{ 'h-2 w-2': selectedTool === 'rect', 'h-3 w-3': selectedTool !== 'rect' }"
+          >
+          </div>
         </div>
         <div
-          @click="selectedTool = 'line'" title="Draw a straight line"
-          class="w-3 h-[1px] cursor-pointer border -rotate-45"
+          @click="selectedTool = 'line'" title="Draw a straight line."
           role="button"
-        />
+          :class="{
+            'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[1px]': selectedTool === 'line',
+          }"
+        >
+          <div
+            @click="selectedTool = 'line'"
+            class="h-[1px] cursor-pointer border -rotate-45"
+            :class="{
+              'w-3': selectedTool !== 'line',
+              'w-2': selectedTool === 'line'
+            }"
+          />
+        </div>
       </div>
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-3">
         <div
           v-for="color in colors"
           :key="color"
