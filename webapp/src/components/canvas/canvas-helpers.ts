@@ -2,11 +2,13 @@ import type { Position, DrawingToolConfig, CanvasDrawingTool, ShapeUpdateHandler
 import type {
     FrameAnnotationShape,
     FrameAnnotationPath,
-FrameAnnotationCircle
+FrameAnnotationCircle,
+FrameAnnotationRect
 } from '@quickbyte/common';
 import konva from "konva";
 import { PencilTool } from './pencil-tool.js';
 import { CircleTool } from './circle-tool.js';
+import { RectTool } from "./rect-tool";
 
 
 /**
@@ -21,6 +23,8 @@ export function createDrawingTool(shapeId: string, config: DrawingToolConfig, on
             return new PencilTool(config.config, shapeId, onShapeUpdate);
         case 'circle':
             return new CircleTool(config.config, shapeId, onShapeUpdate);
+        case 'rect':
+            return new RectTool(config.config, shapeId, onShapeUpdate);
     }
 }
 
@@ -35,31 +39,14 @@ export function scaleStrokeWidth(width: number, factor: number): number {
     return Math.max(width * factor, MIN_STROKE_WIDTH);
 }
 
-export function scaleShape(shape: FrameAnnotationShape, factor: number): FrameAnnotationShape {
-    switch (shape.type) {
-        case 'path':
-            return {
-                ...shape,
-                type: 'path',
-                points: shape.points.map(p => p * factor),
-                strokeWidth: scaleStrokeWidth(shape.strokeWidth, factor)
-            };
-        case 'circle':
-            return {
-                ...shape,
-                type: 'circle',
-                radius: shape.radius * factor,
-                strokeWidth: scaleStrokeWidth(shape.strokeWidth, factor)
-            };
-    }
-}
-
 export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 1): konva.ShapeConfig {
     switch (shape.type) {
         case 'path':
             return pathToKonva(shape, scaleFactor);
         case 'circle':
             return circleToKonva(shape, scaleFactor);
+        case 'rect':
+            return rectToKonva(shape, scaleFactor);
     }
 }
 
@@ -83,4 +70,16 @@ function circleToKonva(shape: FrameAnnotationCircle, scaleFactor: number = 1): k
         stroke: shape.strokeColor,
         strokeWidth: scaleStrokeWidth(shape.strokeWidth, scaleFactor)
     }
+}
+
+function rectToKonva(shape: FrameAnnotationRect, scaleFactor: number = 1): konva.RectConfig {
+    return {
+        x: shape.x * scaleFactor,
+        y: shape.y * scaleFactor,
+        width: shape.width * scaleFactor,
+        height: shape.height * scaleFactor,
+        stroke: shape.strokeColor,
+        strokeWidth: scaleStrokeWidth(shape.strokeWidth, scaleFactor),
+        cornerRadius: Math.ceil(shape.cornerRadius * scaleFactor)
+    };
 }

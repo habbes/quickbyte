@@ -90,24 +90,13 @@ const selectedColor = ref<string>(colors[0]);
 
 const currentConfig = computed<DrawingToolConfig|undefined>(() => {
   if (!isActive.value) return undefined;
-        
-  switch (selectedTool.value) {
-    case 'pencil':
-      return {
-        type: 'pencil',
-        config: {
-          strokeColor: selectedColor.value,
-          strokeWidth: 5,
-        }
-      };
-    case 'circle':
-      return {
-        type: 'circle',
-        config: {
-          strokeColor: selectedColor.value,
-          strokeWidth: 5,
-        }
-      }
+
+  return {
+    type: selectedTool.value,
+    config: {
+      strokeColor: selectedColor.value,
+      strokeWidth: 5,
+    }
   };
 });
 

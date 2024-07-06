@@ -19,6 +19,9 @@
         <template v-else-if="shape.type === 'circle'">
           <KonvaCircle :config="shapeToKonva(shape, scaleFactor)"></KonvaCircle>
         </template>
+        <template v-else-if="shape.type === 'rect'">
+          <KonvaRect :config="shapeToKonva(shape, scaleFactor)"></KonvaRect>
+        </template>
       </template>
     </KonvaLayer>
   </KonvaStage>
