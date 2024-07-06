@@ -11,13 +11,21 @@
             <span class="text-sm text-white">{{ comment.author.name }}</span>
             <span :title="`Posted on ${new Date(comment._createdAt).toLocaleString()} `">{{ new Date(comment._createdAt).toLocaleDateString() }}</span>
           </div>
-          <span
-            v-if="comment.timestamp !== undefined"
-            title="Jump to this time in the video"
-            class="font-semibold text-blue-300 hover:cursor-pointer"
-          >
-            {{ formatTimestampDuration(comment.timestamp) }}
-          </span>
+          <div class="flex items-center gap-2">
+            <div
+              v-if="comment.annotations"
+              title="This comment has drawn annotations"
+            >
+              <PaintBrushIcon class="h-3 w-3" />
+            </div>
+            <span
+              v-if="comment.timestamp !== undefined"
+              title="Jump to this time in the video"
+              class="font-semibold text-blue-300 hover:cursor-pointer"
+            >
+              {{ formatTimestampDuration(comment.timestamp) }}
+            </span>
+          </div>
         </div>
         <div v-if="!isEditMode" class="text-xs whitespace-pre-line">
           {{ comment.text }}
@@ -87,6 +95,7 @@ import type { CommentWithAuthor } from "@quickbyte/common";
 import { formatTimestampDuration} from "@/core";
 import { UiExpandableTextInput } from "@/components/ui";
 import { PencilIcon, TrashIcon } from "@heroicons/vue/24/solid";
+import { PaintBrushIcon } from "@heroicons/vue/24/outline";
 
 const props = defineProps<{
   comment: CommentWithAuthor;
