@@ -10,6 +10,7 @@ import konva from "konva";
 import { PencilTool } from './pencil-tool.js';
 import { CircleTool } from './circle-tool.js';
 import { RectTool } from "./rect-tool";
+import { LineTool } from "./line-tool";
 
 
 /**
@@ -26,6 +27,8 @@ export function createDrawingTool(shapeId: string, config: DrawingToolConfig, on
             return new CircleTool(config.config, shapeId, onShapeUpdate);
         case 'rect':
             return new RectTool(config.config, shapeId, onShapeUpdate);
+        case 'line':
+            return new LineTool(config.config, shapeId, onShapeUpdate);
     }
 }
 
@@ -95,5 +98,6 @@ function lineToKonva(shape: FrameAnnotationLine, scaleFactor: number = 1): konva
         points: [shape.x1, shape.y1, shape.x2, shape.y2].map(p => p * scaleFactor),
         // round cap for smoother lines
         lineCap: 'round',
+        lineJoin: 'round',
     };
 }

@@ -22,6 +22,9 @@
         <template v-else-if="shape.type === 'rect'">
           <KonvaRect :config="shapeToKonva(shape, scaleFactor)"></KonvaRect>
         </template>
+        <template v-else-if="shape.type === 'line'">
+          <KonvaLine :config="shapeToKonva(shape, scaleFactor)"></KonvaLine>
+        </template>
       </template>
     </KonvaLayer>
   </KonvaStage>
