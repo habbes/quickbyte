@@ -27,21 +27,23 @@
             <KonvaLine :config="shapeToKonva(shape, scaleFactor)"></KonvaLine>
           </template>
           <template v-else-if="shape.type === 'text'">
-            <KonvaText :config="shapeToKonva(shape, scaleFactor)"></KonvaText>
+            <KonvaText v-if="shape.id !== editingTextId" :config="shapeToKonva(shape, scaleFactor)"></KonvaText>
           </template>
         </template>
       </KonvaLayer>
     </KonvaStage>
-    <!-- <template v-for="shape in textShapes" :key="shape.id">
-      <TextShapeEditor :config="scaleTextShape(shape, scaleFactor)" />
-    </template> -->
+    <TextShapeEditor
+      v-if="editingTextShape && editingTextShape.type === 'text'"
+      :config="scaleTextShape(editingTextShape, scaleFactor)"
+      @update="updateTextShape($event)"
+    />
   </div>
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue';
 import konva from 'konva';
 import type { CanvasDrawingTool, DrawingToolConfig } from './types';
-import type { FrameAnnotationShape, FrameAnnotationCollection } from "@quickbyte/common";
+import type { FrameAnnotationShape, FrameAnnotationCollection, FrameAnnotationText } from "@quickbyte/common";
 import { createDrawingTool, scalePosition, shapeToKonva, scaleTextShape } from './canvas-helpers';
 import { injectCanvasController } from './canvas-controller.js';
 import TextShapeEditor from './TextShapeEditor.vue';
@@ -79,8 +81,8 @@ const konvaConfig = computed(() => ({
 
 const shapes = ref<FrameAnnotationShape[]>(props.annotations ? props.annotations.annotations : []);
 const scaleFactor = computed(() => konvaConfig.value.width / (props.annotations? props.annotations.width : REFERENCE_WIDTH));
-
-const textShapes = computed(() => shapes.value.filter(s => s.type === 'text'));
+const editingTextId = ref<string>();
+const editingTextShape = computed(() => shapes.value.find(s => s.id === editingTextId.value && s.type === 'text'));
 /**
  * Used to stash shapes that have been "undone" to facilitate a "redo"
  * operation.
@@ -142,6 +144,11 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
     return;
   }
 
+  if (editingTextId.value) {
+    resetEditingTextShape();
+    return;
+  }
+
   currentTool.value = createDrawingTool(`${nextShapeId++}`, 
     props.drawingToolConfig,
     (shape) => {
@@ -196,7 +203,23 @@ function handleStageMouseMove(e: konva.KonvaPointerEvent) {
 }
 
 function handleStageMouseUp(e: konva.KonvaPointerEvent) {
+  // if we've just finished creating a text annotations, let's
+  // open its editor
+  if (currentTool.value && shapes.value.at(-1)?.type === 'text') {
+    editingTextId.value = shapes.value.at(-1)?.id;
+  }
+
   currentTool.value = undefined;
+}
+
+function updateTextShape(shape: FrameAnnotationText) {
+  const index = shapes.value.findIndex(s => s.id === shape.id);
+  if (index === -1) {
+    return;
+  }
+
+  shapes.value[index] = scaleTextShape(shape, 1 / scaleFactor.value);
+  emitAnnotationsUpdateEvent();
 }
 
 function emitAnnotationsUpdateEvent() {
@@ -205,5 +228,9 @@ function emitAnnotationsUpdateEvent() {
     height: props.height / scaleFactor.value,
     annotations: shapes.value
   });
+}
+
+function resetEditingTextShape() {
+  editingTextId.value = undefined;
 }
 </script>
