@@ -35,7 +35,7 @@ import konva from 'konva';
 import type { CanvasDrawingTool, DrawingToolConfig } from './types';
 import type { FrameAnnotationShape, FrameAnnotationCollection } from "@quickbyte/common";
 import { createDrawingTool, scalePosition, shapeToKonva } from './canvas-helpers';
-import { injectCanvasController } from './controller-provider.js';
+import { injectCanvasController } from './canvas-controller.js';
 
 const props = defineProps<{
   height: number;
