@@ -601,11 +601,18 @@ export type WithCreator<T> = T & {
     }
 };
 
+/**
+ * Arbitrary line
+ */
 export const FrameAnnotationPath = z.object({
     type: z.literal('path'),
     id: z.string().min(1),
     strokeColor: z.string().min(1),
     strokeWidth: z.number().positive(),
+    /**
+     * A flattened array of x, y coordinate pairs.
+     * Every 2n-th item is an x coordinate and every 2n+1-th item is a y coordinate.
+     */
     points: z.array(z.number())
 });
 
@@ -614,13 +621,56 @@ export const FrameAnnotationCircle = z.object({
     id: z.string().min(1),
     strokeColor: z.string().min(1),
     strokeWidth: z.number().positive(),
-    fillColor: z.string().min(1),
     x: z.number(),
     y: z.number(),
     radius: z.number()
 });
 
-export const FrameAnnotationShape = z.union([FrameAnnotationCircle, FrameAnnotationPath]);
+export const FrameAnnotationRect = z.object({
+    type: z.literal("rect"),
+    id: z.string().min(1),
+    strokeColor: z.string().min(1),
+    strokeWidth: z.number().positive(),
+    /**
+     * x coordinate of the top-left corner
+     */
+    x: z.number(),
+    /**
+     * y coordinate of the top-left corner
+     */
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    cornerRadius: z.number()
+});
+
+/**
+ * Straighe line
+ */
+export const FrameAnnotationLine = z.object({
+    type: z.literal("line"),
+    id: z.string().min(1),
+    strokeColor: z.string().min(1),
+    strokeWidth: z.number().positive(),
+    x1: z.number(),
+    y1: z.number(),
+    x2: z.number(),
+    y2: z.number()
+});
+
+export const FrameAnnotationText = z.object({
+    type: z.literal("text"),
+    id: z.string().min(1),
+    color: z.string().min(1),
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    fontFamily: z.string(),
+    fontSize: z.number(),
+    text: z.string()
+});
+
+export const FrameAnnotationShape = z.union([FrameAnnotationCircle, FrameAnnotationPath, FrameAnnotationRect, FrameAnnotationLine, FrameAnnotationText]);
 
 export const FrameAnnotationCollection = z.object({
     width: z.number().positive(),
@@ -630,6 +680,9 @@ export const FrameAnnotationCollection = z.object({
 
 export type FrameAnnotationPath = z.infer<typeof FrameAnnotationPath>;
 export type FrameAnnotationCircle = z.infer<typeof FrameAnnotationCircle>;
+export type FrameAnnotationRect = z.infer<typeof FrameAnnotationRect>;
+export type FrameAnnotationLine = z.infer<typeof FrameAnnotationLine>;
+export type FrameAnnotationText = z.infer<typeof FrameAnnotationText>;
 export type FrameAnnotationShape = z.infer<typeof FrameAnnotationShape>;
 export type AnnotationShapeType = FrameAnnotationShape["type"];
 export type FrameAnnotationCollection = z.infer<typeof FrameAnnotationCollection>;
