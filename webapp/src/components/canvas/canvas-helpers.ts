@@ -7,6 +7,13 @@ FrameAnnotationCircle
 import konva from "konva";
 import { PencilTool } from './pencil-tool.js';
 
+
+/**
+ * Lower bound for stroke width to prevent the strokes
+ * from being too small to see on small screens after scaling.
+ */
+const MIN_STROKE_WIDTH = 3;
+
 export function createDrawingTool(shapeId: string, config: DrawingToolConfig, onShapeUpdate: ShapeUpdateHandler): CanvasDrawingTool {
     switch(config.type) {
         case 'pencil':
@@ -30,14 +37,14 @@ export function scaleShape(shape: FrameAnnotationShape, factor: number): FrameAn
                 ...shape,
                 type: 'path',
                 points: shape.points.map(p => p * factor),
-                strokeWidth: shape.strokeWidth * factor
+                strokeWidth: Math.max(shape.strokeWidth * factor, MIN_STROKE_WIDTH)
             };
         case 'circle':
             return {
                 ...shape,
                 type: 'circle',
                 radius: shape.radius * factor,
-                strokeWidth: shape.radius * factor
+                strokeWidth: Math.max(shape.strokeWidth * factor, MIN_STROKE_WIDTH)
             };
     }
 }
