@@ -1,44 +1,62 @@
 <template>
-  <div class="flex gap-2 justify-between items-center">
+  <div
+    class="flex gap-3 flex-row items-center transition-all"
+    :class="{
+      'bg-slate-800 rounded-xl px-2 py-[2px] shadow-md': isActive
+    }"
+  >
     <div>
-      <PaintBrushIcon
+      <div
         v-if="!isActive"
-        title="Draw annotations"
         @click="isActive = true"
-        class="h-4 w-4 cursor-pointer"
         role="button"
-      />
-      <XCircleIcon
+        title="Attach drawn annotations to the comment"  
+      >
+        <PaintBrushIcon
+          class="h-4 w-4 cursor-pointer"
+        />
+      </div>
+      <div
         v-else
         title="Close drawing tools"
         @click="isActive = false"
-        class="h-4 w-4 cursor-pointer"
         role="button"
+      >
+      <XMarkIcon
+        class="h-4 w-4 cursor-pointer"
       />
+      </div>
     </div>
-    <div v-if="isActive" class="flex gap-2 items-center">
-      <div @click="selectedTool = 'pencil'">
-        <PencilIcon title="Pencil tool" class="h-4 w-4 cursor-pointer" role="button" />
+    <div v-if="isActive" class="flex gap-3 items-center">
+      <div
+        @click="selectedTool = 'pencil'" title="Pencil tool for drawing arbitrary lines"
+      >
+        <PencilIcon class="h-3 w-3 cursor-pointer" role="button" />
       </div>
       <div class="flex items-center gap-1">
         <div
           v-for="color in colors"
           :key="color"
           @click="selectedColor = color"
-          class="rounded-full h-3 w-3 cursor-pointer" :style="{ backgroundColor: color }"
           :class="{
-            'h-4 w-4': selectedColor === color,
-            'h-3 w-3': selectedColor !== color
-            }"
-          role="button"
-        ></div>
+            'rounded-full p-[1px] border': selectedColor === color
+          }"
+          :style="{ borderColor: selectedColor === color ? color : 'auto' }"
+          title="Switch to this color"
+        >
+          <div
+            class="rounded-full h-3 w-3 cursor-pointer" :style="{ backgroundColor: color }"
+            
+            role="button"
+          ></div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
-import { PaintBrushIcon, PencilIcon, XCircleIcon } from "@heroicons/vue/24/outline";
+import { PaintBrushIcon, PencilIcon, XCircleIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 import type { DrawingToolType, DrawingToolConfig } from './types';
 
 const emit = defineEmits<{

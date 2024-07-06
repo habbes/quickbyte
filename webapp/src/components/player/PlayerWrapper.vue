@@ -83,7 +83,15 @@
 
           <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 h-[150px] sm:h-[200px]">
             <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
-              <div class="flex flex-row items-center justify-end">
+              
+              <div class="flex flex-row items-center justify-between">
+                <div>
+                  <DrawingTools
+                    v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
+                    v-model:active="drawingToolsActive"
+                    @selectTool="annotationsDrawingTool = $event"
+                  />
+                </div>
                 <div
                   v-if="mediaType === 'video' || mediaType === 'audio'"
                   class="flex flex-row items-center gap-1" title="Save comment at the current timestamp"
@@ -102,17 +110,11 @@
                 placeholder="Type your comment here"
                 @focus="handleCommentInputFocus()"
                 v-model="commentInputText"
-              ></textarea>
+              >
+              </textarea>
             </div>
             <div class="flex gap-2 items-center">
               <button class="btn btn-primary btn-xs" @click="sendTopLevelComment()">Send</button>
-              <div>
-                <DrawingTools
-                  v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
-                  v-model:active="drawingToolsActive"
-                  @selectTool="annotationsDrawingTool = $event"
-                />
-              </div>
             </div>
           </div>
         </div>
