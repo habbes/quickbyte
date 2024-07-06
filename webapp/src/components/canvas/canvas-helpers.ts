@@ -53,7 +53,7 @@ export function scaleTextShape(shape: FrameAnnotationText, factor: number): Fram
         x: shape.x * factor,
         y: shape.y * factor,
         width: shape.width * factor,
-        fontSize: shape.fontSize * factor
+        fontSize: shape.fontSize
     };
 }
 
