@@ -16,6 +16,12 @@
           :drawingToolConfig="annotationsDrawingTool"
           @updateAnnotations="$emit('drawAnnotations', $event)"
         />
+        <AnnotationsCanvas
+          v-else-if="currentFrameAnnotations && videoWidth && videoHeight"
+          :height="videoHeight"
+          :width="videoWidth"
+          :annotations="currentFrameAnnotations"
+        />
       </div>
       
       <media-player
@@ -163,13 +169,13 @@
 <script lang="ts" setup>
 import 'vidstack/bundle';
 import { type MediaPlayer } from 'vidstack';
-import { formatTimestampDuration, type TimedComment } from '@/core';
+import { formatTimestampDuration } from '@/core';
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
 import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
-import type { FrameAnnotationCollection } from '@quickbyte/common';
+import type { FrameAnnotationCollection, TimedComment } from '@quickbyte/common';
 
 type MediaSource = {
   url: string;
@@ -280,8 +286,21 @@ const bufferedSegments = computed(() => {
   return segments;
 });
 
+const selectedComment = computed(() => props.comments?.find(c => c._id === props.selectedCommentId));
 const hoveredCommentId = ref<string>();
 const hoveredComment = computed(() => props.comments?.find(c => c._id === hoveredCommentId.value));
+const currentFrameAnnotations = computed(() => {
+  if (isPlaying.value) {
+    return undefined;
+  }
+  if (selectedComment.value) {
+    return selectedComment.value.annotations;
+  }
+
+  if (hoveredComment.value) {
+    return hoveredComment.value.annotations;
+  }
+});
 // When the video player is mounted,
 // the duration is NaN
 // So we update the duration manually

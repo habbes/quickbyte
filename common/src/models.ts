@@ -432,6 +432,10 @@ export interface CommentWithAuthor extends Comment {
     }
 }
 
+export interface TimedComment extends Comment {
+    timestamp: number;
+}
+
 export interface TimedCommentWithAuthor extends CommentWithAuthor {
     timestamp: number;
 }

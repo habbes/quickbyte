@@ -23,7 +23,8 @@ import { createDrawingTool, scalePosition, scaleShape, shapeToKonva } from './ca
 const props = defineProps<{
   height: number;
   width: number;
-  drawingToolConfig: DrawingToolConfig
+  drawingToolConfig?: DrawingToolConfig;
+  annotations?: FrameAnnotationCollection;
 }>();
 
 const emit = defineEmits<{
@@ -40,11 +41,19 @@ const configKonva = computed(() => ({
 
 const scaleFactor = computed(() => configKonva.value.width / BASE_WIDTH);
 
-const shapes = ref<FrameAnnotationShape[]>([]);
+const shapes = ref<FrameAnnotationShape[]>(props.annotations ? props.annotations.annotations : []);
 
 const konvaShapes = computed(() =>
   shapes.value.map(s => shapeToKonva(scaleShape(s, scaleFactor.value))
 ));
+
+watch(() => props.annotations, () => {
+  if (!props.annotations) {
+    return;
+  }
+
+  shapes.value = props.annotations?.annotations;
+});
 
 watch(shapes, () => {
   emit('updateAnnotations', {
@@ -57,12 +66,16 @@ watch(shapes, () => {
 let nextShapeId = 1;
 
 function handleStageMouseDown(e: konva.KonvaPointerEvent) {
-  const s = e.target.getStage();
-  if (!s) {
+  if (!props.drawingToolConfig) {
     return;
   }
 
-  const pos = s.getPointerPosition();
+  const stage = e.target.getStage();
+  if (!stage) {
+    return;
+  }
+
+  const pos = stage.getPointerPosition();
   if (!pos) {
     return;
   }
@@ -84,12 +97,16 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
   // the drawing tool assumes the virtual canvas,
   // it is not aware of the actual canvas size
   currentTool.value.handlePointerStart({
-    stage: s,
+    stage,
     pos: scalePosition(pos, 1 / scaleFactor.value)
   });
 }
 
 function handleStageMouseMove(e: konva.KonvaPointerEvent) {
+  if (!props.drawingToolConfig) {
+    return;
+  }
+
   if (!currentTool.value) {
     return;
   }
