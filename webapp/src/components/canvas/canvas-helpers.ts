@@ -6,6 +6,7 @@ FrameAnnotationCircle
 } from '@quickbyte/common';
 import konva from "konva";
 import { PencilTool } from './pencil-tool.js';
+import { CircleTool } from './circle-tool.js';
 
 
 /**
@@ -20,6 +21,8 @@ export function createDrawingTool(shapeId: string, config: DrawingToolConfig, on
             const tool = new PencilTool(config.config, shapeId);
             tool.onShapeUpdate(onShapeUpdate);
             return tool;
+        case 'circle':
+            return new CircleTool(config.config, shapeId, onShapeUpdate);
     }
 }
 
@@ -79,7 +82,6 @@ function circleToKonva(shape: FrameAnnotationCircle, scaleFactor: number = 1): k
         x: shape.x * scaleFactor,
         y: shape.y * scaleFactor,
         radius: shape.radius * scaleFactor,
-        fill: shape.fillColor,
         stroke: shape.strokeColor,
         strokeWidth: scaleStrokeWidth(shape.strokeWidth, scaleFactor)
     }

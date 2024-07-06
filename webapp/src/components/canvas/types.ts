@@ -24,9 +24,17 @@ export type DrawingToolType = DrawingToolConfig["type"];
 export type DrawingToolConfig = {
     type: 'pencil',
     config: PencilToolConfig
+} | {
+    type: 'circle',
+    config: CircleToolConfig
 };
 
 export interface PencilToolConfig {
+    strokeColor: string;
+    strokeWidth: number;
+}
+
+export interface CircleToolConfig {
     strokeColor: string;
     strokeWidth: number;
 }

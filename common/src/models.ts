@@ -614,7 +614,6 @@ export const FrameAnnotationCircle = z.object({
     id: z.string().min(1),
     strokeColor: z.string().min(1),
     strokeWidth: z.number().positive(),
-    fillColor: z.string().min(1),
     x: z.number(),
     y: z.number(),
     radius: z.number()

@@ -28,10 +28,18 @@
       </div>
     </div>
     <div v-if="isActive" class="flex gap-3 items-center">
-      <div
-        @click="selectedTool = 'pencil'" title="Pencil tool for drawing arbitrary lines"
-      >
-        <PencilIcon class="h-3 w-3 cursor-pointer" role="button" />
+      <div class="flex items-center gap-1">
+        <div
+          @click="selectedTool = 'pencil'" title="Draw an arbitrary a line"
+        >
+          <PencilIcon class="h-3 w-3 cursor-pointer" role="button" />
+        </div>
+        <div
+          @click="selectedTool = 'circle'" title="Draw a circle"
+          class="h-3 w-3 cursor-pointer border rounded-full"
+          role="button"
+        >
+        </div>
       </div>
       <div class="flex items-center gap-1">
         <div
@@ -86,6 +94,14 @@ const currentConfig = computed<DrawingToolConfig|undefined>(() => {
           strokeWidth: 5,
         }
       };
+    case 'circle':
+      return {
+        type: 'circle',
+        config: {
+          strokeColor: selectedColor.value,
+          strokeWidth: 5,
+        }
+      }
   };
 });
 
