@@ -19,7 +19,7 @@ export interface Position {
     y: number;
 }
 
-export type DrawingToolType = 'pencil'|'circle'|'rect';
+export type DrawingToolType = 'pencil'|'circle'|'rect'|'line';
 
 export type DrawingToolConfig = {
     type: DrawingToolType,

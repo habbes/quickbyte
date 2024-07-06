@@ -46,6 +46,11 @@
           role="button"
         >
         </div>
+        <div
+          @click="selectedTool = 'line'" title="Draw a straight line"
+          class="w-3 h-[1px] cursor-pointer border -rotate-45"
+          role="button"
+        />
       </div>
       <div class="flex items-center gap-1">
         <div

@@ -3,7 +3,8 @@ import type {
     FrameAnnotationShape,
     FrameAnnotationPath,
 FrameAnnotationCircle,
-FrameAnnotationRect
+FrameAnnotationRect,
+FrameAnnotationLine
 } from '@quickbyte/common';
 import konva from "konva";
 import { PencilTool } from './pencil-tool.js';
@@ -47,6 +48,8 @@ export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 
             return circleToKonva(shape, scaleFactor);
         case 'rect':
             return rectToKonva(shape, scaleFactor);
+        case 'line':
+            return lineToKonva(shape, scaleFactor);
     }
 }
 
@@ -81,5 +84,16 @@ function rectToKonva(shape: FrameAnnotationRect, scaleFactor: number = 1): konva
         stroke: shape.strokeColor,
         strokeWidth: scaleStrokeWidth(shape.strokeWidth, scaleFactor),
         cornerRadius: Math.ceil(shape.cornerRadius * scaleFactor)
+    };
+}
+
+function lineToKonva(shape: FrameAnnotationLine, scaleFactor: number = 1): konva.LineConfig {
+    return {
+        globalCompositeOperation: 'source-over',
+        stroke: shape.strokeColor,
+        strokeWidth: scaleStrokeWidth(shape.strokeWidth, scaleFactor),
+        points: [shape.x1, shape.y1, shape.x2, shape.y2].map(p => p * scaleFactor),
+        // round cap for smoother lines
+        lineCap: 'round',
     };
 }
