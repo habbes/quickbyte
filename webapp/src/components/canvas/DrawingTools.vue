@@ -1,8 +1,8 @@
 <template>
   <div
-    class="flex gap-3 flex-row items-center transition-all"
+    class="flex gap-3 flex-row items-center transition-all ease-in-out"
     :class="{
-      'bg-slate-800 rounded-xl px-2 py-[2px] shadow-md': isActive
+      'bg-slate-800 rounded-xl px-2 py-[2px] shadow-md': true
     }"
   >
     <div>
@@ -56,7 +56,7 @@
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
-import { PaintBrushIcon, PencilIcon, XCircleIcon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { PaintBrushIcon, PencilIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 import type { DrawingToolType, DrawingToolConfig } from './types';
 
 const emit = defineEmits<{
