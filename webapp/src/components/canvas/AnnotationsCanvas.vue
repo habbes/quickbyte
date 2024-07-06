@@ -1,6 +1,6 @@
 <template>
   <KonvaStage
-    :config="configKonva"
+    :config="konvaConfig"
     @mousedown="handleStageMouseDown($event)"
     @touchstart="handleStageMouseDown($event)"
     @mousemove="handleStageMouseMove($event)"
@@ -9,7 +9,17 @@
     @touchend="handleStageMouseUp($event)"
   >
     <KonvaLayer>
-      <KonvaLine v-for="line in konvaShapes" :config="line"></KonvaLine>
+      <template
+        v-for="shape in shapes"
+        :key="shape.id"
+      >
+        <template v-if="shape.type === 'path'">
+          <KonvaLine :config="shapeToKonva(shape, scaleFactor)"></KonvaLine>
+        </template>
+        <template v-else-if="shape.type === 'circle'">
+          <KonvaCircle :config="shapeToKonva(shape, scaleFactor)"></KonvaCircle>
+        </template>
+      </template>
     </KonvaLayer>
   </KonvaStage>
 </template>
@@ -18,7 +28,7 @@ import { ref, computed, watch } from 'vue';
 import konva from 'konva';
 import type { CanvasDrawingTool, DrawingToolConfig } from './types';
 import type { FrameAnnotationShape, FrameAnnotationCollection } from "@quickbyte/common";
-import { createDrawingTool, scalePosition, scaleShape, shapeToKonva } from './canvas-helpers';
+import { createDrawingTool, scalePosition, shapeToKonva } from './canvas-helpers';
 
 const props = defineProps<{
   height: number;
@@ -31,21 +41,26 @@ const emit = defineEmits<{
   (e: 'updateAnnotations', annotations: FrameAnnotationCollection): void;
 }>();
 
-const BASE_WIDTH = 1980;
+/**
+ * This is used to manage scaling and to retain the relative
+ * positions of all shapes on the canvas on different screen sizes.
+ * To achieve this, a scale factor is computed as the ration between the
+ * current canvas width and the reference width.
+ * The drawing tools are not aware of the actual canvas, they create
+ * shapes based on the reference width. When these shapes are passed
+ * onto the actual canvas for rendering, they'll be scaled based on
+ * the scaling factor to properly fit within the dimensions of the canvas.
+ */
+const REFERENCE_WIDTH = 1980;
 const currentTool = ref<CanvasDrawingTool>();
 
-const configKonva = computed(() => ({
+const konvaConfig = computed(() => ({
   width: props.width,
   height: props.height
 }));
 
-const scaleFactor = computed(() => configKonva.value.width / BASE_WIDTH);
-
 const shapes = ref<FrameAnnotationShape[]>(props.annotations ? props.annotations.annotations : []);
-
-const konvaShapes = computed(() =>
-  shapes.value.map(s => shapeToKonva(scaleShape(s, scaleFactor.value))
-));
+const scaleFactor = computed(() => konvaConfig.value.width / (props.annotations? props.annotations.width : REFERENCE_WIDTH));
 
 watch(() => props.annotations, () => {
   if (!props.annotations) {
@@ -86,8 +101,9 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
       emitAnnotationsUpdateEvent();
     });
 
-  // the drawing tool assumes the virtual canvas,
-  // it is not aware of the actual canvas size
+  // Since the positions are based on the actual canvas,
+  // we have to scale them up to the reference canvas for
+  // the drawing tools.
   currentTool.value.handlePointerStart({
     stage,
     pos: scalePosition(pos, 1 / scaleFactor.value)
@@ -128,7 +144,7 @@ function handleStageMouseUp(e: konva.KonvaPointerEvent) {
 
 function emitAnnotationsUpdateEvent() {
   emit('updateAnnotations', {
-    width: BASE_WIDTH,
+    width: REFERENCE_WIDTH,
     height: props.height / scaleFactor.value,
     annotations: shapes.value
   });

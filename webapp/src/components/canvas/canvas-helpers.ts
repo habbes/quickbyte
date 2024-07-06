@@ -30,6 +30,10 @@ export function scalePosition(pos: Position, factor: number): Position {
     };
 }
 
+export function scaleStrokeWidth(width: number, factor: number): number {
+    return Math.max(width * factor, MIN_STROKE_WIDTH);
+}
+
 export function scaleShape(shape: FrameAnnotationShape, factor: number): FrameAnnotationShape {
     switch (shape.type) {
         case 'path':
@@ -37,46 +41,46 @@ export function scaleShape(shape: FrameAnnotationShape, factor: number): FrameAn
                 ...shape,
                 type: 'path',
                 points: shape.points.map(p => p * factor),
-                strokeWidth: Math.max(shape.strokeWidth * factor, MIN_STROKE_WIDTH)
+                strokeWidth: scaleStrokeWidth(shape.strokeWidth, factor)
             };
         case 'circle':
             return {
                 ...shape,
                 type: 'circle',
                 radius: shape.radius * factor,
-                strokeWidth: Math.max(shape.strokeWidth * factor, MIN_STROKE_WIDTH)
+                strokeWidth: scaleStrokeWidth(shape.strokeWidth, factor)
             };
     }
 }
 
-export function shapeToKonva(shape: FrameAnnotationShape): konva.ShapeConfig {
+export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 1): konva.ShapeConfig {
     switch (shape.type) {
         case 'path':
-            return pathToKonva(shape);
+            return pathToKonva(shape, scaleFactor);
         case 'circle':
-            return circleToKonva(shape);
+            return circleToKonva(shape, scaleFactor);
     }
 }
 
-function pathToKonva(shape: FrameAnnotationPath): konva.LineConfig {
+function pathToKonva(shape: FrameAnnotationPath, scaleFactor: number = 1): konva.LineConfig {
     return {
         globalCompositeOperation: 'source-over',
         stroke: shape.strokeColor,
-        strokeWidth: shape.strokeWidth,
-        points: shape.points,
+        strokeWidth: scaleStrokeWidth(shape.strokeWidth, scaleFactor),
+        points: scaleFactor === 1 ? shape.points : shape.points.map(p => p * scaleFactor),
         // round cap for smoother lines
         lineCap: 'round',
         lineJoin: 'round',
     };
 }
 
-function circleToKonva(shape: FrameAnnotationCircle): konva.CircleConfig {
+function circleToKonva(shape: FrameAnnotationCircle, scaleFactor: number = 1): konva.CircleConfig {
     return {
-        x: shape.x,
-        y: shape.y,
-        radius: shape.radius,
+        x: shape.x * scaleFactor,
+        y: shape.y * scaleFactor,
+        radius: shape.radius * scaleFactor,
         fill: shape.fillColor,
         stroke: shape.strokeColor,
-        strokeWidth: shape.strokeWidth
+        strokeWidth: scaleStrokeWidth(shape.strokeWidth, scaleFactor)
     }
 }
