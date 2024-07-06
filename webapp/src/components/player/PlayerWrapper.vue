@@ -149,6 +149,7 @@
               @playBackError="handleMediaPlayBackError($event)"
               @heightChange="playerHeight = $event"
               :annotationsDrawingTool="includeTimestamp ? annotationsDrawingTool : undefined"
+              @drawAnnotations="currentAnnotations = $event"
             />
             <ImageViewer
               v-else-if="file && mediaType === 'image'"
@@ -177,7 +178,18 @@
 import { computed, onMounted, ref, nextTick, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { logger, showToast } from "@/app-utils";
-import type { RoleType, MediaWithFileAndComments, Comment, CommentWithAuthor, TimedCommentWithAuthor, WithChildren, MediaType, ProjectItem, FolderPathEntry, Media } from "@quickbyte/common";
+import type {
+  RoleType,
+  MediaWithFileAndComments,
+  Comment,
+  CommentWithAuthor,
+  TimedCommentWithAuthor,
+  WithChildren,
+  MediaType,
+  ProjectItem,
+  Media,
+  FrameAnnotationCollection
+} from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
@@ -251,6 +263,7 @@ const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
 const annotationsDrawingTool = ref<DrawingToolConfig>();
+const currentAnnotations = ref<FrameAnnotationCollection>();
 
 // const selectedVersionId = ref<string>(props.selectedVersionId || props.media.preferredVersionId);
 

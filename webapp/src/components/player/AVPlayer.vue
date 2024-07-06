@@ -10,10 +10,11 @@
     <!-- @vue-ignore -->
       <div class="absolute z-10">
         <AnnotationsCanvas
-          v-if="annotationsDrawingTool"
+          v-if="annotationsDrawingTool && videoWidth && videoHeight"
           :height="videoHeight"
           :width="videoWidth"
           :drawingToolConfig="annotationsDrawingTool"
+          @updateAnnotations="$emit('drawAnnotations', $event)"
         />
       </div>
       
@@ -163,12 +164,12 @@
 import 'vidstack/bundle';
 import { type MediaPlayer } from 'vidstack';
 import { formatTimestampDuration, type TimedComment } from '@/core';
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
 import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
-import { nextTick } from 'process';
+import type { FrameAnnotationCollection } from '@quickbyte/common';
 
 type MediaSource = {
   url: string;
@@ -192,6 +193,7 @@ const emit = defineEmits<{
   (e: 'fullscreenChange', fullscreen: boolean): void;
   (e: 'widthChange', width: number): void;
   (e: 'heightChange', height: number): void;
+  (e: 'drawAnnotations', annotations: FrameAnnotationCollection): void;
 }>();
 
 defineExpose({

@@ -1,6 +1,5 @@
 <template>
   <KonvaStage
-    ref="stage"
     :config="configKonva"
     @mousedown="handleStageMouseDown($event)"
     @touchstart="handleStageMouseDown($event)"
@@ -9,28 +8,29 @@
     @mouseup="handleStageMouseUp($event)"
     @touchend="handleStageMouseUp($event)"
   >
-    <KonvaLayer ref="layerWrapper">
+    <KonvaLayer>
       <KonvaLine v-for="line in konvaShapes" :config="line"></KonvaLine>
     </KonvaLayer>
   </KonvaStage>
 </template>
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import konva from 'konva';
 import type { CanvasDrawingTool, DrawingToolConfig } from './types';
-import type { FrameAnnotationShape } from "@quickbyte/common";
+import type { FrameAnnotationShape, FrameAnnotationCollection } from "@quickbyte/common";
 import { createDrawingTool, scalePosition, scaleShape, shapeToKonva } from './canvas-helpers';
 
 const props = defineProps<{
   height: number;
   width: number;
   drawingToolConfig: DrawingToolConfig
-}>()
+}>();
 
-const stage = ref<{ getStage: () => konva.Stage }>();
-const layerWrapper = ref<{ getNode: () => konva.Layer }>();
+const emit = defineEmits<{
+  (e: 'updateAnnotations', annotations: FrameAnnotationCollection): void;
+}>();
 
-const baseWidth = 1980;
+const BASE_WIDTH = 1980;
 const currentTool = ref<CanvasDrawingTool>();
 
 const configKonva = computed(() => ({
@@ -38,7 +38,7 @@ const configKonva = computed(() => ({
   height: props.height
 }));
 
-const scaleFactor = computed(() => configKonva.value.width / baseWidth);
+const scaleFactor = computed(() => configKonva.value.width / BASE_WIDTH);
 
 const shapes = ref<FrameAnnotationShape[]>([]);
 
@@ -46,13 +46,17 @@ const konvaShapes = computed(() =>
   shapes.value.map(s => shapeToKonva(scaleShape(s, scaleFactor.value))
 ));
 
+watch(shapes, () => {
+  emit('updateAnnotations', {
+    width: BASE_WIDTH,
+    height: props.height / scaleFactor.value,
+    annotations: shapes.value
+  });
+});
+
 let nextShapeId = 1;
 
 function handleStageMouseDown(e: konva.KonvaPointerEvent) {
-  if (!layerWrapper.value) {
-    return;
-  }
-
   const s = e.target.getStage();
   if (!s) {
     return;
@@ -73,6 +77,8 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
       else {
         shapes.value[currentIndex] = shape;
       }
+
+      emitAnnotationsUpdateEvent();
     });
 
   // the drawing tool assumes the virtual canvas,
@@ -109,5 +115,13 @@ function handleStageMouseMove(e: konva.KonvaPointerEvent) {
 
 function handleStageMouseUp(e: konva.KonvaPointerEvent) {
   currentTool.value = undefined;
+}
+
+function emitAnnotationsUpdateEvent() {
+  emit('updateAnnotations', {
+    width: BASE_WIDTH,
+    height: props.height / scaleFactor.value,
+    annotations: shapes.value
+  });
 }
 </script>
