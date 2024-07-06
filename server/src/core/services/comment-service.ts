@@ -1,6 +1,5 @@
-import { Collection, Filter } from "mongodb";
 import { AuthContext, Comment, CommentWithAuthor, createPersistedModel, Media, WithChildren, CreateMediaCommentArgs, UpdateMediaCommentArgs, User } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createNotFoundError } from "../error.js";
+import { createAppError, createResourceNotFoundError, createNotFoundError, createValidationError } from "../error.js";
 import { ITransferService } from "./index.js";
 import { Database } from "../db.js";
 import { wrapError } from "../utils.js";
@@ -10,10 +9,8 @@ export interface MediaServiceConfig {
 }
 
 export class CommentService {
-    private collection: Collection<Comment>;
 
     constructor(private db: Database, private authContext: AuthContext) {
-        this.collection = db.comments();
     }
 
     createMediaComment(media: Media, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
@@ -46,16 +43,7 @@ export class CommentService {
 
 export type ICommentService = Pick<CommentService, 'createMediaComment'|'getMediaComments'|'deleteMediaComment'|'updateMediaComment'>;
 
-interface CreateCommentArgs {
-    projectId: string;
-    mediaId: string;
-    mediaVersionId: string;
-    text: string;
-    timestamp?: number;
-    parentId?: string;
-}
-
-export async function createMediaComment(db: Database, media: Media, args: CreateMediaCommentArgs, author: User): Promise<WithChildren<CommentWithAuthor>> {
+export async function createMediaComment(db: Database, media: Media, args: CreateMediaCommentArgs, author: User): Promise<WithChildren<CommentWithAuthor>> {    
     const version = media.versions.find(v => v._id === args.mediaVersionId);
     if (!version) {
         throw createResourceNotFoundError(`The version '${args.mediaVersionId}' does not exist for the media '${media._id}'.`);
@@ -67,12 +55,18 @@ export async function createMediaComment(db: Database, media: Media, args: Creat
         mediaVersionId: args.mediaVersionId,
         text: args.text,
         timestamp: args.timestamp,
-        parentId: args.parentId
+        parentId: args.parentId,
+        annotations: args.annotations
     }, author);
 }
 
-async function createComment(db: Database, args: CreateCommentArgs, user: User): Promise<WithChildren<CommentWithAuthor>> {
+async function createComment(db: Database, args: CreateMediaCommentArgs, user: User): Promise<WithChildren<CommentWithAuthor>> {
     return wrapError(async () => {
+        console.log('args', args);
+        if (!args.text && !args.annotations) {
+            throw createValidationError("A comment cannot be created without text or annotations.");
+        }
+
         if (args.parentId) {
             await ensureCommentReplyValid(db, args);
         }
@@ -83,7 +77,8 @@ async function createComment(db: Database, args: CreateCommentArgs, user: User):
             mediaId: args.mediaId,
             mediaVersionId: args.mediaVersionId,
             projectId: args.projectId,
-            parentId: args.parentId
+            parentId: args.parentId,
+            annotations: args.annotations
         };
 
         if (args.timestamp !== undefined && args.timestamp !== null) {

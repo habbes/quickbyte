@@ -227,10 +227,11 @@ const props = defineProps<{
   },
   browserHasParentFolder: boolean;
   sendComment?: (args: {
-    text: string;
+    text?: string;
     versionId: string;
     timestamp?: number;
     parentId?: string;
+    annotations?: FrameAnnotationCollection;
   }) => Promise<WithChildren<CommentWithAuthor>>;
   editComment?: (args: {
     commentId: string;
@@ -519,7 +520,7 @@ function handleVideoCommentClicked(comment: CommentWithAuthor) {
 }
 
 async function sendTopLevelComment() {
-  if (!commentInputText.value) return;
+  if (!commentInputText.value && !(currentAnnotations.value && includeTimestamp.value)) return;
   if (!props.media) return;
   if (!props.sendComment) throw new Error('sendComment func not set in props');
 
@@ -528,6 +529,7 @@ async function sendTopLevelComment() {
       text: commentInputText.value,
       timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined,
       versionId: props.selectedVersionId || props.media.preferredVersionId,
+      annotations: currentAnnotations.value
     });
 
     if (!user.value) {
@@ -535,6 +537,8 @@ async function sendTopLevelComment() {
     };
   
     commentInputText.value = '';
+    currentAnnotations.value = undefined;
+    annotationsDrawingTool.value = undefined;
     const commentIndex = comments.value.findIndex(c => c._id === comment._id);
     // Since the media comments maybe updated by the implementation of
     // props.sendComment, check first before adding the created comment to the list.

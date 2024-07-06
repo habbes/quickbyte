@@ -266,6 +266,7 @@ export class MediaService {
 
     async createMediaComment(projectId: string, mediaId: string, args: CreateMediaCommentArgs): Promise<WithChildren<CommentWithAuthor>> {
         try {
+            
             const medium = await this.db.media().findOne(
                 addRequiredMediaFilters({ projectId: projectId, _id: mediaId }),
                 addDefaultMediaFindOptions({})
