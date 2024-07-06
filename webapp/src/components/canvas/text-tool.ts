@@ -10,10 +10,10 @@ export class TextTool extends BaseDrawingTool<FrameAnnotationText> {
             x: pos.x,
             y: pos.y,
             text: 'Enter text',
-            strokeColor: this.config.strokeColor,
+            color: this.config.strokeColor,
             fontFamily: 'Calibri',
             fontSize: 14,
-            width: 50
+            width: 200
         };
     }
 

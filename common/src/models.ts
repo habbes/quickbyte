@@ -661,7 +661,7 @@ export const FrameAnnotationLine = z.object({
 export const FrameAnnotationText = z.object({
     type: z.literal("text"),
     id: z.string().min(1),
-    strokeColor: z.string().min(1),
+    color: z.string().min(1),
     x: z.number(),
     y: z.number(),
     width: z.number(),
