@@ -151,7 +151,7 @@
             <AVPlayer
               :style="`height: ${playerHeight}px`"
               v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
-              ref="videoPlayer"
+              ref="avPlayer"
               :mediaType="mediaType"
               :sources="sources"
               @seeked="handleSeek()"
@@ -276,7 +276,7 @@ const headerClasses = {
   height: `${headerSize}px`
 };
 
-const videoPlayer = ref<typeof AVPlayer>();
+const avPlayer = ref<typeof AVPlayer>();
 const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
@@ -480,7 +480,7 @@ function seekToComment(comment: CommentWithAuthor) {
     return;
   }
 
-  if (!videoPlayer.value) {
+  if (!avPlayer.value) {
     // if the video ref isn't ready yet (e.g. component just mounted),
     // wait before we seek
     // TODO: warn, if video player is never ready, this will lead to infinite async recursion
@@ -493,7 +493,7 @@ function seekToComment(comment: CommentWithAuthor) {
     return;
   }
 
-  videoPlayer.value.seek(comment.timestamp);
+  avPlayer.value.seek(comment.timestamp);
 }
 
 function scrollToComment(comment: CommentWithAuthor) {
@@ -518,14 +518,14 @@ function unselectComment() {
 }
 
 function handleSeek() {
-  if (!videoPlayer.value) return;
-  currentTimeStamp.value = videoPlayer.value.getCurrentTime();
+  if (!avPlayer.value) return;
+  currentTimeStamp.value = avPlayer.value.getCurrentTime();
 }
 
 function handleCommentInputFocus() {
-  if (!videoPlayer.value) return;
-  currentTimeStamp.value = videoPlayer.value.getCurrentTime();
-  videoPlayer.value.pause();
+  if (!avPlayer.value) return;
+  currentTimeStamp.value = avPlayer.value.getCurrentTime();
+  avPlayer.value.pause();
   unselectComment();
 }
 
@@ -553,8 +553,8 @@ async function sendTopLevelComment() {
   // Annotations are only allowed for video (if timestamp is included) or images
   if (
     !commentInputText.value
-    && !(currentAnnotations.value && includeTimestamp.value && mediaType.value === 'video')
-    && !(currentAnnotations.value && mediaType.value === 'image')
+    && !(currentAnnotations.value && currentAnnotations.value.annotations.length && includeTimestamp.value && mediaType.value === 'video')
+    && !(currentAnnotations.value && currentAnnotations.value.annotations.length && mediaType.value === 'image')
   )  {
     return;
   }

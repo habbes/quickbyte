@@ -4,10 +4,6 @@
       class="bg-black max-h-full relative"
       :style="`height: ${videoHeight}px`"
     >
-    <!-- Getting type errors due to the props passed to the media-player.
-      Ignoring the errors until I figure out what the causes them.
-    -->
-    <!-- @vue-ignore -->
       <div class="absolute z-10">
         <AnnotationsCanvas
           v-if="annotationsDrawingTool && videoWidth && videoHeight"
@@ -23,7 +19,11 @@
           :annotations="currentFrameAnnotations"
         />
       </div>
-      
+
+      <!-- Getting type errors due to the props passed to the media-player.
+        Ignoring the errors until I figure out what the causes them.
+      -->
+      <!-- @vue-ignore -->
       <media-player
         ref="player"
         view-type="video"

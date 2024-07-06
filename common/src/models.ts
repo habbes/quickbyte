@@ -625,7 +625,7 @@ export const FrameAnnotationShape = z.union([FrameAnnotationCircle, FrameAnnotat
 export const FrameAnnotationCollection = z.object({
     width: z.number().positive(),
     height: z.number().positive().optional(),
-    annotations: z.array(FrameAnnotationShape).nonempty()
+    annotations: z.array(FrameAnnotationShape)
 });
 
 export type FrameAnnotationPath = z.infer<typeof FrameAnnotationPath>;

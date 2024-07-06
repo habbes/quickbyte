@@ -67,6 +67,10 @@ async function createComment(db: Database, args: CreateMediaCommentArgs, user: U
             throw createValidationError("A comment cannot be created without text or annotations.");
         }
 
+        if (args.annotations && args.annotations.annotations.length === 0) {
+            throw createValidationError("This comment includes annotations, but not shapes were found in the annotations.");
+        }
+
         if (args.parentId) {
             await ensureCommentReplyValid(db, args);
         }
