@@ -666,7 +666,7 @@ export const FrameAnnotationText = z.object({
     y: z.number(),
     width: z.number(),
     fontFamily: z.string(),
-    fontSize: z.string(),
+    fontSize: z.number(),
     text: z.string()
 });
 

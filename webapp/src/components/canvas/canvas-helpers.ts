@@ -11,6 +11,7 @@ import { PencilTool } from './pencil-tool.js';
 import { CircleTool } from './circle-tool.js';
 import { RectTool } from "./rect-tool";
 import { LineTool } from "./line-tool";
+import { TextTool } from "./text-tool";
 
 
 /**
@@ -29,6 +30,8 @@ export function createDrawingTool(shapeId: string, config: DrawingToolConfig, on
             return new RectTool(config.config, shapeId, onShapeUpdate);
         case 'line':
             return new LineTool(config.config, shapeId, onShapeUpdate);
+        case 'text':
+            return new TextTool(config.config, shapeId, onShapeUpdate);
     }
 }
 
@@ -53,6 +56,8 @@ export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 
             return rectToKonva(shape, scaleFactor);
         case 'line':
             return lineToKonva(shape, scaleFactor);
+        default:
+            throw new Error(`Unsupported shape for konva conversion ${shape.type}`);
     }
 }
 
