@@ -18,9 +18,7 @@ const MIN_STROKE_WIDTH = 3;
 export function createDrawingTool(shapeId: string, config: DrawingToolConfig, onShapeUpdate: ShapeUpdateHandler): CanvasDrawingTool {
     switch(config.type) {
         case 'pencil':
-            const tool = new PencilTool(config.config, shapeId);
-            tool.onShapeUpdate(onShapeUpdate);
-            return tool;
+            return new PencilTool(config.config, shapeId, onShapeUpdate);
         case 'circle':
             return new CircleTool(config.config, shapeId, onShapeUpdate);
     }

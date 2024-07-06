@@ -17,6 +17,10 @@ export abstract class BaseDrawingTool<T extends FrameAnnotationShape> implements
 
     handlePointerMove(event: CanvasPointerEvent): void {
         const pos = event.pos;
+        if (this.shouldSkipUpdate(pos)) {
+            return;
+        }
+
         const shape = this.initShape(pos);
         this.shape = this.updateShape(shape, pos);
         this.notifyShapeUpdate();
@@ -24,6 +28,16 @@ export abstract class BaseDrawingTool<T extends FrameAnnotationShape> implements
 
     onShapeUpdate(handler: ShapeUpdateHandler): void {
         this.shapeHandler = handler;
+    }
+
+    /**
+     * Determines to skip a shape update operation.
+     * This is called exactly once before each update attempt
+     * (per pointer move). Implementations can use this
+     * to optimize update operations by skipping unnecessary updates.
+     */
+    protected shouldSkipUpdate(pos: Position): boolean {
+        return false;
     }
 
     protected abstract createShape(pos: Position): T;
