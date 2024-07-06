@@ -91,7 +91,8 @@
           }"
         />
       </div>
-      <div
+      <!-- TODO: text tool is temporarily disabled -->
+      <!-- <div
         @click="selectedTool = 'text'" title="Write text directly on the frame."
         role="button"
         :class="{
@@ -104,7 +105,7 @@
         >
          T
         </div>
-      </div>
+      </div> -->
     </div>
     <!-- end shape selectors -->
     <!-- color selectors -->
