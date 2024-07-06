@@ -109,6 +109,7 @@
               <div>
                 <DrawingTools
                   v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
+                  v-model:active="drawingToolsActive"
                   @selectTool="annotationsDrawingTool = $event"
                 />
               </div>
@@ -270,6 +271,7 @@ const videoPlayer = ref<typeof AVPlayer>();
 const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
+const drawingToolsActive = ref(false);
 const annotationsDrawingTool = ref<DrawingToolConfig>();
 const currentAnnotations = ref<FrameAnnotationCollection>();
 
@@ -561,6 +563,7 @@ async function sendTopLevelComment() {
     commentInputText.value = '';
     currentAnnotations.value = undefined;
     annotationsDrawingTool.value = undefined;
+    drawingToolsActive.value = false;
     const commentIndex = comments.value.findIndex(c => c._id === comment._id);
     // Since the media comments maybe updated by the implementation of
     // props.sendComment, check first before adding the created comment to the list.

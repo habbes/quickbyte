@@ -42,7 +42,7 @@ import { PaintBrushIcon, PencilIcon, XCircleIcon } from "@heroicons/vue/24/outli
 import type { DrawingToolType, DrawingToolConfig } from './types';
 
 const emit = defineEmits<{
-  (e: 'selectTool', config: DrawingToolConfig): unknown;
+  (e: 'selectTool', config?: DrawingToolConfig): unknown;
 }>();
 
 const colors = [
@@ -52,11 +52,11 @@ const colors = [
   '#fff'
 ];
 
-const isActive = ref(false);
+const isActive = defineModel<boolean>("active", { default: false });
 const selectedTool = ref<DrawingToolType>('pencil');
 const selectedColor = ref<string>(colors[0]);
 
-const currentConfig = computed<DrawingToolConfig>(() => {
+const currentConfig = computed<DrawingToolConfig|undefined>(() => {
   if (!isActive.value) return undefined;
         
   switch (selectedTool.value) {
