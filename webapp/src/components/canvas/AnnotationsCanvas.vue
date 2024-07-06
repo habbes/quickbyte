@@ -55,14 +55,6 @@ watch(() => props.annotations, () => {
   shapes.value = props.annotations?.annotations;
 });
 
-watch(shapes, () => {
-  emit('updateAnnotations', {
-    width: BASE_WIDTH,
-    height: props.height / scaleFactor.value,
-    annotations: shapes.value
-  });
-});
-
 let nextShapeId = 1;
 
 function handleStageMouseDown(e: konva.KonvaPointerEvent) {

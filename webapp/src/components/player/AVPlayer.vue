@@ -175,7 +175,7 @@ import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIco
 import Slider from '@/components/ui/Slider.vue';
 import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
-import type { FrameAnnotationCollection, TimedComment } from '@quickbyte/common';
+import type { FrameAnnotationCollection, TimedCommentWithAuthor } from '@quickbyte/common';
 
 type MediaSource = {
   url: string;
@@ -185,7 +185,7 @@ type MediaSource = {
 
 const props = defineProps<{
   sources: MediaSource[];
-  comments?: TimedComment[];
+  comments?: TimedCommentWithAuthor[];
   selectedCommentId?: string;
   mediaType: 'video'|'audio';
   versionId?: string;
@@ -194,7 +194,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'seeked'): void;
-  (e: 'clickComment', comment: TimedComment): void;
+  (e: 'clickComment', comment: TimedCommentWithAuthor): void;
   (e: 'playBackError', error: Error): void;
   (e: 'fullscreenChange', fullscreen: boolean): void;
   (e: 'widthChange', width: number): void;
@@ -542,11 +542,11 @@ function handleSliderUpdate(value: number[]|undefined) {
   volume.value = value[0];
 }
 
-function handleCommentClick(comment: TimedComment) {
+function handleCommentClick(comment: TimedCommentWithAuthor) {
   emit('clickComment', comment);
 }
 
-function handleCommentMouseEnter(comment: TimedComment) {
+function handleCommentMouseEnter(comment: TimedCommentWithAuthor) {
   hoveredCommentId.value = comment._id;
 }
 
