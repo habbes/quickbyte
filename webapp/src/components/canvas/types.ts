@@ -19,6 +19,8 @@ export interface Position {
     y: number;
 }
 
+export type DrawingToolType = DrawingToolConfig["type"];
+
 export type DrawingToolConfig = {
     type: 'pencil',
     config: PencilToolConfig

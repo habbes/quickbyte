@@ -101,8 +101,11 @@
                 v-model="commentInputText"
               ></textarea>
             </div>
-            <div>
+            <div class="flex gap-2 items-center">
               <button class="btn btn-primary btn-xs" @click="sendTopLevelComment()">Send</button>
+              <div>
+                <DrawingTools />
+              </div>
             </div>
           </div>
         </div>
@@ -181,6 +184,7 @@ import MediaComment from "./MediaComment.vue";
 import InPlayerMediaBrowser from './InPlayerMediaBrowser.vue';
 import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
+import { DrawingTools } from "@/components/canvas";
 
 type MediaSource = {
   url: string;
