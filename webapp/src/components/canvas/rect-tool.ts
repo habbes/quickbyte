@@ -4,19 +4,21 @@ import { BaseDrawingTool } from './base-drawing-tool';
 
 export class RectTool extends BaseDrawingTool<FrameAnnotationRect> {
     /**
-     * The direction in which we extend the width
+     * The direction in which we extend the width and height,
+     * 1 represents left to right and top to bottom respectively,
+     * -1 represents the opposite direction.
      */
-    private xDirection = 1;
+    private dir = { x: 1, y: 1 };
     /**
-     * The direction in which we extends the height
+     * The position from which to extend the width or height.
+     * This is used when the direction is negative, since it goes
+     * against the natural direction of the rectangle. We use
+     * the anchor to adjust the width.
      */
-    private yDirection = 1;
-    private xAnchor = 0;
-    private yAnchor = 0;
+    private anchor = { x: 0, y: 0 };
 
     protected createShape(pos: Position): FrameAnnotationRect {
-        this.xAnchor = pos.x;
-        this.yAnchor = pos.y;
+        this.anchor = pos;
 
         return {
             type: 'rect',
@@ -40,28 +42,31 @@ export class RectTool extends BaseDrawingTool<FrameAnnotationRect> {
 
         // if a distance is different from the current direction then we flip the shape along that axis
         let x = shape.x
-        if (width * this.xDirection < 0) {
+        if (width * this.dir.x < 0) {
             // flip direction
-            this.xDirection = -1 * this.xDirection;
-            this.xAnchor = pos.x;
+            this.dir.x = -1 * this.dir.x;
+            // set this position to be the new anchor point
+            this.anchor.x = pos.x;
         }
 
-        if (this.xDirection < 0) {
-            // to extend the shape towards the left,
-            // we have to the rectangle by the same amount we increase the width
+        if (this.dir.x < 0) {
+            // Here we're extending the rectangle towards the left
+            // Since the position is also moving towards the left
+            // we use the last saved anchor point so that we can update
+            // the width towards the right of the new position
             x = pos.x;
-            width = this.xAnchor - x;
+            width = this.anchor.x - x;
         }
         
         let y = shape.y;
-        if (height * this.yDirection < 0) {
-            this.yDirection = -1 * this.yDirection;
-            this.yAnchor = pos.y;
+        if (height * this.dir.y < 0) {
+            this.dir.y = -1 * this.dir.y;
+            this.anchor.y = pos.y;
         }
 
-        if (this.yDirection < 0) {
+        if (this.dir.y < 0) {
             y = pos.y;
-            height = this.yAnchor - y;
+            height = this.anchor.y - y;
         }
     
         return {
