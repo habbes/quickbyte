@@ -40,6 +40,12 @@
           role="button"
         >
         </div>
+        <div
+          @click="selectedTool = 'rect'" title="Draw a rectangle"
+          class="h-3 w-3 cursor-pointer border rounded-sm"
+          role="button"
+        >
+        </div>
       </div>
       <div class="flex items-center gap-1">
         <div

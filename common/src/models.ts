@@ -606,6 +606,10 @@ export const FrameAnnotationPath = z.object({
     id: z.string().min(1),
     strokeColor: z.string().min(1),
     strokeWidth: z.number().positive(),
+    /**
+     * A flattened array of x, y coordinate pairs.
+     * Every 2n-th item is an x coordinate and every 2n+1-th item is a y coordinate.
+     */
     points: z.array(z.number())
 });
 
@@ -619,7 +623,25 @@ export const FrameAnnotationCircle = z.object({
     radius: z.number()
 });
 
-export const FrameAnnotationShape = z.union([FrameAnnotationCircle, FrameAnnotationPath]);
+export const FrameAnnotationRect = z.object({
+    type: z.literal("rect"),
+    id: z.string().min(1),
+    strokeColor: z.string().min(1),
+    strokeWidth: z.number().positive(),
+    /**
+     * x coordinate of the top-left corner
+     */
+    x: z.number(),
+    /**
+     * y coordinate of the top-left corner
+     */
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    cornerRadius: z.number()
+});
+
+export const FrameAnnotationShape = z.union([FrameAnnotationCircle, FrameAnnotationPath, FrameAnnotationRect]);
 
 export const FrameAnnotationCollection = z.object({
     width: z.number().positive(),
@@ -629,6 +651,7 @@ export const FrameAnnotationCollection = z.object({
 
 export type FrameAnnotationPath = z.infer<typeof FrameAnnotationPath>;
 export type FrameAnnotationCircle = z.infer<typeof FrameAnnotationCircle>;
+export type FrameAnnotationRect = z.infer<typeof FrameAnnotationRect>;
 export type FrameAnnotationShape = z.infer<typeof FrameAnnotationShape>;
 export type AnnotationShapeType = FrameAnnotationShape["type"];
 export type FrameAnnotationCollection = z.infer<typeof FrameAnnotationCollection>;
