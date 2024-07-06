@@ -4,7 +4,8 @@ import type {
     FrameAnnotationPath,
 FrameAnnotationCircle,
 FrameAnnotationRect,
-FrameAnnotationLine
+FrameAnnotationLine,
+FrameAnnotationText
 } from '@quickbyte/common';
 import konva from "konva";
 import { PencilTool } from './pencil-tool.js';
@@ -46,6 +47,16 @@ export function scaleStrokeWidth(width: number, factor: number): number {
     return Math.max(width * factor, MIN_STROKE_WIDTH);
 }
 
+export function scaleTextShape(shape: FrameAnnotationText, factor: number): FrameAnnotationText {
+    return {
+        ...shape,
+        x: shape.x * factor,
+        y: shape.y * factor,
+        width: shape.width * factor,
+        fontSize: shape.fontSize * factor
+    };
+}
+
 export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 1): konva.ShapeConfig {
     switch (shape.type) {
         case 'path':
@@ -57,7 +68,7 @@ export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 
         case 'line':
             return lineToKonva(shape, scaleFactor);
         default:
-            throw new Error(`Unsupported shape for konva conversion ${shape.type}`);
+            return textToKonva(shape, scaleFactor);
     }
 }
 
@@ -104,5 +115,16 @@ function lineToKonva(shape: FrameAnnotationLine, scaleFactor: number = 1): konva
         // round cap for smoother lines
         lineCap: 'round',
         lineJoin: 'round',
+    };
+}
+
+function textToKonva(shape: FrameAnnotationText, scaleFactor: number = 1): konva.TextConfig {
+    return {
+        x: shape.x * scaleFactor,
+        y: shape.y * scaleFactor,
+        width: shape.width * scaleFactor,
+        fontSize: shape.fontSize * scaleFactor,
+        fontFamily: shape.fontFamily,
+        fill: shape.color
     };
 }
