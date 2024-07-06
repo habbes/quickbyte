@@ -1,11 +1,5 @@
-import type { CanvasDrawingTool, CanvasPointerEvent, ShapeUpdateHandler } from "./types.js";
+import type { CanvasDrawingTool, CanvasPointerEvent, ShapeUpdateHandler, PencilToolConfig } from "./types.js";
 import type { FrameAnnotationPath } from "@quickbyte/common";
-
-export interface PencilToolConfig {
-    strokeColor: string;
-    strokeWidth: number;
-    shapeId: string;
-}
 
 export class PencilTool implements CanvasDrawingTool {
     private shapeHandler?: ShapeUpdateHandler;

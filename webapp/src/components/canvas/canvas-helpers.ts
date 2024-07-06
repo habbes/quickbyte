@@ -1,10 +1,20 @@
-import type { Position } from "./types";
+import type { Position, DrawingToolConfig, CanvasDrawingTool, ShapeUpdateHandler } from "./types.js";
 import type {
     FrameAnnotationShape,
     FrameAnnotationPath,
 FrameAnnotationCircle
 } from '@quickbyte/common';
 import konva from "konva";
+import { PencilTool } from './pencil-tool.js';
+
+export function createDrawingTool(config: DrawingToolConfig, onShapeUpdate: ShapeUpdateHandler): CanvasDrawingTool {
+    switch(config.type) {
+        case 'pencil':
+            const tool = new PencilTool(config.config);
+            tool.onShapeUpdate(onShapeUpdate);
+            return tool;
+    }
+}
 
 export function scalePosition(pos: Position, factor: number): Position {
     return {
@@ -31,7 +41,6 @@ export function scaleShape(shape: FrameAnnotationShape, factor: number): FrameAn
             };
     }
 }
-
 
 export function shapeToKonva(shape: FrameAnnotationShape): konva.ShapeConfig {
     switch (shape.type) {

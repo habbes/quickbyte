@@ -17,10 +17,9 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue';
 import konva from 'konva';
-import { PencilTool, type PencilToolConfig } from "./pencil-tool";
 import type { CanvasDrawingTool } from './types';
 import type { FrameAnnotationShape } from "@quickbyte/common";
-import { scalePosition, scaleShape, shapeToKonva } from './canvas-helpers';
+import { createDrawingTool, scaleShape, shapeToKonva } from './canvas-helpers';
 
 const props = defineProps<{
   height: number;
@@ -63,13 +62,14 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
     return;
   }
 
-  const tool = new PencilTool({
-    strokeColor: '#df4b26',
-    strokeWidth: 5,
-    shapeId: `${nextShapeId++}`
-  });
-
-  tool.onShapeUpdate((rawShape) => {
+  currentTool.value = createDrawingTool({
+    type: 'pencil',
+    config: {
+      strokeColor: '#df4b26',
+      strokeWidth: 5,
+      shapeId: `${nextShapeId++}`
+    }
+  }, (rawShape) => {
     const shape = scaleShape(rawShape, 1 / scaleFactor.value);
     const currentIndex = shapes.value.findIndex(s => s.id === shape.id);
     if (currentIndex === -1) {
@@ -80,7 +80,6 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
     }
   });
 
-  currentTool.value = tool;
   currentTool.value.handlePointerStart({
     stage: s,
     pos

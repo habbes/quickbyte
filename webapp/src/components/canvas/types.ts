@@ -18,3 +18,14 @@ export interface Position {
     x: number;
     y: number;
 }
+
+export type DrawingToolConfig = {
+    type: 'pencil',
+    config: PencilToolConfig
+};
+
+export interface PencilToolConfig {
+    strokeColor: string;
+    strokeWidth: number;
+    shapeId: string;
+}
