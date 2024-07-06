@@ -843,7 +843,8 @@ export class PublicProjectService {
                     mediaVersionId: args.mediaVersionId,
                     text: args.text,
                     timestamp: args.timestamp,
-                    parentId: args.parentId
+                    parentId: args.parentId,
+                    annotations: args.annotations
                 },
                 user
             );

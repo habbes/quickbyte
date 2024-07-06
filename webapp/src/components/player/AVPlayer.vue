@@ -1,13 +1,29 @@
 <template>
   <div class="w-full h-full max-h-full">
     <div v-if="mediaType === 'video'"
-      class="bg-black max-h-full"
+      class="bg-black max-h-full relative"
       :style="`height: ${videoHeight}px`"
     >
-    <!-- Getting type errors due to the props passed to the media-player.
-      Ignoring the errors until I figure out what the causes them.
-    -->
-    <!-- @vue-ignore -->
+      <div class="absolute z-10">
+        <AnnotationsCanvas
+          v-if="annotationsDrawingTool && videoWidth && videoHeight"
+          :height="videoHeight"
+          :width="videoWidth"
+          :drawingToolConfig="annotationsDrawingTool"
+          @updateAnnotations="$emit('drawAnnotations', $event)"
+        />
+        <AnnotationsCanvas
+          v-else-if="currentFrameAnnotations && videoWidth && videoHeight"
+          :height="videoHeight"
+          :width="videoWidth"
+          :annotations="currentFrameAnnotations"
+        />
+      </div>
+
+      <!-- Getting type errors due to the props passed to the media-player.
+        Ignoring the errors until I figure out what the causes them.
+      -->
+      <!-- @vue-ignore -->
       <media-player
         ref="player"
         view-type="video"
@@ -153,12 +169,13 @@
 <script lang="ts" setup>
 import 'vidstack/bundle';
 import { type MediaPlayer } from 'vidstack';
-import { formatTimestampDuration, type TimedComment } from '@/core';
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { formatTimestampDuration } from '@/core';
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
+import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
-import { nextTick } from 'process';
+import type { FrameAnnotationCollection, TimedCommentWithAuthor } from '@quickbyte/common';
 
 type MediaSource = {
   url: string;
@@ -168,19 +185,21 @@ type MediaSource = {
 
 const props = defineProps<{
   sources: MediaSource[];
-  comments?: TimedComment[];
+  comments?: TimedCommentWithAuthor[];
   selectedCommentId?: string;
   mediaType: 'video'|'audio';
   versionId?: string;
+  annotationsDrawingTool?: DrawingToolConfig;
 }>();
 
 const emit = defineEmits<{
   (e: 'seeked'): void;
-  (e: 'clickComment', comment: TimedComment): void;
+  (e: 'clickComment', comment: TimedCommentWithAuthor): void;
   (e: 'playBackError', error: Error): void;
   (e: 'fullscreenChange', fullscreen: boolean): void;
   (e: 'widthChange', width: number): void;
   (e: 'heightChange', height: number): void;
+  (e: 'drawAnnotations', annotations: FrameAnnotationCollection): void;
 }>();
 
 defineExpose({
@@ -267,8 +286,21 @@ const bufferedSegments = computed(() => {
   return segments;
 });
 
+const selectedComment = computed(() => props.comments?.find(c => c._id === props.selectedCommentId));
 const hoveredCommentId = ref<string>();
 const hoveredComment = computed(() => props.comments?.find(c => c._id === hoveredCommentId.value));
+const currentFrameAnnotations = computed(() => {
+  if (isPlaying.value) {
+    return undefined;
+  }
+  if (selectedComment.value) {
+    return selectedComment.value.annotations;
+  }
+
+  if (hoveredComment.value) {
+    return hoveredComment.value.annotations;
+  }
+});
 // When the video player is mounted,
 // the duration is NaN
 // So we update the duration manually
@@ -510,11 +542,11 @@ function handleSliderUpdate(value: number[]|undefined) {
   volume.value = value[0];
 }
 
-function handleCommentClick(comment: TimedComment) {
+function handleCommentClick(comment: TimedCommentWithAuthor) {
   emit('clickComment', comment);
 }
 
-function handleCommentMouseEnter(comment: TimedComment) {
+function handleCommentMouseEnter(comment: TimedCommentWithAuthor) {
   hoveredCommentId.value = comment._id;
 }
 

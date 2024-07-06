@@ -30,7 +30,7 @@ import { ref, watch, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
 import { logger, projectShareStore, showToast, trpcClient, useProjectShareItemsQuery, wrapError } from "@/app-utils";
-import type { FolderPathEntry, MediaWithFileAndComments, ProjectItem } from "@quickbyte/common";
+import type { FolderPathEntry, FrameAnnotationCollection, MediaWithFileAndComments, ProjectItem } from "@quickbyte/common";
 import { ensure } from "@/core";
 
 const share = projectShareStore.share;
@@ -78,6 +78,9 @@ watch(browserItemsQuery.data, (result) => {
 });
 
 watch(browserItemsQuery.error, (e: any) => {
+  if (!e) {
+    return;
+  }
   // note that it's possible that the parent folder was not
   // shared, but we don't know that, especially when the url
   // this page is loaded or reloaded directly, meaning the
@@ -132,10 +135,11 @@ function handleClosePlayer() {
 }
 
 async function sendComment(args: {
-  text: string;
+  text?: string;
   versionId: string;
   timestamp?: number;
   parentId?: string;
+  annotations?: FrameAnnotationCollection
 }) {
   if (!media.value || !share.value || !code.value) {
     throw new Error('Media has not loaded.');
@@ -157,6 +161,7 @@ async function sendComment(args: {
     shareId: share.value._id,
     shareCode: code.value,
     password: password.value,
+    annotations: args.annotations,
     authorName: name || share.value.sharedEmail.split('@')[0]
   });
 

@@ -8,6 +8,7 @@ import VueSmoothScroll from 'vue3-smooth-scroll'
 import 'aos/dist/aos.css';
 import { initGoogleAuth } from './app-utils/google-auth';
 import { VueQueryPlugin } from '@tanstack/vue-query'
+import VueKonva from 'vue-konva';
 import { initializeSpaceBarWatcher } from './app-utils/spacebar-watcher';
 
 // @ts-ignore
@@ -17,6 +18,7 @@ const app = createApp(App)
 app.use(VueSmoothScroll)
 app.use(VueDragSelect)
 app.use(VueQueryPlugin)
+app.use(VueKonva, { prefix: 'Konva' })
 initializeSpaceBarWatcher();
 
 Sentry.init({

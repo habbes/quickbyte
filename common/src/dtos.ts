@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DownloadTransferFileResult, FolderPathEntry, ProjectShareItem } from "./models.js";
+import { DownloadTransferFileResult, FolderPathEntry, ProjectShareItem, FrameAnnotationCollection } from "./models.js";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -148,9 +148,10 @@ export const CreateMediaCommentArgs = z.object({
     projectId: z.string().min(1),
     mediaId: z.string().min(1),
     mediaVersionId: z.string().min(1),
-    text: z.string().min(1),
+    text: z.string().optional(),
     timestamp: z.number().optional(),
-    parentId: z.string().optional()
+    parentId: z.string().optional(),
+    annotations: FrameAnnotationCollection.optional(),
 });
 
 export type CreateMediaCommentArgs = z.infer<typeof CreateMediaCommentArgs>;
@@ -468,9 +469,10 @@ export const CreateProjectShareMediaCommentArgs = z.object({
     password: z.string().min(1).optional(),
     mediaId: z.string().min(1),
     mediaVersionId: z.string().min(1),
-    text: z.string().min(1),
+    text: z.string().optional(),
     timestamp: z.number().optional(),
-    parentId: z.string().optional()
+    parentId: z.string().optional(),
+    annotations: FrameAnnotationCollection.optional(),
 });
 
 export type CreateProjectShareMediaCommentArgs = z.infer<typeof CreateProjectShareMediaCommentArgs>;
