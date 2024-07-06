@@ -91,6 +91,20 @@
           }"
         />
       </div>
+      <div
+        @click="selectedTool = 'text'" title="Write text directly on the frame."
+        role="button"
+        :class="{
+          'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[1px]': selectedTool === 'text',
+        }"
+      >
+        <div
+          @click="selectedTool = 'line'"
+          class="cursor-pointer font-serif text-xs w-2"
+        >
+         T
+        </div>
+      </div>
     </div>
     <!-- end shape selectors -->
     <!-- color selectors -->
