@@ -67,7 +67,7 @@ export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 
             return rectToKonva(shape, scaleFactor);
         case 'line':
             return lineToKonva(shape, scaleFactor);
-        default:
+        case 'text':
             return textToKonva(shape, scaleFactor);
     }
 }
@@ -123,8 +123,9 @@ function textToKonva(shape: FrameAnnotationText, scaleFactor: number = 1): konva
         x: shape.x * scaleFactor,
         y: shape.y * scaleFactor,
         width: shape.width * scaleFactor,
-        fontSize: shape.fontSize * scaleFactor,
+        fontSize: shape.fontSize,
         fontFamily: shape.fontFamily,
-        fill: shape.color
+        fill: shape.color,
+        text: shape.text
     };
 }
