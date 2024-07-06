@@ -29,5 +29,4 @@ export type DrawingToolConfig = {
 export interface PencilToolConfig {
     strokeColor: string;
     strokeWidth: number;
-    shapeId: string;
 }

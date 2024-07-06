@@ -9,7 +9,12 @@
     -->
     <!-- @vue-ignore -->
       <div class="absolute z-10">
-        <AnnotationsCanvas :height="videoHeight" :width="videoWidth" />
+        <AnnotationsCanvas
+          v-if="annotationsDrawingTool"
+          :height="videoHeight"
+          :width="videoWidth"
+          :drawingToolConfig="annotationsDrawingTool"
+        />
       </div>
       
       <media-player
@@ -161,7 +166,7 @@ import { formatTimestampDuration, type TimedComment } from '@/core';
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
-import AnnotationsCanvas from '@/components/canvas/AnnotationsCanvas.vue';
+import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
 import { nextTick } from 'process';
 
@@ -177,6 +182,7 @@ const props = defineProps<{
   selectedCommentId?: string;
   mediaType: 'video'|'audio';
   versionId?: string;
+  annotationsDrawingTool?: DrawingToolConfig;
 }>();
 
 const emit = defineEmits<{

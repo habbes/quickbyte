@@ -5,7 +5,7 @@ export class PencilTool implements CanvasDrawingTool {
     private shapeHandler?: ShapeUpdateHandler;
     private shape?: FrameAnnotationPath;
 
-    constructor(private config: PencilToolConfig) {
+    constructor(private config: PencilToolConfig, private shapeId: string) {
     }
 
     handlePointerStart(event: CanvasPointerEvent) {
@@ -26,7 +26,7 @@ export class PencilTool implements CanvasDrawingTool {
 
     private initShape(pos: { x: number, y: number }) {
         this.shape = this.shape || {
-            id: this.config.shapeId,
+            id: this.shapeId,
             type: 'path',
             strokeColor: this.config.strokeColor,
             strokeWidth: this.config.strokeWidth,

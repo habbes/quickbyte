@@ -7,10 +7,10 @@ FrameAnnotationCircle
 import konva from "konva";
 import { PencilTool } from './pencil-tool.js';
 
-export function createDrawingTool(config: DrawingToolConfig, onShapeUpdate: ShapeUpdateHandler): CanvasDrawingTool {
+export function createDrawingTool(shapeId: string, config: DrawingToolConfig, onShapeUpdate: ShapeUpdateHandler): CanvasDrawingTool {
     switch(config.type) {
         case 'pencil':
-            const tool = new PencilTool(config.config);
+            const tool = new PencilTool(config.config, shapeId);
             tool.onShapeUpdate(onShapeUpdate);
             return tool;
     }

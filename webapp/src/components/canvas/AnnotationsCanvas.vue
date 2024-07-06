@@ -17,13 +17,14 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
 import konva from 'konva';
-import type { CanvasDrawingTool } from './types';
+import type { CanvasDrawingTool, DrawingToolConfig } from './types';
 import type { FrameAnnotationShape } from "@quickbyte/common";
 import { createDrawingTool, scalePosition, scaleShape, shapeToKonva } from './canvas-helpers';
 
 const props = defineProps<{
   height: number;
   width: number;
+  drawingToolConfig: DrawingToolConfig
 }>()
 
 const stage = ref<{ getStage: () => konva.Stage }>();
@@ -62,22 +63,17 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
     return;
   }
 
-  currentTool.value = createDrawingTool({
-    type: 'pencil',
-    config: {
-      strokeColor: '#df4b26',
-      strokeWidth: 5,
-      shapeId: `${nextShapeId++}`
-    }
-  }, (shape) => {
-    const currentIndex = shapes.value.findIndex(s => s.id === shape.id);
-    if (currentIndex === -1) {
-      shapes.value.push(shape);
-    }
-    else {
-      shapes.value[currentIndex] = shape;
-    }
-  });
+  currentTool.value = createDrawingTool(`${nextShapeId++}`, 
+    props.drawingToolConfig,
+    (shape) => {
+      const currentIndex = shapes.value.findIndex(s => s.id === shape.id);
+      if (currentIndex === -1) {
+        shapes.value.push(shape);
+      }
+      else {
+        shapes.value[currentIndex] = shape;
+      }
+    });
 
   // the drawing tool assumes the virtual canvas,
   // it is not aware of the actual canvas size

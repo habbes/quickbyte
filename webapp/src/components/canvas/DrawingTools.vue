@@ -58,7 +58,7 @@ const selectedColor = ref<string>(colors[0]);
 
 const currentConfig = computed<DrawingToolConfig>(() => {
   if (!isActive.value) return undefined;
-
+        
   switch (selectedTool.value) {
     case 'pencil':
       return {
@@ -68,7 +68,7 @@ const currentConfig = computed<DrawingToolConfig>(() => {
           strokeWidth: 5,
         }
       };
-  }
+  };
 });
 
 watch(currentConfig, () => {

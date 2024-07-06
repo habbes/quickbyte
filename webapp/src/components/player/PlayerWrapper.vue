@@ -104,7 +104,9 @@
             <div class="flex gap-2 items-center">
               <button class="btn btn-primary btn-xs" @click="sendTopLevelComment()">Send</button>
               <div>
-                <DrawingTools />
+                <DrawingTools
+                  @selectTool="annotationsDrawingTool = $event"
+                />
               </div>
             </div>
           </div>
@@ -145,6 +147,7 @@
               :versionId="selectedVersionId"
               @playBackError="handleMediaPlayBackError($event)"
               @heightChange="playerHeight = $event"
+              :annotationsDrawingTool="annotationsDrawingTool"
             />
             <ImageViewer
               v-else-if="file && mediaType === 'image'"
@@ -184,7 +187,7 @@ import MediaComment from "./MediaComment.vue";
 import InPlayerMediaBrowser from './InPlayerMediaBrowser.vue';
 import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
-import { DrawingTools } from "@/components/canvas";
+import { DrawingTools, type DrawingToolConfig } from "@/components/canvas";
 
 type MediaSource = {
   url: string;
@@ -246,6 +249,7 @@ const videoPlayer = ref<typeof AVPlayer>();
 const route = useRoute();
 const router = useRouter();
 const error = ref<Error|undefined>();
+const annotationsDrawingTool = ref<DrawingToolConfig>();
 
 // const selectedVersionId = ref<string>(props.selectedVersionId || props.media.preferredVersionId);
 
