@@ -204,7 +204,7 @@ export function updateMediaComment(db: Database, args: UpdateMediaCommentArgs, u
 }
 
 
-async function ensureCommentReplyValid(db: Database, args: CreateCommentArgs): Promise<void> {
+async function ensureCommentReplyValid(db: Database, args: CreateMediaCommentArgs): Promise<void> {
     return wrapError(async () => {
         // the reply comment must apply to the same media as the parent,
         // but could be a different version
