@@ -18,7 +18,7 @@
       </div>
       <div
         v-else
-        title="Close drawing tools"
+        title="Clear annotations"
         @click="isActive = false"
         role="button"
       >

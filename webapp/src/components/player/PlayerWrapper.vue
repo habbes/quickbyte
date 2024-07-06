@@ -277,7 +277,12 @@ const drawingToolsActive = ref(false);
 const annotationsDrawingTool = ref<DrawingToolConfig>();
 const currentAnnotations = ref<FrameAnnotationCollection>();
 
-// const selectedVersionId = ref<string>(props.selectedVersionId || props.media.preferredVersionId);
+watch(drawingToolsActive, () => {
+  // clear drawn annotations when drawing tools deactivated
+  if (!drawingToolsActive.value) {
+    currentAnnotations.value = undefined;
+  }
+});
 
 const comments = ref<WithChildren<CommentWithAuthor>[]>([...props.media.comments]);
 const selectedCommentId = ref<string>();
