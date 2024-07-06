@@ -110,16 +110,26 @@
           ></div>
         </div>
       </div>
+      <div class="flex items-center gap-3">
+        <div @click="$emit('undo')" class="cursor-pointer" role="button" title="Undo shape">
+          <ArrowUturnLeftIcon class="h-3 w-3 hover:text-white" />
+        </div>
+        <div @click="$emit('redo')" class="cursor-pointer" role="button" title="Redo shape">
+          <ArrowUturnRightIcon class="h-3 w-3 hover:text-white" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
-import { PaintBrushIcon, PencilIcon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { PaintBrushIcon, PencilIcon, XMarkIcon, ArrowUturnLeftIcon, ArrowUturnRightIcon } from "@heroicons/vue/24/outline";
 import type { DrawingToolType, DrawingToolConfig } from './types';
 
 const emit = defineEmits<{
   (e: 'selectTool', config?: DrawingToolConfig): unknown;
+  (e: 'undo'): unknown;
+  (e: 'redo'): unknown;
 }>();
 
 const colors = [
