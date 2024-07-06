@@ -105,6 +105,7 @@
               <button class="btn btn-primary btn-xs" @click="sendTopLevelComment()">Send</button>
               <div>
                 <DrawingTools
+                  v-if="includeTimestamp"
                   @selectTool="annotationsDrawingTool = $event"
                 />
               </div>
@@ -147,7 +148,7 @@
               :versionId="selectedVersionId"
               @playBackError="handleMediaPlayBackError($event)"
               @heightChange="playerHeight = $event"
-              :annotationsDrawingTool="annotationsDrawingTool"
+              :annotationsDrawingTool="includeTimestamp ? annotationsDrawingTool : undefined"
             />
             <ImageViewer
               v-else-if="file && mediaType === 'image'"
