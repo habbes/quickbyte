@@ -1,9 +1,10 @@
-import { CanvasDrawingTool, CanvasPointerEvent, ShapeUpdateHandler } from "./types.js";
-import { FrameAnnotationPath } from "@quickbyte/common";
+import type { CanvasDrawingTool, CanvasPointerEvent, ShapeUpdateHandler } from "./types.js";
+import type { FrameAnnotationPath } from "@quickbyte/common";
 
 export interface PencilToolConfig {
     strokeColor: string;
     strokeWidth: number;
+    shapeId: string;
 }
 
 export class PencilTool implements CanvasDrawingTool {
@@ -21,7 +22,7 @@ export class PencilTool implements CanvasDrawingTool {
     handlePointerMove(event: CanvasPointerEvent) {
         const shape = this.initShape(event.pos);
         const newPoints = [...shape.points, event.pos.x, event.pos.y];
-        this.shape.points = newPoints;
+        this.shape!.points = newPoints;
         this.notifyShapeUpdate();
     }
 
@@ -31,7 +32,7 @@ export class PencilTool implements CanvasDrawingTool {
 
     private initShape(pos: { x: number, y: number }) {
         this.shape = this.shape || {
-            id: 'l1',
+            id: this.config.shapeId,
             type: 'path',
             strokeColor: this.config.strokeColor,
             strokeWidth: this.config.strokeWidth,
@@ -45,6 +46,6 @@ export class PencilTool implements CanvasDrawingTool {
         if (!this.shape) {
             return;
         }
-        this.shapeHandler ?? this.shapeHandler(this.shape);
+        this.shapeHandler && this.shapeHandler(this.shape);
     }
 }

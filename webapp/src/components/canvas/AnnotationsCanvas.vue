@@ -10,24 +10,28 @@
     @touchend="handleStageMouseUp($event)"
   >
     <KonvaLayer ref="layerWrapper">
-      <KonvaCircle :config="configCircle"></KonvaCircle>
-      <KonvaLine v-for="line in lines" :config="line"></KonvaLine>
+      <KonvaLine v-for="line in konvaShapes" :config="line"></KonvaLine>
     </KonvaLayer>
   </KonvaStage>
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue';
 import konva from 'konva';
-
-const stage = ref<{ getStage: () => konva.Stage }>();
-const layerWrapper = ref<{ getNode: () => konva.Layer }>();
-
-const baseWidth = 1980;
+import { PencilTool, type PencilToolConfig } from "./pencil-tool";
+import type { CanvasDrawingTool } from './types';
+import type { FrameAnnotationShape } from "@quickbyte/common";
+import { scalePosition, scaleShape, shapeToKonva } from './canvas-helpers';
 
 const props = defineProps<{
   height: number;
   width: number;
 }>()
+
+const stage = ref<{ getStage: () => konva.Stage }>();
+const layerWrapper = ref<{ getNode: () => konva.Layer }>();
+
+const baseWidth = 1980;
+const currentTool = ref<CanvasDrawingTool>();
 
 const configKonva = computed(() => ({
   width: props.width,
@@ -36,71 +40,78 @@ const configKonva = computed(() => ({
 
 const scaleFactor = computed(() => configKonva.value.width / baseWidth);
 
-watch(configKonva, () => {
-  console.log('config', configKonva.value);
-});
+const shapes = ref<FrameAnnotationShape[]>([]);
 
-const configCircle = computed(() => ({
-  x: 100 * scaleFactor.value,
-  y: 100 * scaleFactor.value,
-  radius: 70 * scaleFactor.value,
-  fill: "red",
-  stroke: "black",
-  strokeWidth: 4 * scaleFactor.value
-}));
+const konvaShapes = computed(() =>
+  shapes.value.map(s => shapeToKonva(scaleShape(s, scaleFactor.value))
+));
 
-const lineSources = ref<konva.LineConfig[]>([]);
-
-const lines = computed(() => lineSources.value.map(l => ({
-  ...l,
-  strokeWidth: l.strokeWidth! * scaleFactor.value,
-  points: (l.points || []).map(p => p * scaleFactor.value)
-})));
-
-
-let isPaint = false;
+let nextShapeId = 1;
 
 function handleStageMouseDown(e: konva.KonvaPointerEvent) {
   if (!layerWrapper.value) {
     return;
   }
 
-  isPaint = true;
-  const s = e.target.getStage()!;
-  const pos = s.getPointerPosition()!;
-  
-  const layer = layerWrapper.value.getNode();
+  const s = e.target.getStage();
+  if (!s) {
+    return;
+  }
 
-  const newLine: konva.LineConfig = {
-    stroke: '#df4b26',
-    strokeWidth: 5 / scaleFactor.value,
-    globalCompositeOperation: 'source-over',
-    // round cap for smoother lines
-    lineCap: 'round',
-    lineJoin: 'round',
-    // add point twice, so we have some drawings even on a simple click
-    points: [pos.x / scaleFactor.value, pos.y / scaleFactor.value, pos.x / scaleFactor.value, pos.y / scaleFactor.value],
-  };
+  const pos = s.getPointerPosition();
+  if (!pos) {
+    return;
+  }
 
-  lineSources.value.push(newLine)
-  
+  const tool = new PencilTool({
+    strokeColor: '#df4b26',
+    strokeWidth: 5,
+    shapeId: `${nextShapeId++}`
+  });
+
+  tool.onShapeUpdate((rawShape) => {
+    const shape = scaleShape(rawShape, 1 / scaleFactor.value);
+    const currentIndex = shapes.value.findIndex(s => s.id === shape.id);
+    if (currentIndex === -1) {
+      shapes.value.push(shape);
+    }
+    else {
+      shapes.value[currentIndex] = shape;
+    }
+  });
+
+  currentTool.value = tool;
+  currentTool.value.handlePointerStart({
+    stage: s,
+    pos
+  });
 }
 
 function handleStageMouseMove(e: konva.KonvaPointerEvent) {
-  if (!isPaint) {
+  if (!currentTool.value) {
     return;
   }
 
   // prevent scrolling on touch devices
   e.evt.preventDefault();
 
-  const pos = e.target.getStage()!.getPointerPosition()!;
-  const lastLine = lineSources.value.at(-1);
-  var newPoints = [...lastLine!.points!, pos.x / scaleFactor.value, pos.y / scaleFactor.value];
-  lastLine!.points = newPoints;
+  const stage = e.target.getStage();
+  if (!stage) {
+    return;
+  }
+
+  const pos = stage.getPointerPosition();
+  if (!pos) {
+    return;
+  }
+
+  currentTool.value.handlePointerMove({
+    stage,
+    pos: pos
+  });
 }
 
 function handleStageMouseUp(e: konva.KonvaPointerEvent) {
-  isPaint = false;
+  currentTool.value = undefined;
 }
 </script>

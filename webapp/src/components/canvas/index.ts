@@ -1,0 +1,1 @@
+export { default as AnnotationsCanvas } from "./AnnotationsCanvas.vue";
