@@ -15,11 +15,11 @@
   </KonvaStage>
 </template>
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import konva from 'konva';
 import type { CanvasDrawingTool } from './types';
 import type { FrameAnnotationShape } from "@quickbyte/common";
-import { createDrawingTool, scaleShape, shapeToKonva } from './canvas-helpers';
+import { createDrawingTool, scalePosition, scaleShape, shapeToKonva } from './canvas-helpers';
 
 const props = defineProps<{
   height: number;
@@ -69,8 +69,7 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
       strokeWidth: 5,
       shapeId: `${nextShapeId++}`
     }
-  }, (rawShape) => {
-    const shape = scaleShape(rawShape, 1 / scaleFactor.value);
+  }, (shape) => {
     const currentIndex = shapes.value.findIndex(s => s.id === shape.id);
     if (currentIndex === -1) {
       shapes.value.push(shape);
@@ -80,9 +79,11 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
     }
   });
 
+  // the drawing tool assumes the virtual canvas,
+  // it is not aware of the actual canvas size
   currentTool.value.handlePointerStart({
     stage: s,
-    pos
+    pos: scalePosition(pos, 1 / scaleFactor.value)
   });
 }
 
@@ -106,7 +107,7 @@ function handleStageMouseMove(e: konva.KonvaPointerEvent) {
 
   currentTool.value.handlePointerMove({
     stage,
-    pos: pos
+    pos: scalePosition(pos, 1 / scaleFactor.value)
   });
 }
 
