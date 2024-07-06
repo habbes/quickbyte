@@ -35,6 +35,7 @@ import konva from 'konva';
 import type { CanvasDrawingTool, DrawingToolConfig } from './types';
 import type { FrameAnnotationShape, FrameAnnotationCollection } from "@quickbyte/common";
 import { createDrawingTool, scalePosition, shapeToKonva } from './canvas-helpers';
+import { injectCanvasController } from './controller-provider.js';
 
 const props = defineProps<{
   height: number;
@@ -46,6 +47,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'updateAnnotations', annotations: FrameAnnotationCollection): void;
 }>();
+
+defineExpose({ undoShape, redoShape });
 
 /**
  * This is used to manage scaling and to retain the relative
@@ -68,15 +71,51 @@ const konvaConfig = computed(() => ({
 const shapes = ref<FrameAnnotationShape[]>(props.annotations ? props.annotations.annotations : []);
 const scaleFactor = computed(() => konvaConfig.value.width / (props.annotations? props.annotations.width : REFERENCE_WIDTH));
 
+/**
+ * Used to stash shapes that have been "undone" to facilitate a "redo"
+ * operation.
+ */
+const stashedShapes = ref<FrameAnnotationShape[]>([]);
+const controller = injectCanvasController();
+const redoSignal = controller?.getRedoSignal() || ref();
+const undoSignal = controller?.getUndoSignal() || ref();
+
+watch(undoSignal, () => {
+  undoShape();
+});
+
+watch(redoSignal, redoShape);
+
 watch(() => props.annotations, () => {
   if (!props.annotations) {
     return;
   }
 
   shapes.value = props.annotations?.annotations;
+  resetUndoStack();
 });
 
 let nextShapeId = 1;
+
+function resetUndoStack() {
+  stashedShapes.value = [];
+}
+
+function undoShape() {
+  const shape = shapes.value.pop();
+  if (!shape) {
+    return;
+  }
+
+  stashedShapes.value.push(shape);
+}
+
+function redoShape() {
+  const shape = stashedShapes.value.pop();
+  if (shape) {
+    shapes.value.push(shape);
+  }
+}
 
 function handleStageMouseDown(e: konva.KonvaPointerEvent) {
   if (!props.drawingToolConfig) {
@@ -98,6 +137,8 @@ function handleStageMouseDown(e: konva.KonvaPointerEvent) {
     (shape) => {
       const currentIndex = shapes.value.findIndex(s => s.id === shape.id);
       if (currentIndex === -1) {
+        // when we add a new shape, clear the undo stack
+        resetUndoStack();
         shapes.value.push(shape);
       }
       else {
