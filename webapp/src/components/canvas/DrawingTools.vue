@@ -1,11 +1,15 @@
 <template>
   <div
-    class="flex gap-3 flex-row items-center transition-all ease-in-out"
+    class="flex flex-row items-center justify-between transition-all ease-in-out"
     :class="{
-      'bg-slate-800 rounded-xl px-2 py-[2px] shadow-md': true
+      'bg-slate-800 rounded-xl px-2 py-[2px] shadow-md': true,
+      'w-full': isActive
     }"
   >
-    <div>
+    <!-- open close container -->
+    <div
+      class="flex items-center"
+    >
       <div
         v-if="!isActive"
         @click="isActive = true"
@@ -27,40 +31,109 @@
       />
       </div>
     </div>
-    <div v-if="isActive" class="flex gap-3 items-center">
+    <!-- end open close container -->
+    <!-- shape selectors -->
+    <div v-if="isActive" class="flex items-center gap-3">
       <div
-        @click="selectedTool = 'pencil'" title="Pencil tool for drawing arbitrary lines"
+        @click="selectedTool = 'pencil'" title="Draw an arbitrary a line."
+        role="button"
+        :class="{
+          'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[2px]': selectedTool === 'pencil',
+        }"
+        
       >
-        <PencilIcon class="h-3 w-3 cursor-pointer" role="button" />
-      </div>
-      <div class="flex items-center gap-1">
-        <div
-          v-for="color in colors"
-          :key="color"
-          @click="selectedColor = color"
+        <PencilIcon
           :class="{
-            'rounded-full p-[1px] border': selectedColor === color
+            'h-3 w-3': selectedTool !== 'pencil',
+            'h-2 w-2': selectedTool === 'pencil'
           }"
-          :style="{ borderColor: selectedColor === color ? color : 'auto' }"
-          title="Switch to this color"
+        />
+      </div>
+      <div
+        @click="selectedTool = 'circle'" title="Draw circle."
+        role="button"
+        :class="{
+          'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[1px]': selectedTool === 'circle',
+        }"
+        
+      >
+        <div
+          class="h-3 w-3 cursor-pointer border rounded-full"
         >
-          <div
-            class="rounded-full h-3 w-3 cursor-pointer" :style="{ backgroundColor: color }"
-            
-            role="button"
-          ></div>
         </div>
       </div>
+      <div
+        @click="selectedTool = 'rect'" title="Draw a rectangle."
+        role="button"
+        :class="{
+          'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[1px]': selectedTool === 'rect',
+        }"
+      >
+        <div
+          class="cursor-pointer border rounded-sm"
+          :class="{ 'h-2 w-2': selectedTool === 'rect', 'h-3 w-3': selectedTool !== 'rect' }"
+        >
+        </div>
+      </div>
+      <div
+        @click="selectedTool = 'line'" title="Draw a straight line."
+        role="button"
+        :class="{
+          'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[1px]': selectedTool === 'line',
+        }"
+      >
+        <div
+          @click="selectedTool = 'line'"
+          class="h-[1px] cursor-pointer border -rotate-45"
+          :class="{
+            'w-3': selectedTool !== 'line',
+            'w-2': selectedTool === 'line'
+          }"
+        />
+      </div>
     </div>
+    <!-- end shape selectors -->
+    <!-- color selectors -->
+    <div v-if="isActive" class="flex items-center gap-3">
+      <div
+        v-for="color in colors"
+        :key="color"
+        @click="selectedColor = color"
+        :class="{
+          'rounded-full p-[1px] border': selectedColor === color
+        }"
+        :style="{ borderColor: selectedColor === color ? color : 'auto' }"
+        title="Switch to this color"
+      >
+        <div
+          class="rounded-full h-3 w-3 cursor-pointer" :style="{ backgroundColor: color }"
+          
+          role="button"
+        ></div>
+      </div>
+    </div>
+    <!-- end color selectors -->
+    <!-- undo/redo -->
+    <div v-if="isActive" class="flex items-center gap-3">
+      <div @click="$emit('undo')" class="cursor-pointer" role="button" title="Undo shape">
+        <ArrowUturnLeftIcon class="h-3 w-3 hover:text-white" />
+      </div>
+      <div @click="$emit('redo')" class="cursor-pointer" role="button" title="Redo shape">
+        <ArrowUturnRightIcon class="h-3 w-3 hover:text-white" />
+      </div>
+    </div>
+    <!-- end undo/redo -->
   </div>
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
-import { PaintBrushIcon, PencilIcon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { PaintBrushIcon, PencilIcon, XMarkIcon, ArrowUturnLeftIcon, ArrowUturnRightIcon } from "@heroicons/vue/24/outline";
 import type { DrawingToolType, DrawingToolConfig } from './types';
 
 const emit = defineEmits<{
   (e: 'selectTool', config?: DrawingToolConfig): unknown;
+  (e: 'undo'): unknown;
+  (e: 'redo'): unknown;
 }>();
 
 const colors = [
@@ -76,16 +149,13 @@ const selectedColor = ref<string>(colors[0]);
 
 const currentConfig = computed<DrawingToolConfig|undefined>(() => {
   if (!isActive.value) return undefined;
-        
-  switch (selectedTool.value) {
-    case 'pencil':
-      return {
-        type: 'pencil',
-        config: {
-          strokeColor: selectedColor.value,
-          strokeWidth: 5,
-        }
-      };
+
+  return {
+    type: selectedTool.value,
+    config: {
+      strokeColor: selectedColor.value,
+      strokeWidth: 5,
+    }
   };
 });
 

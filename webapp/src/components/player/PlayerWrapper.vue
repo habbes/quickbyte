@@ -85,15 +85,15 @@
             <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
               
               <div class="flex flex-row items-center justify-between">
-                <div>
-                  <DrawingTools
-                    v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
-                    v-model:active="drawingToolsActive"
-                    @selectTool="annotationsDrawingTool = $event"
-                  />
-                </div>
+                <DrawingTools
+                  v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
+                  v-model:active="drawingToolsActive"
+                  @selectTool="annotationsDrawingTool = $event"
+                  @undo="canvasController.undoShape()"
+                  @redo="canvasController.redoShape()"
+                />
                 <div
-                  v-if="mediaType === 'video' || mediaType === 'audio'"
+                  v-if="(mediaType === 'video' || mediaType === 'audio') && !drawingToolsActive"
                   class="flex flex-row items-center gap-1" title="Save comment at the current timestamp"
                 >
                   <ClockIcon class="h-5 w-5"/>
@@ -217,7 +217,7 @@ import MediaComment from "./MediaComment.vue";
 import InPlayerMediaBrowser from './InPlayerMediaBrowser.vue';
 import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
-import { DrawingTools, type DrawingToolConfig } from "@/components/canvas";
+import { DrawingTools, type DrawingToolConfig, provideCanvasController } from "@/components/canvas";
 
 type MediaSource = {
   url: string;
@@ -283,6 +283,7 @@ const error = ref<Error|undefined>();
 const drawingToolsActive = ref(false);
 const annotationsDrawingTool = ref<DrawingToolConfig>();
 const currentAnnotations = ref<FrameAnnotationCollection>();
+const canvasController = provideCanvasController();
 
 watch(drawingToolsActive, () => {
   // clear drawn annotations when drawing tools deactivated

@@ -19,14 +19,14 @@ export interface Position {
     y: number;
 }
 
-export type DrawingToolType = DrawingToolConfig["type"];
+export type DrawingToolType = 'pencil'|'circle'|'rect'|'line';
 
 export type DrawingToolConfig = {
-    type: 'pencil',
-    config: PencilToolConfig
+    type: DrawingToolType,
+    config: ToolConfig
 };
 
-export interface PencilToolConfig {
+export interface ToolConfig {
     strokeColor: string;
     strokeWidth: number;
 }

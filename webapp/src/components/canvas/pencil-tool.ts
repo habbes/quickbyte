@@ -1,9 +1,8 @@
-import type { CanvasDrawingTool, CanvasPointerEvent, ShapeUpdateHandler, PencilToolConfig } from "./types.js";
+import type { Position } from "./types.js";
 import type { FrameAnnotationPath } from "@quickbyte/common";
+import { BaseDrawingTool } from "./base-drawing-tool.js";
 
-export class PencilTool implements CanvasDrawingTool {
-    private shapeHandler?: ShapeUpdateHandler;
-    private shape?: FrameAnnotationPath;
+export class PencilTool extends BaseDrawingTool<FrameAnnotationPath> {
     /**
      * This flag is toggled to skip some of the points from added to the line.
      * It helps reduce the storage size of the line without noticeably affecting
@@ -11,36 +10,8 @@ export class PencilTool implements CanvasDrawingTool {
      */
     private skipNextPoint: boolean = true;
 
-    constructor(private config: PencilToolConfig, private shapeId: string) {
-    }
-
-    handlePointerStart(event: CanvasPointerEvent) {
-        this.initShape(event.pos);
-        this.notifyShapeUpdate();
-    }
-
-    handlePointerMove(event: CanvasPointerEvent) {
-        const shape = this.initShape(event.pos);
-        // We skip every other point, effectively reducing
-        // the number of points by 50%, to improve efficiency
-        // of processing and storing lines.
-        if (this.skipNextPoint) {
-            this.skipNextPoint = false;
-            return;
-        }
-
-        const newPoints = [...shape.points, event.pos.x, event.pos.y];
-        this.shape!.points = newPoints;
-        this.skipNextPoint = true;
-        this.notifyShapeUpdate();
-    }
-
-    onShapeUpdate(handler: ShapeUpdateHandler) {
-        this.shapeHandler = handler;
-    }
-
-    private initShape(pos: { x: number, y: number }) {
-        this.shape = this.shape || {
+    protected override createShape(pos: Position): FrameAnnotationPath {
+        return {
             id: this.shapeId,
             type: 'path',
             strokeColor: this.config.strokeColor,
@@ -49,14 +20,21 @@ export class PencilTool implements CanvasDrawingTool {
             // even if no other point is added.
             points: [pos.x, pos.y, pos.x, pos.y],
         };
-
-        return this.shape;
     }
 
-    private notifyShapeUpdate() {
-        if (!this.shape) {
-            return;
-        }
-        this.shapeHandler && this.shapeHandler(this.shape);
+    protected override updateShape(shape: FrameAnnotationPath, pos: Position): FrameAnnotationPath {
+        const newPoints = [...shape.points, pos.x, pos.y];
+        const newShape = { ...shape, points: newPoints };
+        this.skipNextPoint = true;
+        return newShape;
+    }
+
+    protected override shouldSkipUpdate(): boolean {
+        // We skip every other point, effectively reducing
+        // the number of points by 50%, to improve efficiency
+        // of processing and storing lines.
+        const skip = this.skipNextPoint;
+        this.skipNextPoint = !skip;
+        return skip;
     }
 }
