@@ -105,10 +105,17 @@
                   >
                 </div>
               </div>
+              <!--
+                Stop propagation of keyboard events when the comment box is in focus
+                to avoid triggering the global spacebar watcher and accidentally
+                playing the video.
+              -->
               <textarea
                 class="bg-[#604a59] border-0 hover:border-0 outline-none w-full flex-1 resize-none"
                 placeholder="Type your comment here"
                 @focus="handleCommentInputFocus()"
+                @keyup.stop=""
+                @keydown.stop=""
                 v-model="commentInputText"
               >
               </textarea>
