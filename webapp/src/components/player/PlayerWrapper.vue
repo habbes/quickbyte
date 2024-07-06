@@ -84,7 +84,10 @@
           <div class="px-5 py-5 border-t border-t-[#120c11] flex flex-col gap-2 h-[150px] sm:h-[200px]">
             <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
               <div class="flex flex-row items-center justify-end">
-                <div class="flex flex-row items-center gap-1" title="Save comment at the current timestamp">
+                <div
+                  v-if="mediaType === 'video' || mediaType === 'audio'"
+                  class="flex flex-row items-center gap-1" title="Save comment at the current timestamp"
+                >
                   <ClockIcon class="h-5 w-5"/>
                   <span>{{ formatTimestampDuration(currentTimeStamp) }}</span>
                   <input
@@ -105,7 +108,7 @@
               <button class="btn btn-primary btn-xs" @click="sendTopLevelComment()">Send</button>
               <div>
                 <DrawingTools
-                  v-if="includeTimestamp"
+                  v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
                   @selectTool="annotationsDrawingTool = $event"
                 />
               </div>
@@ -155,6 +158,10 @@
               v-else-if="file && mediaType === 'image'"
               :src="file.downloadUrl"
               class="h-[300px] sm:h-full"
+              :comments="sortedComments"
+              :selectedCommentId="selectedCommentId"
+              :annotationsDrawingTool="annotationsDrawingTool"
+              @drawAnnotations="currentAnnotations = $event"
             />
             <div v-else class="h-[300px] sm:h-auto w-full flex items-center justify-center">
               Preview unsupported for this file type.
@@ -453,9 +460,15 @@ async function handleSelectVersion(versionId: string) {
 }
 
 function seekToComment(comment: CommentWithAuthor) {
+  if (mediaType.value !== 'video' && mediaType.value !== 'audio') {
+    return;
+  }
+
   if (!videoPlayer.value) {
     // if the video ref isn't ready yet (e.g. component just mounted),
     // wait before we seek
+    // TODO: warn, if video player is never ready, this will lead to infinite async recursion
+    // and cause the page to hang. Is the player guaranteed to be available?
     nextTick(() => seekToComment(comment));
     return;
   }
@@ -520,14 +533,23 @@ function handleVideoCommentClicked(comment: CommentWithAuthor) {
 }
 
 async function sendTopLevelComment() {
-  if (!commentInputText.value && !(currentAnnotations.value && includeTimestamp.value)) return;
+  // Comment should have either text or annotations or both.
+  // Annotations are only allowed for video (if timestamp is included) or images
+  if (
+    !commentInputText.value
+    && !(currentAnnotations.value && includeTimestamp.value && mediaType.value === 'video')
+    && !(currentAnnotations.value && mediaType.value === 'image')
+  )  {
+    return;
+  }
+
   if (!props.media) return;
   if (!props.sendComment) throw new Error('sendComment func not set in props');
 
   try {
     const comment = await props.sendComment({
       text: commentInputText.value,
-      timestamp: includeTimestamp.value ? currentTimeStamp.value : undefined,
+      timestamp: includeTimestamp.value && mediaType.value === 'audio' || mediaType.value === 'video' ? currentTimeStamp.value : undefined,
       versionId: props.selectedVersionId || props.media.preferredVersionId,
       annotations: currentAnnotations.value
     });
