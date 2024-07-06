@@ -78,6 +78,9 @@ watch(browserItemsQuery.data, (result) => {
 });
 
 watch(browserItemsQuery.error, (e: any) => {
+  if (!e) {
+    return;
+  }
   // note that it's possible that the parent folder was not
   // shared, but we don't know that, especially when the url
   // this page is loaded or reloaded directly, meaning the
@@ -158,6 +161,7 @@ async function sendComment(args: {
     shareId: share.value._id,
     shareCode: code.value,
     password: password.value,
+    annotations: args.annotations,
     authorName: name || share.value.sharedEmail.split('@')[0]
   });
 
