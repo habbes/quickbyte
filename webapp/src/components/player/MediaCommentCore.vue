@@ -3,6 +3,7 @@
       :id="htmlId"
       class="px-5 py-5 border-b border-b-[#120c11]"
       :class="{ 'bg-[#120c11]': selected }"
+      @click="$emit('click', comment)"
     >
       <div :style="{ 'padding-left': `${nestingPadding}px` }">
         <div class="flex flex-row items-center justify-between mb-2">
@@ -12,7 +13,6 @@
           </div>
           <span
             v-if="comment.timestamp !== undefined"
-            @click="$emit('click', comment)"
             title="Jump to this time in the video"
             class="font-semibold text-blue-300 hover:cursor-pointer"
           >
