@@ -1,4 +1,4 @@
-import { string } from "zod";
+import z from "zod";
 
 export interface PersistedModel {
     _id: string;
@@ -416,12 +416,13 @@ export interface MediaVersion extends PersistedModel, Deleteable {
 }
 
 export interface Comment extends PersistedModel, Deleteable {
-    text: string;
+    text?: string;
     projectId: string;
     mediaId: string;
     mediaVersionId: string;
     timestamp?: number;
     parentId?: string;
+    annotations?: FrameAnnotationCollection;
 }
 
 export interface CommentWithAuthor extends Comment {
@@ -429,6 +430,10 @@ export interface CommentWithAuthor extends Comment {
         _id: string;
         name: string;
     }
+}
+
+export interface TimedComment extends Comment {
+    timestamp: number;
 }
 
 export interface TimedCommentWithAuthor extends CommentWithAuthor {
@@ -595,3 +600,36 @@ export type WithCreator<T> = T & {
         name: string;
     }
 };
+
+export const FrameAnnotationPath = z.object({
+    type: z.literal('path'),
+    id: z.string().min(1),
+    strokeColor: z.string().min(1),
+    strokeWidth: z.number().positive(),
+    points: z.array(z.number())
+});
+
+export const FrameAnnotationCircle = z.object({
+    type: z.literal("circle"),
+    id: z.string().min(1),
+    strokeColor: z.string().min(1),
+    strokeWidth: z.number().positive(),
+    fillColor: z.string().min(1),
+    x: z.number(),
+    y: z.number(),
+    radius: z.number()
+});
+
+export const FrameAnnotationShape = z.union([FrameAnnotationCircle, FrameAnnotationPath]);
+
+export const FrameAnnotationCollection = z.object({
+    width: z.number().positive(),
+    height: z.number().positive().optional(),
+    annotations: z.array(FrameAnnotationShape)
+});
+
+export type FrameAnnotationPath = z.infer<typeof FrameAnnotationPath>;
+export type FrameAnnotationCircle = z.infer<typeof FrameAnnotationCircle>;
+export type FrameAnnotationShape = z.infer<typeof FrameAnnotationShape>;
+export type AnnotationShapeType = FrameAnnotationShape["type"];
+export type FrameAnnotationCollection = z.infer<typeof FrameAnnotationCollection>;

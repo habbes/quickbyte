@@ -1,4 +1,4 @@
-import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, CreateProjectArgs, Media, Comment } from './types.js'
+import type { UserAccount, StorageProvider, Transfer, TransferFile, Subscription, CreateProjectArgs, Media } from './types.js'
 import type { SubscriptionAndPlan, WithRole, Project, MediaWithFileAndComments, RoleType, UploadMediaResult, CreateTransferResult } from "@quickbyte/common";
 
 export interface ApiClientConfig {

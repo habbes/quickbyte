@@ -171,7 +171,7 @@ export function createMediaCommentNotificationEmail({
 }: {
     authorName: string,
     recipientName: string,
-    commentText: string,
+    commentText?: string,
     projectName: string,
     url: string
 }) {
