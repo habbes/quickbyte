@@ -26,12 +26,18 @@
           <template v-else-if="shape.type === 'line'">
             <KonvaLine :config="shapeToKonva(shape, scaleFactor)"></KonvaLine>
           </template>
-          <template v-else-if="shape.type === 'text'">
-            <KonvaText v-if="shape.id !== editingTextId" :config="shapeToKonva(shape, scaleFactor)"></KonvaText>
-          </template>
         </template>
       </KonvaLayer>
     </KonvaStage>
+    <template
+      v-for="text in textShapes"
+      :key="text.id"
+    >
+      <TextShapeNode
+        v-if="text.id !== editingTextId"
+        :config="scaleTextShape(text, scaleFactor)"
+      />
+    </template>
     <TextShapeEditor
       v-if="editingTextShape && editingTextShape.type === 'text'"
       :config="scaleTextShape(editingTextShape, scaleFactor)"
@@ -46,6 +52,7 @@ import type { CanvasDrawingTool, DrawingToolConfig } from './types';
 import type { FrameAnnotationShape, FrameAnnotationCollection, FrameAnnotationText } from "@quickbyte/common";
 import { createDrawingTool, scalePosition, shapeToKonva, scaleTextShape } from './canvas-helpers';
 import { injectCanvasController } from './canvas-controller.js';
+import TextShapeNode from './TextShapeNode.vue';
 import TextShapeEditor from './TextShapeEditor.vue';
 
 const props = defineProps<{
@@ -80,6 +87,7 @@ const konvaConfig = computed(() => ({
 }));
 
 const shapes = ref<FrameAnnotationShape[]>(props.annotations ? props.annotations.annotations : []);
+const textShapes = computed<FrameAnnotationText[]>(() => shapes.value.filter(s => s.type === 'text'));
 const scaleFactor = computed(() => konvaConfig.value.width / (props.annotations? props.annotations.width : REFERENCE_WIDTH));
 const editingTextId = ref<string>();
 const editingTextShape = computed(() => shapes.value.find(s => s.id === editingTextId.value && s.type === 'text'));

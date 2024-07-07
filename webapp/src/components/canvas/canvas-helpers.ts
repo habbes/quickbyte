@@ -22,7 +22,7 @@ import { TextTool } from "./text-tool";
 const MIN_STROKE_WIDTH = 3;
 const MIN_FONT_SIZE = 14;
 
-export const FONT_FAMILIES = ['serif', 'sans-serif', 'monospace', 'cursive'];
+export const FONT_FAMILIES = ['Arial', 'Georgia', 'Courier', 'cursive'];
 
 export function createDrawingTool(shapeId: string, config: DrawingToolConfig, onShapeUpdate: ShapeUpdateHandler): CanvasDrawingTool {
     switch(config.type) {
@@ -141,6 +141,7 @@ function textToKonva(shape: FrameAnnotationText, scaleFactor: number = 1): konva
         fontFamily: shape.fontFamily,
         fill: shape.color,
         text: shape.text,
-        lineHeight: shape.lineHeight
+        lineHeight: shape.lineHeight,
+        fontStyle: shape.fontStyle || 'normal'
     };
 }
