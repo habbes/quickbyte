@@ -50,19 +50,6 @@
         />
       </div>
       <div
-        @click="selectedTool = 'circle'" title="Draw circle."
-        role="button"
-        :class="{
-          'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[1px]': selectedTool === 'circle',
-        }"
-        
-      >
-        <div
-          class="h-3 w-3 cursor-pointer border rounded-full"
-        >
-        </div>
-      </div>
-      <div
         @click="selectedTool = 'rect'" title="Draw a rectangle."
         role="button"
         :class="{
@@ -108,7 +95,7 @@
     </div>
     <!-- end shape selectors -->
     <!-- color selectors -->
-    <div v-if="isActive" class="flex items-center gap-3">
+    <div v-if="isActive" class="flex items-center gap-2">
       <div
         v-for="color in colors"
         :key="color"
@@ -152,6 +139,8 @@ const emit = defineEmits<{
 
 const colors = [
   '#fcb315',
+  '#34a3db',
+  '#1abca1',
   '#e74a3c',
   '#000',
   '#fff'
@@ -167,7 +156,7 @@ const currentConfig = computed<DrawingToolConfig|undefined>(() => {
   return {
     type: selectedTool.value,
     config: {
-      strokeColor: selectedColor.value,
+      color: selectedColor.value,
       strokeWidth: 5,
     }
   };
