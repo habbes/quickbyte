@@ -42,6 +42,7 @@
       v-if="editingTextShape && editingTextShape.type === 'text'"
       :config="scaleTextShape(editingTextShape, scaleFactor)"
       @update="updateTextShape($event)"
+      @done="resetEditingTextShape()"
     />
   </div>
 </template>
