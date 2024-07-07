@@ -20,7 +20,7 @@ import { TextTool } from "./text-tool";
  * from being too small to see on small screens after scaling.
  */
 const MIN_STROKE_WIDTH = 3;
-const MIN_FONT_SIZE = 14;
+const MIN_FONT_SIZE = 11;
 
 export const FONT_FAMILIES = ['Arial', 'Georgia', 'Courier', 'cursive'];
 
@@ -55,7 +55,6 @@ export function scaleFontSize(size: number, factor: number): number {
 }
 
 export function scaleTextShape(shape: FrameAnnotationText, factor: number): FrameAnnotationText {
-    console.log('scaling font size from', shape.fontSize, 'to', scaleFontSize(shape.fontSize, factor), factor);
     return {
         ...shape,
         x: shape.x * factor,
@@ -131,7 +130,6 @@ function lineToKonva(shape: FrameAnnotationLine, scaleFactor: number = 1): konva
 }
 
 function textToKonva(shape: FrameAnnotationText, scaleFactor: number = 1): konva.TextConfig {
-    console.log('scaling font size from', shape.fontSize, 'to', scaleFontSize(shape.fontSize, scaleFactor), scaleFactor);
     return {
         id: shape.id,
         x: shape.x * scaleFactor,
