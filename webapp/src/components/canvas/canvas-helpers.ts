@@ -20,7 +20,7 @@ import { TextTool } from "./text-tool";
  * from being too small to see on small screens after scaling.
  */
 const MIN_STROKE_WIDTH = 3;
-const MIN_FONT_SIZE = 11;
+const MIN_FONT_SIZE = 14;
 
 export const FONT_FAMILIES = ['Arial', 'Georgia', 'Courier', 'cursive'];
 
