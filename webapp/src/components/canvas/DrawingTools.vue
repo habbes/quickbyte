@@ -95,7 +95,7 @@
     </div>
     <!-- end shape selectors -->
     <!-- color selectors -->
-    <div v-if="isActive" class="flex items-center gap-3">
+    <div v-if="isActive" class="flex items-center gap-2">
       <div
         v-for="color in colors"
         :key="color"
