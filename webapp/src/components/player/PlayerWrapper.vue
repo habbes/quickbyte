@@ -541,7 +541,12 @@ function getHtmlCommentId(comment: CommentWithAuthor) {
 
 function handleCommentClicked(comment: CommentWithAuthor) {
   seekToComment(comment);
-  selectComment(comment);
+  if (selectedCommentId.value === comment._id) {
+    unselectComment();
+  }
+  else {
+    selectComment(comment);
+  }
 }
 
 function handleVideoCommentClicked(comment: CommentWithAuthor) {
