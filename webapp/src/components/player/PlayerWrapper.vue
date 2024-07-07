@@ -91,6 +91,7 @@
                   @selectTool="annotationsDrawingTool = $event"
                   @undo="canvasController.undoShape()"
                   @redo="canvasController.redoShape()"
+                  @update:active="$event && handleCommentInputFocus()"
                 />
                 <div
                   v-if="(mediaType === 'video' || mediaType === 'audio') && !drawingToolsActive"
