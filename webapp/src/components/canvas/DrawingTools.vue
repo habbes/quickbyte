@@ -50,19 +50,6 @@
         />
       </div>
       <div
-        @click="selectedTool = 'circle'" title="Draw circle."
-        role="button"
-        :class="{
-          'h-4 w-4 border rounded-full inline-flex items-center justify-center p-[1px]': selectedTool === 'circle',
-        }"
-        
-      >
-        <div
-          class="h-3 w-3 cursor-pointer border rounded-full"
-        >
-        </div>
-      </div>
-      <div
         @click="selectedTool = 'rect'" title="Draw a rectangle."
         role="button"
         :class="{
