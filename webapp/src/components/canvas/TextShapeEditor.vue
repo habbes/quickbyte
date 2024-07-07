@@ -7,9 +7,14 @@
       width: `${config.width + 2}px`,
       fontSize: `${config.fontSize}px`,
       fontFamily: config.fontFamily,
-      color: config.color,
+      fontWeight: config.fontStyle === 'bold' ? 'bold' : 'normal',
+      color: config.color
     }"
   >
+    <div
+      class="absolute left-0 right-0 bottom-0 top-0 opacity-50 -z-10"
+      :style="{ backgroundColor: config.backgroundColor || 'transparent' }"
+    ></div>
     <UiExpandableBareTextInput
       ref="input"
       :modelValue="config.text"
@@ -18,17 +23,39 @@
       @keyup.stop="handleKeyUp($event)"
       @keydown.stop=""
     />
-    <div class="bg-slate-800 w-full py-1 px-2 shadow-sm rounded-sm text-white flex items-center gap-3">
+    <div class="bg-slate-800 w-full py-1 px-2 shadow-sm rounded-sm text-white flex items-center justify-evenly gap-2 mt-1 z-10">
       <div
-        v-for="fontFamily in FONT_FAMILIES"
-        :key="fontFamily"
-        @click="handleSelectFont(fontFamily)"
-        :style="{ fontFamily }"
+        @click="updateAndFocus({ fontStyle: 'normal' })"
+        :style="{ fontWeight: 'normal' }"
         class="cursor-pointer text-gray-200"
         :class="{
-          'text-white': config.fontFamily === fontFamily
+          'text-white': config.fontStyle === 'normal'
         }"
-        title="Switch to this font."
+        title="Make text normal."
+        role="button"
+      >
+        Aa
+      </div>
+      <div
+        @click="updateAndFocus({ fontStyle: 'bold' })"
+        :style="{ fontWeight: 'bold' }"
+        class="cursor-pointer text-gray-200"
+        :class="{
+          'text-white': config.fontStyle === 'bold'
+        }"
+        title="Make text bold."
+        role="button"
+      >
+        Aa
+      </div>
+      <div
+        class="text-gray-200 h-full text-sm px-[1px] cursor-pointer"
+        :style="{ backgroundColor: config.backgroundColor !== 'transparent' ? 'transparent' : config.color }"
+        @click="updateAndFocus({
+          backgroundColor: config.backgroundColor !== 'transparent' ? 'transparent' : config.color,
+          color: config.backgroundColor === 'transparent' ? 'white' : config.color
+        })"
+        title="Invert colors"
         role="button"
       >
         Aa
@@ -52,7 +79,7 @@ const emit = defineEmits<{
 }>();
 
 const input = ref<typeof UiExpandableBareTextInput>();
-
+const bgColor = ref<string>('transparent');
 
 onMounted(() => {
   input.value?.focus();
@@ -60,6 +87,11 @@ onMounted(() => {
 
 function handleSelectFont(fontFamily: string) {
   updateShape({ fontFamily });
+  input.value?.focus();
+}
+
+function updateAndFocus(update: Partial<FrameAnnotationText>) {
+  updateShape(update);
   input.value?.focus();
 }
 

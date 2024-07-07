@@ -15,7 +15,8 @@ export class TextTool extends BaseDrawingTool<FrameAnnotationText> {
             fontFamily: FONT_FAMILIES[0],
             fontSize: 24,
             lineHeight: 1,
-            width: 300
+            width: 300,
+            backgroundColor: 'transparent'
         };
     }
 
