@@ -29,25 +29,13 @@
     />
     <div class="bg-slate-800 w-full py-1 px-2 shadow-sm rounded-sm text-white flex items-center justify-evenly gap-2 mt-1 z-10">
       <div
-        @click="updateAndFocus({ fontStyle: 'normal' })"
-        :style="{ fontWeight: 'normal' }"
-        class="cursor-pointer text-gray-200"
-        :class="{
-          'text-white': config.fontStyle === 'normal'
-        }"
-        title="Make text normal."
-        role="button"
-      >
-        Aa
-      </div>
-      <div
-        @click="updateAndFocus({ fontStyle: 'bold' })"
-        :style="{ fontWeight: 'bold' }"
+        @click="updateAndFocus({ fontStyle: isFontNormal(config.fontStyle) ? 'bold' : 'normal' })"
+        :style="{ fontWeight: isFontNormal(config.fontStyle) ? 'bold' : 'normal' }"
         class="cursor-pointer text-gray-200"
         :class="{
           'text-white': config.fontStyle === 'bold'
         }"
-        title="Make text bold."
+        :title="isFontNormal(config.fontStyle) ? 'Make text bold' : 'Make text normal'"
         role="button"
       >
         Aa
@@ -108,6 +96,10 @@ onMounted(() => {
 
 function isTransparent(color?: string) {
   return color === 'transparent' || !color;
+}
+
+function isFontNormal(fontStyle? : 'normal'|'bold') {
+  return fontStyle === 'normal' || !fontStyle;
 }
 
 function updateAndFocus(update: Partial<FrameAnnotationText>) {
