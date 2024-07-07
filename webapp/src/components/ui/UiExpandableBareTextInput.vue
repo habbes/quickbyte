@@ -25,7 +25,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 
 // TODO: this component has a bug, when a word is too long,
 // text textarea grows indefinitely wide
@@ -43,6 +43,7 @@ const emit = defineEmits<{
   (e: 'blur', args: FocusEvent): unknown;
   (e: 'keydown', args: KeyboardEvent): unknown;
   (e: 'keyup', args: KeyboardEvent): unknown;
+  (e: 'sizeChange', args: { width: number, height: number }): unknown;
 }>();
 
 defineExpose({ focus });
@@ -57,6 +58,27 @@ const classes = computed(() => {
   return {
     'w-full': props.fullWidth,
   }
+});
+
+const sizeObserver = new ResizeObserver((entries) => {
+  const entry = entries.find(e => e.target === inputEl.value);
+  if (!entry) {
+    return;
+  }
+
+  emit('sizeChange', { width: entry.contentRect.width, height: entry.contentRect.height });
+});
+
+onMounted(() => {
+  if (!inputEl.value) {
+    return;
+  }
+
+  sizeObserver.observe(inputEl.value);
+});
+
+onUnmounted(() => {
+  sizeObserver.disconnect();
 });
 
 function focus() {

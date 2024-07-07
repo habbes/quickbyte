@@ -8,7 +8,8 @@
       fontSize: `${config.fontSize}px`,
       fontFamily: config.fontFamily,
       fontWeight: config.fontStyle === 'bold' ? 'bold' : 'normal',
-      color: config.backgroundColor === 'transparent' ? config.color : 'white'
+      color: isTransparent(config.backgroundColor) ? config.color : 'white',
+      lineHeight: 1
     }"
   >
     <div
@@ -25,4 +26,8 @@ defineProps<{
   config: FrameAnnotationText
 }>();
 
+
+function isTransparent(color?: string) {
+  return color === 'transparent' || !color;
+}
 </script>

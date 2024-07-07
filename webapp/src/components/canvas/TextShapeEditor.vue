@@ -12,8 +12,11 @@
     }"
   >
     <div
-      class="absolute left-0 right-0 bottom-0 top-0 opacity-50 -z-10"
-      :style="{ backgroundColor: config.backgroundColor || 'transparent' }"
+      class="absolute opacity-50 -z-10"
+      :style="{
+        backgroundColor: config.backgroundColor || 'transparent',
+        ...textBgStyle
+      }"
     ></div>
     <UiExpandableBareTextInput
       ref="input"
@@ -22,6 +25,7 @@
       @blur="onTextAreaBlur($event)"
       @keyup.stop="handleKeyUp($event)"
       @keydown.stop=""
+      @sizeChange="textBgHeight = $event.height"
     />
     <div class="bg-slate-800 w-full py-1 px-2 shadow-sm rounded-sm text-white flex items-center justify-evenly gap-2 mt-1 z-10">
       <div
@@ -50,10 +54,10 @@
       </div>
       <div
         class="text-gray-200 h-full text-sm px-[1px] cursor-pointer"
-        :style="{ backgroundColor: config.backgroundColor !== 'transparent' ? 'transparent' : config.color }"
+        :style="{ backgroundColor: !isTransparent(config.backgroundColor) ? 'transparent' : config.color }"
         @click="updateAndFocus({
-          backgroundColor: config.backgroundColor !== 'transparent' ? 'transparent' : config.color,
-          color: config.backgroundColor === 'transparent' ? 'white' : config.color
+          backgroundColor: !isTransparent(config.backgroundColor) ? 'transparent' : config.color,
+          color: isTransparent(config.backgroundColor) ? 'white' : config.color
         })"
         title="Invert colors"
         role="button"
@@ -64,10 +68,9 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import type { FrameAnnotationText } from "@quickbyte/common";
 import { UiExpandableBareTextInput } from "@/components/ui";
-import { FONT_FAMILIES } from './canvas-helpers.js';
 
 const props = defineProps<{
   config: FrameAnnotationText
@@ -79,15 +82,32 @@ const emit = defineEmits<{
 }>();
 
 const input = ref<typeof UiExpandableBareTextInput>();
-const bgColor = ref<string>('transparent');
+const textBgHeight = ref<number|undefined>();
+
+const textBgStyle = computed(() => {
+  if (!textBgHeight.value) {
+    return {
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0
+    };
+  }
+
+  return {
+    top: 0,
+    left: 0,
+    right: 0,
+    height: `${textBgHeight.value}px`
+  }
+});
 
 onMounted(() => {
   input.value?.focus();
 });
 
-function handleSelectFont(fontFamily: string) {
-  updateShape({ fontFamily });
-  input.value?.focus();
+function isTransparent(color?: string) {
+  return color === 'transparent' || !color;
 }
 
 function updateAndFocus(update: Partial<FrameAnnotationText>) {
@@ -107,7 +127,7 @@ function onTextAreaBlur(e: FocusEvent) {
 
 function handleKeyUp(e: KeyboardEvent) {
   if (e.key === 'Enter') {
-    console.log('Enter pressed');
+    e.preventDefault();
     emit('done');
   }
 }
