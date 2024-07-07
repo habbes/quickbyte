@@ -88,7 +88,7 @@ const konvaConfig = computed(() => ({
 }));
 
 const shapes = ref<FrameAnnotationShape[]>(props.annotations ? props.annotations.annotations : []);
-const textShapes = computed<FrameAnnotationText[]>(() => shapes.value.filter(s => s.type === 'text'));
+const textShapes = computed<FrameAnnotationText[]>(() => shapes.value.filter(s => s.type === 'text') as FrameAnnotationText[]);
 const scaleFactor = computed(() => konvaConfig.value.width / (props.annotations? props.annotations.width : REFERENCE_WIDTH));
 const editingTextId = ref<string>();
 const editingTextShape = computed(() => shapes.value.find(s => s.id === editingTextId.value && s.type === 'text'));
