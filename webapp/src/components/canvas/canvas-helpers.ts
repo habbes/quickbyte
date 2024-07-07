@@ -130,6 +130,8 @@ function lineToKonva(shape: FrameAnnotationLine, scaleFactor: number = 1): konva
 }
 
 function textToKonva(shape: FrameAnnotationText, scaleFactor: number = 1): konva.TextConfig {
+    // TODO: if we go back to using konva to render text nodes, we should figure out
+    // background color support. Maybe grouping text node inside a rect.
     return {
         id: shape.id,
         x: shape.x * scaleFactor,

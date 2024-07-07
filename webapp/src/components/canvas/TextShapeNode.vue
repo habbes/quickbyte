@@ -8,7 +8,7 @@
       fontSize: `${config.fontSize}px`,
       fontFamily: config.fontFamily,
       fontWeight: config.fontStyle === 'bold' ? 'bold' : 'normal',
-      color: isTransparent(config.backgroundColor) ? config.color : 'white',
+      color: config.color,
       lineHeight: 1
     }"
   >
