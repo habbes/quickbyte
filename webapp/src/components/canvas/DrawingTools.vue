@@ -151,6 +151,8 @@ const emit = defineEmits<{
 }>();
 
 const colors = [
+  '#34a3db',
+  '#1abca1',
   '#fcb315',
   '#e74a3c',
   '#000',
