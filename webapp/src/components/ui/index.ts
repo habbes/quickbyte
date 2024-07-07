@@ -7,6 +7,7 @@ export { default as UiBottomSheetPopoverMenu } from './UiBottomSheetPopoverMenu.
 export { default as UiDialog } from "./Dialog.vue";
 export { default as UiTextInput } from "./UiTextInput.vue";
 export { default as UiExpandableTextInput } from "./UiExpandableTextInput.vue";
+export { default as UiExpandableBareTextInput } from "./UiExpandableBareTextInput.vue";
 export { default as UiTextArea } from "./UiTextArea.vue";
 export { default as UiDateTimeInput } from "./UiDateTimeInput.vue";
 export { default as UiSwitch } from "./UiSwitch.vue"

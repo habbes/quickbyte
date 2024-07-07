@@ -1,6 +1,7 @@
 import type { Position } from "./types.js";
 import type { FrameAnnotationText } from "@quickbyte/common";
 import { BaseDrawingTool } from './base-drawing-tool';
+import { FONT_FAMILIES } from "./canvas-helpers";
 
 export class TextTool extends BaseDrawingTool<FrameAnnotationText> {
     protected override createShape(pos: Position): FrameAnnotationText {
@@ -9,11 +10,13 @@ export class TextTool extends BaseDrawingTool<FrameAnnotationText> {
             type: 'text',
             x: pos.x,
             y: pos.y,
-            text: 'Enter text',
-            color: this.config.strokeColor,
-            fontFamily: 'Calibri',
-            fontSize: 14,
-            width: 200
+            text: '',
+            color: this.config.color,
+            fontFamily: FONT_FAMILIES[0],
+            fontSize: 24,
+            lineHeight: 1,
+            width: 300,
+            backgroundColor: 'transparent'
         };
     }
 

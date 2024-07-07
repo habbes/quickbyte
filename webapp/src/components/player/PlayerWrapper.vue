@@ -85,13 +85,16 @@
             <div class="flex-1 bg-[#604a59] rounded-md p-2 flex flex-col gap-2 ">
               
               <div class="flex flex-row items-center justify-between">
-                <DrawingTools
-                  v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
-                  v-model:active="drawingToolsActive"
-                  @selectTool="annotationsDrawingTool = $event"
-                  @undo="canvasController.undoShape()"
-                  @redo="canvasController.redoShape()"
-                />
+                <div class="flex flex-1">
+                  <DrawingTools
+                    v-if="(includeTimestamp && mediaType === 'video') || mediaType === 'image'"
+                    v-model:active="drawingToolsActive"
+                    @selectTool="annotationsDrawingTool = $event"
+                    @undo="canvasController.undoShape()"
+                    @redo="canvasController.redoShape()"
+                    @update:active="$event && handleCommentInputFocus()"
+                  />
+                </div>
                 <div
                   v-if="(mediaType === 'video' || mediaType === 'audio') && !drawingToolsActive"
                   class="flex flex-row items-center gap-1" title="Save comment at the current timestamp"
@@ -540,7 +543,12 @@ function getHtmlCommentId(comment: CommentWithAuthor) {
 
 function handleCommentClicked(comment: CommentWithAuthor) {
   seekToComment(comment);
-  selectComment(comment);
+  if (selectedCommentId.value === comment._id) {
+    unselectComment();
+  }
+  else {
+    selectComment(comment);
+  }
 }
 
 function handleVideoCommentClicked(comment: CommentWithAuthor) {

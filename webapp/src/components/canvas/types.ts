@@ -23,10 +23,10 @@ export type DrawingToolType = 'pencil'|'circle'|'rect'|'line'|'text';
 
 export type DrawingToolConfig = {
     type: DrawingToolType,
-    config: ToolConfig
+    config: DrawingToolBaseConfig
 };
 
-export interface ToolConfig {
-    strokeColor: string;
+export interface DrawingToolBaseConfig {
+    color: string;
     strokeWidth: number;
 }
