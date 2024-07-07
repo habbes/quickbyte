@@ -23,7 +23,7 @@ export class RectTool extends BaseDrawingTool<FrameAnnotationRect> {
         return {
             type: 'rect',
             id: this.shapeId,
-            strokeColor: this.config.strokeColor,
+            strokeColor: this.config.color,
             strokeWidth: this.config.strokeWidth,
             x: pos.x,
             y: pos.y,

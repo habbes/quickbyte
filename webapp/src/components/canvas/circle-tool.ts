@@ -10,7 +10,7 @@ export class CircleTool extends BaseDrawingTool<FrameAnnotationCircle> {
             x: pos.x,
             y: pos.y,
             radius: 1,
-            strokeColor: this.config.strokeColor,
+            strokeColor: this.config.color,
             strokeWidth: this.config.strokeWidth
         };
     }

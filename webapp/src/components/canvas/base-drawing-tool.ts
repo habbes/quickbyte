@@ -1,11 +1,11 @@
-import type { CanvasDrawingTool, CanvasPointerEvent, ToolConfig, Position, ShapeUpdateHandler } from "./types.js";
+import type { CanvasDrawingTool, CanvasPointerEvent, DrawingToolBaseConfig, Position, ShapeUpdateHandler } from "./types.js";
 import { FrameAnnotationShape } from "@quickbyte/common";
 
 export abstract class BaseDrawingTool<T extends FrameAnnotationShape> implements CanvasDrawingTool {
     private shape?: T;
 
     constructor(
-        protected readonly config: ToolConfig,
+        protected readonly config: DrawingToolBaseConfig,
         protected readonly shapeId: string,
         private shapeHandler: ShapeUpdateHandler
     ) {}

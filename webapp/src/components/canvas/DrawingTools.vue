@@ -138,9 +138,9 @@ const emit = defineEmits<{
 }>();
 
 const colors = [
+  '#fcb315',
   '#34a3db',
   '#1abca1',
-  '#fcb315',
   '#e74a3c',
   '#000',
   '#fff'
@@ -156,7 +156,7 @@ const currentConfig = computed<DrawingToolConfig|undefined>(() => {
   return {
     type: selectedTool.value,
     config: {
-      strokeColor: selectedColor.value,
+      color: selectedColor.value,
       strokeWidth: 5,
     }
   };

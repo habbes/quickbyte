@@ -14,7 +14,7 @@ export class PencilTool extends BaseDrawingTool<FrameAnnotationPath> {
         return {
             id: this.shapeId,
             type: 'path',
-            strokeColor: this.config.strokeColor,
+            strokeColor: this.config.color,
             strokeWidth: this.config.strokeWidth,
             // duplicate the position so it will be a valid line (point)
             // even if no other point is added.

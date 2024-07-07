@@ -11,7 +11,7 @@ export class TextTool extends BaseDrawingTool<FrameAnnotationText> {
             x: pos.x,
             y: pos.y,
             text: '',
-            color: this.config.strokeColor,
+            color: this.config.color,
             fontFamily: FONT_FAMILIES[0],
             fontSize: 24,
             lineHeight: 1,

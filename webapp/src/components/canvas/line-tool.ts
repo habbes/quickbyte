@@ -8,7 +8,7 @@ export class LineTool extends BaseDrawingTool<FrameAnnotationLine> {
         return {
             id: this.shapeId,
             type: 'line',
-            strokeColor: this.config.strokeColor,
+            strokeColor: this.config.color,
             strokeWidth: this.config.strokeWidth,
             x1: pos.x,
             y1: pos.y,
