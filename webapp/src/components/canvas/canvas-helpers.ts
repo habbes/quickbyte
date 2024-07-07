@@ -20,6 +20,9 @@ import { TextTool } from "./text-tool";
  * from being too small to see on small screens after scaling.
  */
 const MIN_STROKE_WIDTH = 3;
+const MIN_FONT_SIZE = 14;
+
+export const FONT_FAMILIES = ['serif', 'sans-serif', 'monospace', 'cursive'];
 
 export function createDrawingTool(shapeId: string, config: DrawingToolConfig, onShapeUpdate: ShapeUpdateHandler): CanvasDrawingTool {
     switch(config.type) {
@@ -47,13 +50,18 @@ export function scaleStrokeWidth(width: number, factor: number): number {
     return Math.max(width * factor, MIN_STROKE_WIDTH);
 }
 
+export function scaleFontSize(size: number, factor: number): number {
+    return Math.max(size * factor, MIN_FONT_SIZE);
+}
+
 export function scaleTextShape(shape: FrameAnnotationText, factor: number): FrameAnnotationText {
+    console.log('scaling font size from', shape.fontSize, 'to', scaleFontSize(shape.fontSize, factor), factor);
     return {
         ...shape,
         x: shape.x * factor,
         y: shape.y * factor,
         width: shape.width * factor,
-        fontSize: shape.fontSize
+        fontSize: scaleFontSize(shape.fontSize, factor)
     };
 }
 
@@ -74,6 +82,7 @@ export function shapeToKonva(shape: FrameAnnotationShape, scaleFactor: number = 
 
 function pathToKonva(shape: FrameAnnotationPath, scaleFactor: number = 1): konva.LineConfig {
     return {
+        id: shape.id,
         globalCompositeOperation: 'source-over',
         stroke: shape.strokeColor,
         strokeWidth: scaleStrokeWidth(shape.strokeWidth, scaleFactor),
@@ -86,6 +95,7 @@ function pathToKonva(shape: FrameAnnotationPath, scaleFactor: number = 1): konva
 
 function circleToKonva(shape: FrameAnnotationCircle, scaleFactor: number = 1): konva.CircleConfig {
     return {
+        id: shape.id,
         x: shape.x * scaleFactor,
         y: shape.y * scaleFactor,
         radius: shape.radius * scaleFactor,
@@ -96,6 +106,7 @@ function circleToKonva(shape: FrameAnnotationCircle, scaleFactor: number = 1): k
 
 function rectToKonva(shape: FrameAnnotationRect, scaleFactor: number = 1): konva.RectConfig {
     return {
+        id: shape.id,
         x: shape.x * scaleFactor,
         y: shape.y * scaleFactor,
         width: shape.width * scaleFactor,
@@ -108,6 +119,7 @@ function rectToKonva(shape: FrameAnnotationRect, scaleFactor: number = 1): konva
 
 function lineToKonva(shape: FrameAnnotationLine, scaleFactor: number = 1): konva.LineConfig {
     return {
+        id: shape.id,
         globalCompositeOperation: 'source-over',
         stroke: shape.strokeColor,
         strokeWidth: scaleStrokeWidth(shape.strokeWidth, scaleFactor),
@@ -119,13 +131,16 @@ function lineToKonva(shape: FrameAnnotationLine, scaleFactor: number = 1): konva
 }
 
 function textToKonva(shape: FrameAnnotationText, scaleFactor: number = 1): konva.TextConfig {
+    console.log('scaling font size from', shape.fontSize, 'to', scaleFontSize(shape.fontSize, scaleFactor), scaleFactor);
     return {
+        id: shape.id,
         x: shape.x * scaleFactor,
         y: shape.y * scaleFactor,
         width: shape.width * scaleFactor,
-        fontSize: shape.fontSize,
+        fontSize: scaleFontSize(shape.fontSize, scaleFactor),
         fontFamily: shape.fontFamily,
         fill: shape.color,
-        text: shape.text
+        text: shape.text,
+        lineHeight: shape.lineHeight
     };
 }

@@ -218,7 +218,18 @@ function updateTextShape(shape: FrameAnnotationText) {
     return;
   }
 
-  shapes.value[index] = scaleTextShape(shape, 1 / scaleFactor.value);
+  const oldShape = shapes.value[index];
+  if (oldShape.type !== 'text') {
+    return;
+  }
+
+  const newShape = scaleTextShape(shape, 1 / scaleFactor.value);
+  // We retain the original font size because we're sure that the font size
+  // was not changed by the user, since we don't yet support that feature.
+  // We do this because our fontSize scaling does not support round-tripping
+  // since we have a fixed minimum font size.
+  newShape.fontSize = oldShape.fontSize;
+  shapes.value[index] = newShape;
   emitAnnotationsUpdateEvent();
 }
 
