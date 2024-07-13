@@ -55,7 +55,17 @@
         :comments="[]"
         :versionId="versionId"
         @heightChange="playerHeight = $event"
+        hideControls
       />
+      <ImageViewer
+        v-else-if="file && mediaType === 'image'"
+        :src="file.downloadUrl"
+        class="h-[300px] sm:h-full"
+        :comments="[]"
+      />
+      <div v-else class="h-[300px] sm:h-auto w-full flex items-center justify-center">
+        Preview unsupported for this file type.
+      </div>
     </div>
   </div>
 </template>
@@ -64,7 +74,7 @@ import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
 import type { MediaWithFileAndComments } from "@quickbyte/common";
 import { formatDateTime } from "@/core";
-import { AVPlayer } from "@/components/player";
+import { AVPlayer, ImageViewer } from "@/components/player";
 import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
 import { CheckIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
 
@@ -85,6 +95,7 @@ const emit = defineEmits<{
 
 const playerHeight = ref<number>();
 const version = computed(() => props.media.versions.find(v => v._id === props.versionId));
+const file = computed(() => version.value?.file);
 
 const mediaType = computed(() => {
   if (!props.media) return 'unknown';

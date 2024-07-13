@@ -139,7 +139,7 @@
         :style="{ left: `${getPositionFromTime(comment.timestamp)}px`}"
       ></div>
     </div>
-    <div class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
+    <div v-if="!hideControls" class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
       <div class="flex flex-row items-center gap-2">
         <div>
           <PlayIcon v-if="!isPlaying" class="h-5 w-5 cursor-pointer" @click="play()"/>
@@ -190,6 +190,7 @@ const props = defineProps<{
   mediaType: 'video'|'audio';
   versionId?: string;
   annotationsDrawingTool?: DrawingToolConfig;
+  hideControls?: boolean;
 }>();
 
 const emit = defineEmits<{

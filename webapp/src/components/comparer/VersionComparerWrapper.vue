@@ -7,7 +7,7 @@
     />
     <!-- end header -->
     <!-- container -->
-    <div class="flex-1 flex">
+    <div class="flex h-[calc(100dvh-48px)] relative">
       <VersionPlayer
         :media="media"
         :versionId="version1Id"
