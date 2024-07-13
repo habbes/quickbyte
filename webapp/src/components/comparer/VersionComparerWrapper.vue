@@ -8,80 +8,16 @@
     <!-- end header -->
     <!-- container -->
     <div class="flex-1 flex">
-      <div class="flex-1 flex flex-col">
-        <div class="flex items-center px-4 py-2 border border-black" v-if="v1">
-          <UiMenu>
-            <template #trigger>
-              <div class="mr-6 text-white flex items-center gap-1">
-                <div>
-                  v{{ getVersionNumber(v1._id) }}
-                </div>
-                <div>
-                  <ChevronDownIcon class="h-4 w-4" />
-                </div>
-              </div>
-            </template>
-            <UiMenuItem
-              v-for="version in media.versions"
-              :key="version._id"
-              @click="setVersion1(version._id)"
-            >
-              <UiLayout horizontal gapSm itemsCenter fullWidth :title="version.name" class="overflow-hidden">
-                <div class="text-gray-500" :class="{ 'font-bold': version._id === version1Id }">
-                  v{{ getVersionNumber(version._id) }}
-                </div>
-                <div
-                  class="overflow-hidden flex flex-1 items-center justify-between"
-                  :class="{ 'font-bold': version._id === version1Id }"
-                >
-                  <div class="overflow-hidden whitespace-nowrap text-ellipsis">
-                    {{ version.name }}
-                  </div>
-                  <div v-if="version._id === version1Id">
-                    <CheckIcon class="h-4 w-4" />
-                  </div>
-                </div>
-              </UiLayout>
-            </UiMenuItem>
-          </UiMenu>
-         
-          <div class="flex flex-col">
-            <div class="text-xs">
-              {{ v1.name }}
-            </div>
-            <div class="text-[0.6rem]">
-              {{ formatDateTime(v1._createdAt) }}
-            </div>
-          </div>
-        </div>
-        <div class="flex-1 flex items-center bg-black">
-          <AVPlayer
-            :style="`height: ${playerHeight}px`"
-            v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
-            ref="avPlayer"
-            :mediaType="mediaType"
-            :sources="sources"
-            :comments="[]"
-            :versionId="version1Id"
-            @heightChange="playerHeight = $event"
-          />
-        </div>
-      </div>
-      <div class="flex-1">
-        <div>
-          test
-        </div>
-        <AVPlayer
-          :style="`height: ${playerHeight}px`"
-          v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
-          ref="avPlayer"
-          :mediaType="mediaType"
-          :sources="sources"
-          :comments="[]"
-          :versionId="version1Id"
-          @heightChange="playerHeight = $event"
-        />
-      </div>
+      <VersionPlayer
+        :media="media"
+        :versionId="version1Id"
+        @changeVersion="setVersion1($event)"
+      />
+      <VersionPlayer
+        :media="media"
+        :versionId="version2Id"
+        @changeVersion="setVersion2($event)"
+      />
     </div>
     <!-- container -->
   </div>
@@ -91,6 +27,7 @@ import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename, type MediaWithFileAndComments } from "@quickbyte/common";
 import { XMarkIcon, CheckIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
 import VersionComparerHeader from './VersionComparerHeader.vue';
+import VersionPlayer from './VersionPlayer.vue';
 import AVPlayer from '@/components/player/AVPlayer.vue';
 import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
 import { formatDateTime } from "@/core";

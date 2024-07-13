@@ -12,6 +12,7 @@
 </template>
 <script lang="ts" setup>
 import { XMarkIcon } from '@heroicons/vue/24/outline';
+import { UiLayout } from '@/components/ui';
 
 defineProps<{
   title: string;
