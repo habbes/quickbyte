@@ -1,0 +1,79 @@
+<template>
+  <div class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
+    <div class="flex flex-row items-center gap-2">
+      <div>
+        <PlayIcon v-if="!isPlaying" class="h-5 w-5 cursor-pointer" @click="play()"/>
+        <PauseIcon v-else class="h-5 w-5 cursor-pointer" @click="pause()"/>
+      </div>
+      <div>
+        <SpeakerWaveIcon v-if="!isMuted" class="h-5 w-5 cursor-pointer" @click="mute()"/>
+        <SpeakerXMarkIcon v-if="isMuted" class="h-5 w-5 cursor-pointer" @click="unmute()"/>
+      </div>
+      <div class="hidden sm:block">
+        <Slider :model-value="[volume]" @update:model-value="handleSliderUpdate($event)" :min="0" :max="1" :step="0.01" class="w-[80px]" />
+      </div>
+    </div>
+    <div class="flex items-center gap-2 ">
+      <span v-if="allowFullScreen">
+        <ArrowsPointingOutIcon
+          @click="enterFullScreen()"
+          class="h-4 w-4 cursor-pointer hover:text-white"
+          title="Full screen" 
+        />
+      </span>
+      <span class="text-gray-300">{{ formatTimestampDuration(playTime) }}</span> / {{ formatTimestampDuration(duration) }}
+    </div>
+  </div>
+</template>
+<script lang="ts" setup>
+import Slider from '@/components/ui/Slider.vue';
+import { formatTimestampDuration, unwrapSingleton } from "@/core";
+import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
+
+defineProps<{
+  isPlaying: boolean;
+  isMuted: boolean;
+  volume: number;
+  playTime: number;
+  duration: number;
+  allowFullScreen?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'mute'): void;
+  (e: 'unmute'): void;
+  (e: 'pause'): void;
+  (e: 'play'): void;
+  (e: 'fullScreen'): void;
+  (e: 'changeVolume', value: number): void;
+}>();
+
+function enterFullScreen() {
+  emit('fullScreen');
+}
+
+function handleSliderUpdate(value: number[]|undefined) {
+  const volume = unwrapSingleton(value);
+  if (volume === undefined) {
+    return;
+  }
+
+  emit('changeVolume', volume);
+}
+
+function mute() {
+  emit('mute');
+}
+
+function unmute() {
+  emit('unmute');
+}
+
+function play() {
+  emit('play')
+}
+
+function pause() {
+  emit('pause');
+}
+</script>

@@ -6,8 +6,8 @@
       :title="media.name"
     />
     <!-- end header -->
-    <!-- container -->
-    <div class="flex h-[calc(100dvh-48px)] relative">
+    <!-- side-by-side container -->
+    <div class="flex h-[calc(100dvh-108px)] relative">
       <VersionPlayer
         :media="media"
         :versionId="version1Id"
@@ -19,24 +19,26 @@
         @changeVersion="setVersion2($event)"
       />
     </div>
-    <!-- container -->
+    <!-- end side-by-side container -->
+     <div v-if="mediaType === 'video' || mediaType === 'audio'">
+      <PlaybackControls
+        style="height: 60px"
+        :playTime="0"
+        :duration="1"
+        :volume="0"
+        :isMuted="true"
+        :isPlaying="false"
+        :allowFullScreen="false"
+      />
+     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { ref, computed } from "vue";
-import { getMediaType, getMimeTypeFromFilename, type MediaWithFileAndComments } from "@quickbyte/common";
-import { XMarkIcon, CheckIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
+import { getMediaType, type MediaWithFileAndComments, type MediaType } from "@quickbyte/common";
 import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
-import AVPlayer from '@/components/player/AVPlayer.vue';
-import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
-import { formatDateTime } from "@/core";
-
-type MediaSource = {
-  url: string;
-  mimeType?: string;
-  type: 'hls'|'dash'|'raw'
-};
+import PlaybackControls from "./PlaybackControls.vue";
 
 const props = defineProps<{
   media: MediaWithFileAndComments,
@@ -49,48 +51,19 @@ const emit = defineEmits<{
   (e: 'changeVersions', version1Id: string, version2Id: string): unknown;
 }>();
 
-const playerHeight = ref<number>();
-const v1 = computed(() => props.media.versions.find(v => v._id === props.version1Id));
-const v2 = computed(() => props.media.versions.find(v => v._id === props.version2Id));
+const mediaType = computed<MediaType>(() => {
+  const files = [props.version1Id, props.version2Id].flatMap(vId =>
+    props.media.versions.filter(v => v._id === vId).map(v => v.file))
 
-const mediaType = computed(() => {
-  if (!props.media) return 'unknown';
-  return getMediaType(props.media.file.name);
+  // Ideally all versions of the same media should be the same type.
+  // But nothing stops the users from having different media types.
+  // If at least one of the versions is a video, let's consider
+  // this a video, otherwise if one's audio, let's consider it audio, etc.
+  return files.find(f =>  getMediaType(f.name) === 'video') ? 'video'
+    : files.find(f => getMediaType(f.name) === 'audio') ? 'audio'
+    : files.find(f => getMediaType(f.name) === 'image') ? 'image'
+    : 'unknown';
 });
-
-const sources = computed<MediaSource[]>(() => {
-  if (!props.media) return [];
-  if (!v1.value?.file) return [];
-
-  const file = v1.value.file;
-
-  const _src = [] as MediaSource[];
-  if (file.hlsManifestUrl) {
-    _src.push({
-      url: file.hlsManifestUrl,
-      type: 'hls'
-    });
-  }
-  if (file.dashManifestUrl) {
-    _src.push({
-      url: file.dashManifestUrl,
-      type: 'dash'
-    });
-  }
-  if (file.downloadUrl) {
-    _src.push({
-      url: file.downloadUrl,
-      mimeType: getMimeTypeFromFilename(file.name),
-      type: 'raw'
-    });
-  }
-
-  return _src;
-});
-
-function getVersionNumber(versionId: string) {
-  return props.media.versions.findIndex(v => v._id === versionId) + 1;
-}
 
 function closeComparison() {
   emit('close');
