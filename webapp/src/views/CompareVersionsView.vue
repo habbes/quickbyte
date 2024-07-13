@@ -1,13 +1,17 @@
 <template>
-  <div>Comparer</div>
-  <div>{{ version1?.name  }}</div>
-  <div>{{ version2?.name }}</div>
+  <VersioComparerWrapper
+    v-if="media && version1Id && version2Id"
+    :media="media"
+    :version1Id="version1Id"
+    :version2Id="version2Id"
+  />
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useMediaAssetQuery, showToast } from "@/app-utils";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
+import { VersioComparerWrapper } from "@/components/comparer";
 
 const route = useRoute();
 const router = useRouter();
@@ -18,9 +22,6 @@ const mediaQuery = useMediaAssetQuery(projectId, mediaId);
 const media = computed(() => mediaQuery.data.value);
 const version1Id = ref<string>();
 const version2Id = ref<string>();
-
-const version1 = computed(() => media.value?.versions.find(v => v._id === version1Id.value));
-const version2 = computed(() => media.value?.versions.find(v => v._id === version2Id.value));
 
 watch(media, () => {
   if (!media.value) {
@@ -42,6 +43,4 @@ watch(media, () => {
   // If v2 not specified, pick the an arbitrary version other than v1
   version2Id.value = queriedV2Id ? queriedV2Id : ensure(media.value.versions.find(v => v._id !== version1Id.value))._id;
 });
-
-
 </script>
