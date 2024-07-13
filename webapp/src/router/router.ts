@@ -23,6 +23,7 @@ import PasswordResetView from '@/views/auth/PasswordResetView.vue';
 import ProjectShareView from '@/views/ProjectShareView.vue';
 import ProjectShareListView from "@/views/ProjectShareListView.vue";
 import ProjectSharePlayerView from '@/views/ProjectSharePlayerView.vue';
+import CompareVersionsView from '@/views/CompareVersionsView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -98,6 +99,11 @@ const router = createRouter({
               path: 'projects/:projectId/player/:mediaId',
               name: 'player',
               component: PlayerView
+            },
+            {
+              path: 'projects/:projectId/compare/:mediaId',
+              name: 'compare-versions',
+              component: CompareVersionsView
             },
             {
               path: 'settings',

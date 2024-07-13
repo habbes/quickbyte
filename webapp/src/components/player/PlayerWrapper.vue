@@ -17,6 +17,7 @@
           @versionUpload="handleVersionUpload()"
           @update="handleMediaUpdate($event)"
           @selectVersion="handleSelectVersion($event)"
+          @compareVersions="handleCompareVersions"
         />
       </UiLayout>
       <div>
@@ -270,6 +271,7 @@ const emit = defineEmits<{
   (e: 'updateMedia', updatedMedia: Media): unknown;
   (e: 'browserItemClick', item: ProjectItem): unknown;
   (e: 'browserToParentFolder'): unknown;
+  (e: 'compareVersions', v1Id: string, v2Id: string): unknown;
 }>();
 
 // had difficulties getting the scrollbar on the comments panel to work
@@ -475,9 +477,14 @@ function handleMediaUpdate(updatedMedia: Media) {
   emit('updateMedia', updatedMedia)
 }
 
-async function handleSelectVersion(versionId: string) {
+function handleSelectVersion(versionId: string) {
   emit('selectVersion', versionId);
 }
+
+function handleCompareVersions(v1Id: string, v2Id: string) {
+  emit('compareVersions', v1Id, v2Id);
+}
+
 
 function seekToComment(comment: CommentWithAuthor) {
   if (mediaType.value !== 'video' && mediaType.value !== 'audio') {
