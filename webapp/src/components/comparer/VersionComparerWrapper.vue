@@ -24,6 +24,7 @@
             <UiMenuItem
               v-for="version in media.versions"
               :key="version._id"
+              @click="setVersion1(version._id)"
             >
               <UiLayout horizontal gapSm itemsCenter fullWidth :title="version.name" class="overflow-hidden">
                 <div class="text-gray-500" :class="{ 'font-bold': version._id === version1Id }">
@@ -108,6 +109,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): unknown;
+  (e: 'changeVersions', version1Id: string, version2Id: string): unknown;
 }>();
 
 const playerHeight = ref<number>();
@@ -155,5 +157,13 @@ function getVersionNumber(versionId: string) {
 
 function closeComparison() {
   emit('close');
+}
+
+function setVersion1(id: string) {
+  emit('changeVersions', id, props.version2Id);
+}
+
+function setVersion2(id: string) {
+  emit('changeVersions', props.version1Id, id);
 }
 </script>

@@ -5,6 +5,7 @@
     :version1Id="version1Id"
     :version2Id="version2Id"
     @close="handleClose()"
+    @changeVersions="handleSetVersions"
   />
 </template>
 <script lang="ts" setup>
@@ -21,8 +22,18 @@ const projectId = computed(() => unwrapSingleton(route.params.projectId));
 const mediaId = computed(() => unwrapSingleton(route.params.mediaId));
 const mediaQuery = useMediaAssetQuery(projectId, mediaId);
 const media = computed(() => mediaQuery.data.value);
-const version1Id = ref<string>();
-const version2Id = ref<string>();
+
+const version1Id = computed(() => {
+  if (!media.value) return;
+  const queriedV1Id = unwrapSingletonOrUndefined(route.query.v1);
+  return queriedV1Id ? queriedV1Id : ensure(media.value.versions[0]?._id);
+});
+const version2Id =  computed(() => {
+  if (!media.value) return;
+
+  const queriedV2Id = unwrapSingletonOrUndefined(route.query.v2);
+  return queriedV2Id ? queriedV2Id : ensure(media.value.versions.find(v => v._id !== version1Id.value))._id;
+});
 
 watch(media, () => {
   if (!media.value) {
@@ -35,14 +46,6 @@ watch(media, () => {
     router.push({ name: 'player', params: { projectId: projectId.value, mediaId: media.value._id }});
     return;
   }
-
-  const queriedV1Id = unwrapSingletonOrUndefined(route.query.v1);
-  const queriedV2Id = unwrapSingletonOrUndefined(route.query.v2);
-
-  // TODO error handling
-  version1Id.value = queriedV1Id ? queriedV1Id : ensure(media.value.versions[0]?._id);
-  // If v2 not specified, pick the an arbitrary version other than v1
-  version2Id.value = queriedV2Id ? queriedV2Id : ensure(media.value.versions.find(v => v._id !== version1Id.value))._id;
 });
 
 function handleClose() {
@@ -65,5 +68,9 @@ function handleClose() {
       version: version1Id.value
     }
   });
+}
+
+function handleSetVersions(v1Id: string, v2Id: string) {
+  router.push({ query: { v1: v1Id, v2: v2Id } });
 }
 </script>
