@@ -4,6 +4,7 @@
     :media="media"
     :version1Id="version1Id"
     :version2Id="version2Id"
+    @close="handleClose()"
   />
 </template>
 <script lang="ts" setup>
@@ -43,4 +44,26 @@ watch(media, () => {
   // If v2 not specified, pick the an arbitrary version other than v1
   version2Id.value = queriedV2Id ? queriedV2Id : ensure(media.value.versions.find(v => v._id !== version1Id.value))._id;
 });
+
+function handleClose() {
+  if (!media.value) {
+    router.push({
+      name: 'projects-media',
+      params: { projectId: projectId.value }
+    });
+
+    return;
+  }
+
+  router.push({
+    name: 'player',
+    params: {
+      projectId: projectId.value,
+      mediaId: media.value._id
+    },
+    query: {
+      version: version1Id.value
+    }
+  });
+}
 </script>
