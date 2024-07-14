@@ -1,6 +1,6 @@
 <template>
   <div class="flex-1 flex flex-col">
-    <div class="flex items-center px-4 py-2 border border-black">
+    <div class="flex items-center px-4 py-2 border-r border-b border-black">
       <UiMenu>
         <template #trigger>
           <div class="mr-6 text-white flex items-center gap-1">
@@ -18,12 +18,11 @@
           @click="$emit('changeVersion', version._id)"
         >
           <UiLayout horizontal gapSm itemsCenter fullWidth :title="version.name" class="overflow-hidden">
-            <div class="text-gray-500" :class="{ 'font-bold': version._id === versionId }">
+            <div class="text-gray-500">
               v{{ getVersionNumber(version._id) }}
             </div>
             <div
               class="overflow-hidden flex flex-1 items-center justify-between"
-              :class="{ 'font-bold': version._id === versionId }"
             >
               <div class="overflow-hidden whitespace-nowrap text-ellipsis">
                 {{ version.name }}
