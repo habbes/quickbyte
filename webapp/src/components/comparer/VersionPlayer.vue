@@ -72,6 +72,7 @@
         :volume="volume"
         @heightChange="playerHeight = $event"
         @stateChange="$emit('playerStateChange', $event)"
+        @seeked="$emit('playerSeeked')"
         hideControls
       />
       <ImageViewer
@@ -112,9 +113,10 @@ const emit = defineEmits<{
   (e: 'changeVersion', versionId: string): unknown;
   (e: 'select'): unknown;
   (e: 'playerStateChange', state: AVPlayerState): unknown;
+  (e: 'playerSeeked'): unknown;
 }>();
 
-defineExpose({ play, pause });
+defineExpose({ play, pause, seek });
 
 const avPlayer = ref<typeof BaseAVPlayer>();
 const playerHeight = ref<number>();
@@ -162,6 +164,10 @@ function play() {
 
 function pause() {
   avPlayer.value?.pause();
+}
+
+function seek(targetTimestamp: number) {
+  avPlayer.value?.seek(targetTimestamp);
 }
 
 function getVersionNumber(versionId: string) {

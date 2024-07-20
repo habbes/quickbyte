@@ -141,10 +141,6 @@ watch([() => player1State.value?.isPlaying, () => player2State.value?.isPlaying]
   }
 });
 
-watch(volume, () => {
-  console.log('volume changed', volume.value);
-})
-
 function closeComparison() {
   emit('close');
 }
