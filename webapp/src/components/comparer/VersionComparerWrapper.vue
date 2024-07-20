@@ -11,12 +11,16 @@
       <VersionPlayer
         :media="media"
         :versionId="version1Id"
+        :selected="firstSelected"
         @changeVersion="setVersion1($event)"
+        @select="firstSelected = true"
       />
       <VersionPlayer
         :media="media"
         :versionId="version2Id"
+        :selected="!firstSelected"
         @changeVersion="setVersion2($event)"
+        @select="firstSelected = false"
       />
     </div>
     <!-- end side-by-side container -->
@@ -64,6 +68,8 @@ const mediaType = computed<MediaType>(() => {
     : files.find(f => getMediaType(f.name) === 'image') ? 'image'
     : 'unknown';
 });
+
+const firstSelected = ref(true);
 
 function closeComparison() {
   emit('close');

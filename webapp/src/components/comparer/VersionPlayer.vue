@@ -1,51 +1,67 @@
 <template>
   <div class="flex-1 flex flex-col">
-    <div class="flex items-center px-4 py-2 border-r border-b border-black">
-      <UiMenu>
-        <template #trigger>
-          <div class="mr-6 text-white flex items-center gap-1">
-            <div>
-              v{{ getVersionNumber(versionId) }}
+    <div
+      class="flex justify-between items-center px-4 py-2 border-r border-b border-black cursor-pointer transition-all ease-in-out"
+      :class="{
+        'border-b-blue-300': selected,
+        'bg-[#1b1218]': selected,
+        'shadow-sm': selected
+      }"
+      @click="$emit('select')"
+    >
+      <div class="flex items-center">
+        <UiMenu>
+          <template #trigger>
+            <div class="mr-6 text-white flex items-center gap-1">
+              <div>
+                v{{ getVersionNumber(versionId) }}
+              </div>
+              <div>
+                <ChevronDownIcon class="h-4 w-4" />
+              </div>
             </div>
-            <div>
-              <ChevronDownIcon class="h-4 w-4" />
-            </div>
+          </template>
+          <UiMenuItem
+            v-for="version in media.versions"
+            :key="version._id"
+            @click="$emit('changeVersion', version._id)"
+          >
+            <UiLayout horizontal gapSm itemsCenter fullWidth :title="version.name" class="overflow-hidden">
+              <div class="text-gray-500">
+                v{{ getVersionNumber(version._id) }}
+              </div>
+              <div
+                class="overflow-hidden flex flex-1 items-center justify-between"
+              >
+                <div class="overflow-hidden whitespace-nowrap text-ellipsis">
+                  {{ version.name }}
+                </div>
+                <div v-if="version._id === versionId">
+                  <CheckIcon class="h-4 w-4" />
+                </div>
+              </div>
+            </UiLayout>
+          </UiMenuItem>
+        </UiMenu>
+        
+        <div class="flex flex-col" v-if="version">
+          <div class="text-xs">
+            {{ version.name }}
           </div>
-        </template>
-        <UiMenuItem
-          v-for="version in media.versions"
-          :key="version._id"
-          @click="$emit('changeVersion', version._id)"
-        >
-          <UiLayout horizontal gapSm itemsCenter fullWidth :title="version.name" class="overflow-hidden">
-            <div class="text-gray-500">
-              v{{ getVersionNumber(version._id) }}
-            </div>
-            <div
-              class="overflow-hidden flex flex-1 items-center justify-between"
-            >
-              <div class="overflow-hidden whitespace-nowrap text-ellipsis">
-                {{ version.name }}
-              </div>
-              <div v-if="version._id === versionId">
-                <CheckIcon class="h-4 w-4" />
-              </div>
-            </div>
-          </UiLayout>
-        </UiMenuItem>
-      </UiMenu>
-      
-      <div class="flex flex-col" v-if="version">
-        <div class="text-xs">
-          {{ version.name }}
+          <div class="text-[0.6rem]">
+            {{ formatDateTime(version._createdAt) }}
+          </div>
         </div>
-        <div class="text-[0.6rem]">
-          {{ formatDateTime(version._createdAt) }}
+      </div>
+      <div>
+        <div v-if="mediaType === 'video' || mediaType === 'audio'">
+          <SpeakerWaveIcon v-if="selected" class="h-4 w-4 cursor-pointer"/>
+          <SpeakerXMarkIcon v-else="isMuted" class="h-4 w-4 cursor-pointer"/>
         </div>
       </div>
     </div>
     <div class="flex-1 flex items-center">
-      <AVPlayer
+      <BaseAVPlayer
         :style="`height: ${playerHeight}px`"
         v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
         ref="avPlayer"
@@ -73,9 +89,9 @@ import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
 import type { MediaWithFileAndComments } from "@quickbyte/common";
 import { formatDateTime } from "@/core";
-import { AVPlayer, ImageViewer } from "@/components/player";
+import { BaseAVPlayer, ImageViewer } from "@/components/player";
 import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
-import { CheckIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
+import { CheckIcon, ChevronDownIcon, SpeakerXMarkIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 
 type MediaSource = {
   url: string;
@@ -86,10 +102,12 @@ type MediaSource = {
 const props = defineProps<{
   media: MediaWithFileAndComments;
   versionId: string;
+  selected: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'changeVersion', versionId: string): unknown;
+  (e: 'select'): unknown;
 }>();
 
 const playerHeight = ref<number>();

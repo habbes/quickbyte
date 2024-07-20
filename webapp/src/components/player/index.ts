@@ -1,3 +1,4 @@
+export { default as BaseAVPlayer } from "./BaseAVPlayer.vue";
 export { default as AVPlayer } from "./AVPlayer.vue";
 export { default as MediaComment } from "./MediaComment.vue";
 export { default as MediaCommentCore } from "./MediaCommentCore.vue";
