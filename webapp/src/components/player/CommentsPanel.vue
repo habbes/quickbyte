@@ -72,6 +72,7 @@ import { formatTimestampDuration } from "@/core";
 import type { MediaType, CommentWithAuthor, RoleType } from "@quickbyte/common";
 import MediaComment from "./MediaComment.vue";
 import { DrawingTools, type DrawingToolConfig, type CanvasController } from "@/components/canvas";
+import { ClockIcon } from "@heroicons/vue/24/outline";
 
 const props = defineProps<{
   mediaType: MediaType;

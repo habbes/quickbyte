@@ -40,7 +40,7 @@
 
         <!-- start comment section -->
         <CommentsPanel v-if="sideBarState === 'comments'"
-
+          :comments="sortedComments"
         />
         <!-- end comment section -->
         <!-- file list section -->
@@ -121,7 +121,8 @@ import type { MediaWithFileAndComments, MediaType, WithChildren, CommentWithAuth
 import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
-import { type AVPlayerState, SidebarContainer, CommentsPanel } from "@/components/player";
+import { type AVPlayerState, SidebarContainer, CommentsPanel, useCommentOperationsHelpers } from "@/components/player";
+import { ListBulletIcon, ChatBubbleLeftRightIcon } from "@heroicons/vue/24/outline";
 
 type SideBarState = 'comments'|'files';
 
@@ -155,7 +156,13 @@ const mediaType = computed<MediaType>(() => {
 
 const sideBarState = ref<SideBarState>(props.allowComments ? 'comments' : 'files');
 
-const comments = ref<WithChildren<CommentWithAuthor>[]>([...props.media.comments]);
+const _media = computed(() => props.media);
+const {
+  comments,
+  sortedComments
+} = useCommentOperationsHelpers({
+  media: _media
+});
 const firstSelected = ref(true);
 const player1 = ref<typeof VersionPlayer>();
 const player2 = ref<typeof VersionPlayer>();
@@ -253,5 +260,9 @@ function pause() {
 
 function seekTo(timestamp: number) {
   players.forEach(p => p.value?.seek(timestamp));
+}
+
+function handleVideoCommentClicked(comment: CommentWithAuthor) {
+  throw new Error("handleVideCommentClicked not implemented");
 }
 </script>
