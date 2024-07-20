@@ -14,6 +14,9 @@
         :versionId="version1Id"
         :selected="firstSelected"
         :volume="firstVolume"
+        :allowDownload="allowDownload"
+        :playTime="player1State?.currentTime"
+        :duration="player1State?.duration"
         @changeVersion="setVersion1($event)"
         @select="firstSelected = true"
         @playerStateChange="player1State = $event"
@@ -24,6 +27,9 @@
         :versionId="version2Id"
         :selected="!firstSelected"
         :volume="secondVolume"
+        :allowDownload="allowDownload"
+        :playTime="player2State?.currentTime"
+        :duration="player2State?.duration"
         @changeVersion="setVersion2($event)"
         @select="firstSelected = false"
         @playerStateChange="player2State = $event"
@@ -58,6 +64,7 @@ const props = defineProps<{
   media: MediaWithFileAndComments,
   version1Id: string;
   version2Id: string;
+  allowDownload: boolean;
 }>()
 
 const emit = defineEmits<{

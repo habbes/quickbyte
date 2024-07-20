@@ -53,7 +53,19 @@
           </div>
         </div>
       </div>
-      <div>
+      <div class="flex flex-row items-center gap-2">
+        <div v-if="allowDownload && version">
+          <FileDownloadLink
+            :file="version.file"
+            iconOnly
+          />
+        </div>
+        <div
+          v-if="mediaType === 'audio' || mediaType === 'video' && isDefined(playTime) && isDefined(duration)"
+          class="text-xs"
+        >
+          {{ formatTimestampDuration(playTime!) }} / {{ formatTimestampDuration(duration!) }}
+        </div>
         <div v-if="mediaType === 'video' || mediaType === 'audio'">
           <SpeakerWaveIcon v-if="selected" class="h-4 w-4 cursor-pointer"/>
           <SpeakerXMarkIcon v-else="isMuted" class="h-4 w-4 cursor-pointer"/>
@@ -91,8 +103,9 @@
 import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
 import type { MediaWithFileAndComments } from "@quickbyte/common";
-import { formatDateTime } from "@/core";
+import { formatDateTime, formatTimestampDuration, isDefined } from "@/core";
 import { BaseAVPlayer, ImageViewer, type AVPlayerState } from "@/components/player";
+import FileDownloadLink from "../FileDownloadLink.vue";
 import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
 import { CheckIcon, ChevronDownIcon, SpeakerXMarkIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 
@@ -107,6 +120,9 @@ const props = defineProps<{
   versionId: string;
   selected: boolean;
   volume: number;
+  allowDownload: boolean;
+  playTime?: number;
+  duration?: number;
 }>();
 
 const emit = defineEmits<{
