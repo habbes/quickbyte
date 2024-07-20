@@ -26,13 +26,13 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { ref, watch, computed } from "vue";
 import Slider from '@/components/ui/Slider.vue';
 import { formatTimestampDuration, unwrapSingleton } from "@/core";
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 
 defineProps<{
   isPlaying: boolean;
-  isMuted: boolean;
   playTime: number;
   duration: number;
   allowFullScreen?: boolean;
@@ -47,7 +47,18 @@ const emit = defineEmits<{
   (e: 'changeVolume', value: number): void;
 }>();
 
-const volume = defineModel<number>('volume');
+const volume = defineModel<number>('volume', { required: true });
+/**
+ * Previous volume value. Used to restore volume after mute/unmute operation
+ */
+const prevVolume = ref<number>(volume.value);
+const isMuted = computed(() => volume.value === 0);
+
+watch(volume, (curr, prev) => {
+  if (curr === 0) {
+    prevVolume.value = prev;
+  }
+});
 
 function enterFullScreen() {
   emit('fullScreen');
@@ -63,11 +74,11 @@ function handleVolumeSliderUpdate(rawValue: number[]|undefined) {
 }
 
 function mute() {
-  emit('mute');
+  volume.value = 0;
 }
 
 function unmute() {
-  emit('unmute');
+  volume.value = prevVolume.value;
 }
 
 function play() {
