@@ -12,7 +12,7 @@
       <div class="flex items-center">
         <UiMenu>
           <template #trigger>
-            <div class="mr-6 text-white flex items-center gap-1">
+            <div class="text-xs sm:text-sm mr-2 lg:mr-6 text-white flex items-center gap-1">
               <div>
                 v{{ getVersionNumber(versionId) }}
               </div>
@@ -45,7 +45,7 @@
         </UiMenu>
         
         <div class="flex flex-col" v-if="version">
-          <div class="text-xs">
+          <div class="text-xs text-nowrap whitespace-nowrap max-w-[70px] lg:max-w-[140px] xl:max-w-[220px] overflow-hidden text-ellipsis" :title="version.name">
             {{ version.name }}
           </div>
           <div class="text-[0.6rem]">

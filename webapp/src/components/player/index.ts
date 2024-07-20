@@ -6,4 +6,6 @@ export { default as MediaPlayerVersionDropdown } from "./MediaPlayerVersionDropd
 export { default as ImageViewer } from "./ImageViewer.vue";
 export { default as PlayerWrapper } from "./PlayerWrapper.vue";
 export { default as PlayerSkeleton } from "./PlayerSkeleton.vue";
+export { default as SidebarContainer } from "./SidebarContainer.vue";
+export { default as CommentsPanel } from "./CommentsPanel.vue";
 export * from "./types.js";

@@ -6,65 +6,132 @@
       :title="media.name"
     />
     <!-- end header -->
-    <!-- side-by-side container -->
-    <div class="flex h-[calc(100dvh-108px)] relative">
-      <VersionPlayer
-        ref="player1"
-        :media="media"
-        :versionId="version1Id"
-        :selected="firstSelected"
-        :volume="firstVolume"
-        :allowDownload="allowDownload"
-        :playTime="player1State?.currentTime"
-        :duration="player1State?.duration"
-        @changeVersion="setVersion1($event)"
-        @select="firstSelected = true"
-        @playerStateChange="player1State = $event"
-      />
-      <VersionPlayer
-        ref="player2"
-        :media="media"
-        :versionId="version2Id"
-        :selected="!firstSelected"
-        :volume="secondVolume"
-        :allowDownload="allowDownload"
-        :playTime="player2State?.currentTime"
-        :duration="player2State?.duration"
-        @changeVersion="setVersion2($event)"
-        @select="firstSelected = false"
-        @playerStateChange="player2State = $event"
-      />
+     <!-- main container -->
+    <div class="flex flex-col-reverse sm:flex-row h-[calc(100dvh-48px)] relative">
+      <!-- start sidebar -->
+      <SidebarContainer>
+         <!-- start sidebar header -->
+        <div class="flex items-stretch h-[30px] border-b border-b-black">
+          <div
+            @click="sideBarState = 'comments'"
+            v-if="allowComments"
+            class="flex-1 flex items-center gap-2 px-4 cursor-pointer"
+            :class="{
+              'text-white': sideBarState === 'comments',
+              'border-b border-b-blue-300': sideBarState === 'comments'
+            }"
+          >
+            <ChatBubbleLeftRightIcon class="h-4 w-4" />
+            Comments
+          </div>
+          <div
+            @click="sideBarState = 'files'"
+            class="flex-1 flex items-center gap-2 px-4 cursor-pointer"
+            :class="{
+              'text-white': sideBarState === 'files',
+              'border-b border-b-blue-300': sideBarState === 'files'
+            }"
+          >
+            <ListBulletIcon class="h-4 w-4" />
+            Browse files
+          </div>
+        </div>
+        <!-- end sidebar header -->
+
+        <!-- start comment section -->
+        <CommentsPanel v-if="sideBarState === 'comments'"
+
+        />
+        <!-- end comment section -->
+        <!-- file list section -->
+        <div
+          v-if="sideBarState === 'files'"
+          class="filesList overflow-y-auto sm:h-[calc(100dvh-78px)]"
+        >
+          <!-- <InPlayerMediaBrowser
+            :items="otherItems"
+            :getMediaType="getBrowserItemMediaType"
+            :getThumbnail="getBrowserItemThumbnail"
+            :hasParentFolder="browserHasParentFolder"
+            :selectedItemId="media._id"
+            @itemClick="$emit('browserItemClick', $event)"
+            @goToParent="$emit('browserToParentFolder')"
+          /> -->
+        </div>
+        <!-- end file list section -->
+        
+      </SidebarContainer>
+      <!-- end sidebar -->
+      <!-- players container -->
+      <div class="flex-1">
+        <!-- side-by-side container -->
+        <div class="flex h-[calc(100dvh-108px)] relative">
+          <VersionPlayer
+            ref="player1"
+            :media="media"
+            :versionId="version1Id"
+            :selected="firstSelected"
+            :volume="firstVolume"
+            :allowDownload="allowDownload"
+            :playTime="player1State?.currentTime"
+            :duration="player1State?.duration"
+            @changeVersion="setVersion1($event)"
+            @select="firstSelected = true"
+            @playerStateChange="player1State = $event"
+          />
+          <VersionPlayer
+            ref="player2"
+            :media="media"
+            :versionId="version2Id"
+            :selected="!firstSelected"
+            :volume="secondVolume"
+            :allowDownload="allowDownload"
+            :playTime="player2State?.currentTime"
+            :duration="player2State?.duration"
+            @changeVersion="setVersion2($event)"
+            @select="firstSelected = false"
+            @playerStateChange="player2State = $event"
+          />
+        </div>
+        <!-- end side-by-side container -->
+        <div v-if="mediaType === 'video' || mediaType === 'audio'">
+          <PlaybackControls
+            style="height: 60px"
+            :playTime="currentPlayTime"
+            :duration="duration"
+            :isMuted="false"
+            :isPlaying="isPlaying"
+            :allowFullScreen="false"
+            v-model:volume="volume"
+            @play="play()"
+            @pause="pause()"
+            @seek="seekTo($event)"
+          />
+        </div>
+      </div>
+      <!-- end players container -->
     </div>
-    <!-- end side-by-side container -->
-     <div v-if="mediaType === 'video' || mediaType === 'audio'">
-      <PlaybackControls
-        style="height: 60px"
-        :playTime="currentPlayTime"
-        :duration="duration"
-        :isMuted="false"
-        :isPlaying="isPlaying"
-        :allowFullScreen="false"
-        v-model:volume="volume"
-        @play="play()"
-        @pause="pause()"
-        @seek="seekTo($event)"
-      />
-     </div>
+    <!-- end main container -->
   </div>
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
-import { getMediaType, type MediaWithFileAndComments, type MediaType } from "@quickbyte/common";
+import { getMediaType } from "@quickbyte/common";
+import type { MediaWithFileAndComments, MediaType, WithChildren, CommentWithAuthor } from "@quickbyte/common";
 import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
-import { type AVPlayerState } from "@/components/player";
+import { type AVPlayerState, SidebarContainer, CommentsPanel } from "@/components/player";
+
+type SideBarState = 'comments'|'files';
 
 const props = defineProps<{
   media: MediaWithFileAndComments,
   version1Id: string;
   version2Id: string;
   allowDownload: boolean;
+  allowComments: boolean;
+  selectedCommentId?: string;
 }>()
 
 const emit = defineEmits<{
@@ -86,6 +153,9 @@ const mediaType = computed<MediaType>(() => {
     : 'unknown';
 });
 
+const sideBarState = ref<SideBarState>(props.allowComments ? 'comments' : 'files');
+
+const comments = ref<WithChildren<CommentWithAuthor>[]>([...props.media.comments]);
 const firstSelected = ref(true);
 const player1 = ref<typeof VersionPlayer>();
 const player2 = ref<typeof VersionPlayer>();
@@ -118,6 +188,18 @@ const currentPlayTime = computed(() =>
 const isPlaying = computed(() =>
   player1State.value?.isPlaying || player2State.value?.isPlaying || false);
 
+// Helps keep track of when the media has changed
+watch(() => props.media, () => {
+  comments.value = [...props.media.comments];
+  if (props.selectedCommentId) {
+    const comment = comments.value.find(c => c._id === props.selectedCommentId);
+    if (comment) {
+      handleVideoCommentClicked(comment);
+    }
+  }
+
+  // selectedVersionId.value = props.selectedVersionId || _media.value.preferredVersionId;
+}, { immediate: true });
 
 // synchronize playing state
 watch([() => player1State.value?.isPlaying, () => player2State.value?.isPlaying], 

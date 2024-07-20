@@ -4,7 +4,8 @@
     :media="media"
     :version1Id="version1Id"
     :version2Id="version2Id"
-    :allowDownload="true"
+    allowDownload
+    allowComments
     @close="handleClose()"
     @changeVersions="handleSetVersions"
   />
