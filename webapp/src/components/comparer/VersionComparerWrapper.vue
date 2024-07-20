@@ -107,9 +107,39 @@ const currentPlayTime = computed(() =>
     player2State.value?.currentTime || 0
   ));
 
-
 const isPlaying = computed(() =>
   player1State.value?.isPlaying || player2State.value?.isPlaying || false);
+
+
+// synchronize playing state
+watch([() => player1State.value?.isPlaying, () => player2State.value?.isPlaying], 
+  ([player1IsCurrentlyPlaying, player2IsCurrentlyPlaying],
+    [player1WasPreviouslyPlaying, player2WasPreviouslyPlaying]) => {
+  if (!player1State.value || !player2State.value) {
+    return;
+  }
+
+  // if one player has paused playing before reaching the end, pause the other
+  // player as well
+  if (
+    (player1WasPreviouslyPlaying && !player1IsCurrentlyPlaying && player1State.value.currentTime < player1State.value.duration)
+  ) {
+    player2.value?.pause();
+  }
+
+  if (player2WasPreviouslyPlaying && !player2IsCurrentlyPlaying && player2State.value.currentTime < player2State.value.duration) {
+    player1.value?.pause();
+  }
+
+  // if one player has transition from pause to playing, then resume the other player as well
+  if (!player1WasPreviouslyPlaying && player1IsCurrentlyPlaying && !player2IsCurrentlyPlaying && player2State.value.currentTime < player2State.value.duration) {
+    player2.value?.play();
+  }
+
+  if (!player2WasPreviouslyPlaying && player2IsCurrentlyPlaying && !player1IsCurrentlyPlaying && player1State.value.currentTime < player1State.value.duration) {
+    player1.value?.play();
+  }
+});
 
 watch(volume, () => {
   console.log('volume changed', volume.value);
