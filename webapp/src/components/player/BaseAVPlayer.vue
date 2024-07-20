@@ -139,7 +139,7 @@
         :style="{ left: `${getPositionFromTime(comment.timestamp)}px`}"
       ></div>
     </div>
-    <div v-if="!hideControls" class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
+    <!-- <div v-if="!hideControls" class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
       <div class="flex flex-row items-center gap-2">
         <div>
           <PlayIcon v-if="!isPlaying" class="h-5 w-5 cursor-pointer" @click="play()"/>
@@ -163,7 +163,7 @@
         </span>
         <span class="text-gray-300">{{ formatTimestampDuration(playTime) }}</span> / {{ formatTimestampDuration(duration) }}
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 <script lang="ts" setup>
@@ -191,6 +191,7 @@ const props = defineProps<{
   versionId?: string;
   annotationsDrawingTool?: DrawingToolConfig;
   hideControls?: boolean;
+  volume: number;
 }>();
 
 const emit = defineEmits<{
@@ -308,7 +309,7 @@ const currentFrameAnnotations = computed(() => {
 // when canplay event has been triggered.
 const duration = ref(0);
 const isMuted = ref(false);
-const volume = ref(0);
+// const volume = ref(0);
 const prevVolume = ref(0);
 
 watch(isFullScreen, () => {
@@ -372,11 +373,11 @@ watch(_sources, (curr, prev) => {
   });
 });
 
-watch([volume], (curr, prev) => {
+watch(() => props.volume, (curr, prev) => {
   if (!player.value) return;
-  player.value.volume = volume.value;
-  prevVolume.value = prev[0];
-  if (volume.value == 0.0) {
+  player.value.volume = props.volume;
+  prevVolume.value = prev;
+  if (props.volume == 0.0) {
     isMuted.value = true;
   }
   else if (isMuted.value) {
@@ -420,20 +421,6 @@ async function play() {
   catch (e: any) {
     emit('playBackError', e);
   }
-}
-
-function mute() {
-  if (!player.value) return;
-  player.value.muted = true;
-  isMuted.value = true;
-  volume.value = 0;
-}
-
-function unmute() {
-  if (!player.value) return;
-  player.value.muted = false;
-  isMuted.value = false;
-  volume.value = prevVolume.value;
 }
 
 function getCurrentTime(): number {
@@ -489,7 +476,7 @@ function handleCanPlay() {
   }
 
   duration.value = player.value.duration || 0;
-  volume.value = player.value.volume;
+  player.value.volume = props.volume;
 }
 
 function handleProgress(event: any) {
@@ -536,11 +523,6 @@ function getPositionFromTime(timestamp: number): number {
   const width = progressBar.value.offsetWidth;
   const x = (timestamp / duration) * width;
   return x;
-}
-
-function handleSliderUpdate(value: number[]|undefined) {
-  if (value === undefined) return;
-  volume.value = value[0];
 }
 
 function handleCommentClick(comment: TimedCommentWithAuthor) {

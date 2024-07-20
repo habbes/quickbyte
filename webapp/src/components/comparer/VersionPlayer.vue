@@ -62,13 +62,14 @@
     </div>
     <div class="flex-1 flex items-center">
       <BaseAVPlayer
+        ref="avPlayer"
         :style="`height: ${playerHeight}px`"
         v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
-        ref="avPlayer"
         :mediaType="mediaType"
         :sources="sources"
         :comments="[]"
         :versionId="versionId"
+        :volume="volume"
         @heightChange="playerHeight = $event"
         hideControls
       />
@@ -103,6 +104,7 @@ const props = defineProps<{
   media: MediaWithFileAndComments;
   versionId: string;
   selected: boolean;
+  volume: number;
 }>();
 
 const emit = defineEmits<{
@@ -110,6 +112,9 @@ const emit = defineEmits<{
   (e: 'select'): unknown;
 }>();
 
+defineExpose({ play, pause });
+
+const avPlayer = ref<typeof BaseAVPlayer>();
 const playerHeight = ref<number>();
 const version = computed(() => props.media.versions.find(v => v._id === props.versionId));
 const file = computed(() => version.value?.file);
@@ -148,6 +153,14 @@ const sources = computed<MediaSource[]>(() => {
 
   return _src;
 });
+
+function play() {
+  avPlayer.value?.play();
+}
+
+function pause() {
+  avPlayer.value?.pause();
+}
 
 function getVersionNumber(versionId: string) {
   return props.media.versions.findIndex(v => v._id === versionId) + 1;

@@ -10,7 +10,7 @@
         <SpeakerXMarkIcon v-if="isMuted" class="h-5 w-5 cursor-pointer" @click="unmute()"/>
       </div>
       <div class="hidden sm:block">
-        <Slider :model-value="[volume]" @update:model-value="handleSliderUpdate($event)" :min="0" :max="1" :step="0.01" class="w-[80px]" />
+        <Slider :modelValue="[volume]" @update:modelValue="handleVolumeSliderUpdate($event)" :min="0" :max="1" :step="0.01" class="w-[80px]" />
       </div>
     </div>
     <div class="flex items-center gap-2 ">
@@ -33,7 +33,6 @@ import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , ArrowsPointing
 defineProps<{
   isPlaying: boolean;
   isMuted: boolean;
-  volume: number;
   playTime: number;
   duration: number;
   allowFullScreen?: boolean;
@@ -48,17 +47,19 @@ const emit = defineEmits<{
   (e: 'changeVolume', value: number): void;
 }>();
 
+const volume = defineModel<number>('volume');
+
 function enterFullScreen() {
   emit('fullScreen');
 }
 
-function handleSliderUpdate(value: number[]|undefined) {
-  const volume = unwrapSingleton(value);
-  if (volume === undefined) {
+function handleVolumeSliderUpdate(rawValue: number[]|undefined) {
+  const value = unwrapSingleton(rawValue);
+  if (value === undefined) {
     return;
   }
 
-  emit('changeVolume', volume);
+  volume.value = value;
 }
 
 function mute() {
