@@ -41,6 +41,7 @@
         v-model:volume="volume"
         @play="play()"
         @pause="pause()"
+        @seek="seekTo($event)"
       />
      </div>
   </div>
@@ -159,5 +160,9 @@ function play() {
 
 function pause() {
   players.forEach(p => p.value?.pause());
+}
+
+function seekTo(timestamp: number) {
+  players.forEach(p => p.value?.seek(timestamp));
 }
 </script>

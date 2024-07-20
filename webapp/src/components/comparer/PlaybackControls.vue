@@ -3,6 +3,7 @@
     <UiPlaybackProgressBar
       :currentTime="playTime"
       :totalTime="duration"
+      @seek="$emit('seek', $event)"
     />
     <div class="bg-black border-t border-t-[#24141f] flex-1 p-2 flex flex-row items-center justify-between">
       <div class="flex flex-row items-center gap-2">
@@ -52,6 +53,7 @@ const emit = defineEmits<{
   (e: 'play'): void;
   (e: 'fullScreen'): void;
   (e: 'changeVolume', value: number): void;
+  (e: 'seek', targetTimestamp: number): void;
 }>();
 
 const volume = defineModel<number>('volume', { required: true });
