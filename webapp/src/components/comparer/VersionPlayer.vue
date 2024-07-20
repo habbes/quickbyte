@@ -71,6 +71,7 @@
         :versionId="versionId"
         :volume="volume"
         @heightChange="playerHeight = $event"
+        @stateChange="$emit('playerStateChange', $event)"
         hideControls
       />
       <ImageViewer
@@ -90,7 +91,7 @@ import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
 import type { MediaWithFileAndComments } from "@quickbyte/common";
 import { formatDateTime } from "@/core";
-import { BaseAVPlayer, ImageViewer } from "@/components/player";
+import { BaseAVPlayer, ImageViewer, type AVPlayerState } from "@/components/player";
 import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
 import { CheckIcon, ChevronDownIcon, SpeakerXMarkIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
 
@@ -110,6 +111,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'changeVersion', versionId: string): unknown;
   (e: 'select'): unknown;
+  (e: 'playerStateChange', state: AVPlayerState): unknown;
 }>();
 
 defineExpose({ play, pause });

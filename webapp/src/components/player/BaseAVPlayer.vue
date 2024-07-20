@@ -176,6 +176,7 @@ import Slider from '@/components/ui/Slider.vue';
 import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
 import type { FrameAnnotationCollection, TimedCommentWithAuthor } from '@quickbyte/common';
+import type { AVPlayerState } from './types'
 
 type MediaSource = {
   url: string;
@@ -202,6 +203,7 @@ const emit = defineEmits<{
   (e: 'widthChange', width: number): void;
   (e: 'heightChange', height: number): void;
   (e: 'drawAnnotations', annotations: FrameAnnotationCollection): void;
+  (e: 'stateChange', state: AVPlayerState): unknown;
 }>();
 
 defineExpose({
@@ -332,6 +334,14 @@ watch(isFullScreen, () => {
     player.value.controls = false;
     vidstackControlsDisplay.value = 'none';
   }
+});
+
+watch([duration, isPlaying, playTime], () => {
+  emit('stateChange', {
+    duration: duration.value,
+    isPlaying: isPlaying.value,
+    currentTime: playTime.value
+  });
 });
 
 watch([videoWidth], () => {

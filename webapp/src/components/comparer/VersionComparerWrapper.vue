@@ -16,6 +16,7 @@
         :volume="firstVolume"
         @changeVersion="setVersion1($event)"
         @select="firstSelected = true"
+        @playerStateChange="player1State = $event"
       />
       <VersionPlayer
         ref="player2"
@@ -25,16 +26,17 @@
         :volume="secondVolume"
         @changeVersion="setVersion2($event)"
         @select="firstSelected = false"
+        @playerStateChange="player2State = $event"
       />
     </div>
     <!-- end side-by-side container -->
      <div v-if="mediaType === 'video' || mediaType === 'audio'">
       <PlaybackControls
         style="height: 60px"
-        :playTime="0"
-        :duration="1"
+        :playTime="currentPlayTime"
+        :duration="duration"
         :isMuted="false"
-        :isPlaying="false"
+        :isPlaying="isPlaying"
         :allowFullScreen="false"
         v-model:volume="volume"
         @play="play()"
@@ -49,6 +51,7 @@ import { getMediaType, type MediaWithFileAndComments, type MediaType } from "@qu
 import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
+import { type AVPlayerState } from "@/components/player";
 
 const props = defineProps<{
   media: MediaWithFileAndComments,
@@ -79,11 +82,34 @@ const firstSelected = ref(true);
 const player1 = ref<typeof VersionPlayer>();
 const player2 = ref<typeof VersionPlayer>();
 const players = [player1, player2];
-const isPlaying = ref(false);
 const selectedPlayer = computed(() => firstSelected.value ? player1.value : player2.value);
+const player1State = ref<AVPlayerState>();
+const player2State = ref<AVPlayerState>();
 const volume = ref(0.5);
 const firstVolume = computed(() => firstSelected.value ? volume.value : 0);
 const secondVolume = computed(() => firstSelected.value ? 0 : volume.value);
+
+// the duration is the larger of the two versions
+const duration = computed(() =>
+  Math.max(
+    player1State.value?.duration || 0,
+    player2State.value?.duration || 0
+  ));
+
+// Ideally both player's time should be synchronized.
+// But they could go out of sync due to many reasons.
+// We use the largest as the overall "current" time
+// since it's more likely that the longer media will
+// continue to play alone
+const currentPlayTime = computed(() =>
+  Math.max(
+    player1State.value?.currentTime || 0,
+    player2State.value?.currentTime || 0
+  ));
+
+
+const isPlaying = computed(() =>
+  player1State.value?.isPlaying || player2State.value?.isPlaying || false);
 
 watch(volume, () => {
   console.log('volume changed', volume.value);
@@ -103,11 +129,9 @@ function setVersion2(id: string) {
 
 function play() {
   players.forEach(p => p.value?.play());
-  isPlaying.value = true;
 }
 
 function pause() {
   players.forEach(p => p.value?.pause());
-  isPlaying.value = false;
 }
 </script>
