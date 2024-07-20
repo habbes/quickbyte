@@ -1,27 +1,33 @@
 <template>
-  <div class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
-    <div class="flex flex-row items-center gap-2">
-      <div>
-        <PlayIcon v-if="!isPlaying" class="h-5 w-5 cursor-pointer" @click="play()"/>
-        <PauseIcon v-else class="h-5 w-5 cursor-pointer" @click="pause()"/>
+  <div class="flex flex-col bg-black border-t border-t-[#24141f]">
+    <UiPlaybackProgressBar
+      :currentTime="playTime"
+      :totalTime="duration"
+    />
+    <div class="bg-black border-t border-t-[#24141f] flex-1 p-2 flex flex-row items-center justify-between">
+      <div class="flex flex-row items-center gap-2">
+        <div>
+          <PlayIcon v-if="!isPlaying" class="h-5 w-5 cursor-pointer" @click="play()"/>
+          <PauseIcon v-else class="h-5 w-5 cursor-pointer" @click="pause()"/>
+        </div>
+        <div>
+          <SpeakerWaveIcon v-if="!isMuted" class="h-5 w-5 cursor-pointer" @click="mute()"/>
+          <SpeakerXMarkIcon v-if="isMuted" class="h-5 w-5 cursor-pointer" @click="unmute()"/>
+        </div>
+        <div class="hidden sm:block">
+          <Slider :modelValue="[volume]" @update:modelValue="handleVolumeSliderUpdate($event)" :min="0" :max="1" :step="0.01" class="w-[80px]" />
+        </div>
       </div>
-      <div>
-        <SpeakerWaveIcon v-if="!isMuted" class="h-5 w-5 cursor-pointer" @click="mute()"/>
-        <SpeakerXMarkIcon v-if="isMuted" class="h-5 w-5 cursor-pointer" @click="unmute()"/>
+      <div class="flex items-center gap-2 ">
+        <span v-if="allowFullScreen">
+          <ArrowsPointingOutIcon
+            @click="enterFullScreen()"
+            class="h-4 w-4 cursor-pointer hover:text-white"
+            title="Full screen" 
+          />
+        </span>
+        <span class="text-gray-300">{{ formatTimestampDuration(playTime) }}</span> / {{ formatTimestampDuration(duration) }}
       </div>
-      <div class="hidden sm:block">
-        <Slider :modelValue="[volume]" @update:modelValue="handleVolumeSliderUpdate($event)" :min="0" :max="1" :step="0.01" class="w-[80px]" />
-      </div>
-    </div>
-    <div class="flex items-center gap-2 ">
-      <span v-if="allowFullScreen">
-        <ArrowsPointingOutIcon
-          @click="enterFullScreen()"
-          class="h-4 w-4 cursor-pointer hover:text-white"
-          title="Full screen" 
-        />
-      </span>
-      <span class="text-gray-300">{{ formatTimestampDuration(playTime) }}</span> / {{ formatTimestampDuration(duration) }}
     </div>
   </div>
 </template>
@@ -30,6 +36,7 @@ import { ref, watch, computed } from "vue";
 import Slider from '@/components/ui/Slider.vue';
 import { formatTimestampDuration, unwrapSingleton } from "@/core";
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
+import { UiPlaybackProgressBar } from "@/components/ui";
 
 defineProps<{
   isPlaying: boolean;
