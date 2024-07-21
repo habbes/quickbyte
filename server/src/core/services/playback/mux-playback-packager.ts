@@ -149,7 +149,7 @@ export class MuxPlaybackPackager implements PlaybackPackager {
         if (asset.status !== 'ready') {
             // If we return playback urls when the asset is not ready, the player will throw errors attempting to play the hls source.
             // So we don't return the playback urls, that way the player can fall back to using the download url.
-            console.log(`Attempting to get playback url of file that is not ready '${file._id}' asset '${file.playbackPackagingId}'. Cannot generate playback urls.`);
+            console.log(`Attempting to get playback url of file that is not ready '${file._id}', Mux asset '${file.playbackPackagingId}' has status '${asset.status}'. Cannot generate playback urls.`);
             return {};
         }
 
@@ -171,7 +171,10 @@ export class MuxPlaybackPackager implements PlaybackPackager {
         let asset = this.cache.get(assetId);
         if (!asset) {
             asset = await this.client.video.assets.retrieve(assetId);
-            this.cache.set(assetId, asset);
+            // only cache final state
+            if (asset.status === 'ready' || asset.status === 'errored') {
+                this.cache.set(assetId, asset);
+            }
         }
 
         return asset;
