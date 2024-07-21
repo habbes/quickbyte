@@ -9,7 +9,8 @@
      <!-- main container -->
     <div class="flex flex-col-reverse sm:flex-row h-[calc(100dvh-48px)] relative">
       <!-- start sidebar -->
-      <SidebarContainer>
+      <!-- TODO: sidebar is hidden on small screens until we figure out how a practical layout -->
+      <SidebarContainer class=" hidden sm:flex">
          <!-- start sidebar header -->
         <div class="flex items-stretch h-[30px] border-b border-b-black">
           <div
@@ -40,7 +41,14 @@
 
         <!-- start comment section -->
         <CommentsPanel v-if="sideBarState === 'comments'"
+          ref="commentsPanel"
           :comments="sortedComments"
+          :currentTimestamp="currentPlayTime"
+          :canvasController="canvasController"
+          :role="role"
+          :user="user"
+          :mediaType="mediaType"
+          :smallScreenHeight="commentsListCssHeightSmallScreen"
         />
         <!-- end comment section -->
         <!-- file list section -->
@@ -65,7 +73,7 @@
       <!-- players container -->
       <div class="flex-1">
         <!-- side-by-side container -->
-        <div class="flex h-[calc(100dvh-108px)] relative">
+        <div class="flex flex-col sm:flex-row h-[calc(100dvh-108px)] relative overflow-y-auto">
           <VersionPlayer
             ref="player1"
             :media="media"
@@ -115,9 +123,10 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { getMediaType } from "@quickbyte/common";
-import type { MediaWithFileAndComments, MediaType, WithChildren, CommentWithAuthor } from "@quickbyte/common";
+import type { MediaWithFileAndComments, MediaType, RoleType, WithChildren, CommentWithAuthor } from "@quickbyte/common";
+import { logger } from "@/app-utils";
 import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
@@ -133,6 +142,11 @@ const props = defineProps<{
   allowDownload: boolean;
   allowComments: boolean;
   selectedCommentId?: string;
+  user?: {
+    _id: string;
+    name: string;
+  },
+  role: RoleType;
 }>()
 
 const emit = defineEmits<{
@@ -154,14 +168,18 @@ const mediaType = computed<MediaType>(() => {
     : 'unknown';
 });
 
+const commentsPanel = ref<typeof CommentsPanel>();
 const sideBarState = ref<SideBarState>(props.allowComments ? 'comments' : 'files');
 
 const _media = computed(() => props.media);
 const {
   comments,
-  sortedComments
+  sortedComments,
+  canvasController
 } = useCommentOperationsHelpers({
-  media: _media
+  media: _media,
+  seekToComment: seekToComment,
+  scrollToComment: scrollToComment
 });
 const firstSelected = ref(true);
 const player1 = ref<typeof VersionPlayer>();
@@ -194,6 +212,12 @@ const currentPlayTime = computed(() =>
 
 const isPlaying = computed(() =>
   player1State.value?.isPlaying || player2State.value?.isPlaying || false);
+
+const commentsListCssHeightSmallScreen = computed(() => {
+  logger?.warn('TODO: Comment list small screen height not implemented.');
+  
+  return `100px`;
+});
 
 // Helps keep track of when the media has changed
 watch(() => props.media, () => {
@@ -260,6 +284,31 @@ function pause() {
 
 function seekTo(timestamp: number) {
   players.forEach(p => p.value?.seek(timestamp));
+}
+
+function seekToComment(comment: CommentWithAuthor) {
+  if (mediaType.value !== 'video' && mediaType.value !== 'audio') {
+    return;
+  }
+
+  if (!player1.value || !player2.value) {
+    // if the video ref isn't ready yet (e.g. component just mounted),
+    // wait before we seek
+    // TODO: warn, if video player is never ready, this will lead to infinite async recursion
+    // and cause the page to hang. Is the player guaranteed to be available?
+    nextTick(() => seekToComment(comment));
+    return;
+  }
+
+  if (comment.timestamp === null || comment.timestamp === undefined) {
+    return;
+  }
+
+  seekTo(comment.timestamp);
+}
+
+function scrollToComment(comment: CommentWithAuthor) {
+  commentsPanel.value?.scrollToComment(comment);
 }
 
 function handleVideoCommentClicked(comment: CommentWithAuthor) {

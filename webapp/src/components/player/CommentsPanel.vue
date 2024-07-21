@@ -67,7 +67,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { ref, computed, nextTick } from "vue";
 import { formatTimestampDuration } from "@/core";
 import type { MediaType, CommentWithAuthor, RoleType } from "@quickbyte/common";
 import MediaComment from "./MediaComment.vue";
@@ -82,7 +82,7 @@ const props = defineProps<{
   },
   role: RoleType; 
   comments: CommentWithAuthor[],
-  smallScreenHeight: number;
+  smallScreenHeight: string;
   currentTimestamp: number;
   canvasController: CanvasController;
 }>();
@@ -105,10 +105,14 @@ const drawingToolsActive = defineModel('drawingToolsActive', { default: false })
 const annotationsDrawingTool = defineModel<DrawingToolConfig>('annotationsDrawingTool');
 
 function scrollToComment(comment: CommentWithAuthor) {
-  document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView({
-    block: 'end',
-    inline: 'nearest',
-    behavior: 'smooth'
+  // we wait for the next tick to ensure the comment has been added to the DOM
+  // before we scroll into it
+  nextTick(() => {
+    document.querySelector(`#${getHtmlCommentId(comment)}`)?.scrollIntoView({
+      block: 'end',
+      inline: 'nearest',
+      behavior: 'smooth'
+    });
   });
 }
 

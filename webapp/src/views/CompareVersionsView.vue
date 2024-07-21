@@ -4,6 +4,8 @@
     :media="media"
     :version1Id="version1Id"
     :version2Id="version2Id"
+    :user="user"
+    :role="project.role"
     allowDownload
     allowComments
     @close="handleClose()"
@@ -13,14 +15,16 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useMediaAssetQuery, showToast } from "@/app-utils";
+import { useMediaAssetQuery, showToast, store } from "@/app-utils";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { VersioComparerWrapper } from "@/components/comparer";
 
 const route = useRoute();
 const router = useRouter();
 
+const user = store.user;
 const projectId = computed(() => unwrapSingleton(route.params.projectId));
+const project = computed(() => ensure(store.projects.value.find(p => p._id === projectId.value), `Project ${projectId.value} not found.`));
 const mediaId = computed(() => unwrapSingleton(route.params.mediaId));
 const mediaQuery = useMediaAssetQuery(projectId, mediaId);
 const media = computed(() => mediaQuery.data.value);

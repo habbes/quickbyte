@@ -1,6 +1,7 @@
 import { ref, computed, type Ref } from "vue";
-import type { CommentWithAuthor, MediaWithFileAndComments } from "@quickbyte/common";
+import type { CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor } from "@quickbyte/common";
 import { isDefined } from "@/core";
+import { provideCanvasController } from "@/components/canvas";
 
 export interface CommentOperationHelpersContext {
     media: Ref<MediaWithFileAndComments>;
@@ -10,6 +11,7 @@ export interface CommentOperationHelpersContext {
 
 export function useCommentOperationsHelpers(context: CommentOperationHelpersContext) {
 
+    const canvasController = provideCanvasController();
     const comments = ref([...context.media.value.comments]);
 
     // we display all the timestamped comments before
@@ -51,6 +53,7 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
     return {
         comments,
         sortedComments,
-        timedComments
+        timedComments,
+        canvasController
     };
 }
