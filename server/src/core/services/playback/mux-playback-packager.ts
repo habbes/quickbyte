@@ -171,7 +171,10 @@ export class MuxPlaybackPackager implements PlaybackPackager {
         let asset = this.cache.get(assetId);
         if (!asset) {
             asset = await this.client.video.assets.retrieve(assetId);
-            this.cache.set(assetId, asset);
+            // only cache final state
+            if (asset.status === 'ready' || asset.status === 'errored') {
+                this.cache.set(assetId, asset);
+            }
         }
 
         return asset;
