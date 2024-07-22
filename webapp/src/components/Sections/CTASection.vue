@@ -18,7 +18,7 @@
                 <div class="grid py-32 text-center place-items-center lg:mx-0 lg:flex-auto lg:py-20 lg:text-left">
                     <h2 class="max-w-sm text-3xl font-bold tracking-tight text-center text-white sm:text-4xl">
                         Streamline your creative
-                        collabortive workflow <span class="line-through">tomorrow</span> <span>today</span>
+                        collaborative workflow <span class="line-through">tomorrow</span> <span>today</span>
                     </h2>
                     <!-- <p class="max-w-md mt-6 leading-6 text-center text-gray-300 md:text-lg text-md md:leading-7">
                         Start sending files with unprecedented speed and efficiency today!
