@@ -13,6 +13,11 @@ export interface CommentOperationHelpersContext {
     editComment: EditCommentHandler
 }
 
+/**
+ * Helper functions and refs that provide logic for handling
+ * comments with the CommentsPanel component.
+ * @param context 
+ */
 export function useCommentOperationsHelpers(context: CommentOperationHelpersContext) {
 
     const canvasController = provideCanvasController();
