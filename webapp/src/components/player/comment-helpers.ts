@@ -23,32 +23,31 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
     const sortedComments = computed(() => {
         const temp = [...comments.value];
         temp.sort((a, b) => {
-        if (isDefined(a.timestamp) && !isDefined(b.timestamp)) {
-            return -1;
-        }
-    
-        if (isDefined(b.timestamp) && !isDefined(a.timestamp)) {
-            return 1;
-        }
-    
-        const aDate = new Date(a._createdAt);
-        const bDate = new Date(b._createdAt);
-        const dateDiff =  aDate.getTime() - bDate.getTime();
-    
-        if (isDefined(a.timestamp) && isDefined(b.timestamp)) {
-            const timestampDiff = a.timestamp! - b.timestamp!;
-            return timestampDiff === 0 ? dateDiff : timestampDiff;
-        }
-    
-        return dateDiff;
+            if (isDefined(a.timestamp) && !isDefined(b.timestamp)) {
+                return -1;
+            }
+
+            if (isDefined(b.timestamp) && !isDefined(a.timestamp)) {
+                return 1;
+            }
+
+            const aDate = new Date(a._createdAt);
+            const bDate = new Date(b._createdAt);
+            const dateDiff = aDate.getTime() - bDate.getTime();
+
+            if (isDefined(a.timestamp) && isDefined(b.timestamp)) {
+                const timestampDiff = a.timestamp! - b.timestamp!;
+                return timestampDiff === 0 ? dateDiff : timestampDiff;
+            }
+
+            return dateDiff;
         });
-    
+
         return temp;
     });
-    
+
     const timedComments = computed<WithChildren<TimedCommentWithAuthor>[]>(() =>
         sortedComments.value.filter(c => isDefined(c.timestamp)) as WithChildren<TimedCommentWithAuthor>[]);
-
 
     return {
         comments,

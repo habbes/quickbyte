@@ -6,6 +6,7 @@
     :version2Id="version2Id"
     :user="user"
     :role="project.role"
+    :selectedCommentId="selectedCommentId"
     allowDownload
     allowComments
     @close="handleClose()"
@@ -28,6 +29,7 @@ const project = computed(() => ensure(store.projects.value.find(p => p._id === p
 const mediaId = computed(() => unwrapSingleton(route.params.mediaId));
 const mediaQuery = useMediaAssetQuery(projectId, mediaId);
 const media = computed(() => mediaQuery.data.value);
+const selectedCommentId = ref<string>();
 
 const version1Id = computed(() => {
   if (!media.value) return;
@@ -45,6 +47,9 @@ watch(media, () => {
   if (!media.value) {
     return;
   }
+
+  const queriedCommentId = unwrapSingletonOrUndefined(route.query.comment);
+  selectedCommentId.value = queriedCommentId || undefined;
 
   if (media.value.versions.length < 2) {
     // go to player view if media only has 1 version

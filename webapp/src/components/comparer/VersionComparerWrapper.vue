@@ -126,6 +126,7 @@
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { getMediaType } from "@quickbyte/common";
 import type { MediaWithFileAndComments, MediaType, RoleType, WithChildren, CommentWithAuthor } from "@quickbyte/common";
 import { logger } from "@/app-utils";
@@ -156,6 +157,8 @@ const emit = defineEmits<{
   (e: 'changeVersions', version1Id: string, version2Id: string): unknown;
 }>();
 
+const router = useRouter();
+const route = useRoute();
 const mediaType = computed<MediaType>(() => {
   const files = [props.version1Id, props.version2Id].flatMap(vId =>
     props.media.versions.filter(v => v._id === vId).map(v => v.file))
@@ -312,15 +315,24 @@ function seekToComment(comment: CommentWithAuthor) {
 
 function selectComment(comment: CommentWithAuthor) {
   selectedCommentId.value = comment._id;
+  router.push({ query: { ...route.query, comment: comment._id }});
+}
+
+function unselectComment() {
+  selectedCommentId.value = undefined;
+  const newQuery = { ...route.query };
+  delete newQuery.comment;
+  router.push({ query: newQuery });
 }
 
 function scrollToComment(comment: CommentWithAuthor) {
-  commentsPanel.value?.scrollToComment(comment);
+  nextTick(() => commentsPanel.value?.scrollToComment(comment));
 }
 
 function handleCommentClicked(comment: CommentWithAuthor) {
   seekToComment(comment);
   selectComment(comment);
+  
   scrollToComment(comment);
 }
 </script>
