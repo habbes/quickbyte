@@ -6,10 +6,7 @@
         <XMarkIcon class="h-5 w-5 hover:text-white hover:cursor-pointer" @click="closePlayer()" />
       </div>
       <UiLayout horizontal itemsCenter gapSm class="overflow-hidden">
-        <div class="max-w-[200px] sm:max-w-max overflow-hidden text-ellipsis">
-          <span :title="selectedVersion?.name" class="text-white text-md overflow-hidden whitespace-nowrap">{{
-            selectedVersion?.name }}</span>
-        </div>
+        <VersionTitle :versions="media.versions" :selectedVersionId="selectedVersionId" />
         <MediaPlayerVersionDropdown v-if="showAllVersions" :media="media" :selectedVersionId="selectedVersionId"
           :allowUpload="allowUploadVersion" :allowManagement="allowVersionManagement"
           @versionUpload="handleVersionUpload()" @update="handleMediaUpdate($event)"
@@ -156,6 +153,7 @@ import ImageViewer from './ImageViewer.vue';
 import MediaPlayerVersionDropdown from "./MediaPlayerVersionDropdown.vue";
 import MediaComment from "./MediaComment.vue";
 import InPlayerMediaBrowser from './InPlayerMediaBrowser.vue';
+import VersionTitle from './VersionTitle.vue';
 import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
 import { DrawingTools, type DrawingToolConfig, provideCanvasController } from "@/components/canvas";
