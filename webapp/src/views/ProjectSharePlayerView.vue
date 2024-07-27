@@ -18,6 +18,7 @@
     @browserItemClick="handleBrowserItemClick($event)"
     @browserToParentFolder="handleBrowserToParentFolder()"
     @selectVersion="handleVersionChange($event)"
+    @compareVersions="handleCompareVersions"
   />
   <PlayerSkeleton
     v-else-if="!media"
@@ -165,6 +166,10 @@ async function sendComment(args: {
     authorName: name || share.value.sharedEmail.split('@')[0]
   });
 
+  if (!user.value) {
+    user.value = comment.author;
+  }
+
   return { ...comment, children: [] };
 }
 
@@ -293,5 +298,24 @@ function handleVersionChange(versionId: string) {
   if (!code.value) return;
 
   router.push({ query: { ...route.query, version: versionId } });
+}
+
+function handleCompareVersions(v1Id: string, v2Id: string) {
+  if (!media.value) return;
+  if (!share.value) return;
+  if (!code.value) return;
+
+  router.push({
+    name: 'project-share-compare-versions',
+    params: {
+      shareId: share.value._id,
+      code: code.value,
+      mediaId: media.value._id
+    },
+    query: {
+      v1: v1Id,
+      v2: v2Id
+    }
+  });
 }
 </script>

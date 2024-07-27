@@ -10,7 +10,7 @@
           :height="videoHeight"
           :width="videoWidth"
           :drawingToolConfig="annotationsDrawingTool"
-          @updateAnnotations="$emit('drawAnnotations', $event)"
+          @updateAnnotations="handleUpdateAnnotations($event)"
         />
         <AnnotationsCanvas
           v-else-if="currentFrameAnnotations && videoWidth && videoHeight"
@@ -139,7 +139,7 @@
         :style="{ left: `${getPositionFromTime(comment.timestamp)}px`}"
       ></div>
     </div>
-    <div v-if="!hideControls" class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
+    <!-- <div v-if="!hideControls" class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
       <div class="flex flex-row items-center gap-2">
         <div>
           <PlayIcon v-if="!isPlaying" class="h-5 w-5 cursor-pointer" @click="play()"/>
@@ -163,7 +163,7 @@
         </span>
         <span class="text-gray-300">{{ formatTimestampDuration(playTime) }}</span> / {{ formatTimestampDuration(duration) }}
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 <script lang="ts" setup>
@@ -176,6 +176,7 @@ import Slider from '@/components/ui/Slider.vue';
 import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
 import type { FrameAnnotationCollection, TimedCommentWithAuthor } from '@quickbyte/common';
+import type { AVPlayerState } from './types'
 
 type MediaSource = {
   url: string;
@@ -191,6 +192,7 @@ const props = defineProps<{
   versionId?: string;
   annotationsDrawingTool?: DrawingToolConfig;
   hideControls?: boolean;
+  volume: number;
 }>();
 
 const emit = defineEmits<{
@@ -201,6 +203,7 @@ const emit = defineEmits<{
   (e: 'widthChange', width: number): void;
   (e: 'heightChange', height: number): void;
   (e: 'drawAnnotations', annotations: FrameAnnotationCollection): void;
+  (e: 'stateChange', state: AVPlayerState): unknown;
 }>();
 
 defineExpose({
@@ -308,7 +311,7 @@ const currentFrameAnnotations = computed(() => {
 // when canplay event has been triggered.
 const duration = ref(0);
 const isMuted = ref(false);
-const volume = ref(0);
+// const volume = ref(0);
 const prevVolume = ref(0);
 
 watch(isFullScreen, () => {
@@ -331,6 +334,14 @@ watch(isFullScreen, () => {
     player.value.controls = false;
     vidstackControlsDisplay.value = 'none';
   }
+});
+
+watch([duration, isPlaying, playTime], () => {
+  emit('stateChange', {
+    duration: duration.value,
+    isPlaying: isPlaying.value,
+    currentTime: playTime.value
+  });
 });
 
 watch([videoWidth], () => {
@@ -372,11 +383,11 @@ watch(_sources, (curr, prev) => {
   });
 });
 
-watch([volume], (curr, prev) => {
+watch(() => props.volume, (curr, prev) => {
   if (!player.value) return;
-  player.value.volume = volume.value;
-  prevVolume.value = prev[0];
-  if (volume.value == 0.0) {
+  player.value.volume = props.volume;
+  prevVolume.value = prev;
+  if (props.volume == 0.0) {
     isMuted.value = true;
   }
   else if (isMuted.value) {
@@ -420,20 +431,6 @@ async function play() {
   catch (e: any) {
     emit('playBackError', e);
   }
-}
-
-function mute() {
-  if (!player.value) return;
-  player.value.muted = true;
-  isMuted.value = true;
-  volume.value = 0;
-}
-
-function unmute() {
-  if (!player.value) return;
-  player.value.muted = false;
-  isMuted.value = false;
-  volume.value = prevVolume.value;
 }
 
 function getCurrentTime(): number {
@@ -489,7 +486,7 @@ function handleCanPlay() {
   }
 
   duration.value = player.value.duration || 0;
-  volume.value = player.value.volume;
+  player.value.volume = props.volume;
 }
 
 function handleProgress(event: any) {
@@ -538,11 +535,6 @@ function getPositionFromTime(timestamp: number): number {
   return x;
 }
 
-function handleSliderUpdate(value: number[]|undefined) {
-  if (value === undefined) return;
-  volume.value = value[0];
-}
-
 function handleCommentClick(comment: TimedCommentWithAuthor) {
   emit('clickComment', comment);
 }
@@ -553,6 +545,10 @@ function handleCommentMouseEnter(comment: TimedCommentWithAuthor) {
 
 function handleCommentMouseLeave() {
   hoveredCommentId.value = undefined;
+}
+
+function handleUpdateAnnotations(annotations: FrameAnnotationCollection) {
+  emit('drawAnnotations', annotations);
 }
 </script>
 <style scoped>

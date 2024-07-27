@@ -24,10 +24,10 @@ output "storage_accounts_names" {
   }
 }
 
-output "s3_bucket_useast1" {
-  value = {
-    id = aws_s3_bucket.useast1_data_bucket.id
-    region = aws_s3_bucket.useast1_data_bucket.region
-    ping_blob_key = aws_s3_object.useast1_ping_object.key
-  }
-}
+# output "s3_bucket_useast1" {
+#   value = {
+#     id = aws_s3_bucket.useast1_data_bucket.id
+#     region = aws_s3_bucket.useast1_data_bucket.region
+#     ping_blob_key = aws_s3_object.useast1_ping_object.key
+#   }
+# }

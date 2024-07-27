@@ -5,10 +5,10 @@ terraform {
       version = "~> 3.0.2"
     }
 
-    aws = {
-      source = "hashicorp/aws"
-      version = "~> 5.0"
-    }
+    # aws = {
+    #   source = "hashicorp/aws"
+    #   version = "~> 5.0"
+    # }
   }
 
   required_version = ">= 1.1.0"
@@ -53,10 +53,10 @@ provider "azurerm" {
 #   alias = "afsouth1"
 # }
 
-provider "aws" {
-  region = "us-east-1"
-  alias = "useast1"
-}
+# provider "aws" {
+#   region = "us-east-1"
+#   alias = "useast1"
+# }
 
 # provider "aws" {
 #   region = "eu-north-1"
@@ -193,34 +193,34 @@ resource "azurerm_key_vault_secret" "secrets" {
 
 // AWS S3 RESOURCES
 
-resource "aws_s3_bucket" "useast1_data_bucket" {
-  provider = aws.useast1
+# resource "aws_s3_bucket" "useast1_data_bucket" {
+#   provider = aws.useast1
 
-  bucket = "${var.resource_prefix}useast1"
+#   bucket = "${var.resource_prefix}useast1"
 
-  tags = {
-    Product = "${var.resource_prefix}"
-  }
-}
+#   tags = {
+#     Product = "${var.resource_prefix}"
+#   }
+# }
 
-resource "aws_s3_bucket_cors_configuration" "useast1_data_bucket_cors_config" {
-  bucket = aws_s3_bucket.useast1_data_bucket.id
+# resource "aws_s3_bucket_cors_configuration" "useast1_data_bucket_cors_config" {
+#   bucket = aws_s3_bucket.useast1_data_bucket.id
 
-  cors_rule {
-    allowed_headers = ["*"]
-    allowed_methods = ["PUT", "POST", "GET", "HEAD"]
-    allowed_origins = ["*"]
-    expose_headers  = ["ETag", "Etag", "Content-Length"]
-    max_age_seconds = 3000
-  }
-}
+#   cors_rule {
+#     allowed_headers = ["*"]
+#     allowed_methods = ["PUT", "POST", "GET", "HEAD"]
+#     allowed_origins = ["*"]
+#     expose_headers  = ["ETag", "Etag", "Content-Length"]
+#     max_age_seconds = 3000
+#   }
+# }
 
-// Ping file
+# // Ping file
 
-resource "aws_s3_object" "useast1_ping_object" {
-  bucket = aws_s3_bucket.useast1_data_bucket.id
-  key    = "${var.s3_ping_blob_key}"
-  content = "${var.s3_ping_blob_content}"
-}
+# resource "aws_s3_object" "useast1_ping_object" {
+#   bucket = aws_s3_bucket.useast1_data_bucket.id
+#   key    = "${var.s3_ping_blob_key}"
+#   content = "${var.s3_ping_blob_content}"
+# }
 
 // TODO add bucket configs for other regions

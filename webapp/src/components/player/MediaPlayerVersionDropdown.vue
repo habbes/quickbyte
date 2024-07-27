@@ -5,6 +5,12 @@
         <ChevronDownIcon class="h-5 w-5" />
       </slot>
     </template>
+    <UiMenuItem v-if="versions.length >= 2" @click="compareVersions()">
+      <UiLayout horizontal gapSm itemsCenter>
+        <Square2StackIcon class="h-4 w-4" />
+        <span>Compare versions</span>
+      </UiLayout>
+    </UiMenuItem>
     <UiMenuItem v-if="allowUpload && uploadState === 'progress' && versionTransfer" disabled>
       <UiLayout horizontal gapSm itemsCenter>
         <ArrowUpIcon class="h-4 w-4" />
@@ -55,11 +61,11 @@ import { ref } from "vue";
 import type { Media } from "@quickbyte/common";
 import { UiLayout, UiMenu, UiMenuItem } from "@/components/ui";
 import { MediaVersionsDialog } from "@/components/versions";
-import { CheckIcon, ArrowUpIcon, ChevronDownIcon, Cog6ToothIcon } from "@heroicons/vue/24/outline";
+import { CheckIcon, ArrowUpIcon, ChevronDownIcon, Cog6ToothIcon, Square2StackIcon } from "@heroicons/vue/24/outline";
 import { StarIcon } from "@heroicons/vue/24/solid";
 import { useFileTransfer, useFilePicker, showToast } from "@/app-utils";
 import { computed, watch } from "vue";
-import { formatPercentage, pluralize } from "@/core";
+import { ensure, formatPercentage, pluralize } from "@/core";
 
 const props = defineProps<{
   media: Media,
@@ -72,6 +78,7 @@ const emit = defineEmits<{
   (e: 'versionUpload', updatedMedia: Media): void;
   (e: 'update', updatedMedia: Media): void;
   (e: 'selectVersion', versionId: string): void;
+  (e: 'compareVersions', v1Id: string, v2Id: string): void;
 }>();
 
 const {
@@ -120,5 +127,22 @@ function selectVersion(id: string) {
 
 function openDialog() {
   dialog.value?.open();
+}
+
+function compareVersions() {
+  if (props.media.versions.length < 2) {
+    return;
+  }
+
+  // if there's selected version, then select it, otherwise select the preferred version
+  const v1 = props.selectedVersionId ? props.selectedVersionId
+    : props.media.preferredVersionId;
+  
+  // pick the preferred version if not already chosen, otherwise pick
+  // an arbitrary version that's not already chosen
+  const v2 = v1 !== props.media.preferredVersionId ? props.media.preferredVersionId
+    : ensure(props.media.versions.find(v => v._id !== v1)?._id);
+  
+  emit('compareVersions', v1, v2);
 }
 </script>

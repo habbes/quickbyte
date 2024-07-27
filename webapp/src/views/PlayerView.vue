@@ -22,6 +22,7 @@
     @updateMedia="handleMediaUpdate($event)"
     @browserItemClick="handleBrowserItemClick($event)"
     @browserToParentFolder="handleBrowserToParentFolder()"
+    @compareVersions="handleCompareVersions"
   />
   <PlayerSkeleton
     v-else-if="!media"
@@ -111,8 +112,32 @@ async function handleSelectVersion(versionId: string) {
   router.push({ query: { ...route.query, version: versionId }});
 }
 
+function handleCompareVersions(v1Id: string, v2Id: string) {
+  if (!media.value) {
+    return;
+  }
+
+  router.push({
+    name: 'compare-versions',
+    params: {
+      projectId: unwrapSingleton(route.params.projectId),
+      mediaId: media.value._id
+    },
+    query: {
+      v1: v1Id,
+      v2: v2Id
+    }
+  });
+}
+
 function closePlayer() {
-  router.push({ name: 'project-media', params: { projectId: route.params.projectId as string, folderId: media.value?.folderId } })
+  router.push({
+    name: 'project-media',
+    params: {
+      projectId: unwrapSingleton(route.params.projectId),
+      folderId: media.value?.folderId
+    } 
+  });
 }
 
 async function sendComment(args: {

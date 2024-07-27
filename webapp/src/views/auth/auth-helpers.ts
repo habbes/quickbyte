@@ -1,5 +1,6 @@
 import { auth, initUserData, trpcClient } from "@/app-utils";
 import type { AuthToken } from "@quickbyte/common";
+import { ensure, unwrapSingleton } from "@/core";
 import type { Router } from "vue-router";
 
 export async function loginUserFromCredentials(email: string, password: string, router: Router) {
@@ -20,15 +21,12 @@ export async function loginUserFromToken(token: AuthToken, router: Router) {
     await initUserData(router);
     const route = router.currentRoute;
     if (route.value.query.next) {
-        const next = route.value.query.next;
-        router.push(Array.isArray(next) ? next[0] as string : next);
+        const next = ensure(unwrapSingleton(route.value.query.next));
+        // vue-router does not seem to handle automatic encode/decode of URL params
+        const decodedNext = decodeURIComponent(next);
+        router.push(decodedNext);
         return;
     }
 
-    const nextPath = router.currentRoute.value?.query.next;
-    if (nextPath) {
-        router.push(nextPath as string);
-    } else {
-        router.push({ name: 'projects' });
-    }
+    router.push({ name: 'projects' });
 }
