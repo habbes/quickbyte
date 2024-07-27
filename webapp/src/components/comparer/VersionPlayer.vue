@@ -22,7 +22,7 @@
             </div>
           </template>
           <UiMenuItem
-            v-for="version in media.versions"
+            v-for="version in sortedVersions"
             :key="version._id"
             @click="$emit('changeVersion', version._id)"
           >
@@ -152,6 +152,7 @@ const playerHeight = ref<number>();
 const version = computed(() => props.media.versions.find(v => v._id === props.versionId));
 const file = computed(() => version.value?.file);
 const timedComments = computed(() => props.comments?.filter(c => isDefined(c.timestamp)) as TimedCommentWithAuthor[]);
+const sortedVersions = computed(() => [...props.media.versions].reverse());
 
 const mediaType = computed(() => {
   if (!props.media) return 'unknown';
