@@ -15,7 +15,11 @@
         :annotations="currentAnnotations"
       />
     </div>
-    <img ref="image" :src="src" class="h-full">
+    <img
+      ref="image"
+      :src="src"
+      :alt="alt"
+    >
   </div>
 </template>
 <script setup lang="ts">
@@ -28,6 +32,10 @@ const props = defineProps<{
   comments?: Comment[];
   selectedCommentId?: string;
   annotationsDrawingTool?: DrawingToolConfig
+  /**
+   * Alternative text in case the image can't be rendered.
+   */
+  alt?: string;
 }>();
 
 defineEmits<{
@@ -40,6 +48,7 @@ const height = ref<number>();
 
 const sizeObserver = new ResizeObserver((entries) => {
   for (const entry of entries) {
+    
     if (entry.target === image.value) {
       width.value = entry.contentRect.width;
       height.value = entry.contentRect.height;
@@ -57,6 +66,7 @@ onMounted(() => {
 
   sizeObserver.observe(image.value);
 });
+
 
 onUnmounted(() => {
   sizeObserver.disconnect();

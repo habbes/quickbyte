@@ -1,5 +1,5 @@
 import { LogLevel } from "@azure/msal-browser";
-import { AuthHandler } from '@/core';
+import { AuthHandler, unwrapSingleton } from '@/core';
 import { clearData } from './store';
 import { logger } from './logger';
 import { router } from '../router';
@@ -66,5 +66,18 @@ export const auth = new AuthHandler({
  */
 export function redirectToLoginWithNextPath(router: Router) {
     const nextPath = router.currentRoute.value?.path;
-    router.push({ name: 'login', query: { next: nextPath } });
+    const currentQuery = router.currentRoute.value?.query || {};
+
+    const queryParams = new URLSearchParams();
+    for (const [key, rawValue] of Object.entries(currentQuery)) {
+        const value = unwrapSingleton(rawValue)
+        if (value !== null) {
+            queryParams.set(key, value);
+        }
+    }
+
+    const fullNextPath = queryParams.size > 0 ? `${nextPath}?${queryParams.toString()}` : nextPath;
+    // vue-router does not seem to handle URL encode/decode for query params
+    const encodedNextPath = encodeURIComponent(fullNextPath);
+    router.push({ name: 'login', query: { next: encodedNextPath } });
 }
