@@ -79,7 +79,7 @@ export function getFileExtension(fileName: string) {
     return fileName.split('.').at(-1);
 }
 
-export function ensure<T>(obj?: T, message?: string): T {
+export function ensure<T>(obj?: T|undefined|null, message?: string): T {
     if (!obj) throw new Error(message || 'Expected object to be defined.');
     return obj;
 }
