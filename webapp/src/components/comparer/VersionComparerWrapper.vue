@@ -178,7 +178,7 @@ const {
 } = useCommentOperationsHelpers({
   media: _media,
   mediaType: mediaType,
-  seekToComment: seekToComment,
+  selectComment: handlePlayerCommentClicked,
   scrollToComment: scrollToComment,
   sendComment: props.sendComment,
   editComment: props.editComment
@@ -197,8 +197,8 @@ const firstVolume = computed(() => firstSelected.value ? volume.value : 0);
 const secondVolume = computed(() => firstSelected.value ? 0 : volume.value);
 const version1Comments = computed(() => comments.value.filter(c => c.mediaVersionId === props.version1Id));
 const version2Comments = computed(() => comments.value.filter(c => c.mediaVersionId === props.version2Id));
-const player1DrawingTool = computed(() => firstSelected.value && !drawingToolsActive.value ? annotationsDrawingTool.value : undefined);
-const player2DrawingTool = computed(() => firstSelected.value && !drawingToolsActive.value ? undefined : annotationsDrawingTool.value);
+const player1DrawingTool = computed(() => firstSelected.value && drawingToolsActive.value ? annotationsDrawingTool.value : undefined);
+const player2DrawingTool = computed(() => !firstSelected.value && drawingToolsActive.value ? annotationsDrawingTool.value : undefined);
 
 // the duration is the larger of the two versions
 const duration = computed(() =>

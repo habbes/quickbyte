@@ -7,8 +7,8 @@ import { showToast, logger } from "@/app-utils";
 export interface CommentOperationHelpersContext {
     media: Ref<MediaWithFileAndComments>;
     mediaType: Ref<MediaType>;
-    seekToComment: (comment: CommentWithAuthor) => unknown;
     scrollToComment: (comment: CommentWithAuthor) => unknown;
+    selectComment: (comment: CommentWithAuthor) => unknown;
     sendComment: SendCommentHandler;
     editComment: EditCommentHandler
 }
@@ -101,7 +101,7 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
                 comments.value.push(comment);
             }
 
-            context.scrollToComment(comment);
+            context.selectComment(comment);
 
             return comment;
         }
