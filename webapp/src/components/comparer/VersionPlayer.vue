@@ -79,7 +79,7 @@
         v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
         :mediaType="mediaType"
         :sources="sources"
-        :comments="[]"
+        :comments="comments"
         :versionId="versionId"
         :volume="volume"
         @heightChange="playerHeight = $event"
@@ -102,7 +102,7 @@
 <script lang="ts" setup>
 import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
-import type { MediaWithFileAndComments } from "@quickbyte/common";
+import type { MediaWithFileAndComments, TimedCommentWithAuthor } from "@quickbyte/common";
 import { formatDateTime, formatTimestampDuration, isDefined } from "@/core";
 import { BaseAVPlayer, ImageViewer, type AVPlayerState } from "@/components/player";
 import FileDownloadLink from "../FileDownloadLink.vue";
@@ -123,6 +123,7 @@ const props = defineProps<{
   allowDownload: boolean;
   playTime?: number;
   duration?: number;
+  comments?: TimedCommentWithAuthor[];
 }>();
 
 const emit = defineEmits<{

@@ -85,6 +85,7 @@
             :allowDownload="allowDownload"
             :playTime="player1State?.currentTime"
             :duration="player1State?.duration"
+            :comments="version1Comments"
             @changeVersion="setVersion1($event)"
             @select="firstSelected = true"
             @playerStateChange="player1State = $event"
@@ -98,6 +99,7 @@
             :allowDownload="allowDownload"
             :playTime="player2State?.currentTime"
             :duration="player2State?.duration"
+            :comments="version2Comments"
             @changeVersion="setVersion2($event)"
             @select="firstSelected = false"
             @playerStateChange="player2State = $event"
@@ -197,6 +199,8 @@ const player2State = ref<AVPlayerState>();
 const volume = ref(0.5);
 const firstVolume = computed(() => firstSelected.value ? volume.value : 0);
 const secondVolume = computed(() => firstSelected.value ? 0 : volume.value);
+const version1Comments = computed(() => comments.value.filter(c => c.mediaVersionId === props.version1Id));
+const version2Comments = computed(() => comments.value.filter(c => c.mediaVersionId === props.version2Id));
 
 // the duration is the larger of the two versions
 const duration = computed(() =>
