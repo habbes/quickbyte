@@ -94,6 +94,7 @@
       <ImageViewer
         v-else-if="file && mediaType === 'image'"
         :src="file.downloadUrl"
+        :alt="file.name"
         class="h-[300px] sm:h-full"
         :comments="comments"
         :selectedCommentId="selectedCommentId"

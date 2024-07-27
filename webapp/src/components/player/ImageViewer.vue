@@ -15,7 +15,7 @@
         :annotations="currentAnnotations"
       />
     </div>
-    <img ref="image" :src="src" class="h-full">
+    <img ref="image" :src="src" class="h-full" :alt="alt">
   </div>
 </template>
 <script setup lang="ts">
@@ -28,6 +28,10 @@ const props = defineProps<{
   comments?: Comment[];
   selectedCommentId?: string;
   annotationsDrawingTool?: DrawingToolConfig
+  /**
+   * Alternative text in case the image can't be rendered.
+   */
+  alt?: string;
 }>();
 
 defineEmits<{
