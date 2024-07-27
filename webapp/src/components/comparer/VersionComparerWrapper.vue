@@ -49,6 +49,8 @@
           :user="user"
           :mediaType="mediaType"
           :smallScreenHeight="commentsListCssHeightSmallScreen"
+          v-model:selectedCommentId="selectedCommentId"
+          @clickComment="handleCommentClicked($event)"
         />
         <!-- end comment section -->
         <!-- file list section -->
@@ -181,6 +183,7 @@ const {
   seekToComment: seekToComment,
   scrollToComment: scrollToComment
 });
+const selectedCommentId = ref<string>();
 const firstSelected = ref(true);
 const player1 = ref<typeof VersionPlayer>();
 const player2 = ref<typeof VersionPlayer>();
@@ -225,7 +228,7 @@ watch(() => props.media, () => {
   if (props.selectedCommentId) {
     const comment = comments.value.find(c => c._id === props.selectedCommentId);
     if (comment) {
-      handleVideoCommentClicked(comment);
+      handleCommentClicked(comment);
     }
   }
 
@@ -307,11 +310,17 @@ function seekToComment(comment: CommentWithAuthor) {
   seekTo(comment.timestamp);
 }
 
+function selectComment(comment: CommentWithAuthor) {
+  selectedCommentId.value = comment._id;
+}
+
 function scrollToComment(comment: CommentWithAuthor) {
   commentsPanel.value?.scrollToComment(comment);
 }
 
-function handleVideoCommentClicked(comment: CommentWithAuthor) {
-  throw new Error("handleVideCommentClicked not implemented");
+function handleCommentClicked(comment: CommentWithAuthor) {
+  seekToComment(comment);
+  selectComment(comment);
+  scrollToComment(comment);
 }
 </script>
