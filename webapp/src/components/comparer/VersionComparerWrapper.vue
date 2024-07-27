@@ -54,6 +54,8 @@
           :deleteComment="deleteComment"
           v-model:input="commentInputText"
           v-model:selectedCommentId="selectedCommentId"
+          v-model:drawingToolsActive="drawingToolsActive"
+          v-model:annotationsDrawingTool="annotationsDrawingTool"
           @clickComment="handleCommentClicked($event)"
           @sendTopLevelComment="handleSendTopLevelComment($event)"
           @replyComment="handleSendReply($event)"
@@ -96,11 +98,12 @@
             :duration="player1State?.duration"
             :comments="version1Comments"
             :selectedCommentId="selectedCommentId"
+            :annotationsDrawingTool="player1DrawingTool"
             @changeVersion="setVersion1($event)"
             @select="firstSelected = true"
             @playerStateChange="player1State = $event"
             @clickComment="handleCommentClicked($event)"
-
+            @drawAnnotations="handlePlayer1DrawAnnotations($event)"
           />
           <VersionPlayer
             ref="player2"
@@ -113,10 +116,12 @@
             :duration="player2State?.duration"
             :comments="version2Comments"
             :selectedCommentId="selectedCommentId"
+            :annotationsDrawingTool="player2DrawingTool"
             @changeVersion="setVersion2($event)"
             @select="firstSelected = false"
             @playerStateChange="player2State = $event"
             @clickComment="handleCommentClicked($event)"
+            @drawAnnotations="handlePlayer2DrawAnnotations($event)"
           />
         </div>
         <!-- end side-by-side container -->
@@ -144,7 +149,7 @@
 import { ref, computed, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { getMediaType } from "@quickbyte/common";
-import type { MediaWithFileAndComments, MediaType, RoleType, WithChildren, CommentWithAuthor } from "@quickbyte/common";
+import type { MediaWithFileAndComments, MediaType, RoleType, FrameAnnotationCollection, CommentWithAuthor } from "@quickbyte/common";
 import { logger } from "@/app-utils";
 import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
@@ -203,6 +208,9 @@ const {
   sortedComments,
   canvasController,
   commentInputText,
+  currentAnnotations,
+  annotationsDrawingTool,
+  drawingToolsActive,
   sendTopLevelComment: sendTopLevelCommentCore,
   sendCommentReply: sendCommentReplyCore,
   editComment: editCommentCore,
@@ -230,6 +238,8 @@ const firstVolume = computed(() => firstSelected.value ? volume.value : 0);
 const secondVolume = computed(() => firstSelected.value ? 0 : volume.value);
 const version1Comments = computed(() => comments.value.filter(c => c.mediaVersionId === props.version1Id));
 const version2Comments = computed(() => comments.value.filter(c => c.mediaVersionId === props.version2Id));
+const player1DrawingTool = computed(() => firstSelected.value ? annotationsDrawingTool.value : undefined);
+const player2DrawingTool = computed(() => firstSelected.value ? undefined : annotationsDrawingTool.value);
 
 // the duration is the larger of the two versions
 const duration = computed(() =>
@@ -376,6 +386,14 @@ function handlePlayerCommentClicked(comment: CommentWithAuthor) {
 function handleCommentInputFocus() {
   pause();
   unselectComment();
+}
+
+function handlePlayer1DrawAnnotations(annotations: FrameAnnotationCollection) {
+  currentAnnotations.value = annotations;
+}
+
+function handlePlayer2DrawAnnotations(annotations: FrameAnnotationCollection) {
+  currentAnnotations.value = annotations;
 }
 
 async function handleSendTopLevelComment({ includeTimestamp } : { includeTimestamp: boolean }) {

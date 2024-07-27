@@ -83,11 +83,13 @@
         :selectedCommentId="selectedCommentId"
         :versionId="versionId"
         :volume="volume"
+        :annotationsDrawingTool="annotationsDrawingTool"
+        hideControls
         @heightChange="playerHeight = $event"
         @stateChange="$emit('playerStateChange', $event)"
         @seeked="$emit('playerSeeked')"
         @clickComment="$emit('clickComment', $event)"
-        hideControls
+        @drawAnnotations="handleDrawAnnotations($event)"
       />
       <ImageViewer
         v-else-if="file && mediaType === 'image'"
@@ -95,6 +97,8 @@
         class="h-[300px] sm:h-full"
         :comments="comments"
         :selectedCommentId="selectedCommentId"
+        :annotationsDrawingTool="annotationsDrawingTool"
+        @drawAnnotations="handleDrawAnnotations($event)"
       />
       <div v-else class="h-[300px] sm:h-auto w-full flex items-center justify-center">
         Preview unsupported for this file type.
@@ -105,12 +109,13 @@
 <script lang="ts" setup>
 import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
-import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor } from "@quickbyte/common";
+import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
 import { formatDateTime, formatTimestampDuration, isDefined } from "@/core";
 import { BaseAVPlayer, ImageViewer, type AVPlayerState } from "@/components/player";
 import FileDownloadLink from "../FileDownloadLink.vue";
 import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
 import { CheckIcon, ChevronDownIcon, SpeakerXMarkIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
+import type { DrawingToolConfig } from "@/components/canvas";
 
 type MediaSource = {
   url: string;
@@ -128,6 +133,7 @@ const props = defineProps<{
   duration?: number;
   comments?: CommentWithAuthor[];
   selectedCommentId?: string;
+  annotationsDrawingTool?: DrawingToolConfig;
 }>();
 
 const emit = defineEmits<{
@@ -136,6 +142,7 @@ const emit = defineEmits<{
   (e: 'playerStateChange', state: AVPlayerState): unknown;
   (e: 'playerSeeked'): unknown;
   (e: 'clickComment', comment: CommentWithAuthor): unknown;
+  (e: 'drawAnnotations', annotations: FrameAnnotationCollection): void;
 }>();
 
 defineExpose({ play, pause, seek });
@@ -195,6 +202,10 @@ function seek(targetTimestamp: number) {
 
 function getVersionNumber(versionId: string) {
   return props.media.versions.findIndex(v => v._id === versionId) + 1;
+}
+
+function handleDrawAnnotations(annotations: FrameAnnotationCollection) {
+  emit('drawAnnotations', annotations);
 }
 
 </script>

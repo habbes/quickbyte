@@ -63,6 +63,7 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
         timestamp
     }: SendTopLevelCommentArgs) {
         if (!context.media.value) return;
+        console.log('send annotations', currentAnnotations.value);
         // Comment should have either text or annotations or both.
         // Annotations are only allowed for video (if timestamp is included) or images
         if (

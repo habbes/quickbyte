@@ -10,7 +10,7 @@
           :height="videoHeight"
           :width="videoWidth"
           :drawingToolConfig="annotationsDrawingTool"
-          @updateAnnotations="$emit('drawAnnotations', $event)"
+          @updateAnnotations="handleUpdateAnnotations($event)"
         />
         <AnnotationsCanvas
           v-else-if="currentFrameAnnotations && videoWidth && videoHeight"
@@ -545,6 +545,10 @@ function handleCommentMouseEnter(comment: TimedCommentWithAuthor) {
 
 function handleCommentMouseLeave() {
   hoveredCommentId.value = undefined;
+}
+
+function handleUpdateAnnotations(annotations: FrameAnnotationCollection) {
+  emit('drawAnnotations', annotations);
 }
 </script>
 <style scoped>
