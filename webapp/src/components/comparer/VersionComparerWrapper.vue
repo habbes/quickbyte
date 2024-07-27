@@ -42,7 +42,12 @@
       <!-- players container -->
       <div class="flex-1">
         <!-- side-by-side container -->
-        <div class="flex flex-col sm:flex-row h-[calc(100dvh-108px)] relative overflow-y-auto">
+        <div class="flex flex-col sm:flex-row h-[calc(100dvh-108px)] relative overflow-y-auto"
+          :class="{
+            'h-[calc(100dvh-108px)]': isPlayableMediaType(mediaType),
+            'h-[calc(100dvh-48px)]': !isPlayableMediaType(mediaType)
+          }"
+        >
           <VersionPlayer
             ref="player1"
             :media="media"
@@ -81,7 +86,7 @@
           />
         </div>
         <!-- end side-by-side container -->
-        <div v-if="mediaType === 'video' || mediaType === 'audio'">
+        <div v-if="isPlayableMediaType(mediaType)">
           <PlaybackControls
             style="height: 60px"
             :playTime="currentPlayTime"
@@ -104,7 +109,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { getMediaType } from "@quickbyte/common";
+import { getMediaType, isPlayableMediaType } from "@quickbyte/common";
 import type { MediaWithFileAndComments, MediaType, RoleType, FrameAnnotationCollection, CommentWithAuthor } from "@quickbyte/common";
 import { logger } from "@/app-utils";
 import VersionComparerHeader from './VersionComparerHeader.vue';

@@ -41,6 +41,10 @@ export function getMediaType(filename: string): MediaType {
     return 'unknown';
 }
 
+export function isPlayableMediaType(mediaType: MediaType) {
+    return mediaType === 'audio' || mediaType === 'video';
+}
+
 export function getMimeTypeFromFilename(filename: string): string {
     const ext = (getFileExtension(filename) || filename).toLowerCase();
     const mediaType = getMediaType(ext);
