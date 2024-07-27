@@ -55,6 +55,7 @@
           v-model:selectedCommentId="selectedCommentId"
           @clickComment="handleCommentClicked($event)"
           @sendTopLevelComment="handleSendTopLevelComment($event)"
+          @replyComment="handleSendReply($event)"
           @commentInputFocus="handleCommentInputFocus()"
         />
         <!-- end comment section -->
@@ -197,7 +198,8 @@ const {
   sortedComments,
   canvasController,
   commentInputText,
-  sendTopLevelComment: sendTopLevelCommentCore
+  sendTopLevelComment: sendTopLevelCommentCore,
+  sendCommentReply: sendCommentReplyCore,
 } = useCommentOperationsHelpers({
   media: _media,
   mediaType: mediaType,
@@ -373,6 +375,13 @@ async function handleSendTopLevelComment({ includeTimestamp } : { includeTimesta
     selectedVersionId: selectedVersionId.value,
     timestamp: currentPlayTime.value,
     includeTimestamp
+  });
+}
+
+async function handleSendReply({ text, parentId } : { text: string, parentId: string }) {
+  await sendCommentReplyCore({
+    text,
+    parentId
   });
 }
 </script>

@@ -90,7 +90,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'clickComment', comment: CommentWithAuthor): unknown;
   (e: 'deleteComment', comment: CommentWithAuthor): unknown;
-  (e: 'replyComment', text: string, parentId: string): unknown;
+  (e: 'replyComment', args: { text: string, parentId: string }): unknown;
   (e: 'editComment', commentId: string, text: string): unknown;
   (e: 'commentInputFocus'): unknown;
   (e: 'sendTopLevelComment', args: { text?: string, includeTimestamp: boolean }): unknown;
@@ -121,7 +121,7 @@ function getHtmlCommentId(comment: CommentWithAuthor) {
 }
 
 function handleReplyComment(text: string, parentId: string) {
-  emit('replyComment', text, parentId);
+  emit('replyComment', { text, parentId });
 }
 
 function handleEditComment(commentId: string, text: string) {

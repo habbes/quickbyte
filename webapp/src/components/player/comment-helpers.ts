@@ -3,12 +3,11 @@ import type { MediaType, CommentWithAuthor, MediaWithFileAndComments, WithChildr
 import { getMediaType } from "@quickbyte/common";
 import { isDefined, Logger } from "@/core";
 import { provideCanvasController, type DrawingToolConfig } from "@/components/canvas";
-import { showToast } from "@/app-utils";
+import { showToast, logger } from "@/app-utils";
 
 export interface CommentOperationHelpersContext {
     media: Ref<MediaWithFileAndComments>;
     mediaType: Ref<MediaType>;
-    logger?: Logger;
     seekToComment: (comment: CommentWithAuthor) => unknown;
     scrollToComment: (comment: CommentWithAuthor) => unknown;
     sendComment: SendCommentHandler;
@@ -107,7 +106,55 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
             return comment;
         }
         catch (e: any) {
-            context.logger?.error(e.message, e);
+            logger?.error(e.message, e);
+            showToast(e.message, 'error');
+        }
+    }
+
+    async function sendCommentReply({
+        text,
+        parentId,
+        selectedVersionId
+    }: SendReplyArgs) {
+        if (!context.sendComment) throw new Error(`sendComment handler required`);
+
+        try {
+            // Parent must be top-level comment since we don't
+            // support more than 1 level of nesting.
+            const parent = comments.value.find(p => p._id === parentId);
+            if (!parent) {
+                logger?.error(`Attempting to send reply to comment '${parentId}' which was not found.`);
+                throw new Error('The comment being replied to does not exist');
+            }
+            // Note: we don't support timestamps for replies
+            // Replies are always to the same version as the parent
+            const comment = await context.sendComment({
+                text,
+                parentId,
+                versionId: parent.mediaVersionId
+            });
+
+            //   if (!user.value) {
+            //     user.value = comment.author
+            //   };
+
+            const parentIndex = comments.value.findIndex(c => c._id === parentId);
+            if (parentIndex !== -1) {
+                const parent = comments.value[parentIndex];
+                const childIndex = parent.children.findIndex(c => c._id === comment._id);
+                // TODO: we push the comment here for backwards compatibility
+                // The parent component should be responsible of updating the local
+                // comments collection when a comment is sent. Once we've updated
+                // scenarios that use this component, remove this code
+                if (childIndex === -1) {
+                    const children = parent.children.concat([comment]);
+                    comments.value[parentIndex] = { ...parent, children }
+                }
+            }
+
+            context.scrollToComment(comment);
+        } catch (e: any) {
+            logger?.error(e.message, e);
             showToast(e.message, 'error');
         }
     }
@@ -121,7 +168,8 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
         drawingToolsActive,
         annotationsDrawingTool,
         currentAnnotations,
-        sendTopLevelComment
+        sendTopLevelComment,
+        sendCommentReply
     };
 }
 
@@ -137,4 +185,9 @@ interface SendTopLevelCommentArgs {
     selectedVersionId?: string;
     includeTimestamp: boolean;
     timestamp?: number;
+}
+
+interface SendReplyArgs {
+    text: string;
+    parentId: string;
 }
