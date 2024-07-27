@@ -81,7 +81,7 @@
 <script lang="ts" setup>
 import { ref, computed, nextTick } from "vue";
 import { formatTimestampDuration } from "@/core";
-import type { MediaType, CommentWithAuthor, RoleType } from "@quickbyte/common";
+import type { MediaType, CommentWithAuthor, WithChildren, RoleType } from "@quickbyte/common";
 import MediaComment from "./MediaComment.vue";
 import { DrawingTools, type DrawingToolConfig, type CanvasController } from "@/components/canvas";
 import type { DeleteCommentHandler } from "@/components/player";
@@ -95,7 +95,7 @@ const props = defineProps<{
     name: string;
   },
   role: RoleType; 
-  comments: CommentWithAuthor[],
+  comments: WithChildren<CommentWithAuthor>[],
   smallScreenHeight: string;
   currentTimestamp: number;
   canvasController: CanvasController;
