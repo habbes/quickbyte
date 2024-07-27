@@ -86,9 +86,12 @@
             :playTime="player1State?.currentTime"
             :duration="player1State?.duration"
             :comments="version1Comments"
+            :selectedCommentId="selectedCommentId"
             @changeVersion="setVersion1($event)"
             @select="firstSelected = true"
             @playerStateChange="player1State = $event"
+            @clickComment="handleCommentClicked($event)"
+
           />
           <VersionPlayer
             ref="player2"
@@ -100,9 +103,11 @@
             :playTime="player2State?.currentTime"
             :duration="player2State?.duration"
             :comments="version2Comments"
+            :selectedCommentId="selectedCommentId"
             @changeVersion="setVersion2($event)"
             @select="firstSelected = false"
             @playerStateChange="player2State = $event"
+            @clickComment="handleCommentClicked($event)"
           />
         </div>
         <!-- end side-by-side container -->
@@ -338,5 +343,9 @@ function handleCommentClicked(comment: CommentWithAuthor) {
   selectComment(comment);
   
   scrollToComment(comment);
+}
+
+function handlePlayerCommentClicked(comment: CommentWithAuthor) {
+  handleCommentClicked(comment);
 }
 </script>

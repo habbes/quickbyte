@@ -79,19 +79,22 @@
         v-if="media.file && (mediaType === 'video' || mediaType === 'audio')"
         :mediaType="mediaType"
         :sources="sources"
-        :comments="comments"
+        :comments="timedComments"
+        :selectedCommentId="selectedCommentId"
         :versionId="versionId"
         :volume="volume"
         @heightChange="playerHeight = $event"
         @stateChange="$emit('playerStateChange', $event)"
         @seeked="$emit('playerSeeked')"
+        @clickComment="$emit('clickComment', $event)"
         hideControls
       />
       <ImageViewer
         v-else-if="file && mediaType === 'image'"
         :src="file.downloadUrl"
         class="h-[300px] sm:h-full"
-        :comments="[]"
+        :comments="comments"
+        :selectedCommentId="selectedCommentId"
       />
       <div v-else class="h-[300px] sm:h-auto w-full flex items-center justify-center">
         Preview unsupported for this file type.
@@ -102,7 +105,7 @@
 <script lang="ts" setup>
 import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
-import type { MediaWithFileAndComments, TimedCommentWithAuthor } from "@quickbyte/common";
+import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor } from "@quickbyte/common";
 import { formatDateTime, formatTimestampDuration, isDefined } from "@/core";
 import { BaseAVPlayer, ImageViewer, type AVPlayerState } from "@/components/player";
 import FileDownloadLink from "../FileDownloadLink.vue";
@@ -123,7 +126,8 @@ const props = defineProps<{
   allowDownload: boolean;
   playTime?: number;
   duration?: number;
-  comments?: TimedCommentWithAuthor[];
+  comments?: CommentWithAuthor[];
+  selectedCommentId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -131,6 +135,7 @@ const emit = defineEmits<{
   (e: 'select'): unknown;
   (e: 'playerStateChange', state: AVPlayerState): unknown;
   (e: 'playerSeeked'): unknown;
+  (e: 'clickComment', comment: CommentWithAuthor): unknown;
 }>();
 
 defineExpose({ play, pause, seek });
@@ -139,6 +144,7 @@ const avPlayer = ref<typeof BaseAVPlayer>();
 const playerHeight = ref<number>();
 const version = computed(() => props.media.versions.find(v => v._id === props.versionId));
 const file = computed(() => version.value?.file);
+const timedComments = computed(() => props.comments?.filter(c => isDefined(c.timestamp)) as TimedCommentWithAuthor[]);
 
 const mediaType = computed(() => {
   if (!props.media) return 'unknown';
