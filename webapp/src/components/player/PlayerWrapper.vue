@@ -56,7 +56,9 @@
             <MediaComment v-if="user" v-for="comment in sortedComments" :key="comment._id" :comment="comment"
               :htmlId="getHtmlCommentId(comment)" :getHtmlId="getHtmlCommentId"
               :selected="comment._id === selectedCommentId" :currentUserId="user._id" :currentRole="role"
-              @click="handleCommentClicked($event)" @reply="sendCommentReply" @delete="showDeleteCommentDialog($event)"
+              @click="handleCommentClicked($event)"
+              @reply="sendCommentReply"
+              @delete="showDeleteCommentDialog($event)"
               @edit="editComment" />
           </div>
 

@@ -56,6 +56,7 @@
           @clickComment="handleCommentClicked($event)"
           @sendTopLevelComment="handleSendTopLevelComment($event)"
           @replyComment="handleSendReply($event)"
+          @editComment="handleEditCommand($event)"
           @commentInputFocus="handleCommentInputFocus()"
         />
         <!-- end comment section -->
@@ -147,7 +148,7 @@ import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
 import { SidebarContainer, CommentsPanel, useCommentOperationsHelpers } from "@/components/player";
-import type { AVPlayerState, SendCommentHandler} from "@/components/player";
+import type { AVPlayerState, EditCommentHandler, SendCommentHandler} from "@/components/player";
 import { ListBulletIcon, ChatBubbleLeftRightIcon } from "@heroicons/vue/24/outline";
 
 type SideBarState = 'comments'|'files';
@@ -164,7 +165,8 @@ const props = defineProps<{
     name: string;
   },
   role: RoleType;
-  sendComment: SendCommentHandler
+  sendComment: SendCommentHandler,
+  editComment: EditCommentHandler
 }>()
 
 const emit = defineEmits<{
@@ -200,12 +202,14 @@ const {
   commentInputText,
   sendTopLevelComment: sendTopLevelCommentCore,
   sendCommentReply: sendCommentReplyCore,
+  editComment: editCommentCore,
 } = useCommentOperationsHelpers({
   media: _media,
   mediaType: mediaType,
   seekToComment: seekToComment,
   scrollToComment: scrollToComment,
-  sendComment: props.sendComment
+  sendComment: props.sendComment,
+  editComment: props.editComment
 });
 
 const selectedCommentId = ref<string>();
@@ -382,6 +386,13 @@ async function handleSendReply({ text, parentId } : { text: string, parentId: st
   await sendCommentReplyCore({
     text,
     parentId
+  });
+}
+
+async function handleEditCommand({ commentId, text } : { text: string, commentId: string }) {
+  await editCommentCore({
+    text,
+    commentId
   });
 }
 </script>

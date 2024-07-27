@@ -91,7 +91,7 @@ const emit = defineEmits<{
   (e: 'clickComment', comment: CommentWithAuthor): unknown;
   (e: 'deleteComment', comment: CommentWithAuthor): unknown;
   (e: 'replyComment', args: { text: string, parentId: string }): unknown;
-  (e: 'editComment', commentId: string, text: string): unknown;
+  (e: 'editComment', args: { commentId: string, text: string }): unknown;
   (e: 'commentInputFocus'): unknown;
   (e: 'sendTopLevelComment', args: { text?: string, includeTimestamp: boolean }): unknown;
 }>();
@@ -125,7 +125,7 @@ function handleReplyComment(text: string, parentId: string) {
 }
 
 function handleEditComment(commentId: string, text: string) {
-  emit('editComment', commentId, text);
+  emit('editComment', { commentId, text });
 }
 
 function handleTopLevelSend() {

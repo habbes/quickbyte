@@ -1,5 +1,5 @@
 import { ref, computed, type Ref } from "vue";
-import type { MediaType, CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
+import type { MediaType, Comment, CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
 import { getMediaType } from "@quickbyte/common";
 import { isDefined, Logger } from "@/core";
 import { provideCanvasController, type DrawingToolConfig } from "@/components/canvas";
@@ -11,6 +11,7 @@ export interface CommentOperationHelpersContext {
     seekToComment: (comment: CommentWithAuthor) => unknown;
     scrollToComment: (comment: CommentWithAuthor) => unknown;
     sendComment: SendCommentHandler;
+    editComment: EditCommentHandler;
 }
 
 export function useCommentOperationsHelpers(context: CommentOperationHelpersContext) {
@@ -113,8 +114,7 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
 
     async function sendCommentReply({
         text,
-        parentId,
-        selectedVersionId
+        parentId
     }: SendReplyArgs) {
         if (!context.sendComment) throw new Error(`sendComment handler required`);
 
@@ -169,7 +169,8 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
         annotationsDrawingTool,
         currentAnnotations,
         sendTopLevelComment,
-        sendCommentReply
+        sendCommentReply,
+        editComment: context.editComment
     };
 }
 
@@ -180,6 +181,11 @@ export type SendCommentHandler = (args: {
     parentId?: string;
     annotations?: FrameAnnotationCollection;
 }) => Promise<WithChildren<CommentWithAuthor>>;
+
+export type EditCommentHandler = (args: {
+    commentId: string;
+    text: string;
+}) => Promise<Comment>;
 
 interface SendTopLevelCommentArgs {
     selectedVersionId?: string;

@@ -1,26 +1,16 @@
 <template>
-  <VersioComparerWrapper
-    v-if="media && version1Id && version2Id"
-    :media="media"
-    :version1Id="version1Id"
-    :version2Id="version2Id"
-    :user="user"
-    :role="project.role"
-    :selectedCommentId="selectedCommentId"
-    allowDownload
-    allowComments
-    :sendComment="sendComment"
-    @close="handleClose()"
-    @changeVersions="handleSetVersions"
-  />
+  <VersioComparerWrapper v-if="media && version1Id && version2Id" :media="media" :version1Id="version1Id"
+    :version2Id="version2Id" :user="user" :role="project.role" :selectedCommentId="selectedCommentId" allowDownload
+    allowComments :sendComment="sendComment" :editComment="editComment" @close="handleClose()"
+    @changeVersions="handleSetVersions" />
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useMediaAssetQuery, showToast, store, useCreateMediaCommentMutation } from "@/app-utils";
+import { useMediaAssetQuery, showToast, store, useCreateMediaCommentMutation, useUpdateMediaCommentMutation } from "@/app-utils";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { VersioComparerWrapper } from "@/components/comparer";
-import { type SendCommentHandler } from "@/components/player";
+import { type EditCommentHandler, type SendCommentHandler } from "@/components/player";
 
 const route = useRoute();
 const router = useRouter();
@@ -38,7 +28,7 @@ const version1Id = computed(() => {
   const queriedV1Id = unwrapSingletonOrUndefined(route.query.v1);
   return queriedV1Id ? queriedV1Id : ensure(media.value.versions[0]?._id);
 });
-const version2Id =  computed(() => {
+const version2Id = computed(() => {
   if (!media.value) return;
 
   const queriedV2Id = unwrapSingletonOrUndefined(route.query.v2);
@@ -46,6 +36,7 @@ const version2Id =  computed(() => {
 });
 
 const createCommentMutation = useCreateMediaCommentMutation();
+const updateCommentMutation = useUpdateMediaCommentMutation();
 
 watch(media, () => {
   if (!media.value) {
@@ -58,7 +49,7 @@ watch(media, () => {
   if (media.value.versions.length < 2) {
     // go to player view if media only has 1 version
     showToast('A media asset must have at least two versions to compare.', 'error');
-    router.push({ name: 'player', params: { projectId: projectId.value, mediaId: media.value._id }});
+    router.push({ name: 'player', params: { projectId: projectId.value, mediaId: media.value._id } });
     return;
   }
 });
@@ -99,7 +90,22 @@ const sendComment: SendCommentHandler = async (args) => {
     parentId: args.parentId,
     annotations: args.annotations
   });
-    
+
   return { ...comment, children: [] };
 };
+
+const editComment: EditCommentHandler = async ({ commentId, text }) => {
+  if (!media.value) {
+    throw new Error('Media has not loaded.');
+  }
+
+  const comment = await updateCommentMutation.mutateAsync({
+    projectId: media.value.projectId,
+    mediaId: media.value._id,
+    commentId,
+    text
+  });
+
+  return comment;
+}
 </script>
