@@ -1,16 +1,28 @@
 <template>
-  <VersioComparerWrapper v-if="media && version1Id && version2Id" :media="media" :version1Id="version1Id"
-    :version2Id="version2Id" :user="user" :role="project.role" :selectedCommentId="selectedCommentId" allowDownload
-    allowComments :sendComment="sendComment" :editComment="editComment" @close="handleClose()"
-    @changeVersions="handleSetVersions" />
+  <VersioComparerWrapper
+    v-if="media && version1Id && version2Id"
+    :media="media"
+    :version1Id="version1Id"
+    :version2Id="version2Id"
+    :user="user"
+    :role="project.role"
+    :selectedCommentId="selectedCommentId"
+    allowDownload
+    allowComments
+    :sendComment="sendComment"
+    :editComment="editComment"
+    :deleteComment="deleteComment"
+    @close="handleClose()"
+    @changeVersions="handleSetVersions"
+  />
 </template>
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useMediaAssetQuery, showToast, store, useCreateMediaCommentMutation, useUpdateMediaCommentMutation } from "@/app-utils";
+import { useMediaAssetQuery, showToast, store, useCreateMediaCommentMutation, useUpdateMediaCommentMutation, useDeleteMediaCommentMutation } from "@/app-utils";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { VersioComparerWrapper } from "@/components/comparer";
-import { type EditCommentHandler, type SendCommentHandler } from "@/components/player";
+import { type DeleteCommentHandler, type EditCommentHandler, type SendCommentHandler } from "@/components/player";
 
 const route = useRoute();
 const router = useRouter();
@@ -37,6 +49,7 @@ const version2Id = computed(() => {
 
 const createCommentMutation = useCreateMediaCommentMutation();
 const updateCommentMutation = useUpdateMediaCommentMutation();
+const deleteCommentMutation = useDeleteMediaCommentMutation();
 
 watch(media, () => {
   if (!media.value) {
@@ -107,5 +120,15 @@ const editComment: EditCommentHandler = async ({ commentId, text }) => {
   });
 
   return comment;
+}
+
+const deleteComment: DeleteCommentHandler = async ({ commentId, parentId }) =>  {
+  if (!media.value) return;
+  await deleteCommentMutation.mutateAsync({
+    projectId: media.value.projectId,
+    commentId: commentId,
+    mediaId: media.value._id,
+    parentId
+  });
 }
 </script>

@@ -51,12 +51,14 @@
           :user="user"
           :mediaType="mediaType"
           :smallScreenHeight="commentsListCssHeightSmallScreen"
+          :deleteComment="deleteComment"
           v-model:input="commentInputText"
           v-model:selectedCommentId="selectedCommentId"
           @clickComment="handleCommentClicked($event)"
           @sendTopLevelComment="handleSendTopLevelComment($event)"
           @replyComment="handleSendReply($event)"
           @editComment="handleEditCommand($event)"
+          @commentDeleted="handleCommentDeleted($event)"
           @commentInputFocus="handleCommentInputFocus()"
         />
         <!-- end comment section -->
@@ -148,7 +150,7 @@ import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
 import { SidebarContainer, CommentsPanel, useCommentOperationsHelpers } from "@/components/player";
-import type { AVPlayerState, EditCommentHandler, SendCommentHandler} from "@/components/player";
+import type { AVPlayerState, DeleteCommentHandler, EditCommentHandler, SendCommentHandler} from "@/components/player";
 import { ListBulletIcon, ChatBubbleLeftRightIcon } from "@heroicons/vue/24/outline";
 
 type SideBarState = 'comments'|'files';
@@ -166,7 +168,8 @@ const props = defineProps<{
   },
   role: RoleType;
   sendComment: SendCommentHandler,
-  editComment: EditCommentHandler
+  editComment: EditCommentHandler,
+  deleteComment: DeleteCommentHandler
 }>()
 
 const emit = defineEmits<{
@@ -203,6 +206,7 @@ const {
   sendTopLevelComment: sendTopLevelCommentCore,
   sendCommentReply: sendCommentReplyCore,
   editComment: editCommentCore,
+  handleCommentDeleted
 } = useCommentOperationsHelpers({
   media: _media,
   mediaType: mediaType,

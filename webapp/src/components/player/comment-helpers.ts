@@ -1,7 +1,6 @@
 import { ref, computed, type Ref } from "vue";
 import type { MediaType, Comment, CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
-import { getMediaType } from "@quickbyte/common";
-import { isDefined, Logger } from "@/core";
+import { isDefined } from "@/core";
 import { provideCanvasController, type DrawingToolConfig } from "@/components/canvas";
 import { showToast, logger } from "@/app-utils";
 
@@ -11,7 +10,7 @@ export interface CommentOperationHelpersContext {
     seekToComment: (comment: CommentWithAuthor) => unknown;
     scrollToComment: (comment: CommentWithAuthor) => unknown;
     sendComment: SendCommentHandler;
-    editComment: EditCommentHandler;
+    editComment: EditCommentHandler
 }
 
 export function useCommentOperationsHelpers(context: CommentOperationHelpersContext) {
@@ -159,6 +158,38 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
         }
     }
 
+    function handleCommentDeleted(comment: CommentWithAuthor) {
+        if (comment.parentId) {
+            const parent = comments.value.find(c => c._id === comment.parentId);
+
+            if (!parent) {
+                return;
+            }
+
+            // TODO: we're performing this update for backwards compatibility
+            // but the parent component should be responsible for updating
+            // the comments collection. Once we refactor all scenarios
+            // that use this component, we should remove this local update code.
+
+            // NOTE: we only assume two-levels of nesting
+            const indexToRemove = parent.children.findIndex(c => c._id === comment._id);
+            if (indexToRemove === -1) {
+                return;
+            }
+
+            parent.children.splice(indexToRemove, 1);
+            return;
+        }
+
+        // top-level comment
+        const indexToRemove = comments.value.findIndex(c => c._id === comment._id);
+        if (indexToRemove === -1) {
+            return;
+        }
+
+        comments.value.splice(indexToRemove, 1);
+    }
+
     return {
         comments,
         sortedComments,
@@ -170,7 +201,8 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
         currentAnnotations,
         sendTopLevelComment,
         sendCommentReply,
-        editComment: context.editComment
+        editComment: context.editComment,
+        handleCommentDeleted,
     };
 }
 
@@ -186,6 +218,11 @@ export type EditCommentHandler = (args: {
     commentId: string;
     text: string;
 }) => Promise<Comment>;
+
+export type DeleteCommentHandler = (args: {
+    commentId: string;
+    parentId?: string;
+}) => Promise<unknown>;
 
 interface SendTopLevelCommentArgs {
     selectedVersionId?: string;

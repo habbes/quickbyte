@@ -13,7 +13,7 @@
         :currentRole="role"
         @click="$emit('clickComment', $event)"
         @reply="handleReplyComment"
-        @delete="$emit('deleteComment', $event)"
+        @delete="showDeleteCommentDialog($event)"
         @edit="handleEditComment"
       />
     </div>
@@ -65,6 +65,12 @@
       </div>
     </div>
   </div>
+  <DeleteCommentDialog
+    ref="deleteCommentDialog"
+    v-if="deleteComment"
+    :deleteComment="deleteComment"
+    @deleted="handleCommentDeleted($event)"
+  />
 </template>
 <script lang="ts" setup>
 import { ref, computed, nextTick } from "vue";
@@ -72,7 +78,9 @@ import { formatTimestampDuration } from "@/core";
 import type { MediaType, CommentWithAuthor, RoleType } from "@quickbyte/common";
 import MediaComment from "./MediaComment.vue";
 import { DrawingTools, type DrawingToolConfig, type CanvasController } from "@/components/canvas";
+import type { DeleteCommentHandler } from "@/components/player";
 import { ClockIcon } from "@heroicons/vue/24/outline";
+import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
 
 const props = defineProps<{
   mediaType: MediaType;
@@ -85,11 +93,12 @@ const props = defineProps<{
   smallScreenHeight: string;
   currentTimestamp: number;
   canvasController: CanvasController;
+  deleteComment?: DeleteCommentHandler
 }>();
 
 const emit = defineEmits<{
   (e: 'clickComment', comment: CommentWithAuthor): unknown;
-  (e: 'deleteComment', comment: CommentWithAuthor): unknown;
+  (e: 'commentDeleted', comment: CommentWithAuthor): unknown;
   (e: 'replyComment', args: { text: string, parentId: string }): unknown;
   (e: 'editComment', args: { commentId: string, text: string }): unknown;
   (e: 'commentInputFocus'): unknown;
@@ -98,6 +107,7 @@ const emit = defineEmits<{
 
 defineExpose({ scrollToComment });
 
+const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
 const commentInputText = defineModel<string>('input');
 const selectedCommentId = defineModel('selectedCommentId');
 const includeTimestamp = ref<boolean>(true);
@@ -120,6 +130,10 @@ function getHtmlCommentId(comment: CommentWithAuthor) {
   return `comment_${comment._id}`;
 }
 
+function showDeleteCommentDialog(comment: CommentWithAuthor) {
+  deleteCommentDialog.value?.open(comment);
+}
+
 function handleReplyComment(text: string, parentId: string) {
   emit('replyComment', { text, parentId });
 }
@@ -133,6 +147,10 @@ function handleTopLevelSend() {
     text: commentInputText.value,
     includeTimestamp: includeTimestamp.value
   });
+}
+
+function handleCommentDeleted(comment: CommentWithAuthor) {
+  emit('commentDeleted', comment);
 }
 
 
