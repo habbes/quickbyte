@@ -102,7 +102,7 @@
             @changeVersion="setVersion1($event)"
             @select="firstSelected = true"
             @playerStateChange="player1State = $event"
-            @clickComment="handleCommentClicked($event)"
+            @clickComment="handlePlayerCommentClicked($event)"
             @drawAnnotations="handlePlayer1DrawAnnotations($event)"
           />
           <VersionPlayer
@@ -120,7 +120,7 @@
             @changeVersion="setVersion2($event)"
             @select="firstSelected = false"
             @playerStateChange="player2State = $event"
-            @clickComment="handleCommentClicked($event)"
+            @clickComment="handlePlayerCommentClicked($event)"
             @drawAnnotations="handlePlayer2DrawAnnotations($event)"
           />
         </div>
@@ -230,7 +230,6 @@ const selectedVersionId = computed(() => firstSelected.value ? props.version1Id 
 const player1 = ref<typeof VersionPlayer>();
 const player2 = ref<typeof VersionPlayer>();
 const players = [player1, player2];
-const selectedPlayer = computed(() => firstSelected.value ? player1.value : player2.value);
 const player1State = ref<AVPlayerState>();
 const player2State = ref<AVPlayerState>();
 const volume = ref(0.5);
@@ -238,8 +237,8 @@ const firstVolume = computed(() => firstSelected.value ? volume.value : 0);
 const secondVolume = computed(() => firstSelected.value ? 0 : volume.value);
 const version1Comments = computed(() => comments.value.filter(c => c.mediaVersionId === props.version1Id));
 const version2Comments = computed(() => comments.value.filter(c => c.mediaVersionId === props.version2Id));
-const player1DrawingTool = computed(() => firstSelected.value ? annotationsDrawingTool.value : undefined);
-const player2DrawingTool = computed(() => firstSelected.value ? undefined : annotationsDrawingTool.value);
+const player1DrawingTool = computed(() => firstSelected.value && !drawingToolsActive.value ? annotationsDrawingTool.value : undefined);
+const player2DrawingTool = computed(() => firstSelected.value && !drawingToolsActive.value ? undefined : annotationsDrawingTool.value);
 
 // the duration is the larger of the two versions
 const duration = computed(() =>
@@ -274,7 +273,7 @@ watch(() => props.media, () => {
   if (props.selectedCommentId) {
     const comment = comments.value.find(c => c._id === props.selectedCommentId);
     if (comment) {
-      handleCommentClicked(comment);
+      handlePlayerCommentClicked(comment);
     }
   }
 
@@ -373,14 +372,19 @@ function scrollToComment(comment: CommentWithAuthor) {
 }
 
 function handleCommentClicked(comment: CommentWithAuthor) {
-  seekToComment(comment);
-  selectComment(comment);
-  
-  scrollToComment(comment);
+  if (selectedCommentId.value !== comment._id) {
+    seekToComment(comment);
+    selectComment(comment);
+    scrollToComment(comment);
+  } else {
+    unselectComment();
+  }
 }
 
 function handlePlayerCommentClicked(comment: CommentWithAuthor) {
-  handleCommentClicked(comment);
+  seekToComment(comment);
+  selectComment(comment);
+  scrollToComment(comment);
 }
 
 function handleCommentInputFocus() {
