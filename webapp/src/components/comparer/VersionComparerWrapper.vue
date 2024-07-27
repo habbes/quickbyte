@@ -13,34 +13,6 @@
       <!-- start sidebar -->
       <!-- TODO: sidebar is hidden on small screens until we figure out how a practical layout -->
       <SidebarContainer class=" hidden sm:flex" v-if="showSidebar && allowComments">
-         <!-- start sidebar header -->
-        <div class="flex items-stretch h-[30px] border-b border-b-black">
-          <div
-            @click="sideBarState = 'comments'"
-            v-if="allowComments"
-            class="flex-1 flex items-center gap-2 px-4 cursor-pointer"
-            :class="{
-              'text-white': sideBarState === 'comments',
-              'border-b border-b-blue-300': sideBarState === 'comments'
-            }"
-          >
-            <ChatBubbleLeftRightIcon class="h-4 w-4" />
-            Comments
-          </div>
-          <div
-            @click="sideBarState = 'files'"
-            class="flex-1 flex items-center gap-2 px-4 cursor-pointer"
-            :class="{
-              'text-white': sideBarState === 'files',
-              'border-b border-b-blue-300': sideBarState === 'files'
-            }"
-          >
-            <ListBulletIcon class="h-4 w-4" />
-            Browse files
-          </div>
-        </div>
-        <!-- end sidebar header -->
-
         <!-- start comment section -->
         <CommentsPanel v-if="sideBarState === 'comments'"
           ref="commentsPanel"
@@ -64,22 +36,6 @@
           @commentInputFocus="handleCommentInputFocus()"
         />
         <!-- end comment section -->
-        <!-- file list section -->
-        <div
-          v-if="sideBarState === 'files'"
-          class="filesList overflow-y-auto sm:h-[calc(100dvh-78px)]"
-        >
-          <!-- <InPlayerMediaBrowser
-            :items="otherItems"
-            :getMediaType="getBrowserItemMediaType"
-            :getThumbnail="getBrowserItemThumbnail"
-            :hasParentFolder="browserHasParentFolder"
-            :selectedItemId="media._id"
-            @itemClick="$emit('browserItemClick', $event)"
-            @goToParent="$emit('browserToParentFolder')"
-          /> -->
-        </div>
-        <!-- end file list section -->
         
       </SidebarContainer>
       <!-- end sidebar -->
@@ -156,7 +112,6 @@ import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
 import { SidebarContainer, CommentsPanel, useCommentOperationsHelpers } from "@/components/player";
 import type { AVPlayerState, DeleteCommentHandler, EditCommentHandler, SendCommentHandler} from "@/components/player";
-import { ListBulletIcon, ChatBubbleLeftRightIcon } from "@heroicons/vue/24/outline";
 
 type SideBarState = 'comments'|'files';
 

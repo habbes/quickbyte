@@ -1,6 +1,12 @@
 <template>
   <div>
-    <div class="commentsList overflow-y-auto flex flex-col sm:h-[calc(100dvh-278px)]">
+    <div  
+      class="commentsList overflow-y-auto flex flex-col"
+      :class="{
+        'sm:h-[calc(100dvh-248px)]': !offsetTabHeader,
+        'sm:h-[calc(100dvh-278px)]': offsetTabHeader
+      }"
+    >
       <MediaComment
         v-if="user"
         v-for="comment in comments"
@@ -93,6 +99,13 @@ const props = defineProps<{
   smallScreenHeight: string;
   currentTimestamp: number;
   canvasController: CanvasController;
+  /**
+   * Whether a 30px tab header is placed above the comments panel.
+   * This contributes to the height allocated for the tabs list.
+   * This is kind of hack, but makes it easy to adjust the height
+   * of the comments panel for common scenarios.
+   */
+  offsetTabHeader?: boolean;
   deleteComment?: DeleteCommentHandler
 }>();
 
