@@ -4,13 +4,14 @@
     <VersionComparerHeader
       @close="closeComparison()"
       :title="media.name"
+      v-model:showSidebar="showSidebar"
     />
     <!-- end header -->
      <!-- main container -->
     <div class="flex flex-col-reverse sm:flex-row h-[calc(100dvh-48px)] relative">
       <!-- start sidebar -->
       <!-- TODO: sidebar is hidden on small screens until we figure out how a practical layout -->
-      <SidebarContainer class=" hidden sm:flex">
+      <SidebarContainer class=" hidden sm:flex" v-if="showSidebar">
          <!-- start sidebar header -->
         <div class="flex items-stretch h-[30px] border-b border-b-black">
           <div
@@ -166,6 +167,7 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const route = useRoute();
+const showSidebar = ref(true);
 const mediaType = computed<MediaType>(() => {
   const files = [props.version1Id, props.version2Id].flatMap(vId =>
     props.media.versions.filter(v => v._id === vId).map(v => v.file))
