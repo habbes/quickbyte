@@ -4,6 +4,7 @@
     <VersionComparerHeader
       @close="closeComparison()"
       :title="media.name"
+      :allowSidebarToggle="allowComments"
       v-model:showSidebar="showSidebar"
     />
     <!-- end header -->
@@ -11,7 +12,7 @@
     <div class="flex flex-col-reverse sm:flex-row h-[calc(100dvh-48px)] relative">
       <!-- start sidebar -->
       <!-- TODO: sidebar is hidden on small screens until we figure out how a practical layout -->
-      <SidebarContainer class=" hidden sm:flex" v-if="showSidebar">
+      <SidebarContainer class=" hidden sm:flex" v-if="showSidebar && allowComments">
          <!-- start sidebar header -->
         <div class="flex items-stretch h-[30px] border-b border-b-black">
           <div
@@ -50,8 +51,11 @@
           :user="user"
           :mediaType="mediaType"
           :smallScreenHeight="commentsListCssHeightSmallScreen"
+          v-model:input="commentInputText"
           v-model:selectedCommentId="selectedCommentId"
           @clickComment="handleCommentClicked($event)"
+          @sendTopLevelComment="handleSendTopLevelComment($event)"
+          @commentInputFocus="handleCommentInputFocus()"
         />
         <!-- end comment section -->
         <!-- file list section -->
@@ -141,7 +145,8 @@ import { logger } from "@/app-utils";
 import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
-import { type AVPlayerState, SidebarContainer, CommentsPanel, useCommentOperationsHelpers } from "@/components/player";
+import { SidebarContainer, CommentsPanel, useCommentOperationsHelpers } from "@/components/player";
+import type { AVPlayerState, SendCommentHandler} from "@/components/player";
 import { ListBulletIcon, ChatBubbleLeftRightIcon } from "@heroicons/vue/24/outline";
 
 type SideBarState = 'comments'|'files';
@@ -158,6 +163,7 @@ const props = defineProps<{
     name: string;
   },
   role: RoleType;
+  sendComment: SendCommentHandler
 }>()
 
 const emit = defineEmits<{
@@ -189,14 +195,20 @@ const _media = computed(() => props.media);
 const {
   comments,
   sortedComments,
-  canvasController
+  canvasController,
+  commentInputText,
+  sendTopLevelComment: sendTopLevelCommentCore
 } = useCommentOperationsHelpers({
   media: _media,
+  mediaType: mediaType,
   seekToComment: seekToComment,
-  scrollToComment: scrollToComment
+  scrollToComment: scrollToComment,
+  sendComment: props.sendComment
 });
+
 const selectedCommentId = ref<string>();
 const firstSelected = ref(true);
+const selectedVersionId = computed(() => firstSelected.value ? props.version1Id : props.version2Id);
 const player1 = ref<typeof VersionPlayer>();
 const player2 = ref<typeof VersionPlayer>();
 const players = [player1, player2];
@@ -349,5 +361,18 @@ function handleCommentClicked(comment: CommentWithAuthor) {
 
 function handlePlayerCommentClicked(comment: CommentWithAuthor) {
   handleCommentClicked(comment);
+}
+
+function handleCommentInputFocus() {
+  pause();
+  unselectComment();
+}
+
+async function handleSendTopLevelComment({ includeTimestamp } : { includeTimestamp: boolean }) {
+  await sendTopLevelCommentCore({
+    selectedVersionId: selectedVersionId.value,
+    timestamp: currentPlayTime.value,
+    includeTimestamp
+  });
 }
 </script>

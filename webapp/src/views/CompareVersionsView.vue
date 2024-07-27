@@ -9,6 +9,7 @@
     :selectedCommentId="selectedCommentId"
     allowDownload
     allowComments
+    :sendComment="sendComment"
     @close="handleClose()"
     @changeVersions="handleSetVersions"
   />
@@ -16,9 +17,10 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useMediaAssetQuery, showToast, store } from "@/app-utils";
+import { useMediaAssetQuery, showToast, store, useCreateMediaCommentMutation } from "@/app-utils";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { VersioComparerWrapper } from "@/components/comparer";
+import { type SendCommentHandler } from "@/components/player";
 
 const route = useRoute();
 const router = useRouter();
@@ -42,6 +44,8 @@ const version2Id =  computed(() => {
   const queriedV2Id = unwrapSingletonOrUndefined(route.query.v2);
   return queriedV2Id ? queriedV2Id : ensure(media.value.versions.find(v => v._id !== version1Id.value))._id;
 });
+
+const createCommentMutation = useCreateMediaCommentMutation();
 
 watch(media, () => {
   if (!media.value) {
@@ -84,4 +88,18 @@ function handleClose() {
 function handleSetVersions(v1Id: string, v2Id: string) {
   router.push({ query: { v1: v1Id, v2: v2Id } });
 }
+
+const sendComment: SendCommentHandler = async (args) => {
+  const comment = await createCommentMutation.mutateAsync({
+    projectId: projectId.value,
+    mediaId: mediaId.value,
+    mediaVersionId: args.versionId,
+    text: args.text,
+    timestamp: args.timestamp,
+    parentId: args.parentId,
+    annotations: args.annotations
+  });
+    
+  return { ...comment, children: [] };
+};
 </script>

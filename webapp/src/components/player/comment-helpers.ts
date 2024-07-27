@@ -1,18 +1,27 @@
 import { ref, computed, type Ref } from "vue";
-import type { CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor } from "@quickbyte/common";
-import { isDefined } from "@/core";
-import { provideCanvasController } from "@/components/canvas";
+import type { MediaType, CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
+import { getMediaType } from "@quickbyte/common";
+import { isDefined, Logger } from "@/core";
+import { provideCanvasController, type DrawingToolConfig } from "@/components/canvas";
+import { showToast } from "@/app-utils";
 
 export interface CommentOperationHelpersContext {
     media: Ref<MediaWithFileAndComments>;
+    mediaType: Ref<MediaType>;
+    logger?: Logger;
     seekToComment: (comment: CommentWithAuthor) => unknown;
     scrollToComment: (comment: CommentWithAuthor) => unknown;
+    sendComment: SendCommentHandler;
 }
 
 export function useCommentOperationsHelpers(context: CommentOperationHelpersContext) {
 
     const canvasController = provideCanvasController();
     const comments = ref([...context.media.value.comments]);
+    const commentInputText = ref<string>();
+    const drawingToolsActive = ref(false);
+    const annotationsDrawingTool = ref<DrawingToolConfig>();
+    const currentAnnotations = ref<FrameAnnotationCollection>();
 
     // we display all the timestamped comments before
     // all non-timestamped comments
@@ -49,10 +58,83 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
     const timedComments = computed<WithChildren<TimedCommentWithAuthor>[]>(() =>
         sortedComments.value.filter(c => isDefined(c.timestamp)) as WithChildren<TimedCommentWithAuthor>[]);
 
+    async function sendTopLevelComment({
+        selectedVersionId,
+        includeTimestamp,
+        timestamp
+    }: SendTopLevelCommentArgs) {
+        if (!context.media.value) return;
+        // Comment should have either text or annotations or both.
+        // Annotations are only allowed for video (if timestamp is included) or images
+        if (
+            !commentInputText.value
+            && !(currentAnnotations.value && currentAnnotations.value.annotations.length && includeTimestamp && context.mediaType.value === 'video')
+            && !(currentAnnotations.value && currentAnnotations.value.annotations.length && context.mediaType.value === 'image')
+        ) {
+            return;
+        }
+
+        if (!context.media) return;
+        if (!context.sendComment) throw new Error('sendComment func not set in props');
+
+        try {
+            const comment = await context.sendComment({
+                text: commentInputText.value,
+                timestamp: includeTimestamp && context.mediaType.value === 'audio' || context.mediaType.value === 'video' ? timestamp : undefined,
+                versionId: selectedVersionId || context.media.value.preferredVersionId,
+                annotations: currentAnnotations.value
+            });
+
+            // if (!context.user.value) {
+            //     context.user.value = comment.author
+            // };
+
+            commentInputText.value = '';
+            currentAnnotations.value = undefined;
+            annotationsDrawingTool.value = undefined;
+            drawingToolsActive.value = false;
+            const commentIndex = comments.value.findIndex(c => c._id === comment._id);
+            // Since the media comments maybe updated by the implementation of
+            // props.sendComment, check first before adding the created comment to the list.
+            // Ideally, we should refactor things such that the comments props are
+            // updated by the caller whenever the a comment is added
+            if (commentIndex === -1) {
+                comments.value.push(comment);
+            }
+
+            context.scrollToComment(comment);
+
+            return comment;
+        }
+        catch (e: any) {
+            context.logger?.error(e.message, e);
+            showToast(e.message, 'error');
+        }
+    }
+
     return {
         comments,
         sortedComments,
         timedComments,
-        canvasController
+        canvasController,
+        commentInputText,
+        drawingToolsActive,
+        annotationsDrawingTool,
+        currentAnnotations,
+        sendTopLevelComment
     };
+}
+
+export type SendCommentHandler = (args: {
+    text?: string;
+    versionId: string;
+    timestamp?: number;
+    parentId?: string;
+    annotations?: FrameAnnotationCollection;
+}) => Promise<WithChildren<CommentWithAuthor>>;
+
+interface SendTopLevelCommentArgs {
+    selectedVersionId?: string;
+    includeTimestamp: boolean;
+    timestamp?: number;
 }

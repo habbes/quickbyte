@@ -61,7 +61,7 @@
         </textarea>
       </div>
       <div class="flex gap-2 items-center">
-        <button class="btn btn-primary btn-xs" @click="$emit('sendTopLevelComment')">Send</button>
+        <button class="btn btn-primary btn-xs" @click="handleTopLevelSend()">Send</button>
       </div>
     </div>
   </div>
@@ -93,12 +93,12 @@ const emit = defineEmits<{
   (e: 'replyComment', text: string, parentId: string): unknown;
   (e: 'editComment', commentId: string, text: string): unknown;
   (e: 'commentInputFocus'): unknown;
-  (e: 'sendTopLevelComment'): unknown;
+  (e: 'sendTopLevelComment', args: { text?: string, includeTimestamp: boolean }): unknown;
 }>();
 
 defineExpose({ scrollToComment });
 
-const commentInputText = ref<string>();
+const commentInputText = defineModel<string>('input');
 const selectedCommentId = defineModel('selectedCommentId');
 const includeTimestamp = ref<boolean>(true);
 const drawingToolsActive = defineModel('drawingToolsActive', { default: false });
@@ -126,6 +126,13 @@ function handleReplyComment(text: string, parentId: string) {
 
 function handleEditComment(commentId: string, text: string) {
   emit('editComment', commentId, text);
+}
+
+function handleTopLevelSend() {
+  emit('sendTopLevelComment', {
+    text: commentInputText.value,
+    includeTimestamp: includeTimestamp.value
+  });
 }
 
 

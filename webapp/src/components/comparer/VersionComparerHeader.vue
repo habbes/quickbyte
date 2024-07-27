@@ -4,7 +4,7 @@
       <div title="Exit comparison view">
         <XMarkIcon class="h-5 w-5 hover:text-white hover:cursor-pointer" @click="$emit('close')" />
       </div>
-      <div class="hidden sm:block">
+      <div class="hidden sm:block" v-if="allowSidebarToggle">
         <button type="button" @click="showSidebar = !showSidebar"
           class="border border-black active:bg-[#1f141b] hover:bg-[#31202b] rounded-md inline-flex items-center px-2 py-1"
         >
@@ -32,11 +32,12 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { XMarkIcon, ArrowLeftCircleIcon, ArrowRightCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/vue/24/outline';
-import { UiLayout, UiButton } from '@/components/ui';
+import { XMarkIcon, ArrowLeftCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/vue/24/outline';
+import { UiLayout } from '@/components/ui';
 
 defineProps<{
   title: string;
+  allowSidebarToggle: boolean;
 }>();
 
 defineEmits<{
