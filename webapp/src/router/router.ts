@@ -7,6 +7,7 @@ import TransactionView from '../views/TransactionView.vue';
 import SettingsView from '@/views/SettingsView.vue';
 import BillingView from '@/views/BillingView.vue';
 import PlayerView from '@/views/PlayerView.vue';
+import CompareVersionsView from '@/views/CompareVersionsView.vue';
 import TransfersView from '@/views/TransfersView.vue';
 import TransferView from '@/views/TransferView.vue';
 import AppView from '@/views/AppView.vue';
@@ -23,7 +24,7 @@ import PasswordResetView from '@/views/auth/PasswordResetView.vue';
 import ProjectShareView from '@/views/ProjectShareView.vue';
 import ProjectShareListView from "@/views/ProjectShareListView.vue";
 import ProjectSharePlayerView from '@/views/ProjectSharePlayerView.vue';
-import CompareVersionsView from '@/views/CompareVersionsView.vue';
+import ProjectShareCompareVersionsView from "@/views/ProjectShareCompareVersionsView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -159,6 +160,11 @@ const router = createRouter({
           path: 'player/:mediaId',
           name: 'project-share-player',
           component: ProjectSharePlayerView
+        },
+        {
+          path: 'compare/:mediaId',
+          name: 'project-share-compare-versions',
+          component: ProjectShareCompareVersionsView
         }
       ]
     }
