@@ -1,5 +1,6 @@
 import { ref, computed, type Ref } from "vue";
-import type { MediaType, Comment, CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
+import type { MediaType, Comment, CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor, FrameAnnotationCollection, WithParent } from "@quickbyte/common";
+import { isPlayableMediaType } from "@quickbyte/common";
 import { isDefined } from "@/core";
 import { provideCanvasController, type DrawingToolConfig } from "@/components/canvas";
 import { showToast, logger } from "@/app-utils";
@@ -84,7 +85,7 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
         try {
             const comment = await context.sendComment({
                 text: commentInputText.value,
-                timestamp: includeTimestamp && context.mediaType.value === 'audio' || context.mediaType.value === 'video' ? timestamp : undefined,
+                timestamp: includeTimestamp && isPlayableMediaType(context.mediaType.value) ? timestamp : undefined,
                 versionId: selectedVersionId || context.media.value.preferredVersionId,
                 annotations: currentAnnotations.value
             });
@@ -209,6 +210,19 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
         editComment: context.editComment,
         handleCommentDeleted,
     };
+}
+
+export function findTopLevelOrChildCommentById<T extends WithChildren<Comment>>(comments: T[], targetId: string): WithParent<T>|undefined {
+    for (let comment of comments) {
+        if (comment._id === targetId) {
+            return comment;
+        }
+
+        const child = comment.children.find(c => c._id === targetId);
+        if (child) {
+            return { ...child, parent: comment } as WithParent<T>;
+        }
+    }
 }
 
 export type SendCommentHandler = (args: {

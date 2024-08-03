@@ -110,13 +110,14 @@
 import { ref, computed, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { getMediaType, isPlayableMediaType } from "@quickbyte/common";
-import type { MediaWithFileAndComments, MediaType, RoleType, FrameAnnotationCollection, CommentWithAuthor } from "@quickbyte/common";
+import type { MediaWithFileAndComments, MediaType, RoleType, FrameAnnotationCollection, Comment, WithParent } from "@quickbyte/common";
 import { logger } from "@/app-utils";
 import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
-import { SidebarContainer, CommentsPanel, useCommentOperationsHelpers } from "@/components/player";
+import { SidebarContainer, CommentsPanel, useCommentOperationsHelpers, findTopLevelOrChildCommentById } from "@/components/player";
 import type { AVPlayerState, DeleteCommentHandler, EditCommentHandler, SendCommentHandler} from "@/components/player";
+import { isDefined } from "@/core";
 
 type SideBarState = 'comments'|'files';
 
@@ -231,7 +232,8 @@ const commentsListCssHeightSmallScreen = computed(() => {
 watch(() => props.media, () => {
   comments.value = [...props.media.comments];
   if (props.selectedCommentId) {
-    const comment = comments.value.find(c => c._id === props.selectedCommentId);
+    
+    const comment = findTopLevelOrChildCommentById(comments.value, props.selectedCommentId);
     if (comment) {
       handlePlayerCommentClicked(comment);
     }
@@ -294,7 +296,7 @@ function seekTo(timestamp: number) {
   players.forEach(p => p.value?.seek(timestamp));
 }
 
-function seekToComment(comment: CommentWithAuthor) {
+function seekToComment(comment: WithParent<Comment>) {
   if (mediaType.value !== 'video' && mediaType.value !== 'audio') {
     return;
   }
@@ -308,14 +310,19 @@ function seekToComment(comment: CommentWithAuthor) {
     return;
   }
 
-  if (comment.timestamp === null || comment.timestamp === undefined) {
+  if (!isDefined(comment.timestamp)) {
+    // if it's a child comment, then seek to the parent
+    if (comment.parent) {
+      seekToComment(comment.parent);
+    }
+
     return;
   }
 
-  seekTo(comment.timestamp);
+  seekTo(comment.timestamp!);
 }
 
-function selectComment(comment: CommentWithAuthor) {
+function selectComment(comment: Comment) {
   selectedCommentId.value = comment._id;
   router.push({ query: { ...route.query, comment: comment._id }});
 }
@@ -327,11 +334,11 @@ function unselectComment() {
   router.push({ query: newQuery });
 }
 
-function scrollToComment(comment: CommentWithAuthor) {
+function scrollToComment(comment: Comment) {
   nextTick(() => commentsPanel.value?.scrollToComment(comment));
 }
 
-function handleCommentClicked(comment: CommentWithAuthor) {
+function handleCommentClicked(comment: Comment) {
   if (selectedCommentId.value !== comment._id) {
     seekToComment(comment);
     selectComment(comment);
@@ -341,7 +348,7 @@ function handleCommentClicked(comment: CommentWithAuthor) {
   }
 }
 
-function handlePlayerCommentClicked(comment: CommentWithAuthor) {
+function handlePlayerCommentClicked(comment: Comment) {
   seekToComment(comment);
   selectComment(comment);
   scrollToComment(comment);
