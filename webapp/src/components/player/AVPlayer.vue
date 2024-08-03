@@ -176,12 +176,7 @@ import Slider from '@/components/ui/Slider.vue';
 import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
 import type { FrameAnnotationCollection, TimedCommentWithAuthor } from '@quickbyte/common';
-
-type MediaSource = {
-  url: string;
-  type: 'hls'|'dash'|'raw';
-  mimeType?: string;
-};
+import { type MediaSource, haveMediaSourcesChanged } from './media-helpers.js';
 
 const props = defineProps<{
   sources: MediaSource[];
@@ -345,16 +340,18 @@ watch(playerWithControllerHeight, () => {
 
 // This helps keeps track of when the media
 // source changes.
-const _sources = computed(() => props.sources);
-watch(_sources, (curr, prev) => {
-  // when the media sources change
-  // the video stops playing and we don't get "pause" event
-  // so we need to manually sync the play time and trigger
-  // the playing if the media was already playing
+watch(() => props.sources, (curr, prev) => {
+  if (!haveMediaSourcesChanged(curr, prev)) {
+    // when the media sources change
+    // the video stops playing and we don't get "pause" event
+    // so we need to manually sync the play time and trigger
+    // the playing if the media was already playing
+    // we make sure not compare the actual urls such that if the
+    // media is refetched with the same url, we don't mark canPlay as false
+    // since the player has already loaded the urls.
+    canPlay.value = false;
+  }
 
-  // we mark canPlay as false to avoid the playing
-  // when the media is not ready, which would otherwise lead to an error
-  canPlay.value = false;
   if (!player.value) return;
 
   const wasPlaying = isPlaying.value;

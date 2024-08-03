@@ -109,7 +109,7 @@
 <script lang="ts" setup>
 import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
-import type { MediaWithFileAndComments, CommentWithAuthor, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
+import type { MediaWithFileAndComments, WithChildren, CommentWithAuthor, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
 import { formatDateTime, formatTimestampDuration, isDefined } from "@/core";
 import { BaseAVPlayer, ImageViewer, type AVPlayerState } from "@/components/player";
 import FileDownloadLink from "../FileDownloadLink.vue";
@@ -131,7 +131,7 @@ const props = defineProps<{
   allowDownload: boolean;
   playTime?: number;
   duration?: number;
-  comments?: CommentWithAuthor[];
+  comments?: WithChildren<CommentWithAuthor>[];
   selectedCommentId?: string;
   annotationsDrawingTool?: DrawingToolConfig;
 }>();
@@ -151,7 +151,7 @@ const avPlayer = ref<typeof BaseAVPlayer>();
 const playerHeight = ref<number>();
 const version = computed(() => props.media.versions.find(v => v._id === props.versionId));
 const file = computed(() => version.value?.file);
-const timedComments = computed(() => props.comments?.filter(c => isDefined(c.timestamp)) as TimedCommentWithAuthor[]);
+const timedComments = computed(() => props.comments?.filter(c => isDefined(c.timestamp)) as WithChildren<TimedCommentWithAuthor>[]);
 const sortedVersions = computed(() => [...props.media.versions].reverse());
 
 const mediaType = computed(() => {
