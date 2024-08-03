@@ -308,3 +308,16 @@ ${ passwordNote }
 ${ expirtyNote }
 `
 }
+
+export function createUserSignupAdminNotificationEmail(args : { name: string, email: string, _id: string }) {
+    return `
+<p>
+New user signed up to Quickbyte.
+</p>
+<p>
+    <b>Id</b>: ${args._id}<br>
+    <b>Name</b>: ${args.name}<br>
+    <b>Email</b>: ${args.email}<br>
+</p>
+`
+}
