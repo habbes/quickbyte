@@ -15,7 +15,6 @@
         :htmlId="getHtmlCommentId(comment)"
         :getHtmlId="getHtmlCommentId"
         :selectedId="selectedCommentId"
-        :selected="comment._id === selectedCommentId"
         :currentUserId="user._id"
         :currentRole="role"
         @click="$emit('clickComment', $event)"
@@ -123,7 +122,7 @@ defineExpose({ scrollToComment });
 
 const deleteCommentDialog = ref<typeof DeleteCommentDialog>();
 const commentInputText = defineModel<string>('input');
-const selectedCommentId = defineModel('selectedCommentId');
+const selectedCommentId = defineModel<string>('selectedCommentId');
 const includeTimestamp = ref<boolean>(true);
 const drawingToolsActive = defineModel('drawingToolsActive', { default: false });
 const annotationsDrawingTool = defineModel<DrawingToolConfig>('annotationsDrawingTool');

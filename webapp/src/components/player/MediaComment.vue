@@ -35,10 +35,9 @@ import MediaCommentCore from "./MediaCommentCore.vue";
 // NOTE: At the moment we don't support nested replies
 // so we assume all replies are to the top-level parent component
 
-const props = defineProps<{
+defineProps<{
   comment: WithChildren<CommentWithAuthor>;
   htmlId: string;
-  selected?: boolean;
   /**
    * The ID of the selected comment
    */
