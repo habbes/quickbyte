@@ -232,7 +232,7 @@ watch(() => props.media, () => {
   comments.value = [...props.media.comments];
   if (props.selectedCommentId) {
     
-    const { comment } = findTopLevelOrChildCommentById(comments.value, props.selectedCommentId);
+    const comment = findTopLevelOrChildCommentById(comments.value, props.selectedCommentId);
     if (comment) {
       handlePlayerCommentClicked(comment);
     }

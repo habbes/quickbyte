@@ -444,6 +444,8 @@ export type WithChildren<T> = T & {
     children: T[];
 }
 
+export type WithParent<T> = T & { parent?: T };
+
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
 
 export type DownloadTransferFileResult = Pick<TransferFile, '_id'|'transferId'|'name'|'size'|'_createdAt'|'accountId'> & {

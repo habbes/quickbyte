@@ -1,5 +1,5 @@
 import { ref, computed, type Ref } from "vue";
-import type { MediaType, Comment, CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
+import type { MediaType, Comment, CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor, FrameAnnotationCollection, WithParent } from "@quickbyte/common";
 import { isDefined } from "@/core";
 import { provideCanvasController, type DrawingToolConfig } from "@/components/canvas";
 import { showToast, logger } from "@/app-utils";
@@ -211,19 +211,17 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
     };
 }
 
-export function findTopLevelOrChildCommentById<T extends WithChildren<Comment>>(comments: T[], targetId: string): { comment?: Comment, parent?: T } {
+export function findTopLevelOrChildCommentById<T extends WithChildren<Comment>>(comments: T[], targetId: string): WithParent<Comment>|undefined {
     for (let comment of comments) {
         if (comment._id === targetId) {
-            return { comment };
+            return comment;
         }
 
         const child = comment.children.find(c => c._id === targetId);
         if (child) {
-            return { comment: child, parent: comment };
+            return { ...child, parent: comment };
         }
     }
-
-    return {};
 }
 
 export type SendCommentHandler = (args: {

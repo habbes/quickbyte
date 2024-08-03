@@ -287,7 +287,7 @@ const _media = computed(() => props.media);
 watch(_media, () => {
   comments.value = [...props.media.comments];
   if (props.selectedCommentId) {
-    const { comment } = findTopLevelOrChildCommentById(comments.value, props.selectedCommentId);
+    const comment = findTopLevelOrChildCommentById(comments.value, props.selectedCommentId);
     if (comment) {
       handleVideoCommentClicked(comment);
     }
