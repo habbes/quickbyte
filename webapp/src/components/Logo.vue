@@ -1,6 +1,6 @@
 <template>
   <div class="font-bold font-Orbit" :class="classes">
-    <router-link to="/">Quickbyte</router-link>
+    <router-link :to="{ name: 'home' }">Quickbyte</router-link>
   </div>
 </template>
 <script lang="ts" setup>
