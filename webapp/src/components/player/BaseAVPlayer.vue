@@ -215,7 +215,6 @@ const progressBar = ref<HTMLDivElement>();
 
 const isPlaying = ref(false);
 const canPlay = ref(false);
-console.log('canPlay init to false');
 const scheduledStartPlayWhenMediaReady = ref(false);
 const playTime = ref(0);
 const playPercentage = computed(() => {
@@ -482,7 +481,7 @@ function handleProgressBarMouseLeave() {
 
 function handleCanPlay() {
   if (!player.value) return;
-  console.log('canPlay set to true');
+
   canPlay.value = true;
   if (scheduledStartPlayWhenMediaReady.value) {
     // Play was earlier requested but media was not ready.

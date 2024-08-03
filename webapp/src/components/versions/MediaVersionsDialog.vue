@@ -105,7 +105,7 @@ import { StarIcon as SolidStarIcon, TrashIcon } from "@heroicons/vue/24/solid";
 import { UiDialog, UiLayout, UiButton, UiTextInput } from "@/components/ui";
 import type { Media, UpdateMediaVersionsArgs, MediaVersion } from "@quickbyte/common";
 import { formatDateTime, humanizeSize } from "@/core";
-import { showToast, wrapError, useFilePicker, useFileTransfer, useUpdateMediaVersionsMutation, updateMediaAssetInQuery } from "@/app-utils";
+import { showToast, wrapError, useFilePicker, useFileTransfer, useUpdateMediaVersionsMutation, updateMediaAssetInQuery, logger } from "@/app-utils";
 import { useQueryClient } from "@tanstack/vue-query";
 
 const props = defineProps<{
@@ -140,6 +140,7 @@ const {
   uploadProgress,
   percentageUploaded,
   transfer: versionTransfer,
+  error: transferError
 } = useFileTransfer();
 
 onFilesSelected((selectedFiles, selectedDirectories) => {
@@ -176,6 +177,15 @@ watch([uploadState], () => {
     emit('update', uploadedMedia.value[0]);
     const updatedMedia = uploadedMedia.value[0];
     updateMediaAssetInQuery(queryClient, updatedMedia);
+    reset();
+  }
+  else if (uploadState.value === 'error') {
+    if (transferError.value) {
+      logger?.error(transferError.value.message, transferError.value);
+      showToast(transferError.value.message, 'error');
+    }
+
+    reset();
   }
 });
 

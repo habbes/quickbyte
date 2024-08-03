@@ -6,11 +6,21 @@
         <XMarkIcon class="h-5 w-5 hover:text-white hover:cursor-pointer" @click="closePlayer()" />
       </div>
       <UiLayout horizontal itemsCenter gapSm class="overflow-hidden">
-        <VersionTitle :versions="media.versions" :selectedVersionId="selectedVersionId" />
-        <MediaPlayerVersionDropdown v-if="showAllVersions" :media="media" :selectedVersionId="selectedVersionId"
-          :allowUpload="allowUploadVersion" :allowManagement="allowVersionManagement"
-          @versionUpload="handleVersionUpload()" @update="handleMediaUpdate($event)"
-          @selectVersion="handleSelectVersion($event)" @compareVersions="handleCompareVersions" />
+        <VersionTitle
+          :versions="media.versions"
+          :selectedVersionId="selectedVersionId"
+        />
+        <MediaPlayerVersionDropdown
+          v-if="showAllVersions"
+          :media="media"
+          :selectedVersionId="selectedVersionId"
+          :allowUpload="allowUploadVersion"
+          :allowManagement="allowVersionManagement"
+          @versionUpload="handleVersionUpload()"
+          @update="handleMediaUpdate($event)"
+          @selectVersion="handleSelectVersion($event)"
+          @compareVersions="handleCompareVersions"
+        />
       </UiLayout>
       <div>
         <a v-if="allowDownload && selectedVersion" class="flex items-center gap-2 hover:text-white" download
