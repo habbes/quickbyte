@@ -177,13 +177,8 @@ import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
 import type { FrameAnnotationCollection, WithChildren, TimedCommentWithAuthor } from '@quickbyte/common';
 import type { AVPlayerState } from './types'
-import { findTopLevelOrChildCommentById } from "./comment-helpers";
-
-type MediaSource = {
-  url: string;
-  type: 'hls'|'dash'|'raw';
-  mimeType?: string;
-};
+import { findTopLevelOrChildCommentById } from "./comment-helpers.js";
+import { haveMediaSourcesChanged, type MediaSource } from './media-helpers.js';
 
 const props = defineProps<{
   sources: MediaSource[];
@@ -220,6 +215,7 @@ const progressBar = ref<HTMLDivElement>();
 
 const isPlaying = ref(false);
 const canPlay = ref(false);
+console.log('canPlay init to false');
 const scheduledStartPlayWhenMediaReady = ref(false);
 const playTime = ref(0);
 const playPercentage = computed(() => {
@@ -359,16 +355,21 @@ watch(playerWithControllerHeight, () => {
 
 // This helps keeps track of when the media
 // source changes.
-const _sources = computed(() => props.sources);
-watch(_sources, (curr, prev) => {
-  // when the media sources change
-  // the video stops playing and we don't get "pause" event
-  // so we need to manually sync the play time and trigger
-  // the playing if the media was already playing
-
-  // we mark canPlay as false to avoid the playing
-  // when the media is not ready, which would otherwise lead to an error
-  canPlay.value = false;
+watch(() => props.sources, (curr, prev) => {
+  if (!haveMediaSourcesChanged(curr, prev)) {
+    // when the media sources change
+    // the video stops playing and we don't get "pause" event
+    // so we need to manually sync the play time and trigger
+    // the playing if the media was already playing
+    // we make sure not compare the actual urls such that if the
+    // media is refetched with the same url, we don't mark canPlay as false
+    // since the player has already loaded the urls.
+    // TODO: I think a more robust solution would be to get an event from the player
+    // when a video is loading or unplayable and use that to update canPlay.
+    // I don't know if that event exists, should investigate soon.
+    canPlay.value = false;
+  }
+  
   if (!player.value) return;
 
   const wasPlaying = isPlaying.value;
@@ -429,6 +430,7 @@ async function play() {
       scheduledStartPlayWhenMediaReady.value = true;
       return;
     }
+
     await player.value?.play();
   }
   catch (e: any) {
@@ -480,6 +482,7 @@ function handleProgressBarMouseLeave() {
 
 function handleCanPlay() {
   if (!player.value) return;
+  console.log('canPlay set to true');
   canPlay.value = true;
   if (scheduledStartPlayWhenMediaReady.value) {
     // Play was earlier requested but media was not ready.
@@ -553,6 +556,7 @@ function handleCommentMouseLeave() {
 function handleUpdateAnnotations(annotations: FrameAnnotationCollection) {
   emit('drawAnnotations', annotations);
 }
+
 </script>
 <style scoped>
 /* Vidstack video controls are shown or hidden depending on fullscreen state */
