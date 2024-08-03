@@ -61,7 +61,7 @@
           />
         </div>
         <div
-          v-if="mediaType === 'audio' || mediaType === 'video' && isDefined(playTime) && isDefined(duration)"
+          v-if="isPlayableMediaType(mediaType) && isDefined(playTime) && isDefined(duration)"
           class="text-xs"
         >
           {{ formatTimestampDuration(playTime!) }} / {{ formatTimestampDuration(duration!) }}
@@ -108,7 +108,7 @@
 </template>
 <script lang="ts" setup>
 import { ref, computed } from "vue";
-import { getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
+import { getMediaType, getMimeTypeFromFilename, isPlayableMediaType } from "@quickbyte/common";
 import type { MediaWithFileAndComments, WithChildren, CommentWithAuthor, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
 import { formatDateTime, formatTimestampDuration, isDefined } from "@/core";
 import { BaseAVPlayer, ImageViewer, type AVPlayerState } from "@/components/player";
