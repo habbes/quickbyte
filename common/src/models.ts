@@ -441,10 +441,10 @@ export interface TimedCommentWithAuthor extends CommentWithAuthor {
 }
 
 export type WithChildren<T> = T & {
-    children: T[];
+    children: WithChildren<T>[];
 }
 
-export type WithParent<T> = T & { parent?: T };
+export type WithParent<T> = T & { parent?: T | undefined };
 
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
 

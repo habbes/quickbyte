@@ -175,8 +175,9 @@ import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIco
 import Slider from '@/components/ui/Slider.vue';
 import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
-import type { FrameAnnotationCollection, TimedCommentWithAuthor } from '@quickbyte/common';
+import type { FrameAnnotationCollection, WithChildren, TimedCommentWithAuthor } from '@quickbyte/common';
 import type { AVPlayerState } from './types'
+import { findTopLevelOrChildCommentById } from "./comment-helpers";
 
 type MediaSource = {
   url: string;
@@ -186,7 +187,7 @@ type MediaSource = {
 
 const props = defineProps<{
   sources: MediaSource[];
-  comments?: TimedCommentWithAuthor[];
+  comments?: WithChildren<TimedCommentWithAuthor>[];
   selectedCommentId?: string;
   mediaType: 'video'|'audio';
   versionId?: string;
@@ -290,19 +291,21 @@ const bufferedSegments = computed(() => {
   return segments;
 });
 
-const selectedComment = computed(() => props.comments?.find(c => c._id === props.selectedCommentId));
+const selectedComment = computed(() => findTopLevelOrChildCommentById(props.comments || [], props.selectedCommentId || ''));
 const hoveredCommentId = ref<string>();
-const hoveredComment = computed(() => props.comments?.find(c => c._id === hoveredCommentId.value));
+const hoveredComment = computed(() => findTopLevelOrChildCommentById(props.comments || [], hoveredCommentId.value || ''));
 const currentFrameAnnotations = computed(() => {
   if (isPlaying.value) {
     return undefined;
   }
+
   if (selectedComment.value) {
-    return selectedComment.value.annotations;
+    // if it's a child comment, show the parent comment's annotations
+    return selectedComment.value.annotations || selectedComment.value.parent?.annotations;
   }
 
   if (hoveredComment.value) {
-    return hoveredComment.value.annotations;
+    return hoveredComment.value.annotations || hoveredComment.value.parent?.annotations;
   }
 });
 // When the video player is mounted,

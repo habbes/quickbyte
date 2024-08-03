@@ -211,7 +211,7 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
     };
 }
 
-export function findTopLevelOrChildCommentById<T extends WithChildren<Comment>>(comments: T[], targetId: string): WithParent<Comment>|undefined {
+export function findTopLevelOrChildCommentById<T extends WithChildren<Comment>>(comments: T[], targetId: string): WithParent<T>|undefined {
     for (let comment of comments) {
         if (comment._id === targetId) {
             return comment;
@@ -219,7 +219,7 @@ export function findTopLevelOrChildCommentById<T extends WithChildren<Comment>>(
 
         const child = comment.children.find(c => c._id === targetId);
         if (child) {
-            return { ...child, parent: comment };
+            return { ...child, parent: comment } as WithParent<T>;
         }
     }
 }
