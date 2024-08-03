@@ -1,5 +1,6 @@
 import { ref, computed, type Ref } from "vue";
 import type { MediaType, Comment, CommentWithAuthor, MediaWithFileAndComments, WithChildren, TimedCommentWithAuthor, FrameAnnotationCollection, WithParent } from "@quickbyte/common";
+import { isPlayableMediaType } from "@quickbyte/common";
 import { isDefined } from "@/core";
 import { provideCanvasController, type DrawingToolConfig } from "@/components/canvas";
 import { showToast, logger } from "@/app-utils";
@@ -84,7 +85,7 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
         try {
             const comment = await context.sendComment({
                 text: commentInputText.value,
-                timestamp: includeTimestamp && context.mediaType.value === 'audio' || context.mediaType.value === 'video' ? timestamp : undefined,
+                timestamp: includeTimestamp && isPlayableMediaType(context.mediaType.value) ? timestamp : undefined,
                 versionId: selectedVersionId || context.media.value.preferredVersionId,
                 annotations: currentAnnotations.value
             });

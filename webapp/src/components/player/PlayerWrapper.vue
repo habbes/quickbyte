@@ -148,6 +148,7 @@ import type {
   FrameAnnotationCollection,
 WithParent
 } from "@quickbyte/common";
+import { isPlayableMediaType } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
@@ -525,7 +526,7 @@ async function sendTopLevelComment() {
   try {
     const comment = await props.sendComment({
       text: commentInputText.value,
-      timestamp: includeTimestamp.value && mediaType.value === 'audio' || mediaType.value === 'video' ? currentTimeStamp.value : undefined,
+      timestamp: includeTimestamp.value && isPlayableMediaType(mediaType.value)? currentTimeStamp.value : undefined,
       versionId: props.selectedVersionId || props.media.preferredVersionId,
       annotations: currentAnnotations.value
     });
