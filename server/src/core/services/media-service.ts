@@ -1,6 +1,6 @@
 import { Filter, FindOneAndUpdateOptions, FindOptions } from "mongodb";
-import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType, UpdateMediaVersionsArgs } from "../models.js";
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError, createResourceConflictError, createValidationError, createPermissionError } from "../error.js";
+import { AuthContext, Comment, createPersistedModel, Media, MediaVersion, UpdateMediaArgs, MediaVersionWithFile, MediaWithFileAndComments, CreateMediaCommentArgs, WithChildren, CommentWithAuthor, UpdateMediaCommentArgs, getFolderPath, splitFilePathAndName, Folder, CreateTransferFileResult, CreateTransferResult, DeletionCountResult, MoveMediaToFolderArgs, ProjectShare, executeTasksInBatches, User, WithThumbnail, TransferFile, getMediaType, UpdateMediaVersionsArgs, ExtractMediaVersionArgs, ExtractMediaVersionsResult } from "../models.js";
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createNotFoundError, AppError, createResourceConflictError, createValidationError, createPermissionError, createBadRequestError } from "../error.js";
 import { getDownloadableFiles, getMediaFiles, IPlaybackPackagerProvider, IStorageHandlerProvider, ITransferService, PlaybackPackagerRegistry, StorageHandlerProvider } from "./index.js";
 import { getMediaComments, ICommentService } from "./comment-service.js";
 import { createFilterForDeleteableResource, Database, DbMedia, deleteNowBy, updateNowBy } from "../db.js";
@@ -428,22 +428,116 @@ export class MediaService {
         }
     }
 
+    async extractMediaVersions(args: ExtractMediaVersionArgs): Promise<ExtractMediaVersionsResult> {
+        try {
+            const conflictErrorMessage = 'Media asset or version may have been modified by a different user. Please reload.';
+
+            const query = addRequiredMediaFilters({
+                _id: args.mediaId,
+                projectId: args.projectId,
+                _cc: args.concurrencyControl
+            });
+
+            const media = await this.db.media().findOne(query, addDefaultMediaFindOptions({}));
+
+            if (!media) {
+                throw createResourceConflictError(conflictErrorMessage);
+            }
+
+            const versionsToExtract: MediaVersion[] = [];
+            const remainingVersions: MediaVersion[] = [];
+            for (const version of media.versions) {
+                if (args.versionIds.includes(version._id)) {
+                    versionsToExtract.push(version);
+                } else {
+                    remainingVersions.push(version);
+                }
+            }
+
+            if (args.versionIds.length !== versionsToExtract.length) {
+                const unknownVersionId = args.versionIds.find(vId => versionsToExtract.every(toExtract => vId !== toExtract._id));
+                throw createResourceNotFoundError(`Could not find target version to extract '${unknownVersionId}'`);
+            }
+
+            if (remainingVersions.length === 0) {
+                throw createBadRequestError('Cannot extract all versions of the media asset. At least one version must remain after extraction.');
+            }
+
+            // foreach version to extract
+            // create media asset with:
+            //   version name as name
+            //   current media folder as folder
+            //   current user as creator
+            //   version as version + preferred version
+            const newMedia = versionsToExtract.map(v => this.convertFileIdToMedia(
+                media.projectId,
+                media._id,
+                v.name,
+                media.folderId
+            ));
+
+            await this.db.media().insertMany(newMedia);
+
+            // Remove extracted versions from original media
+            // set new preferred version in case current one has been extracted
+            const newPreferredVersionId = remainingVersions.some(v => v._id === media.preferredVersionId) ?
+                media.preferredVersionId
+                : remainingVersions.at(-1)!._id;
+            
+            const updateResult = await this.db.media().findOneAndUpdate(
+                query
+            , {
+                $set: {
+                    versions: remainingVersions,
+                    preferredVersionId: newPreferredVersionId,
+                    _updatedAt: new Date(),
+                    _updatedBy: { type: 'user', _id: this.authContext.user._id }
+                },
+                $inc: { _cc: 1 }
+            }, 
+                addDefaultMediaFindOptions<FindOneAndUpdateOptions>({ returnDocument: 'after' })
+            );
+
+            if (!updateResult.value) {
+                throw createResourceConflictError(conflictErrorMessage);
+            }
+
+            return {
+                current: updateResult.value,
+                extracted: newMedia
+            };
+        }
+        catch (e: any) {
+            rethrowIfAppError(e);
+            throw createAppError(e);
+        }
+    }
+
     private convertFileToMedia(projectId: string, file: CreateTransferFileResult, pathToFolderMap: Map<string, Folder>) {
-        const initialVersion: MediaVersion = this.convertFileToMediaVersion(file);
+        const folderPath = getFolderPath(file.name);
+        const folder = pathToFolderMap.get(folderPath);
+
+        const media = this.convertFileIdToMedia(
+            projectId,
+            file._id,
+            file.name,
+            folder?._id
+        );
+
+        return media;
+    }
+
+    private convertFileIdToMedia(projectId: string, fileId: string, name: string, folderId?: string|undefined|null) {
+        const initialVersion: MediaVersion = this.convertFileIdToMediaVersion(fileId, name);
 
         const media: Media = {
             ...createPersistedModel(this.authContext.user._id),
             preferredVersionId: initialVersion._id,
             versions: [initialVersion],
             name: initialVersion.name,
-            projectId: projectId
-        }
-
-        const folderPath = getFolderPath(file.name);
-        const folder = pathToFolderMap.get(folderPath);
-        if (folder) {
-            media.folderId = folder._id;
-        }
+            projectId,
+            folderId
+        };
 
         return media;
     }
@@ -480,11 +574,18 @@ export class MediaService {
     }
 
     private convertFileToMediaVersion(file: CreateTransferFileResult): MediaVersion {
+        return this.convertFileIdToMediaVersion(
+            file._id,
+            // TODO: handle folder paths later
+            file.name.split('/').at(-1)!
+        );
+    }
+
+    private convertFileIdToMediaVersion(fileId: string, name: string): MediaVersion {
         return {
             ...createPersistedModel(this.authContext.user._id),
-            fileId: file._id,
-            // TODO: handle folder paths later
-            name: file.name.split('/').at(-1)!
+            fileId: fileId,
+            name: name.split('/').at(-1)!
         };
     }
 }

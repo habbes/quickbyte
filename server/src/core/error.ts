@@ -20,7 +20,10 @@ export type ErrorCode =
     // When the app is an state that should never occur
     // and that could point to an undetected logic error
     | 'invalidAppState'
-    | 'operationNotSupported';
+    | 'operationNotSupported'
+    // Generic client-caused error that does not fit
+    // into the other categories
+    | 'badRequest';
 
 /**
  * Checks whether the error is a MongoDB duplicate key error
@@ -100,6 +103,8 @@ export const createSubscriptionInsufficientError =
 export const createInvalidAppStateError =
     (message: ErrorMessage = 'Invalid app state detected.') => createAppError(message, 'invalidAppState');
 
+export const createBadRequestError =
+    (message: ErrorMessage = 'There was an error with your request.') => createAppError(message, 'badRequest');
 
 export const createOperationNotSupportedError =
     (message: ErrorMessage = 'Operation not supported.') => createAppError(message, 'operationNotSupported');
