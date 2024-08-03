@@ -21,7 +21,7 @@
       :nestingLevel="1"
       :deletable="currentUserId === reply.author._id || currentRole === 'admin' || currentRole === 'owner'"
       :editable="currentUserId === reply.author._id"
-      @click="$emit('click', reply)"
+      @click="$emit('click', { ...reply, parent: comment })"
       @reply="$emit('reply', $event, comment._id)"
       @delete="$emit('delete', $event)"
       @edit="$emit('edit', reply._id, $event)"
@@ -29,7 +29,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import type { CommentWithAuthor, RoleType, WithChildren } from "@quickbyte/common";
+import type { CommentWithAuthor, WithParent, RoleType, WithChildren } from "@quickbyte/common";
 import MediaCommentCore from "./MediaCommentCore.vue";
 
 // NOTE: At the moment we don't support nested replies
@@ -49,7 +49,7 @@ const props = defineProps<{
 }>();
 
 defineEmits<{
-  (e: 'click', comment: CommentWithAuthor): void;
+  (e: 'click', comment: WithParent<CommentWithAuthor>): void;
   (e: 'reply', text: string, parentId: string): void;
   (e: 'edit', commentId: string, text: string): void;
   (e: 'delete', comment: CommentWithAuthor): void;
