@@ -211,6 +211,21 @@ export function useCommentOperationsHelpers(context: CommentOperationHelpersCont
     };
 }
 
+export function findTopLevelOrChildCommentById<T extends WithChildren<Comment>>(comments: T[], targetId: string): { comment?: Comment, parent?: T } {
+    for (let comment of comments) {
+        if (comment._id === targetId) {
+            return { comment };
+        }
+
+        const child = comment.children.find(c => c._id === targetId);
+        if (child) {
+            return { comment: child, parent: comment };
+        }
+    }
+
+    return {};
+}
+
 export type SendCommentHandler = (args: {
     text?: string;
     versionId: string;

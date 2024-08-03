@@ -14,6 +14,7 @@
         :comment="comment"
         :htmlId="getHtmlCommentId(comment)"
         :getHtmlId="getHtmlCommentId"
+        :selectedId="selectedCommentId"
         :selected="comment._id === selectedCommentId"
         :currentUserId="user._id"
         :currentRole="role"

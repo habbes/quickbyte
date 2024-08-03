@@ -3,7 +3,7 @@
     <MediaCommentCore
       :comment="comment"
       :htmlId="htmlId"
-      :selected="selected"
+      :selected="comment._id === selectedId"
       :nestingLevel="0"
       :deletable="currentUserId === comment.author._id || currentRole === 'admin' || currentRole === 'owner'"
       :editable="currentUserId === comment.author._id"
@@ -17,6 +17,7 @@
       :key="reply._id"
       :comment="reply"
       :htmlId="getHtmlId(reply)"
+      :selected="reply._id === selectedId"
       :nestingLevel="1"
       :deletable="currentUserId === reply.author._id || currentRole === 'admin' || currentRole === 'owner'"
       :editable="currentUserId === reply.author._id"
@@ -38,6 +39,10 @@ const props = defineProps<{
   comment: WithChildren<CommentWithAuthor>;
   htmlId: string;
   selected?: boolean;
+  /**
+   * The ID of the selected comment
+   */
+  selectedId?: string;
   getHtmlId: (comment: CommentWithAuthor) => string;
   currentUserId: string;
   currentRole: RoleType;

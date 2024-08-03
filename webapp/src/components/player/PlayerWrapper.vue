@@ -52,7 +52,9 @@
           <div class="commentsList overflow-y-auto flex flex-col sm:h-[calc(100dvh-278px)]">
             <MediaComment v-if="user" v-for="comment in sortedComments" :key="comment._id" :comment="comment"
               :htmlId="getHtmlCommentId(comment)" :getHtmlId="getHtmlCommentId"
-              :selected="comment._id === selectedCommentId" :currentUserId="user._id" :currentRole="role"
+              :selectedId="selectedCommentId"
+              :currentUserId="user._id"
+              :currentRole="role"
               @click="handleCommentClicked($event)"
               @reply="sendCommentReply"
               @delete="showDeleteCommentDialog($event)"
@@ -157,6 +159,7 @@ import VersionTitle from './VersionTitle.vue';
 import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
 import { DrawingTools, type DrawingToolConfig, provideCanvasController } from "@/components/canvas";
+import { findTopLevelOrChildCommentById } from "./comment-helpers.js";
 
 type MediaSource = {
   url: string;
@@ -284,7 +287,7 @@ const _media = computed(() => props.media);
 watch(_media, () => {
   comments.value = [...props.media.comments];
   if (props.selectedCommentId) {
-    const comment = comments.value.find(c => c._id === props.selectedCommentId);
+    const { comment } = findTopLevelOrChildCommentById(comments.value, props.selectedCommentId);
     if (comment) {
       handleVideoCommentClicked(comment);
     }
@@ -421,7 +424,7 @@ function handleCompareVersions(v1Id: string, v2Id: string) {
 }
 
 
-function seekToComment(comment: CommentWithAuthor) {
+function seekToComment(comment: Comment) {
   if (mediaType.value !== 'video' && mediaType.value !== 'audio') {
     return;
   }
@@ -442,7 +445,7 @@ function seekToComment(comment: CommentWithAuthor) {
   avPlayer.value.seek(comment.timestamp);
 }
 
-function scrollToComment(comment: CommentWithAuthor) {
+function scrollToComment(comment: Comment) {
   // we wait for the next tick to ensure the comment has been added to the DOM
   // before we scroll into it
   nextTick(() => {
@@ -454,7 +457,7 @@ function scrollToComment(comment: CommentWithAuthor) {
   });
 }
 
-function selectComment(comment: CommentWithAuthor) {
+function selectComment(comment: Comment) {
   selectedCommentId.value = comment._id;
   router.push({ query: { ...route.query, comment: comment._id } });
 }
@@ -479,11 +482,11 @@ function closePlayer() {
   emit('close');
 }
 
-function getHtmlCommentId(comment: CommentWithAuthor) {
+function getHtmlCommentId(comment: Comment) {
   return `comment_${comment._id}`;
 }
 
-function handleCommentClicked(comment: CommentWithAuthor) {
+function handleCommentClicked(comment: Comment) {
   seekToComment(comment);
   if (selectedCommentId.value === comment._id) {
     unselectComment();
@@ -493,7 +496,7 @@ function handleCommentClicked(comment: CommentWithAuthor) {
   }
 }
 
-function handleVideoCommentClicked(comment: CommentWithAuthor) {
+function handleVideoCommentClicked(comment: Comment) {
   seekToComment(comment);
   selectComment(comment);
   scrollToComment(comment);
