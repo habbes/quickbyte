@@ -110,13 +110,14 @@
 import { ref, computed, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { getMediaType, isPlayableMediaType } from "@quickbyte/common";
-import type { MediaWithFileAndComments, MediaType, RoleType, FrameAnnotationCollection, Comment } from "@quickbyte/common";
+import type { MediaWithFileAndComments, MediaType, RoleType, FrameAnnotationCollection, Comment, WithParent } from "@quickbyte/common";
 import { logger } from "@/app-utils";
 import VersionComparerHeader from './VersionComparerHeader.vue';
 import VersionPlayer from './VersionPlayer.vue';
 import PlaybackControls from "./PlaybackControls.vue";
 import { SidebarContainer, CommentsPanel, useCommentOperationsHelpers, findTopLevelOrChildCommentById } from "@/components/player";
 import type { AVPlayerState, DeleteCommentHandler, EditCommentHandler, SendCommentHandler} from "@/components/player";
+import { isDefined } from "@/core";
 
 type SideBarState = 'comments'|'files';
 
@@ -295,7 +296,7 @@ function seekTo(timestamp: number) {
   players.forEach(p => p.value?.seek(timestamp));
 }
 
-function seekToComment(comment: Comment) {
+function seekToComment(comment: WithParent<Comment>) {
   if (mediaType.value !== 'video' && mediaType.value !== 'audio') {
     return;
   }
@@ -309,11 +310,16 @@ function seekToComment(comment: Comment) {
     return;
   }
 
-  if (comment.timestamp === null || comment.timestamp === undefined) {
+  if (!isDefined(comment.timestamp)) {
+    // if it's a child comment, then seek to the parent
+    if (comment.parent) {
+      seekToComment(comment.parent);
+    }
+
     return;
   }
 
-  seekTo(comment.timestamp);
+  seekTo(comment.timestamp!);
 }
 
 function selectComment(comment: Comment) {

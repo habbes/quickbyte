@@ -145,7 +145,8 @@ import type {
   MediaType,
   ProjectItem,
   Media,
-  FrameAnnotationCollection
+  FrameAnnotationCollection,
+WithParent
 } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
@@ -424,7 +425,7 @@ function handleCompareVersions(v1Id: string, v2Id: string) {
 }
 
 
-function seekToComment(comment: Comment) {
+function seekToComment(comment: WithParent<Comment>) {
   if (mediaType.value !== 'video' && mediaType.value !== 'audio') {
     return;
   }
@@ -438,11 +439,16 @@ function seekToComment(comment: Comment) {
     return;
   }
 
-  if (comment.timestamp === null || comment.timestamp === undefined) {
+  if (!isDefined(comment.timestamp)) {
+    // if it's a child comment, seek to parent
+    if (comment.parent) {
+      seekToComment(comment.parent);
+    }
+  
     return;
   }
 
-  avPlayer.value.seek(comment.timestamp);
+  avPlayer.value.seek(comment.timestamp!);
 }
 
 function scrollToComment(comment: Comment) {
