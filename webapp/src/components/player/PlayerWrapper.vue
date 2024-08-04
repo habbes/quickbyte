@@ -127,6 +127,10 @@
           <ImageViewer v-else-if="file && mediaType === 'image'" :src="file.downloadUrl" class="h-[300px] sm:h-full"
             :comments="sortedComments" :selectedCommentId="selectedCommentId"
             :annotationsDrawingTool="annotationsDrawingTool" @drawAnnotations="currentAnnotations = $event" />
+          <PdfViewer v-else-if="file && mediaType === 'pdf'"
+            class="h-[300px] sm:h-full"
+            :src="file.downloadUrl"
+          />
           <div v-else class="h-[300px] sm:h-auto w-full flex items-center justify-center">
             Preview unsupported for this file type.
           </div>
@@ -158,17 +162,17 @@ import type {
   FrameAnnotationCollection,
 WithParent
 } from "@quickbyte/common";
-import { isPlayableMediaType } from "@quickbyte/common";
+import { isPlayableMediaType, getMediaType, getMimeTypeFromFilename } from "@quickbyte/common";
 import { formatTimestampDuration, ensure, isDefined, humanizeSize } from "@/core";
 import { ClockIcon, XMarkIcon, ArrowDownCircleIcon, ChatBubbleLeftRightIcon, ListBulletIcon } from '@heroicons/vue/24/outline';
 import { UiLayout } from '@/components/ui';
 import AVPlayer from './AVPlayer.vue';
 import ImageViewer from './ImageViewer.vue';
+import PdfViewer from "./PdfViewer.vue";
 import MediaPlayerVersionDropdown from "./MediaPlayerVersionDropdown.vue";
 import MediaComment from "./MediaComment.vue";
 import InPlayerMediaBrowser from './InPlayerMediaBrowser.vue';
 import VersionTitle from './VersionTitle.vue';
-import { getMediaType, getMimeTypeFromFilename } from "@/core/media-types";
 import DeleteCommentDialog from "@/components/DeleteCommentDialog.vue";
 import { DrawingTools, type DrawingToolConfig, provideCanvasController } from "@/components/canvas";
 import { findTopLevelOrChildCommentById } from "./comment-helpers.js";
