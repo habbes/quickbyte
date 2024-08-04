@@ -31,7 +31,22 @@
           {{ comment.text }}
         </div>
         <div v-else>
-          <UiExpandableTextInput v-model="editText" ref="editInput" fullWidth />
+          <!-- prevent key stroke events from bubbling up
+           to avoid interference with the global space
+           bar listener which can trigger playback of the
+           video/audio player.
+           TODO: the fact that we have to manually find
+           text boxes that could affect this is dirty.
+           Maybe we should capture the events and stop
+           propagation from a higher component?
+           -->
+          <UiExpandableTextInput
+            v-model="editText"
+            ref="editInput"
+            fullWidth
+            @keyup.stop
+            @keydown.stop
+          />
         </div>
         <div class="mt-3 mb-2 flex justify-between" v-if="!isEditMode">
           <span
@@ -57,7 +72,13 @@
         </div>
       </div>
       <div v-if="isReplyMode && !isEditMode">
-        <UiExpandableTextInput v-model="replyText" ref="replyInput" fullWidth />
+        <UiExpandableTextInput
+          v-model="replyText"
+          ref="replyInput"
+          fullWidth
+          @keydown.stop=""
+          @keyup.stop=""
+        />
       </div>
       <div v-if="isReplyMode && !isEditMode" class="flex justify-end gap-4 mt-2">
         <span
