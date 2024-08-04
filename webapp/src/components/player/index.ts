@@ -8,5 +8,6 @@ export { default as PlayerWrapper } from "./PlayerWrapper.vue";
 export { default as PlayerSkeleton } from "./PlayerSkeleton.vue";
 export { default as SidebarContainer } from "./SidebarContainer.vue";
 export { default as CommentsPanel } from "./CommentsPanel.vue";
+export { default as PdfViewer } from "./PdfViewer.vue";
 export * from './comment-helpers.js';
 export * from "./types.js";
