@@ -16,7 +16,7 @@ const imageExtensions = new Set([
     'jpg'
 ]);
 
-export type MediaType = 'image'|'audio'|'video'|'unknown';
+export type MediaType = 'image'|'audio'|'video'|'pdf'|'unknown';
 
 export function getMediaType(filename: string): MediaType {
     const rawExt = getFileExtension(filename);
@@ -36,6 +36,10 @@ export function getMediaType(filename: string): MediaType {
 
     if (audioExtensions.has(ext)) {
         return 'audio';
+    }
+
+    if (ext === 'pdf') {
+        return 'pdf';
     }
 
     return 'unknown';
@@ -59,6 +63,10 @@ export function getMimeTypeFromFilename(filename: string): string {
 
     if (mediaType === 'image') {
         return `image/${ext}`;
+    }
+
+    if (mediaType === 'pdf') {
+        return 'application/pdf';
     }
 
     // unknown media type
