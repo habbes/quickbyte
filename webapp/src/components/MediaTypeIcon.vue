@@ -6,7 +6,7 @@
   <DocumentIcon v-else :class="classes"/>
 </template>
 <script lang="ts" setup>
-import type { MediaType } from "@/core/media-types";
+import type { MediaType } from "@quickbyte/common";
 import { PlayIcon, PhotoIcon, MusicalNoteIcon, DocumentIcon, FolderIcon } from "@heroicons/vue/24/solid";
 import { computed } from "vue";
 

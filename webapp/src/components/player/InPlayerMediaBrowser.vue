@@ -43,7 +43,7 @@
   </div>
 </template>
 <script lang="ts" setup generic="T extends { type: 'folder'|'media', name: string, _id: string }">
-import type { MediaType } from '@/core/media-types';
+import type { MediaType } from '@quickbyte/common';
 import ProjectItemCardBase from "../ProjectItemCardBase.vue";
 import MediaTypeIcon from '../MediaTypeIcon.vue';
 import { ArrowUpOnSquareIcon } from "@heroicons/vue/24/outline";
