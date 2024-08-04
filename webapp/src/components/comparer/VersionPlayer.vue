@@ -72,7 +72,7 @@
         </div>
       </div>
     </div>
-    <div class="flex-1 flex items-center">
+    <div class="flex-1 flex items-center overflow-y-auto">
       <BaseAVPlayer
         ref="avPlayer"
         :style="`height: ${playerHeight}px`"
@@ -100,6 +100,10 @@
         :annotationsDrawingTool="annotationsDrawingTool"
         @drawAnnotations="handleDrawAnnotations($event)"
       />
+      <PdfViewer v-else-if="file && mediaType === 'pdf'"
+        class="h-[300px] sm:h-full"
+        :src="file.downloadUrl"
+      />
       <div v-else class="h-[300px] sm:h-auto w-full flex items-center justify-center">
         Preview unsupported for this file type.
       </div>
@@ -111,7 +115,7 @@ import { ref, computed } from "vue";
 import { getMediaType, getMimeTypeFromFilename, isPlayableMediaType } from "@quickbyte/common";
 import type { MediaWithFileAndComments, WithChildren, CommentWithAuthor, TimedCommentWithAuthor, FrameAnnotationCollection } from "@quickbyte/common";
 import { formatDateTime, formatTimestampDuration, isDefined } from "@/core";
-import { BaseAVPlayer, ImageViewer, type AVPlayerState } from "@/components/player";
+import { BaseAVPlayer, ImageViewer, PdfViewer, type AVPlayerState } from "@/components/player";
 import FileDownloadLink from "../FileDownloadLink.vue";
 import { UiMenu, UiMenuItem, UiLayout } from "@/components/ui";
 import { CheckIcon, ChevronDownIcon, SpeakerXMarkIcon, SpeakerWaveIcon } from '@heroicons/vue/24/outline';
