@@ -1,19 +1,45 @@
 import { getFileExtension } from "./util.js";
 
+// see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
+
 const videoExtensions = new Set([
     'mp4',
     'm4v',
     'mov',
-    'mkv'
+    'mkv',
+    'mpeg',
+    'ogv',
+    'avi',
+    '3gp',
+    '3g2',
+    'webm',
+    'ts' // this could be TypeScript, but I doubt the target market would be uploading typescript files :)
 ]);
 const audioExtensions = new Set([
     'mp3',
-    'wav'
+    'wav',
+    'aac',
+    'weba',
+    'mid',
+    'midi',
+    'opus',
+    'wav',
+    'oga',
 ]);
 const imageExtensions = new Set([
     'png',
     'jpeg',
-    'jpg'
+    'jpg',
+    'gif',
+    'webp',
+    'apng',
+    'avif',
+    'bmp',
+    'gif',
+    'ico',
+    'svg',
+    'tif',
+    'tiff'
 ]);
 
 export type MediaType = 'image'|'audio'|'video'|'pdf'|'unknown';
