@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DownloadTransferFileResult, FolderPathEntry, ProjectShareItem, FrameAnnotationCollection } from "./models.js";
+import { DownloadTransferFileResult, FolderPathEntry, ProjectShareItem, FrameAnnotationCollection, Media } from "./models.js";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -538,3 +538,22 @@ export const UpdateMediaVersionsArgs = z.object({
 });
 
 export type UpdateMediaVersionsArgs = z.infer<typeof UpdateMediaVersionsArgs>;
+
+export const ExtractMediaVersionsArgs = z.object({
+    projectId: z.string().min(1),
+    mediaId: z.string().min(1),
+    /**
+     * List of IDs of versions to extract into separate files.
+     * The media asset should remain with at least with version
+     * after extraction otherwise operation will fail.
+     */
+    versionIds: z.array(z.string().min(1)).min(1),
+    concurrencyControl: z.number().optional()
+});
+
+export type ExtractMediaVersionArgs = z.infer<typeof ExtractMediaVersionsArgs>;
+
+export interface ExtractMediaVersionsResult {
+    current: Media;
+    extracted: Media[];
+}
