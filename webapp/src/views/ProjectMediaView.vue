@@ -117,7 +117,7 @@
       <UiLayout ref="dropzone" innerSpace fill verticalScroll :fixedHeight="contentHeight" class="fixed" fullWidth
         :style="{ top: `${contentOffset}px`, height: contentHeight, position: 'fixed', 'overflow-y': 'auto'}"
       >
-        <div v-if="isOverDropZone" class="absolute w-full h-full flex items-center justify-center">
+        <div v-if="isOverDropZone" class="absolute w-full h-full flex items-center justify-center z-10">
           
           <div class="text-white text-lg flex flex-col items-center justify-center z-10">
             <div>
@@ -127,7 +127,7 @@
               Drop files to upload
             </div>
           </div>
-          <div class="absolute w-full h-full bg-black opacity-75"></div>
+          <div class="absolute w-full h-full bg-black opacity-60"></div>
         </div>
         <div v-if="items.length === 0 && !itemsQueryPending" class="flex flex-1 flex-col items-center justify-center gap-2">
           <div class="text-center">

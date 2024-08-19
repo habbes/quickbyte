@@ -33,6 +33,7 @@
     "hls.js": "^1.5.7",
     "idb": "^7.1.1",
     "jszip": "^3.10.1",
+    "konva": "^9.3.12",
     "lucide-vue-next": "^0.363.0",
     "luxon": "^3.4.4",
     "radix-vue": "^1.5.3",
@@ -41,6 +42,8 @@
     "tailwindcss-animate": "^1.0.7",
     "vidstack": "^1.11.3",
     "vue": "^3.3.4",
+    "vue-konva": "^3.0.2",
+    "vue-pdf-embed": "^2.1.0",
     "vue-router": "^4.2.2"
   },
   "devDependencies": {

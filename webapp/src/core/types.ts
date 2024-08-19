@@ -128,20 +128,4 @@ export interface MediaVersion extends PersistedModel {
     fileId: string;
 }
 
-export interface Comment extends PersistedModel {
-    text: string;
-    projectId: string;
-    mediaId: string;
-    mediaVersionId: string;
-    timestamp?: number;
-    author: {
-        _id: string;
-        name: string;
-    }
-}
-
-export interface TimedComment extends Comment {
-    timestamp: number;
-}
-
 export type RoleType = 'reviewer'|'editor'|'admin';

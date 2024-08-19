@@ -1,0 +1,1 @@
+export { default as VersioComparerWrapper } from "./VersionComparerWrapper.vue";

@@ -171,7 +171,7 @@ export function createMediaCommentNotificationEmail({
 }: {
     authorName: string,
     recipientName: string,
-    commentText: string,
+    commentText?: string,
     projectName: string,
     url: string
 }) {
@@ -306,5 +306,18 @@ Click <a href="${args.shareLink}">here to view the files.</a>
 </p>
 ${ passwordNote }
 ${ expirtyNote }
+`
+}
+
+export function createUserSignupAdminNotificationEmail(args : { name: string, email: string, _id: string }) {
+    return `
+<p>
+New user signed up to Quickbyte.
+</p>
+<p>
+    <b>Id</b>: ${args._id}<br>
+    <b>Name</b>: ${args.name}<br>
+    <b>Email</b>: ${args.email}<br>
+</p>
 `
 }

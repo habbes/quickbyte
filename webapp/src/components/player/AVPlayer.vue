@@ -1,13 +1,29 @@
 <template>
   <div class="w-full h-full max-h-full">
     <div v-if="mediaType === 'video'"
-      class="bg-black max-h-full"
+      class="bg-black max-h-full relative"
       :style="`height: ${videoHeight}px`"
     >
-    <!-- Getting type errors due to the props passed to the media-player.
-      Ignoring the errors until I figure out what the causes them.
-    -->
-    <!-- @vue-ignore -->
+      <div class="absolute z-10">
+        <AnnotationsCanvas
+          v-if="annotationsDrawingTool && videoWidth && videoHeight"
+          :height="videoHeight"
+          :width="videoWidth"
+          :drawingToolConfig="annotationsDrawingTool"
+          @updateAnnotations="$emit('drawAnnotations', $event)"
+        />
+        <AnnotationsCanvas
+          v-else-if="currentFrameAnnotations && videoWidth && videoHeight"
+          :height="videoHeight"
+          :width="videoWidth"
+          :annotations="currentFrameAnnotations"
+        />
+      </div>
+
+      <!-- Getting type errors due to the props passed to the media-player.
+        Ignoring the errors until I figure out what the causes them.
+      -->
+      <!-- @vue-ignore -->
       <media-player
         ref="player"
         view-type="video"
@@ -123,7 +139,7 @@
         :style="{ left: `${getPositionFromTime(comment.timestamp)}px`}"
       ></div>
     </div>
-    <div class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
+    <div v-if="!hideControls" class="bg-black border-t border-t-[#24141f] p-2 flex flex-row items-center justify-between">
       <div class="flex flex-row items-center gap-2">
         <div>
           <PlayIcon v-if="!isPlaying" class="h-5 w-5 cursor-pointer" @click="play()"/>
@@ -153,34 +169,33 @@
 <script lang="ts" setup>
 import 'vidstack/bundle';
 import { type MediaPlayer } from 'vidstack';
-import { formatTimestampDuration, type TimedComment } from '@/core';
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { formatTimestampDuration } from '@/core';
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon , MusicalNoteIcon, ArrowsPointingOutIcon} from '@heroicons/vue/24/solid';
 import Slider from '@/components/ui/Slider.vue';
+import { AnnotationsCanvas, type DrawingToolConfig } from '@/components/canvas';
 import { logger, isSpaceBarPressed } from '@/app-utils';
-import { nextTick } from 'process';
-
-type MediaSource = {
-  url: string;
-  type: 'hls'|'dash'|'raw';
-  mimeType?: string;
-};
+import type { FrameAnnotationCollection, TimedCommentWithAuthor } from '@quickbyte/common';
+import { type MediaSource, haveMediaSourcesChanged } from './media-helpers.js';
 
 const props = defineProps<{
   sources: MediaSource[];
-  comments?: TimedComment[];
+  comments?: TimedCommentWithAuthor[];
   selectedCommentId?: string;
   mediaType: 'video'|'audio';
   versionId?: string;
+  annotationsDrawingTool?: DrawingToolConfig;
+  hideControls?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'seeked'): void;
-  (e: 'clickComment', comment: TimedComment): void;
+  (e: 'clickComment', comment: TimedCommentWithAuthor): void;
   (e: 'playBackError', error: Error): void;
   (e: 'fullscreenChange', fullscreen: boolean): void;
   (e: 'widthChange', width: number): void;
   (e: 'heightChange', height: number): void;
+  (e: 'drawAnnotations', annotations: FrameAnnotationCollection): void;
 }>();
 
 defineExpose({
@@ -267,8 +282,21 @@ const bufferedSegments = computed(() => {
   return segments;
 });
 
+const selectedComment = computed(() => props.comments?.find(c => c._id === props.selectedCommentId));
 const hoveredCommentId = ref<string>();
 const hoveredComment = computed(() => props.comments?.find(c => c._id === hoveredCommentId.value));
+const currentFrameAnnotations = computed(() => {
+  if (isPlaying.value) {
+    return undefined;
+  }
+  if (selectedComment.value) {
+    return selectedComment.value.annotations;
+  }
+
+  if (hoveredComment.value) {
+    return hoveredComment.value.annotations;
+  }
+});
 // When the video player is mounted,
 // the duration is NaN
 // So we update the duration manually
@@ -312,16 +340,18 @@ watch(playerWithControllerHeight, () => {
 
 // This helps keeps track of when the media
 // source changes.
-const _sources = computed(() => props.sources);
-watch(_sources, (curr, prev) => {
-  // when the media sources change
-  // the video stops playing and we don't get "pause" event
-  // so we need to manually sync the play time and trigger
-  // the playing if the media was already playing
+watch(() => props.sources, (curr, prev) => {
+  if (!haveMediaSourcesChanged(curr, prev)) {
+    // when the media sources change
+    // the video stops playing and we don't get "pause" event
+    // so we need to manually sync the play time and trigger
+    // the playing if the media was already playing
+    // we make sure not compare the actual urls such that if the
+    // media is refetched with the same url, we don't mark canPlay as false
+    // since the player has already loaded the urls.
+    canPlay.value = false;
+  }
 
-  // we mark canPlay as false to avoid the playing
-  // when the media is not ready, which would otherwise lead to an error
-  canPlay.value = false;
   if (!player.value) return;
 
   const wasPlaying = isPlaying.value;
@@ -510,11 +540,11 @@ function handleSliderUpdate(value: number[]|undefined) {
   volume.value = value[0];
 }
 
-function handleCommentClick(comment: TimedComment) {
+function handleCommentClick(comment: TimedCommentWithAuthor) {
   emit('clickComment', comment);
 }
 
-function handleCommentMouseEnter(comment: TimedComment) {
+function handleCommentMouseEnter(comment: TimedCommentWithAuthor) {
   hoveredCommentId.value = comment._id;
 }
 

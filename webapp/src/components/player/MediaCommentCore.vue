@@ -3,6 +3,7 @@
       :id="htmlId"
       class="px-5 py-5 border-b border-b-[#120c11]"
       :class="{ 'bg-[#120c11]': selected }"
+      @click="$emit('click', comment)"
     >
       <div :style="{ 'padding-left': `${nestingPadding}px` }">
         <div class="flex flex-row items-center justify-between mb-2">
@@ -10,20 +11,42 @@
             <span class="text-sm text-white">{{ comment.author.name }}</span>
             <span :title="`Posted on ${new Date(comment._createdAt).toLocaleString()} `">{{ new Date(comment._createdAt).toLocaleDateString() }}</span>
           </div>
-          <span
-            v-if="comment.timestamp !== undefined"
-            @click="$emit('click', comment)"
-            title="Jump to this time in the video"
-            class="font-semibold text-blue-300 hover:cursor-pointer"
-          >
-            {{ formatTimestampDuration(comment.timestamp) }}
-          </span>
+          <div class="flex items-center gap-2">
+            <div
+              v-if="comment.annotations"
+              title="This comment has drawn annotations"
+            >
+              <PaintBrushIcon class="h-3 w-3" />
+            </div>
+            <span
+              v-if="comment.timestamp !== undefined"
+              title="Jump to this time in the video"
+              class="font-semibold text-blue-300 hover:cursor-pointer"
+            >
+              {{ formatTimestampDuration(comment.timestamp) }}
+            </span>
+          </div>
         </div>
         <div v-if="!isEditMode" class="text-xs whitespace-pre-line">
           {{ comment.text }}
         </div>
         <div v-else>
-          <UiExpandableTextInput v-model="editText" ref="editInput" fullWidth />
+          <!-- prevent key stroke events from bubbling up
+           to avoid interference with the global space
+           bar listener which can trigger playback of the
+           video/audio player.
+           TODO: the fact that we have to manually find
+           text boxes that could affect this is dirty.
+           Maybe we should capture the events and stop
+           propagation from a higher component?
+           -->
+          <UiExpandableTextInput
+            v-model="editText"
+            ref="editInput"
+            fullWidth
+            @keyup.stop
+            @keydown.stop
+          />
         </div>
         <div class="mt-3 mb-2 flex justify-between" v-if="!isEditMode">
           <span
@@ -49,7 +72,13 @@
         </div>
       </div>
       <div v-if="isReplyMode && !isEditMode">
-        <UiExpandableTextInput v-model="replyText" ref="replyInput" fullWidth />
+        <UiExpandableTextInput
+          v-model="replyText"
+          ref="replyInput"
+          fullWidth
+          @keydown.stop=""
+          @keyup.stop=""
+        />
       </div>
       <div v-if="isReplyMode && !isEditMode" class="flex justify-end gap-4 mt-2">
         <span
@@ -87,6 +116,7 @@ import type { CommentWithAuthor } from "@quickbyte/common";
 import { formatTimestampDuration} from "@/core";
 import { UiExpandableTextInput } from "@/components/ui";
 import { PencilIcon, TrashIcon } from "@heroicons/vue/24/solid";
+import { PaintBrushIcon } from "@heroicons/vue/24/outline";
 
 const props = defineProps<{
   comment: CommentWithAuthor;

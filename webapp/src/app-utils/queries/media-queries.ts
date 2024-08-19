@@ -139,7 +139,18 @@ export function updateMediaAssetInQuery<TMedia extends Media>(
             });
         }
 
-        const updatedData = { ...oldData, ...update, versions: updatedVersions };
+        // Since we don't copy all the versions from the new data, then it's possible
+        // the preferred version won't be in the versions array. So let's
+        // ensure the referred version exist, otherwise we retain the old one
+        const preferredVersionId = updatedVersions.some(v => v._id == update.preferredVersionId) ?
+            update.preferredVersionId : oldData.preferredVersionId;
+
+        const updatedData = {
+            ...oldData,
+            ...update,
+            versions: updatedVersions,
+            preferredVersionId
+        };
 
         return updatedData
     });

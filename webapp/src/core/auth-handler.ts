@@ -83,6 +83,7 @@ export class AuthHandler {
      * does not support switching between multiple active accounts.
      */
     clearLocalSession() {
+        this.authenticated.value = false;
         localStorage.removeItem(TOKEN_OBJECT_STORAGE_KEY);
         localStorage.removeItem(TOKEN_CODE_STORAGE_KEY);
     }

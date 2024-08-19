@@ -3,7 +3,7 @@ import { createAppError, createAuthError, createDbError, createInvalidAppStateEr
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
 import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs, LoginWithGoogleRequestArgs, AuthProvider, Principal } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
-import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createWelcomeEmail } from "./index.js";
+import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createUserSignupAdminNotificationEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
 import { IAccessHandler } from "./access-handler.js";
 import { Database } from "../db.js";
@@ -113,6 +113,13 @@ export class AuthService {
                 subject: 'Welcome to Quickbyte',
                 message: createWelcomeEmail(user.name, this.args.webappBaseUrl)
             });
+
+            // Fire and forget
+            this.args.adminAlerts.sendNotification("New user signup", createUserSignupAdminNotificationEmail({
+                name: user.name,
+                email: user.email,
+                _id: user._id
+            })).catch(e => console.error(`Error sending new user notification email: ${e}`));
 
             await this.createEmailVerification(user._id, user.email, user.name);
             return user;
@@ -262,12 +269,6 @@ export class AuthService {
             const googleId = payload.sub;
 
             const baseModel = createPersistedModel({ type: 'system', _id: 'system' });
-
-            
-
-            
-
-            
 
             // What to do if there's already another account with the same
             // email?

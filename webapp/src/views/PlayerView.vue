@@ -22,6 +22,7 @@
     @updateMedia="handleMediaUpdate($event)"
     @browserItemClick="handleBrowserItemClick($event)"
     @browserToParentFolder="handleBrowserToParentFolder()"
+    @compareVersions="handleCompareVersions"
   />
   <PlayerSkeleton
     v-else-if="!media"
@@ -34,7 +35,7 @@ import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useQueryClient } from "@tanstack/vue-query";
 import { logger, showToast, store, useProjectItemsQuery, useMediaAssetQuery, invalidateMediaAssetQuery, useCreateMediaCommentMutation, useDeleteMediaCommentMutation, useUpdateMediaCommentMutation } from "@/app-utils";
-import type { ProjectItem, Media } from "@quickbyte/common";
+import type { ProjectItem, Media, FrameAnnotationCollection } from "@quickbyte/common";
 import { ensure, unwrapSingleton, unwrapSingletonOrUndefined } from "@/core";
 import { PlayerWrapper, PlayerSkeleton } from "@/components/player";
 
@@ -111,15 +112,40 @@ async function handleSelectVersion(versionId: string) {
   router.push({ query: { ...route.query, version: versionId }});
 }
 
+function handleCompareVersions(v1Id: string, v2Id: string) {
+  if (!media.value) {
+    return;
+  }
+
+  router.push({
+    name: 'compare-versions',
+    params: {
+      projectId: unwrapSingleton(route.params.projectId),
+      mediaId: media.value._id
+    },
+    query: {
+      v1: v1Id,
+      v2: v2Id
+    }
+  });
+}
+
 function closePlayer() {
-  router.push({ name: 'project-media', params: { projectId: route.params.projectId as string, folderId: media.value?.folderId } })
+  router.push({
+    name: 'project-media',
+    params: {
+      projectId: unwrapSingleton(route.params.projectId),
+      folderId: media.value?.folderId
+    } 
+  });
 }
 
 async function sendComment(args: {
-  text: string;
+  text?: string;
   versionId: string;
   timestamp?: number;
   parentId?: string;
+  annotations?: FrameAnnotationCollection
 }) {
   const projectId = ensure(route.params.projectId) as string;
   const mediaId = ensure(route.params.mediaId) as string;
@@ -130,7 +156,8 @@ async function sendComment(args: {
     mediaVersionId: args.versionId,
     text: args.text,
     timestamp: args.timestamp,
-    parentId: args.parentId
+    parentId: args.parentId,
+    annotations: args.annotations
   });
     
   return { ...comment, children: [] };

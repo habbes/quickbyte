@@ -1,4 +1,4 @@
-import { string } from "zod";
+import z from "zod";
 
 export interface PersistedModel {
     _id: string;
@@ -416,12 +416,13 @@ export interface MediaVersion extends PersistedModel, Deleteable {
 }
 
 export interface Comment extends PersistedModel, Deleteable {
-    text: string;
+    text?: string;
     projectId: string;
     mediaId: string;
     mediaVersionId: string;
     timestamp?: number;
     parentId?: string;
+    annotations?: FrameAnnotationCollection;
 }
 
 export interface CommentWithAuthor extends Comment {
@@ -431,13 +432,19 @@ export interface CommentWithAuthor extends Comment {
     }
 }
 
+export interface TimedComment extends Comment {
+    timestamp: number;
+}
+
 export interface TimedCommentWithAuthor extends CommentWithAuthor {
     timestamp: number;
 }
 
 export type WithChildren<T> = T & {
-    children: T[];
+    children: WithChildren<T>[];
 }
+
+export type WithParent<T> = T & { parent?: T | undefined };
 
 export type FileKind = 'video'|'image'|'audio'|'document'|'other';
 
@@ -595,3 +602,92 @@ export type WithCreator<T> = T & {
         name: string;
     }
 };
+
+/**
+ * Arbitrary line
+ */
+export const FrameAnnotationPath = z.object({
+    type: z.literal('path'),
+    id: z.string().min(1),
+    strokeColor: z.string().min(1),
+    strokeWidth: z.number().positive(),
+    /**
+     * A flattened array of x, y coordinate pairs.
+     * Every 2n-th item is an x coordinate and every 2n+1-th item is a y coordinate.
+     */
+    points: z.array(z.number())
+});
+
+export const FrameAnnotationCircle = z.object({
+    type: z.literal("circle"),
+    id: z.string().min(1),
+    strokeColor: z.string().min(1),
+    strokeWidth: z.number().positive(),
+    x: z.number(),
+    y: z.number(),
+    radius: z.number()
+});
+
+export const FrameAnnotationRect = z.object({
+    type: z.literal("rect"),
+    id: z.string().min(1),
+    strokeColor: z.string().min(1),
+    strokeWidth: z.number().positive(),
+    /**
+     * x coordinate of the top-left corner
+     */
+    x: z.number(),
+    /**
+     * y coordinate of the top-left corner
+     */
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    cornerRadius: z.number()
+});
+
+/**
+ * Straighe line
+ */
+export const FrameAnnotationLine = z.object({
+    type: z.literal("line"),
+    id: z.string().min(1),
+    strokeColor: z.string().min(1),
+    strokeWidth: z.number().positive(),
+    x1: z.number(),
+    y1: z.number(),
+    x2: z.number(),
+    y2: z.number()
+});
+
+export const FrameAnnotationText = z.object({
+    type: z.literal("text"),
+    id: z.string().min(1),
+    color: z.string().min(1),
+    backgroundColor: z.string().optional(),
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    fontFamily: z.string(),
+    fontSize: z.number(),
+    lineHeight: z.number(),
+    fontStyle: z.enum(['normal', 'bold']).optional(),
+    text: z.string()
+});
+
+export const FrameAnnotationShape = z.union([FrameAnnotationCircle, FrameAnnotationPath, FrameAnnotationRect, FrameAnnotationLine, FrameAnnotationText]);
+
+export const FrameAnnotationCollection = z.object({
+    width: z.number().positive(),
+    height: z.number().positive().optional(),
+    annotations: z.array(FrameAnnotationShape)
+});
+
+export type FrameAnnotationPath = z.infer<typeof FrameAnnotationPath>;
+export type FrameAnnotationCircle = z.infer<typeof FrameAnnotationCircle>;
+export type FrameAnnotationRect = z.infer<typeof FrameAnnotationRect>;
+export type FrameAnnotationLine = z.infer<typeof FrameAnnotationLine>;
+export type FrameAnnotationText = z.infer<typeof FrameAnnotationText>;
+export type FrameAnnotationShape = z.infer<typeof FrameAnnotationShape>;
+export type AnnotationShapeType = FrameAnnotationShape["type"];
+export type FrameAnnotationCollection = z.infer<typeof FrameAnnotationCollection>;
