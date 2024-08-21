@@ -2,10 +2,18 @@
   <div>
     <h1>Download</h1>
     <div>
-      <label>
-        <span>Enter link:</span>
-        <input type="text" v-model="link" />
-      </label>
+      <div>
+        <label>
+          <span>Enter link:</span>
+          <input type="text" v-model="link" />
+        </label>
+      </div>
+      <div>
+        <label>
+          <span>Destination path:</span>
+          <input type="text" v-model="targetPath" />
+        </label>
+      </div>
       <div>
         <button type="button" @click="fetchLink()">Start</button>
       </div>
@@ -21,6 +29,7 @@ import { invoke } from "@tauri-apps/api";
 import { trpcClient } from "../app-utils/index.js";
 
 const link = ref<string>('http://localhost:5173/share/oEmxse-TDmz84AFR5R4nQw/ZdEkHATyq4jfr8QvIZCG_Q');
+const targetPath = ref<string>("/Users/habbes/todel/download");
 const log = ref('');
 
 async function fetchLink() {
@@ -45,7 +54,15 @@ async function fetchLink() {
     });
     log.value += `\nResult\n${JSON.stringify(result, null, 2)}`;
 
-    await invoke('download_share', { files: result.files });
+    await invoke('download_shared_link', {
+      linkRequest: {
+        shareId: shareId,
+        shareCode: code,
+        name: "Files to Download",
+        targetPath: targetPath.value,
+        files: result.files
+      }
+    });
   }
   catch (e: any) {
     log.value += `\nError ${e}`;

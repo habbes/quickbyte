@@ -102,6 +102,7 @@ fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![greet])
     .invoke_handler(tauri::generate_handler![download_share])
+    .invoke_handler(tauri::generate_handler![download_shared_link])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
