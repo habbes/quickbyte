@@ -1,8 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use serde::{Serialize, Deserialize};
+pub mod quickbyte;
 
+use serde::{Serialize, Deserialize};
+use crate::quickbyte::downloader::{SharedLinkDownloadRequest, SharedLinkDownloader};
 
 use azure_core::error::{ErrorKind, ResultExt};
 use azure_storage::prelude::*;
@@ -61,6 +63,12 @@ async fn download_share(files: Vec<ShareDownloadFile>) {
             eprintln!("Error awaiting task: {:?}", e);
         }
     }
+}
+
+#[tauri::command]
+async fn download_shared_link(link_request: SharedLinkDownloadRequest) {
+  let downloader = SharedLinkDownloader::new(&link_request);
+  downloader.start_download().await;
 }
 
 async fn az_download_file(file: &ShareDownloadFile) -> Result<(), Box<dyn std::error::Error>> {
