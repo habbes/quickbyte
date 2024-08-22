@@ -1,12 +1,12 @@
 import { createWebHistory, createRouter } from 'vue-router'
 import DownloadLinkView from './views/DownloadLinkView.vue';
 import UploadView from './views/UploadView.vue';
-import TestView from './views/TestView.vue';
+import HomeView from '@/views/HomeView.vue';
 
 const routes = [
   {
     path: '/',
-    component: TestView,
+    component: HomeView,
   },
   {
     path: '/download',
