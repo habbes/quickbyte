@@ -10,7 +10,7 @@ const routes = [
   },
   {
     path: '/download',
-    name: 'download',
+    name: 'download-link',
     component: DownloadLinkView
   },
   {

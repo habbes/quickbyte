@@ -8,6 +8,8 @@
     </div>
     <router-link
       class="flex items-center border-t-[0.5px] border-t-gray-700 hover:bg-[#2a1824] h-12 px-2 text-sm"
+      activeClass="bg-[#2a1924]"
+      :to="{ name: 'download-link' }"
     >
       Download link
     </router-link>
