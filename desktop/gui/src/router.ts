@@ -16,11 +16,6 @@ const routes = [
     component: DownloadLinkView
   },
   {
-    path: '/upload',
-    name: 'upload',
-    component: UploadView
-  },
-  {
     path: '/project',
     name: 'project',
     component: ProjectView
