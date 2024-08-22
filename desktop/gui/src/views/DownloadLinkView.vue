@@ -50,6 +50,7 @@ async function fetchLink() {
     const shareId = segments.at(-2)!;
     const code = segments.at(-1)!;
 
+    console.log('target path', targetPath.value);
     console.log('sharedId', shareId);
     console.log('code', code);
     console.log(`shareId ${shareId}, code ${code}`);
