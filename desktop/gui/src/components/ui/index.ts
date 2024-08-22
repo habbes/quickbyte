@@ -1,0 +1,1 @@
+export { default as UiTextInput } from "./UiTextInput.vue";
