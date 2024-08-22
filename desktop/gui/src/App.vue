@@ -1,29 +1,26 @@
 <template>
-  <div>
-    <h2>Welcome to Quickbyte Transfer</h2>
-    <div>
-      <div>
-        <h3>Start a transfer</h3>
-        <div>
-          Upload files to share with a client
-        </div>
-        <router-link :to="{ name: 'upload' }">Get started</router-link>
+  <div class="h-screen flex items-stretch bg-[#24141f]">
+    <div class="w-[250px] text-white flex flex-col">
+      <div class="flex items-center border-b-[0.5px] border-b-gray-700 h-12 px-2">
+        Username
       </div>
-      <div>
-        <h3>Download from a shared link</h3>
-        <div>
-          Download files shared to you from a Quickbyte link.
-        </div>
-        <router-link :to="{ name: 'download' }">Get started.</router-link>
+      <div class="flex-1">
+        
       </div>
-      <div>
-        <h3>Access projects</h3>
-        <div>
-          Upload or download files to your Quickbyte projects.
-        </div>
+      <div class="flex items-center border-t-[0.5px] border-t-gray-700 h-12 px-2">
+        Transfers
       </div>
     </div>
-    <router-view></router-view>
+    <div class="flex-1 h-full bg-[#2a2638] text-white">
+      <div>
+          <div>
+            Upload files
+          </div>
+          <div>
+            Download from shared link
+          </div>
+        </div>
+    </div>
   </div>
 </template>
 <script setup lang="ts">
