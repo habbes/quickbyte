@@ -30,7 +30,8 @@ const store = {
     user,
     projects,
     accounts,
-    currentProject
+    currentProject,
+    selectedProjectId
 };
 
 

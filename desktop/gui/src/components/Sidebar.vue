@@ -12,13 +12,24 @@
     >
       Login to view project
     </router-link>
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto text-sm py-4 px-2">
       <div v-for="account in groupedProjects" :key="account._id">
-        <div>
+        <div
+          class="px-2 cursor-pointer"
+          @click="toggleAccountExpanded(account._id)"
+        >
           {{ account.name }}
         </div>
-        <div>
-          <div v-for="project in account.projects" :key="project._id">
+        <div class="p-2" v-if="isAccountExpanded(account._id)">
+          <div
+            v-for="project in account.projects"
+            :key="project._id"
+            @click="handleProjectClick(project._id)"
+            class="p-4 py-2 cursor-pointer"
+            :class="{
+              'bg-gray-800 rounded-sm text-white': project._id === selectedProjectId
+            }"
+          >
             {{ project.name }}
           </div>
         </div>
@@ -37,8 +48,9 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed } from "vue";
-import { store } from "@/app-utils";
+import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
+import { store, setCurrentProject } from "@/app-utils";
 import type { WithRole, Project } from '@quickbyte/common';
 
 type AccountWithProjects = {
@@ -47,7 +59,10 @@ type AccountWithProjects = {
   projects: WithRole<Project>[];
 };
 
+const router = useRouter();
 const user = store.user;
+const selectedProjectId = store.selectedProjectId;
+const collapsedAccounts = ref<Set<string>>(new Set());
 
 const groupedProjects = computed<AccountWithProjects[]>(() => {
   const result: AccountWithProjects[] = [];
@@ -62,5 +77,22 @@ const groupedProjects = computed<AccountWithProjects[]>(() => {
 
   return result;
 });
+
+function handleProjectClick(id: string) {
+  setCurrentProject(id);
+  router.push({ name: 'project' });
+}
+
+function isAccountExpanded(id: string) {
+  return !collapsedAccounts.value.has(id);
+}
+
+function toggleAccountExpanded(id: string) {
+  if (collapsedAccounts.value.has(id)) {
+    collapsedAccounts.value.delete(id);
+  } else {
+    collapsedAccounts.value.add(id);
+  }
+}
 
 </script>

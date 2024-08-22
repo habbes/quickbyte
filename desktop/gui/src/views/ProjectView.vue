@@ -8,7 +8,7 @@
     Selected project: {{ project.name }}
   </div>
 </template>
-<script lang="ts">
+<script lang="ts" setup>
 import { watch } from "vue";
 import { useRouter } from "vue-router";
 import { store } from "@/app-utils";
