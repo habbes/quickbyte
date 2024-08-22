@@ -1,48 +1,58 @@
 <template>
-  <div>
-    <h1>Download</h1>
+  <form class="px-4 py-2 flex flex-col gap-2" @submit.prevent>
     <div>
-      <div>
-        <label>
-          <span>Enter link:</span>
-          <input type="text" v-model="link" />
-        </label>
-      </div>
-      <div>
-        <label>
-          <span>Destination path:</span>
-          <input type="text" v-model="targetPath" />
-        </label>
-      </div>
-      <div>
-        <button type="button" @click="fetchLink()">Start</button>
-      </div>
-      <pre>
-        {{ log }}
-      </pre>
+      <UiTextInput
+        v-model="link"
+        label="Enter the download link shared with you"
+        fullWidth
+        placeholder="Enter download link"
+        required
+      />
     </div>
-  </div>
+    <div>
+      <UiButton
+        @click="fetchLink()"
+        primary
+        submit
+      >
+        Start download
+      </UiButton>
+    </div>
+  </form>
 </template>
 <script lang="ts" setup>
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api";
+import { open } from "@tauri-apps/api/dialog";
 import { trpcClient } from "../app-utils/index.js";
+import { UiTextInput, UiButton } from "@/components/ui";
+import { unwrapSingleton } from "@quickbyte/common";
 
-const link = ref<string>('http://localhost:5173/share/oEmxse-TDmz84AFR5R4nQw/ZdEkHATyq4jfr8QvIZCG_Q');
-const targetPath = ref<string>("/Users/habbes/todel/download");
-const log = ref('');
+const link = ref<string>();
+const targetPath = ref<string|null|undefined>();
 
 async function fetchLink() {
+  if (!link.value) return;
   try {
+    const saveDialogResult = await open({
+      title: 'Download files too...',
+      directory: true,
+      multiple: false
+    });
 
-    "http://localhost:5173/share/oEmxse-TDmz84AFR5R4nQw/ZdEkHATyq4jfr8QvIZCG_Q";
+    if (!saveDialogResult) {
+      alert("No destination selected");
+      return;
+    }
+
+    targetPath.value = unwrapSingleton(saveDialogResult);
     const segments = link.value.split('/');
     const shareId = segments.at(-2)!;
     const code = segments.at(-1)!;
 
     console.log('sharedId', shareId);
     console.log('code', code);
-    log.value = `shareId ${shareId}, code ${code}`;
+    console.log(`shareId ${shareId}, code ${code}`);
     // const args = {
     //   shareId,
     //   code
@@ -52,7 +62,8 @@ async function fetchLink() {
       shareId,
       shareCode: code
     });
-    log.value += `\nResult\n${JSON.stringify(result, null, 2)}`;
+
+    console.log(`Result\n${JSON.stringify(result, null, 2)}`);
 
     await invoke('download_shared_link', {
       linkRequest: {
@@ -63,9 +74,11 @@ async function fetchLink() {
         files: result.files
       }
     });
+
+    alert("Download complete");
   }
   catch (e: any) {
-    log.value += `\nError ${e}`;
+    alert("Error ${e}`");
   }
 }
 </script>

@@ -80,3 +80,17 @@ const EMAIL_REGEX = /^[^@,;\s]+@[^@,;\s]+\.[^@,;\s]+$/;
 export function isEmail(value: string) {
     return EMAIL_REGEX.test(value);
 }
+
+export function unwrapSingleton<T>(value: T | T[]): T {
+    const singleton = unwrapSingletonOrUndefined(value);
+    return ensure(singleton);
+}
+
+export function unwrapSingletonOrUndefined<T>(value: T | T[] | undefined): T|undefined {
+    return Array.isArray(value) ? value[0] : value;
+}
+
+export function ensure<T>(obj?: T|undefined|null, message?: string): T {
+    if (!obj) throw new Error(message || 'Expected object to be defined.');
+    return obj;
+}
