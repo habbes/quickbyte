@@ -7,6 +7,7 @@
         <div>
           Upload files to share with a client
         </div>
+        <router-link :to="{ name: 'upload' }">Get started</router-link>
       </div>
       <div>
         <h3>Download from a shared link</h3>

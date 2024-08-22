@@ -1,5 +1,6 @@
 import { createWebHistory, createRouter } from 'vue-router'
 import DownloadLinkView from './views/DownloadLinkView.vue';
+import UploadView from './views/UploadView.vue';
 import TestView from './views/TestView.vue';
 
 const routes = [
@@ -11,6 +12,11 @@ const routes = [
     path: '/download',
     name: 'download',
     component: DownloadLinkView
+  },
+  {
+    path: '/upload',
+    name: 'upload',
+    component: UploadView
   }
 ];
 

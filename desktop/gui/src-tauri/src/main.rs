@@ -5,6 +5,7 @@ pub mod quickbyte;
 
 use serde::{Serialize, Deserialize};
 use crate::quickbyte::downloader::{SharedLinkDownloadRequest, SharedLinkDownloader};
+use crate::quickbyte::uploader::{TransferUploader, UploadFilesRequest};
 
 use azure_core::error::{ErrorKind, ResultExt};
 use azure_storage::prelude::*;
@@ -71,6 +72,34 @@ async fn download_shared_link(link_request: SharedLinkDownloadRequest) {
   downloader.start_download().await;
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct GetFileSizeResponse {
+  path: String,
+  name: String,
+  size: u64
+}
+
+#[tauri::command]
+async fn get_file_sizes(files: Vec<String>) -> Vec<GetFileSizeResponse> {
+  println!("Fetching file sizes");
+  files.iter().map(|f| {
+    let metadata = std::fs::metadata(f).unwrap();
+    let name = Path::new(f).file_name().unwrap();
+
+    GetFileSizeResponse {
+      path: f.clone(),
+      name: String::from(name.to_str().unwrap()),
+      size: metadata.len()
+    }
+  }).collect()
+}
+
+#[tauri::command]
+async fn upload_files(request: UploadFilesRequest) {
+  let uploader = TransferUploader::new(&request);
+  uploader.start_upload().await;
+}
+
 async fn az_download_file(file: &ShareDownloadFile) -> Result<(), Box<dyn std::error::Error>> {
   let url = url::Url::parse(&file.download_url)?;
   let client = BlobClient::from_sas_url(&url).unwrap();
@@ -100,9 +129,13 @@ async fn az_download_file(file: &ShareDownloadFile) -> Result<(), Box<dyn std::e
 
 fn main() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![greet])
-    .invoke_handler(tauri::generate_handler![download_share])
-    .invoke_handler(tauri::generate_handler![download_shared_link])
+    .invoke_handler(tauri::generate_handler![
+      greet,
+      download_share,
+      download_shared_link,
+      get_file_sizes,
+      upload_files
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
