@@ -18,7 +18,7 @@
         <button type="button"
           class="flex-1 text-sm text-gray-200 border border-black active:bg-[#1f141b] hover:bg-[#31202b] rounded-md inline-flex justify-center items-center px-2 py-1"
         >Upload</button> -->
-        <UiButton class="flex-1" sm>Upload</UiButton>
+        <UiButton @click="uploadToProject()" class="flex-1" sm>Upload</UiButton>
         <UiButton class="flex-1" sm>Download</UiButton>
       </div>
     </div>
@@ -29,7 +29,7 @@
         class="list-none select-none rounded-lg p-2 text-sm font-medium"
         :items="treeItems"
         :get-key="(item) => item._id"
-        :default-expanded="['components']"
+        v-model="selectedTreeItem"
       >
         <TreeItem
           v-for="item in flattenItems"
@@ -70,23 +70,34 @@ import { useRouter } from "vue-router";
 import { store, trpcClient } from "@/app-utils";
 import { UiButton } from "@/components/ui";
 import type { GetProjectItemsResult } from "@quickbyte/common";
-import { message } from "@tauri-apps/api/dialog";
+import { message, open } from "@tauri-apps/api/dialog";
+import { invoke } from "@tauri-apps/api";
 import { TreeItem, TreeRoot } from 'radix-vue'
 import { Icon } from '@iconify/vue'
+
+type TreeEntry = {
+  _id: string;
+  title: string;
+  icon: string;
+  type: 'folder' | 'media';
+  children: TreeEntry[];
+};
 
 const router = useRouter();
 
 const project = store.currentProject;
 const items = ref<GetProjectItemsResult>();
+const selectedTreeItem = ref<TreeEntry>();
 
-const treeItems = computed(() => {
-  if (!items.value) return [];
+const treeItems = computed<TreeEntry[]>(() => {
+  if (!items.value) return [] as TreeEntry[];
   return items.value.items.map((item) => {
     return {
       _id: item._id,
       title: item.name,
       icon: item.type === 'folder' ? 'lucide:folder' : 'lucide:file',
-      children: []
+      type: item.type,
+      children: [] as TreeEntry[]
     };
   });
 });
@@ -116,5 +127,43 @@ async function fetchProjects() {
   catch (e: any) {
     await message(`Error: ${e}`, { type: 'error' });
   }
+}
+
+async function uploadToProject() {
+  if (!store.selectedProjectId.value) {
+    return;
+  }
+  // Open a selection dialog for directories
+  const selected = await open({
+    multiple: true,
+    recursive: true,
+  });
+
+  const files = await invoke<{ path: string, name: string, size: number }[]>('get_file_sizes', { files: selected });
+
+  const result = await trpcClient.uploadProjectMedia.mutate({
+    projectId: store.selectedProjectId.value,
+    folderId: selectedTreeItem.value && selectedTreeItem.value.type === 'folder' ? selectedTreeItem.value._id : undefined,
+    provider: 'az',
+    region: 'northsa',
+    files: files.map(f => ({
+      name: f.name,
+      size: f.size
+    }))
+  });
+
+  const request = {
+    transferId: result.transfer._id,
+    files: result.transfer.files.map(f => {
+      const matchedFile = files.find(meta => meta.name === f.name)!;
+      return {
+        path: matchedFile.path,
+        name: matchedFile.name,
+        transferFile: f
+      }
+    })
+  };
+
+  await invoke('upload_files', { request });
 }
 </script>
