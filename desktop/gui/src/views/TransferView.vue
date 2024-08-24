@@ -15,15 +15,23 @@
           <div>
             {{ transfer.numFiles }} {{ pluralize("file", transfer.numFiles) }}
           </div>
+          <Icon icon="lucide:dot" />
           <div>
             {{ humanizeSize(transfer.totalSize) }}
           </div>
+          <Icon icon="lucide:dot" />
           <div>
             {{ formatPercentage(transfer.completedSize, transfer.totalSize ) }}
           </div>
         </div>
       </div>
     </PageHeader>
+    <div>
+      <FileTree
+        v-if="transfer.type === 'download'"
+        :files="transfer.files"
+      />
+    </div>
   </div>
   <EmptyDataPageContainer v-else>
     Transfer not found.
@@ -37,6 +45,7 @@ import { store } from "@/app-utils";
 import { Icon } from '@iconify/vue';
 import EmptyDataPageContainer from "@/components/EmptyDataPageContainer.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import FileTree from "@/components/FileTree.vue";
 
 const route = useRoute();
 const transfer = computed(() => store.transfers.value.find(t => t._id === unwrapSingletonOrUndefined(route.params.id)));

@@ -38,7 +38,7 @@ const sampleTransfers: TransferJob[] = [
         numFiles: 5,
         status: 'completed',
         type: 'download',
-        files: {
+        files: [{
             _id: 'file1',
             name: 'File 1',
             size: 2000000,
@@ -46,7 +46,7 @@ const sampleTransfers: TransferJob[] = [
             remoteUrl: 'https://example.com/file1',
             localPath: '/local/path/file1',
             status: 'completed'
-        }
+        }]
     },
     {
         _id: '3',
@@ -56,7 +56,7 @@ const sampleTransfers: TransferJob[] = [
         numFiles: 8,
         status: getRandomStatus(),
         type: 'download',
-        files: {
+        files: [{
             _id: 'file2',
             name: 'File 2',
             size: 3000000,
@@ -64,7 +64,25 @@ const sampleTransfers: TransferJob[] = [
             remoteUrl: 'https://example.com/file2',
             localPath: '/local/path/file2',
             status: 'progress'
-        }
+        },
+        {
+            _id: 'file3',
+            name: 'Folder 1/File 2',
+            size: 3000000,
+            completedSize: 1500000,
+            remoteUrl: 'https://example.com/file2',
+            localPath: '/local/path/file2',
+            status: 'progress'
+        },
+        {
+            _id: 'file4',
+            name: 'Folder 1/File 3',
+            size: 3000000,
+            completedSize: 1500000,
+            remoteUrl: 'https://example.com/file2',
+            localPath: '/local/path/file2',
+            status: 'progress'
+        },]
     }
 ];
 

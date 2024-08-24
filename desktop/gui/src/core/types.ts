@@ -20,7 +20,7 @@ interface UploadTransferJob extends BaseTransferJob {
 
 interface DownloadTransferJob extends BaseTransferJob {
     type: 'download';
-    files: DownloadTransferFileJob
+    files: DownloadTransferFileJob[]
 }
 
 export interface DownloadTransferFileJob {
