@@ -21,6 +21,7 @@
         v-for="transfer in transfers"
         :key="transfer._id"
         class="group flex py-2 border-b-[0.5px] border-b-gray-700 cursor-pointer"
+        @dblclick="goToTransfer(transfer._id)"
       >
         <div class="flex-1 group-hover:text-white">
           {{ transfer.name }}
@@ -32,15 +33,21 @@
           {{ humanizeSize(transfer.totalSize) }}
         </div>
         <div class="w-[85px]">
-
+          {{ formatPercentage(transfer.completedSize, transfer.totalSize, 1) }}
         </div>
       </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
+import { useRouter } from "vue-router";
 import { store } from "@/app-utils";
-import { humanizeSize } from "@quickbyte/common";
+import { humanizeSize, formatPercentage } from "@quickbyte/common";
 
+const router = useRouter();
 const transfers = store.transfers;
+
+function goToTransfer(id: string) {
+  router.push({ name: 'transfer', params: { id } });
+}
 </script>

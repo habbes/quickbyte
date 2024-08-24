@@ -4,6 +4,7 @@ import HomeView from '@/views/HomeView.vue';
 import ProjectView from "@/views/ProjectView.vue";
 import LoginView from "@/views/LoginView.vue";
 import TransfersView from "@/views/TransfersView.vue";
+import TransferView from "@/views/TransferView.vue";
 
 const routes = [
   {
@@ -30,6 +31,11 @@ const routes = [
     path: '/transfers',
     name: 'transfers',
     component: TransfersView
+  },
+  {
+    path: '/transfers/:id',
+    name: 'transfer',
+    component: TransferView
   }
 ];
 

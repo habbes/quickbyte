@@ -123,3 +123,9 @@ export function humanizeSize(bytes: number): string {
     const tbs = (bytes / BYTES_PER_TB).toLocaleString(undefined, { maximumFractionDigits: 2 });;
     return `${tbs} TB`;
 }
+
+export function formatPercentage(value: number, total: number, decimals: number = 2) {
+    const percent = 100 * value / total;
+    const formatted = `${percent.toFixed(decimals)}%`;
+    return formatted;
+}
