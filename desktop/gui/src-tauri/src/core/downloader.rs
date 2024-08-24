@@ -2,7 +2,7 @@ use azure_storage_blobs::prelude::BlobClient;
 use serde::{Serialize, Deserialize};
 use std::{fs::File, io::Write, os::unix::fs::FileExt, sync::Arc};
 use tokio::task;
-use crate::quickbyte::models::{DownloadJob,DownloadFileJob, JobStatus};
+use crate::core::models::{DownloadJob,DownloadFileJob, JobStatus};
 use futures::stream::StreamExt;
 use std::time::Instant;
 
