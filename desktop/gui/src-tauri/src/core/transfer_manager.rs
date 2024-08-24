@@ -22,7 +22,12 @@ impl<'a> TransferManager<'a> {
   pub async fn execute_request(&mut self, request: Request) {
     match request {
       Request::DownloadSharedLink(download_request) => self.start_download(download_request).await,
+      Request::GetTransfers => self.broadcast_transfers()
     }
+  }
+
+  pub fn broadcast_transfers(&self) {
+    self.events.send(Event::Transfers(self.transfers.clone()))
   }
 
   pub async fn start_download(&mut self, request: SharedLinkDownloadRequest) {
@@ -31,6 +36,9 @@ impl<'a> TransferManager<'a> {
     let job = self.init_download_job(id.to_string(), &request);
     self.transfers.push(job);
     let job = &self.transfers[self.transfers.len() - 1];
+  
+    self.events.send(Event::TransferCreated(job.clone()));
+
     let downloader = SharedLinkDownloader::new(&job);
     downloader.start_download(id.to_string()).await;
   }
