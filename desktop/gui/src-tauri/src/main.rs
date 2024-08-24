@@ -2,13 +2,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 pub mod core;
-pub mod request_manager;
+pub mod message_channel;
 pub mod commands;
+pub mod event_bridge;
 
 use serde::{Serialize, Deserialize};
+use tauri::Manager;
 use crate::core::downloader::{SharedLinkDownloadRequest, SharedLinkDownloader};
 use crate::core::uploader::{TransferUploader, UploadFilesRequest};
 use commands::{send_download_share_link_request};
+use event_bridge::bridge_events;
+use crate::core::event::Event;
 
 use azure_core::error::{ErrorKind, ResultExt};
 use azure_storage::prelude::*;
@@ -145,10 +149,17 @@ use std::path::Path;
 // }
 
 fn main() {
-  let app_context = AppContext::new();
-
   tauri::Builder::default()
-    .manage(app_context)
+    .setup(|app| {
+      let app_handle = app.handle();
+      let app_context = AppContext::new(move |event| {
+        bridge_events(&app_handle, event)
+      });
+      
+      app.manage(app_context);
+
+      Ok(())
+    })
     .invoke_handler(tauri::generate_handler![
       send_download_share_link_request
     ])
