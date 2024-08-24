@@ -35,8 +35,8 @@
 </template>
 <script lang="ts" setup>
 import { ref } from "vue";
-import { invoke } from "@tauri-apps/api";
 import { open } from "@tauri-apps/api/dialog";
+import { downloadSharedLink } from "@/core";
 import { trpcClient } from "../app-utils/index.js";
 import { UiTextInput, UiButton } from "@/components/ui";
 import { unwrapSingleton, GetAllProjectShareFilesForDownloadResult } from "@quickbyte/common";
@@ -108,17 +108,14 @@ async function downloadFiles() {
 
     console.log(`Result\n${JSON.stringify(result, null, 2)}`);
 
-    await invoke('download_shared_link', {
-      linkRequest: {
+    await downloadSharedLink({
         shareId: shareId,
         shareCode: code,
         name: "Files to Download",
         targetPath: targetPath.value,
+        // @ts-ignore
         files: result.files
-      }
     });
-
-    alert("Download complete");
   }
   catch (e: any) {
     alert("Error ${e}`");

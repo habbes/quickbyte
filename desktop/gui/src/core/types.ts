@@ -33,3 +33,21 @@ export interface DownloadTransferFileJob {
     localPath: string;
     status: JobStatus
 }
+
+export interface SharedLinkDownloadRequest {
+    shareId: string;
+    shareCode: string;
+    name: string;
+    targetPath: string;
+    files: SharedLinkDownloadRequestFile[];
+}
+
+export interface SharedLinkDownloadRequestFile {
+    _id: string;
+    transferId: string;
+    name: string;
+    size: number;
+    accountId: string;
+    downloadUrl: string;
+    _createdAt: string;
+}

@@ -1,22 +1,19 @@
 use azure_storage_blobs::prelude::BlobClient;
 use std::{fs::File, io::Write, os::unix::fs::FileExt, sync::Arc};
 use tokio::task;
-use crate::core::models::JobStatus;
 use futures::stream::StreamExt;
 use std::time::Instant;
 
-use super::dtos::{TransferJob, TransferJobFile, TransferKind, SharedLinkDownloadRequest};
+use super::dtos::{TransferJob, TransferJobFile };
 
 pub struct SharedLinkDownloader<'a> {
-    request: &'a TransferJob,
-    chunk_size: u64,
+    request: &'a TransferJob
 }
 
 impl SharedLinkDownloader<'_> {
     pub fn new(request: &TransferJob) -> SharedLinkDownloader {
         SharedLinkDownloader {
             request,
-            chunk_size: 0x1000 * 0x1000, // 16MB
         }
     }
 

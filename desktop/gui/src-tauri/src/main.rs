@@ -7,7 +7,7 @@ pub mod commands;
 pub mod event_bridge;
 
 use tauri::Manager;
-use commands::{send_download_share_link_request};
+use commands::*;
 use event_bridge::bridge_events;
 use core::app_context::AppContext;
 
@@ -147,7 +147,8 @@ fn main() {
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![
-      send_download_share_link_request
+      download_shared_link,
+      request_transfers
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
