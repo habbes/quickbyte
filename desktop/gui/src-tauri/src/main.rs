@@ -6,24 +6,10 @@ pub mod message_channel;
 pub mod commands;
 pub mod event_bridge;
 
-use serde::{Serialize, Deserialize};
 use tauri::Manager;
-use crate::core::downloader::{SharedLinkDownloadRequest, SharedLinkDownloader};
-use crate::core::uploader::{TransferUploader, UploadFilesRequest};
 use commands::{send_download_share_link_request};
 use event_bridge::bridge_events;
-use crate::core::event::Event;
-
-use azure_core::error::{ErrorKind, ResultExt};
-use azure_storage::prelude::*;
-use azure_storage_blobs::{blob::operations::GetBlobBuilder, prelude::*};
-use futures::stream::StreamExt;
-use tokio::task;
-
 use core::app_context::AppContext;
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::Path;
 
 // #[derive(Serialize, Deserialize, Debug)]
 // #[serde(rename_all = "camelCase")]
