@@ -9,6 +9,7 @@ interface BaseTransferJob {
     totalSize: number;
     completedSize: number;
     numFiles: number;
+    localPath: string;
     status: JobStatus;
     error?: string;
     // add other fields, e.g. date fields

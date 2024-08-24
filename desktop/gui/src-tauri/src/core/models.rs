@@ -1,9 +1,12 @@
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub enum JobStatus {
   Pending,
   Progress,
   Completed,
+  Cancelled,
   Error
 }
 

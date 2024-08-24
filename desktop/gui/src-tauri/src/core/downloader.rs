@@ -6,6 +6,8 @@ use crate::core::models::{DownloadJob,DownloadFileJob, JobStatus};
 use futures::stream::StreamExt;
 use std::time::Instant;
 
+use super::dtos::{TransferJob, TransferJobFile, TransferKind};
+
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +35,7 @@ pub struct SharedLinkDownloadRequest {
 
 pub struct SharedLinkDownloader<'a> {
     request: &'a SharedLinkDownloadRequest,
-    chunk_size: u32,
+    chunk_size: u64,
 }
 
 impl SharedLinkDownloader<'_> {
@@ -44,9 +46,10 @@ impl SharedLinkDownloader<'_> {
         }
     }
 
-    pub async fn start_download(&self) {
+    pub async fn start_download(&self, id: String) {
         // create create download job record
-        let (_, files) = self.init_download_job();
+        let transferJob = self.init_download_job(id);
+        let files = transferJob.files;
         println!("Init download of {}", files.len());
         // create file download handler for each file
         let file_downloaders: Vec<_> = files.iter().map(|f| FileDownloader::new(f.clone())).collect();
@@ -69,45 +72,42 @@ impl SharedLinkDownloader<'_> {
         println!("Finihed download job");
     }
 
-    fn init_download_job(&self) -> (DownloadJob, Vec<DownloadFileJob>) {
-        let job = DownloadJob {
-            id: 0,
-            share_id: self.request.share_id.clone(),
-            share_code: self.request.share_code.clone(),
-            name: self.request.name.clone(),
-            target_path: self.request.target_path.clone(),
+    fn init_download_job(&self, id: String) -> TransferJob {
+        let files: Vec<TransferJobFile> = self.request.files.iter().map(|f| TransferJobFile {
+            _id: String::from("0"),
+            name: f.name.clone(),
+            size: f.size,
+            completed_size: 0,
+            local_path: self.request.target_path.clone() + "/" + f.name.as_str(),
             status: JobStatus::Pending,
-            started_at: None,
-            completed_at: None,
+            error: None,
+            remote_url: f.download_url.clone(),
+            chunk_size: self.chunk_size
+        }).collect();
+
+        let job = TransferJob{
+            _id: id,
+            name: self.request.name.clone(),
+            total_size: 0,
+            completed_size: 0,
+            num_files: files.len(),
+            local_path: self.request.target_path.clone(),
+            files: files,
+            transfer_kind: TransferKind::Download,
+            status: JobStatus::Pending,
             error: None
         };
 
-        let files: Vec<DownloadFileJob> = self.request.files.iter().map(|f| DownloadFileJob {
-            id: 0,
-            file_id: f._id.clone(),
-            download_job_id: job.id,
-            name: f.name.clone(),
-            target_path: job.target_path.clone() + "/" + f.name.as_str(),
-            download_url: f.download_url.clone(),
-            storage_handler: Some(String::from("az")),
-            file_size: f.size,
-            chunk_size: self.chunk_size,
-            status: JobStatus::Pending,
-            started_at: None,
-            completed_at: None,
-            error: None
-        }).collect();
-
-        (job, files)
+        job
     }
 }
 
 struct FileDownloader {
-    file_job: DownloadFileJob,
+    file_job: TransferJobFile,
 }
 
 impl FileDownloader {
-    pub fn new(file: DownloadFileJob) -> FileDownloader {
+    pub fn new(file: TransferJobFile) -> FileDownloader {
         FileDownloader {
             file_job: file
         }
@@ -118,20 +118,20 @@ impl FileDownloader {
         // create file
         println!("Start download for file {}", self.file_job.name);
         let started_file = Instant::now();
-        let file_path = std::path::Path::new(&self.file_job.target_path);
+        let file_path = std::path::Path::new(&self.file_job.local_path);
         let directory = file_path.parent().unwrap();
         std::fs::create_dir_all(directory).unwrap();
-        let file = File::create(std::path::Path::new(&self.file_job.target_path)).unwrap();
+        let file = File::create(std::path::Path::new(&self.file_job.local_path)).unwrap();
         // set file len on disk
-        file.set_len(self.file_job.file_size).unwrap();
+        file.set_len(self.file_job.size).unwrap();
 
         let mut file = Arc::new(file);
 
-        let num_chunks = self.file_job.get_num_chunks();
-        let url = url::Url::parse(&self.file_job.download_url).unwrap();
+        let num_chunks = get_num_chunks(self.file_job.size, self.file_job.chunk_size);
+        let url = url::Url::parse(&self.file_job.remote_url).unwrap();
         let blob = BlobClient::from_sas_url(&url).unwrap();
         let chunk_size = self.file_job.chunk_size;
-        let file_size = self.file_job.file_size;
+        let file_size = self.file_job.size;
         let mut tasks = Vec::new();
         let file_name = Arc::new(self.file_job.name.clone());
         println!("Need {} chunks for file {}", num_chunks, self.file_job.name);
@@ -180,4 +180,12 @@ impl FileDownloader {
         file.flush().unwrap();
         println!("Completed flushing file {} after {}s", self.file_job.name, started_file.elapsed().as_secs_f64());
     }
+}
+
+fn get_num_chunks(file_size: u64, chunk_size: u64) -> u64{
+    assert!(file_size > 0);
+    assert!(chunk_size > 0);
+
+    // Calculate the number of chunks, rounding up
+    (file_size + chunk_size - 1) / chunk_size
 }

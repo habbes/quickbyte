@@ -4,6 +4,6 @@ use crate::core::event::Event;
 
 pub fn bridge_events(app: &AppHandle, event: Event) {
   match event {
-    Event::Transfers => app.emit_all("transfers", "test"),
+    Event::TransferCreated(transfer) => app.emit_all("transfer_created", transfer).unwrap(),
   };
 }
