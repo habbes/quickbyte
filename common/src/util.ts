@@ -129,3 +129,9 @@ export function formatPercentage(value: number, total: number, decimals: number 
     const formatted = `${percent.toFixed(decimals)}%`;
     return formatted;
 }
+
+export function pluralize(word: string, count: number, plural: string = '') {
+    plural = plural || `${word}s`;
+    // TODO handle special cases (e.g. directory -> directories)
+    return count == 1 ? word : plural;
+}
