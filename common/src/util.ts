@@ -94,3 +94,32 @@ export function ensure<T>(obj?: T|undefined|null, message?: string): T {
     if (!obj) throw new Error(message || 'Expected object to be defined.');
     return obj;
 }
+
+export function humanizeSize(bytes: number): string {
+    const BYTES_PER_KB = 1024;
+    const BYTES_PER_MB = 1024 * 1024;
+    const BYTES_PER_GB = 1024 * 1024 * 1024;
+    const BYTES_PER_TB = 1024 * BYTES_PER_GB;
+
+    if (bytes < BYTES_PER_KB) {
+        return `${bytes} Bytes`;
+    }
+
+    if (bytes < BYTES_PER_MB) {
+        const kbs = Math.ceil(bytes / BYTES_PER_KB);
+        return `${kbs} KB`;
+    }
+
+    if (bytes < BYTES_PER_GB) {
+        const mbs = Math.ceil(bytes / BYTES_PER_MB);
+        return `${mbs} MB`;
+    }
+
+    if (bytes < BYTES_PER_TB) {
+        const gbs = (bytes / BYTES_PER_GB).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        return `${gbs} GB`;
+    }
+
+    const tbs = (bytes / BYTES_PER_TB).toLocaleString(undefined, { maximumFractionDigits: 2 });;
+    return `${tbs} TB`;
+}
