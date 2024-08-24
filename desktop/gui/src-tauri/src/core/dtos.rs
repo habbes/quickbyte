@@ -13,24 +13,24 @@ pub enum TransferKind {
 #[serde(rename_all = "camelCase")]
 pub struct ShareDownloadFile {
   #[serde(rename = "_id")] // The camel case rename removes even leading _
-  _id: String,
-  transfer_id: String,
-  name: String,
-  size: u64,
-  account_id: String,
-  download_url: String,
+  pub _id: String,
+  pub transfer_id: String,
+  pub name: String,
+  pub size: u64,
+  pub account_id: String,
+  pub download_url: String,
   #[serde(rename = "_createdAt")]
-  _created_at: String,
+  pub _created_at: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SharedLinkDownloadRequest {
-    share_id: String,
-    share_code: String,
-    name: String,
-    target_path: String,
-    files: Vec<ShareDownloadFile>,
+    pub share_id: String,
+    pub share_code: String,
+    pub name: String,
+    pub target_path: String,
+    pub files: Vec<ShareDownloadFile>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -65,3 +65,4 @@ pub struct TransferJobFile {
     #[serde(skip_serializing)]
     pub chunk_size: u64
 }
+

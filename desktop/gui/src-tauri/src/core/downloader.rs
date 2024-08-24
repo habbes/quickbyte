@@ -1,45 +1,19 @@
 use azure_storage_blobs::prelude::BlobClient;
-use serde::{Serialize, Deserialize};
 use std::{fs::File, io::Write, os::unix::fs::FileExt, sync::Arc};
 use tokio::task;
-use crate::core::models::{DownloadJob,DownloadFileJob, JobStatus};
+use crate::core::models::JobStatus;
 use futures::stream::StreamExt;
 use std::time::Instant;
 
-use super::dtos::{TransferJob, TransferJobFile, TransferKind};
-
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ShareDownloadFile {
-  #[serde(rename = "_id")] // The camel case rename removes even leading _
-  _id: String,
-  transfer_id: String,
-  name: String,
-  size: u64,
-  account_id: String,
-  download_url: String,
-  #[serde(rename = "_createdAt")]
-  _created_at: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SharedLinkDownloadRequest {
-    share_id: String,
-    share_code: String,
-    name: String,
-    target_path: String,
-    files: Vec<ShareDownloadFile>,
-}
+use super::dtos::{TransferJob, TransferJobFile, TransferKind, SharedLinkDownloadRequest};
 
 pub struct SharedLinkDownloader<'a> {
-    request: &'a SharedLinkDownloadRequest,
+    request: &'a TransferJob,
     chunk_size: u64,
 }
 
 impl SharedLinkDownloader<'_> {
-    pub fn new(request: &SharedLinkDownloadRequest) -> SharedLinkDownloader {
+    pub fn new(request: &TransferJob) -> SharedLinkDownloader {
         SharedLinkDownloader {
             request,
             chunk_size: 0x1000 * 0x1000, // 16MB
@@ -47,9 +21,7 @@ impl SharedLinkDownloader<'_> {
     }
 
     pub async fn start_download(&self, id: String) {
-        // create create download job record
-        let transferJob = self.init_download_job(id);
-        let files = transferJob.files;
+        let files = &self.request.files;
         println!("Init download of {}", files.len());
         // create file download handler for each file
         let file_downloaders: Vec<_> = files.iter().map(|f| FileDownloader::new(f.clone())).collect();
@@ -70,35 +42,6 @@ impl SharedLinkDownloader<'_> {
         }
 
         println!("Finihed download job");
-    }
-
-    fn init_download_job(&self, id: String) -> TransferJob {
-        let files: Vec<TransferJobFile> = self.request.files.iter().map(|f| TransferJobFile {
-            _id: String::from("0"),
-            name: f.name.clone(),
-            size: f.size,
-            completed_size: 0,
-            local_path: self.request.target_path.clone() + "/" + f.name.as_str(),
-            status: JobStatus::Pending,
-            error: None,
-            remote_url: f.download_url.clone(),
-            chunk_size: self.chunk_size
-        }).collect();
-
-        let job = TransferJob{
-            _id: id,
-            name: self.request.name.clone(),
-            total_size: 0,
-            completed_size: 0,
-            num_files: files.len(),
-            local_path: self.request.target_path.clone(),
-            files: files,
-            transfer_kind: TransferKind::Download,
-            status: JobStatus::Pending,
-            error: None
-        };
-
-        job
     }
 }
 
