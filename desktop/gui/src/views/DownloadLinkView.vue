@@ -118,7 +118,7 @@ async function downloadFiles() {
     });
   }
   catch (e: any) {
-    alert("Error ${e}`");
+    alert(`Error ${e}`);
   }
 }
 </script>

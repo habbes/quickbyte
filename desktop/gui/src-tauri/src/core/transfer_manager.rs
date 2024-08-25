@@ -1,25 +1,26 @@
 use super::{downloader::SharedLinkDownloader, dtos::{SharedLinkDownloadRequest, TransferJob, TransferJobFile, TransferKind}, event::Event, models::JobStatus, request::Request};
+use std::{borrow::Borrow, sync::Mutex};
 use crate::message_channel::MessageChannel;
 
 #[derive(Debug)]
-pub struct TransferManager<'a> {
-  events: &'a MessageChannel<Event>,
-  next_id: u64,
+pub struct TransferManager {
+  events: MessageChannel<Event>,
+  next_id: Mutex<u64>,
   chunk_size: u64,
-  transfers: Vec<TransferJob>,
+  transfers: Mutex<Vec<TransferJob>>,
 }
 
-impl<'a> TransferManager<'a> {
-  pub fn new(events: &'a MessageChannel<Event>) -> Self {
+impl TransferManager {
+  pub fn new(events: MessageChannel<Event>) -> Self {
     Self {
       events,
-      next_id: 1,
+      next_id: Mutex::new(1),
       chunk_size: 0x1000 * 0x1000, // 16MB
-      transfers: vec![]
+      transfers: Mutex::new(vec![])
     }
   }
 
-  pub async fn execute_request(&mut self, request: Request) {
+  pub async fn execute_request(&self, request: Request) {
     match request {
       Request::DownloadSharedLink(download_request) => self.start_download(download_request).await,
       Request::GetTransfers => self.broadcast_transfers()
@@ -27,19 +28,27 @@ impl<'a> TransferManager<'a> {
   }
 
   pub fn broadcast_transfers(&self) {
-    self.events.send(Event::Transfers(self.transfers.clone()))
+    self.events.send(Event::Transfers((*self.transfers.lock().unwrap()).clone()))
   }
 
-  pub async fn start_download(&mut self, request: SharedLinkDownloadRequest) {
-    let id = self.next_id;
-    self.next_id = self.next_id + 1;
-    let job = self.init_download_job(id.to_string(), &request);
-    self.transfers.push(job);
-    let job = &self.transfers[self.transfers.len() - 1];
-  
-    self.events.send(Event::TransferCreated(job.clone()));
+  pub async fn start_download(&self, request: SharedLinkDownloadRequest) {
+    let id = {
+      let mut next_id = self.next_id.lock().unwrap();
+      let cur_id = *next_id;
+      *next_id += 1;
+      cur_id
+    };
 
-    let downloader = SharedLinkDownloader::new(&job);
+    let job = self.init_download_job(id.to_string(), &request);
+    let cloned_job = job.clone(); // TODO: try to get reference or at least move to heap instead of sharing
+    {
+      let mut transfers = self.transfers.lock().unwrap();
+      transfers.push(job);
+    };
+  
+    self.events.send(Event::TransferCreated(cloned_job.clone()));
+
+    let downloader = SharedLinkDownloader::new(&cloned_job);
     downloader.start_download(id.to_string()).await;
   }
 

@@ -1,7 +1,7 @@
 use std::sync::mpsc::{Sender, channel};
 use std::thread;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MessageChannel<T>
     where T : Send + 'static
 {
