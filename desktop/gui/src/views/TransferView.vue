@@ -21,7 +21,7 @@
           </div>
           <Icon icon="lucide:dot" />
           <div>
-            {{ formatPercentage(transfer.completedSize, transfer.totalSize ) }}
+            {{ formatPercentage(getTransferCompletedSize(transfer), transfer.totalSize ) }}
           </div>
         </div>
       </div>
@@ -41,6 +41,7 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { unwrapSingletonOrUndefined, pluralize, humanizeSize, formatPercentage } from "@quickbyte/common";
+import { getTransferCompletedSize } from "@/core";
 import { store } from "@/app-utils";
 import { Icon } from '@iconify/vue';
 import EmptyDataPageContainer from "@/components/EmptyDataPageContainer.vue";

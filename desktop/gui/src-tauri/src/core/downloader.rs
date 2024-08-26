@@ -3,8 +3,9 @@ use std::{fs::File, io::Write, os::unix::fs::FileExt, sync::Arc};
 use tokio::task;
 use futures::stream::StreamExt;
 use std::time::Instant;
+use super::message_channel::MessageChannel;
 
-use super::dtos::{TransferJob, TransferJobFile };
+use super::dtos::*;
 
 pub struct SharedLinkDownloader<'a> {
     request: &'a TransferJob
@@ -17,11 +18,12 @@ impl SharedLinkDownloader<'_> {
         }
     }
 
-    pub async fn start_download(&self, id: String) {
+    pub async fn start_download(&self, events: Arc<MessageChannel<TransferUpdate>>) {
         let files = &self.request.files;
         println!("Init download of {}", files.len());
         // create file download handler for each file
-        let file_downloaders: Vec<_> = files.iter().map(|f| FileDownloader::new(f.clone())).collect();
+        let file_downloaders: Vec<_> = files.iter().map(|f|
+            FileDownloader::new(f.clone(), self.request._id.clone(), Arc::clone(&events))).collect();
         // initialize the handlers to persist records
         // run the downloaders concurrently, limiting concurrency
         let mut tasks = Vec::with_capacity(file_downloaders.len());
@@ -39,17 +41,22 @@ impl SharedLinkDownloader<'_> {
         }
 
         println!("Finihed download job");
+        events.send(TransferUpdate::TransferCompleted { transfer_id: self.request._id.clone() }).await;
     }
 }
 
 struct FileDownloader {
     file_job: TransferJobFile,
+    transfer_id: String,
+    events: Arc<MessageChannel<TransferUpdate>>,
 }
 
 impl FileDownloader {
-    pub fn new(file: TransferJobFile) -> FileDownloader {
+    pub fn new(file: TransferJobFile, transfer_id: String, events: Arc<MessageChannel<TransferUpdate>>) -> FileDownloader {
         FileDownloader {
-            file_job: file
+            file_job: file,
+            transfer_id,
+            events
         }
     }
 
@@ -75,10 +82,19 @@ impl FileDownloader {
         let mut tasks = Vec::new();
         let file_name = Arc::new(self.file_job.name.clone());
         println!("Need {} chunks for file {}", num_chunks, self.file_job.name);
+
+        let events = Arc::clone(&self.events);
+        let transfer_id = self.transfer_id.clone();
+        let file_id = self.file_job._id.clone();
+        
+
         for i in 0..num_chunks {
             let blob = blob.clone();
             let file = Arc::clone(&file);
             let file_name = Arc::clone(&file_name);
+            let events = Arc::clone(&events);
+            let transfer_id = transfer_id.clone();
+                        let file_id = file_id.clone();
             let task = task::spawn(async move {
                 let start_range: u64 = i as u64 * chunk_size as u64;
                 let end_range = (start_range + chunk_size as u64).min(file_size);
@@ -91,16 +107,37 @@ impl FileDownloader {
                 // println!("Writing chunk {} of file {}", i, file_name);
                 let mut chunk_progress = 0 as u64;
                 let chunk_timer = Instant::now();
+                let events = Arc::clone(&events);
+                let transfer_id = transfer_id.clone();
+                        let file_id = file_id.clone();
                 while let Some(value) = stream.next().await {
                     let mut body = value.unwrap().data;
                     // For each response, we stream the body instead of collecting it all
                     // into one large allocation.
                     // This also let's us calculate progress more granularly
+                    let events = Arc::clone(&events);
+                    let transfer_id = transfer_id.clone();
+                    let file_id = file_id.clone();
                     while let Some(value) = body.next().await {
                         let value = value.unwrap();
                         // println!("Got stream item of size {} for chunk {}", value.len(), i);
                         file.write_all_at(&value, start_range + chunk_progress).unwrap();
+                        let fetched_len = value.len() as u64;
                         chunk_progress += value.len() as u64;
+
+                        let events = Arc::clone(&events);
+                        let transfer_id = transfer_id.clone();
+                        let file_id = file_id.clone();
+                        
+                        tokio::spawn(async move {
+                            events.send(TransferUpdate::ChunkCompleted {
+                                chunk_index: 0,
+                                chunk_id: String::from(""),
+                                size: fetched_len,
+                                file_id: file_id.clone(),
+                                transfer_id: transfer_id.clone() 
+                            }).await
+                        });
                     }
                 }
 
@@ -119,6 +156,8 @@ impl FileDownloader {
         println!("Finish downloading file {} after {}s. Flushing...", self.file_job.name, started_file.elapsed().as_secs_f64());
         file.flush().unwrap();
         println!("Completed flushing file {} after {}s", self.file_job.name, started_file.elapsed().as_secs_f64());
+
+        events.send(TransferUpdate::FileCompleted { file_id: file_id.clone(), transfer_id: transfer_id.clone() }).await;
     }
 }
 

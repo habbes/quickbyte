@@ -66,3 +66,20 @@ pub struct TransferJobFile {
     pub chunk_size: u64
 }
 
+#[derive(Debug)]
+pub enum TransferUpdate {
+    ChunkCompleted {
+        chunk_index: u64,
+        chunk_id: String,
+        size: u64,
+        file_id: String,
+        transfer_id: String
+    },
+    FileCompleted {
+        file_id: String,
+        transfer_id: String
+    },
+    TransferCompleted {
+        transfer_id: String,
+    }
+}

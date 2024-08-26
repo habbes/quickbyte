@@ -1,22 +1,24 @@
-use super::{downloader::SharedLinkDownloader, dtos::{SharedLinkDownloadRequest, TransferJob, TransferJobFile, TransferKind}, event::Event, models::JobStatus, request::Request};
+use std::sync::Arc;
+
+use super::{downloader::SharedLinkDownloader, dtos::*, event::Event, models::JobStatus, request::Request};
 use tokio::sync::Mutex;
 use super::message_channel::MessageChannel;
 
 #[derive(Debug)]
 pub struct TransferManager {
-  events: MessageChannel<Event>,
+  events: Arc<MessageChannel<Event>>,
   next_id: Mutex<u64>,
   chunk_size: u64,
-  transfers: Mutex<Vec<TransferJob>>,
+  transfers: Arc<Mutex<Vec<TransferJob>>>,
 }
 
 impl TransferManager {
   pub fn new(events: MessageChannel<Event>) -> Self {
     Self {
-      events,
+      events: Arc::new(events),
       next_id: Mutex::new(1),
       chunk_size: 0x1000 * 0x1000, // 16MB
-      transfers: Mutex::new(vec![])
+      transfers: Arc::new(Mutex::new(vec![]))
     }
   }
 
@@ -52,7 +54,18 @@ impl TransferManager {
     self.events.send(Event::TransferCreated(cloned_job.clone())).await;
 
     let downloader = SharedLinkDownloader::new(&cloned_job);
-    downloader.start_download(id.to_string()).await;
+    let transfers = Arc::clone(&(self.transfers));
+    let events = Arc::clone(&self.events);
+    let job_updates: MessageChannel<TransferUpdate> = MessageChannel::new(move|update: TransferUpdate| {
+      // handle_transfer_update(Arc::clone(&transfers), update);
+      let transfers = Arc::clone(&transfers);
+      let events = Arc::clone(&events);
+      tokio::spawn(async move {
+        handle_transfer_update(Arc::clone(&transfers), &update, Arc::clone(&events)).await;
+      });
+    });
+    let job_updates = Arc::new(job_updates);
+    downloader.start_download(job_updates).await;
   }
 
   fn init_download_job(&self, id: String, request: &SharedLinkDownloadRequest) -> TransferJob {
@@ -83,4 +96,64 @@ impl TransferManager {
   
     job
   }
+}
+
+async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update: &TransferUpdate, events: Arc<MessageChannel<Event>>) {
+  let mut transfers = transfers.lock().await;
+  match update {
+    TransferUpdate::ChunkCompleted {
+      chunk_index: _,
+      chunk_id: _,
+      size,
+      file_id,
+      transfer_id
+    } => {
+      // let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+      // let file = transfer.files.iter_mut().find(|f| f._id == file_id).unwrap();
+      // file.completed_size += file.size;
+      // file.status = JobStatus::Completed;
+      // transfer.status = JobStatus::Progress;
+      handle_chunk_completed(&mut transfers, transfer_id, file_id, *size);
+    },
+    TransferUpdate::FileCompleted {
+      file_id,
+      transfer_id
+    } => {
+      handle_file_completed(&mut transfers, transfer_id, file_id);
+      // let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+      // let file = transfer.files.iter_mut().find(|f| f._id == file_id).unwrap();
+      // file.completed_size += file.size;
+      // file.status = JobStatus::Completed;
+      // transfer.status = JobStatus::Progress;
+    },
+    TransferUpdate::TransferCompleted { transfer_id } => {
+      handle_transfer_completed(&mut transfers, transfer_id);
+      // let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+      // transfer.status = JobStatus::Completed;
+    }
+  }
+
+  events.send(Event::Transfers(transfers.clone())).await;
+}
+
+fn handle_chunk_completed(transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>, transfer_id: &str, file_id: &str, chunk_size: u64) {
+  let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+  let file = transfer.files.iter_mut().find(|f| f._id == file_id).unwrap();
+  file.completed_size += chunk_size;
+  file.status = JobStatus::Progress;
+  transfer.status = JobStatus::Progress;
+}
+
+fn handle_file_completed(transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>, transfer_id: &str, file_id: &str) {
+  let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+  let file = transfer.files.iter_mut().find(|f| f._id == file_id).unwrap();
+  file.completed_size = file.size;
+  file.status = JobStatus::Completed;
+  transfer.status = JobStatus::Progress;
+}
+
+fn handle_transfer_completed(transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>, transfer_id: &str) {
+  // let mut transfers = self.transfers.lock().await;
+  let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+  transfer.status = JobStatus::Completed;
 }
