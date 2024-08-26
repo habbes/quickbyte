@@ -26,22 +26,25 @@
         :files="files"
       />
     </div>
-    <div
-      class="flex justify-end px-4 py-2 gap-2 items-center border-t-[0.5px] border-t-gray-700 h-12"
-    >
-      <UiButton primary @click="downloadFiles()">Download All</UiButton>
-    </div>
+    <PageFooter v-if="files && files.length">
+      <div class="flex flex-1 justify-end">
+        <UiButton primary @click="downloadFiles()">Download All</UiButton>
+      </div>
+    </PageFooter>
   </div>
 </template>
 <script lang="ts" setup>
 import { ref } from "vue";
+import { useRouter } from "vue-router";
 import { open } from "@tauri-apps/api/dialog";
 import { downloadSharedLink } from "@/core";
 import { trpcClient } from "../app-utils/index.js";
 import { UiTextInput, UiButton } from "@/components/ui";
 import { unwrapSingleton, GetAllProjectShareFilesForDownloadResult } from "@quickbyte/common";
 import FileTree from "@/components/FileTree.vue";
+import PageFooter from "@/components/PageFooter.vue"
 
+const router = useRouter();
 const link = ref<string>();
 const targetPath = ref<string|null|undefined>();
 const files = ref<GetAllProjectShareFilesForDownloadResult["files"]>();
@@ -116,6 +119,8 @@ async function downloadFiles() {
         // @ts-ignore
         files: result.files
     });
+
+    router.push({ name: 'transfers' });
   }
   catch (e: any) {
     alert(`Error ${e}`);
