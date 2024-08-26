@@ -21,6 +21,7 @@ impl TransferManager {
   }
 
   pub async fn execute_request(&self, request: Request) {
+    println!("Executing request {request:?}");
     match request {
       Request::DownloadSharedLink(download_request) => self.start_download(download_request).await,
       Request::GetTransfers => self.broadcast_transfers()
@@ -28,10 +29,12 @@ impl TransferManager {
   }
 
   pub fn broadcast_transfers(&self) {
+    println!("Get transfers request handling.");
     self.events.send(Event::Transfers((*self.transfers.lock().unwrap()).clone()))
   }
 
   pub async fn start_download(&self, request: SharedLinkDownloadRequest) {
+    println!("Start download {request:?}");
     let id = {
       let mut next_id = self.next_id.lock().unwrap();
       let cur_id = *next_id;

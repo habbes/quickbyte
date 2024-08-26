@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::core::request::Request;
 use super::{event::Event, transfer_manager::TransferManager};
 use crate::message_channel::MessageChannel;
+use tokio;
 
 #[derive(Debug)]
 pub struct AppContext {
@@ -18,7 +19,15 @@ impl AppContext {
     let cloned = Arc::clone(&transfers);
     Self {
       requests: MessageChannel::new(move|request| {
-        cloned.execute_request(request);
+        println!("Request received {request:?}");
+        let cloned = Arc::clone(&cloned);
+        tokio::spawn(async move {
+          println!("Request thread spawned.");
+          println!("Request in spawned thread {request:?}");
+          cloned.execute_request(request).await;
+        });
+        
+        
       }),
       events,
       transfers
