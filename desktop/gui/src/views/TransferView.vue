@@ -30,7 +30,25 @@
       <FileTree
         v-if="transfer.type === 'download'"
         :files="transfer.files"
-      />
+        v-slot="{ item }"
+      >
+        <div class="flex flex-1 w-full justify-between items-center" v-if="item.file">
+          <div>
+            {{ item.title }}
+          </div>
+          <div class="flex gap-2 items-center">
+            <div>
+              {{ humanizeSize(item.file.size) }}
+            </div>
+            <div>
+              {{ formatPercentage(item.file.completedSize, item.file.size) }}
+            </div>
+          </div>
+        </div>
+        <div class="pl-2" v-else>
+          {{ item.title }}
+        </div>
+      </FileTree>
     </div>
   </div>
   <EmptyDataPageContainer v-else>
