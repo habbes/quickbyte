@@ -13,6 +13,8 @@ function initGlobalEventListener(store: Store) {
         }
     });
 
+    listener.listen();
+
     return listener;
 }
 

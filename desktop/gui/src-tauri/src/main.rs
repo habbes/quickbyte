@@ -2,7 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 pub mod core;
-pub mod message_channel;
 pub mod commands;
 pub mod event_bridge;
 
@@ -134,7 +133,8 @@ use core::app_context::AppContext;
 //     .expect("error while running tauri application");
 // }
 
-fn main() {
+#[tokio::main]
+async fn main() {
   tauri::Builder::default()
     .setup(|app| {
       let app_handle = app.handle();

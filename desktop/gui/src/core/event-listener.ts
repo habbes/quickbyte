@@ -7,7 +7,7 @@ export class GlobalEventListener {
 
     listen() {
         listen('transfers', event => this.handlers.onTransfers(event.payload as TransferJob[]));
-        listen('transferCreated', event => this.handlers.onTransferCreated(event.payload as TransferJob));
+        listen('transfer_created', event => this.handlers.onTransferCreated(event.payload as TransferJob));
     }
 }
 

@@ -125,6 +125,7 @@ export function humanizeSize(bytes: number): string {
 }
 
 export function formatPercentage(value: number, total: number, decimals: number = 2) {
+    if (total == 0) return `${(0).toFixed(decimals)}%`;
     const percent = 100 * value / total;
     const formatted = `${percent.toFixed(decimals)}%`;
     return formatted;

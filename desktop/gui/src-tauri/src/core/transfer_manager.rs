@@ -1,6 +1,6 @@
 use super::{downloader::SharedLinkDownloader, dtos::{SharedLinkDownloadRequest, TransferJob, TransferJobFile, TransferKind}, event::Event, models::JobStatus, request::Request};
-use std::{borrow::Borrow, sync::Mutex};
-use crate::message_channel::MessageChannel;
+use tokio::sync::Mutex;
+use super::message_channel::MessageChannel;
 
 #[derive(Debug)]
 pub struct TransferManager {
@@ -24,19 +24,19 @@ impl TransferManager {
     println!("Executing request {request:?}");
     match request {
       Request::DownloadSharedLink(download_request) => self.start_download(download_request).await,
-      Request::GetTransfers => self.broadcast_transfers()
+      Request::GetTransfers => self.broadcast_transfers().await
     }
   }
 
-  pub fn broadcast_transfers(&self) {
+  pub async fn broadcast_transfers(&self) {
     println!("Get transfers request handling.");
-    self.events.send(Event::Transfers((*self.transfers.lock().unwrap()).clone()))
+    self.events.send(Event::Transfers((*self.transfers.lock().await).clone())).await;
   }
 
   pub async fn start_download(&self, request: SharedLinkDownloadRequest) {
     println!("Start download {request:?}");
     let id = {
-      let mut next_id = self.next_id.lock().unwrap();
+      let mut next_id = self.next_id.lock().await;
       let cur_id = *next_id;
       *next_id += 1;
       cur_id
@@ -45,11 +45,11 @@ impl TransferManager {
     let job = self.init_download_job(id.to_string(), &request);
     let cloned_job = job.clone(); // TODO: try to get reference or at least move to heap instead of sharing
     {
-      let mut transfers = self.transfers.lock().unwrap();
+      let mut transfers = self.transfers.lock().await;
       transfers.push(job);
     };
   
-    self.events.send(Event::TransferCreated(cloned_job.clone()));
+    self.events.send(Event::TransferCreated(cloned_job.clone())).await;
 
     let downloader = SharedLinkDownloader::new(&cloned_job);
     downloader.start_download(id.to_string()).await;
@@ -71,7 +71,7 @@ impl TransferManager {
     let job = TransferJob{
         _id: id,
         name: request.name.clone(),
-        total_size: 0,
+        total_size: files.iter().map(|f| f.size).sum(),
         completed_size: 0,
         num_files: files.len(),
         local_path: request.target_path.clone(),

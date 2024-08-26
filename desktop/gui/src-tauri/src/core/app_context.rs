@@ -1,9 +1,9 @@
 use std::sync::Arc;
+use tokio;
 
 use crate::core::request::Request;
 use super::{event::Event, transfer_manager::TransferManager};
-use crate::message_channel::MessageChannel;
-use tokio;
+use super::message_channel::MessageChannel;
 
 #[derive(Debug)]
 pub struct AppContext {
