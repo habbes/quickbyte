@@ -1,5 +1,4 @@
 use tokio::sync::mpsc::{Sender, channel};
-use std::{future::Future, thread};
 
 #[derive(Debug, Clone)]
 pub struct MessageChannel<T>
@@ -25,6 +24,6 @@ impl<T: std::fmt::Debug + Send + 'static> MessageChannel<T> {
 
     pub async fn send(&self, request: T) {
         println!("Sending request {request:?}");
-        self.request_tx.send(request).await; // TODO: error handling
+        self.request_tx.send(request).await.unwrap(); // TODO: error handling
     }
 }
