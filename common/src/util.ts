@@ -136,3 +136,12 @@ export function pluralize(word: string, count: number, plural: string = '') {
     // TODO handle special cases (e.g. directory -> directories)
     return count == 1 ? word : plural;
 }
+
+/**
+ * Returns true if the value is neither undefined nor null.
+ * Notes: This also returns true when the value is 0 or an empty string.
+ * @param value 
+ */
+export function isDefined(value?: any): boolean {
+    return value !== undefined && value !== null;
+}

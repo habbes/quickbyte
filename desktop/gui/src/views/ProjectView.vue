@@ -69,11 +69,12 @@ import { watch, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { store, trpcClient } from "@/app-utils";
 import { UiButton } from "@/components/ui";
+import { isDefined } from "@quickbyte/common";
 import type { GetProjectItemsResult } from "@quickbyte/common";
 import { message, open } from "@tauri-apps/api/dialog";
-import { invoke } from "@tauri-apps/api";
 import { TreeItem, TreeRoot } from 'radix-vue'
 import { Icon } from '@iconify/vue'
+import { uploadFiles, getFileSizes, findCommonBasePath, type UploadFilesRequest } from "@/core";
 
 type TreeEntry = {
   _id: string;
@@ -139,7 +140,11 @@ async function uploadToProject() {
     recursive: true,
   });
 
-  const files = await invoke<{ path: string, name: string, size: number }[]>('get_file_sizes', { files: selected });
+  if (!isDefined(selected)) {
+    return;
+  }
+
+  const files = await getFileSizes({ files: Array.isArray(selected) ? selected : [selected!] });
 
   const result = await trpcClient.uploadProjectMedia.mutate({
     projectId: store.selectedProjectId.value,
@@ -152,18 +157,20 @@ async function uploadToProject() {
     }))
   });
 
-  const request = {
+  const request: UploadFilesRequest = {
     transferId: result.transfer._id,
+    name: result.transfer.name,
+    localPath: findCommonBasePath(files.map(f => f.path)),
     files: result.transfer.files.map(f => {
       const matchedFile = files.find(meta => meta.name === f.name)!;
       return {
-        path: matchedFile.path,
-        name: matchedFile.name,
+        localPath: matchedFile.path,
         transferFile: f
       }
     })
   };
 
-  await invoke('upload_files', { request });
+  await uploadFiles(request);
+  router.push({ name: 'transfers' });
 }
 </script>

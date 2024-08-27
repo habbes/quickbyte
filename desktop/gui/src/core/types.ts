@@ -72,3 +72,13 @@ export interface UploadFilesRequestTransferFile {
     size: number;
     uploadUrl: string;
 }
+
+export interface FileSizesRequest {
+    files: string[];
+}
+
+export interface FileSizeResponseItem {
+    path: string;
+    name: string;
+    size: number;
+}
