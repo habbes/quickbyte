@@ -70,7 +70,7 @@ impl TransferManager {
 
   fn init_download_job(&self, id: String, request: &SharedLinkDownloadRequest) -> TransferJob {
     let files: Vec<TransferJobFile> = request.files.iter().map(|f| TransferJobFile {
-        _id: String::from("0"),
+        _id: f._id.clone(),
         name: f.name.clone(),
         size: f.size,
         completed_size: 0,
