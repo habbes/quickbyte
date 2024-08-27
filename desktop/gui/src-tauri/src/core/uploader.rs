@@ -4,6 +4,7 @@ use std::{os::unix::fs::FileExt, sync::Arc, time::Instant};
 use base64::prelude::*;
 use super::dtos::*;
 use super::util::*;
+use super::message_channel::MessageChannel;
 
 
 pub struct TransferUploader<'a> {
@@ -17,9 +18,9 @@ impl<'a> TransferUploader<'a> {
         }
     }
 
-    pub async fn start_upload(&self) {
+    pub async fn start_upload(&self, events: Arc<MessageChannel<TransferUpdate>>) {
         let file_uploaders: Vec<_> = self.request.files.iter().map(|f|
-            FileUploader::new(self.request._id.clone(), f.clone())).collect();
+            FileUploader::new(self.request._id.clone(), f.clone(), Arc::clone(&events))).collect();
 
         let count = file_uploaders.len();
 
@@ -41,19 +42,22 @@ impl<'a> TransferUploader<'a> {
         }
 
         println!("Finished uploading {} files in {}s", count, timer.elapsed().as_secs_f64());
+        events.send(TransferUpdate::TransferCompleted { transfer_id: self.request._id.clone() }).await;
     }
 }
 
 struct FileUploader {
     transfer_id: String,
-    file_job: TransferJobFile
+    file_job: TransferJobFile,
+    events: Arc<MessageChannel<TransferUpdate>>
 }
 
 impl FileUploader {
-    pub fn new(transfer_id: String, file_job: TransferJobFile) -> Self {
+    pub fn new(transfer_id: String, file_job: TransferJobFile, events: Arc<MessageChannel<TransferUpdate>>) -> Self {
         Self {
             transfer_id,
-            file_job
+            file_job,
+            events
         }
     }
 
@@ -77,12 +81,16 @@ impl FileUploader {
             let chunk_size = self.file_job.chunk_size;
             let offset = i * chunk_size;
             let end = std::cmp::min(offset + chunk_size, self.file_job.size);
+            let real_size = end - offset;
 
+            let events = Arc::clone(&self.events);
+            let file_id = self.file_job._id.clone();
+            let transfer_id = self.transfer_id.clone();
             // Create a task for each chunk upload
             let task = tokio::task::spawn(async move {
                 let mut buffer = vec![0u8; (end - offset) as usize];
                 // file.seek(tokio::io::SeekFrom::Start(offset)).await?;
-                file.read_exact_at(&mut buffer, offset);
+                file.read_exact_at(&mut buffer, offset).unwrap();
                 
                 // Upload the block
                 let block_id: Vec<_> = format!("{:032x}", i + 1).as_bytes().iter().map(|v| v.clone()).collect();
@@ -92,6 +100,15 @@ impl FileUploader {
                     .await.unwrap();
 
                 
+                events.send(
+                    TransferUpdate::ChunkCompleted {
+                        chunk_index: i,
+                        chunk_id: String::from(""),
+                        size: real_size,
+                        file_id: file_id.clone(),
+                        transfer_id: transfer_id.clone()
+                    }
+                ).await;
 
                 Ok::<(), azure_core::Error>(())
             });
@@ -102,7 +119,7 @@ impl FileUploader {
         // Wait for all uploads to complete
         // let results = join_all(upload_tasks).await;
         for task in upload_tasks {
-            task.await.unwrap();
+            task.await.unwrap().unwrap();
         }
 
         println!("Completed {} chunks for file {} in {}s", num_chunks, self.file_job.name, timer.elapsed().as_secs_f64());
@@ -133,5 +150,11 @@ impl FileUploader {
             .await.unwrap();
 
         println!("Completed upload for file {} in {}s", self.file_job.name, timer.elapsed().as_secs_f64());
+        self.events.send(
+            TransferUpdate::FileCompleted {
+                file_id: self.file_job._id.clone(),
+                transfer_id: self.transfer_id.clone()
+            }
+        ).await;
     }
 }
