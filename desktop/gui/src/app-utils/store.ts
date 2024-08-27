@@ -43,6 +43,7 @@ const store = {
         transfers.value.push(transfer)
     },
     setTransfers(list: TransferJob[]) {
+        console.log('Update transfers with', list);
         transfers.value = list;
     }
 };

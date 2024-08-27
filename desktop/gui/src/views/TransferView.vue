@@ -28,7 +28,6 @@
     </PageHeader>
     <div>
       <FileTree
-        v-if="transfer.type === 'download'"
         :files="transfer.files"
         v-slot="{ item }"
       >

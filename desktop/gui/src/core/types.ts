@@ -1,9 +1,7 @@
 
-export type TransferJob = UploadTransferJob | DownloadTransferJob;
-
 export type JobStatus = 'pending' | 'completed' | 'cancelled' | 'error' | 'progress';
 
-interface BaseTransferJob {
+export interface TransferJob {
     _id: string;
     name: string;
     totalSize: number;
@@ -12,19 +10,12 @@ interface BaseTransferJob {
     localPath: string;
     status: JobStatus;
     error?: string;
+    files: TransferFileJob[],
+    type: 'upload'|'download';
     // add other fields, e.g. date fields
 }
 
-interface UploadTransferJob extends BaseTransferJob {
-    type: 'upload';
-}
-
-interface DownloadTransferJob extends BaseTransferJob {
-    type: 'download';
-    files: DownloadTransferFileJob[]
-}
-
-export interface DownloadTransferFileJob {
+export interface TransferFileJob {
     _id: string;
     name: string;
     size: number;
