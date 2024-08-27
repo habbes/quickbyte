@@ -33,31 +33,32 @@ pub struct SharedLinkDownloadRequest {
     pub files: Vec<ShareDownloadFile>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadFilesRequest {
-  transfer_id: String,
-  project_id: Option<String>,
-  folder_id: Option<String>,
-  local_path: Option<String>,
-  files: Vec<UploadFilesRequestFile>
+  pub transfer_id: String,
+  pub name: String,
+  pub project_id: Option<String>,
+  pub folder_id: Option<String>,
+  pub local_path: String,
+  pub files: Vec<UploadFilesRequestFile>
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadFilesRequestFile {
-  local_path: String,
-  transfer_file: UploadFilesRequestTransferFile
+  pub local_path: String,
+  pub transfer_file: UploadFilesRequestTransferFile
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadFilesRequestTransferFile {
   #[serde(rename = "_id")]
-  _id: String,
-  name: String,
-  size: u64,
-  upload_url: String
+  pub _id: String,
+  pub name: String,
+  pub size: u64,
+  pub upload_url: String
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

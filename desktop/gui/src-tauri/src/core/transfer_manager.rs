@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::{downloader::SharedLinkDownloader, dtos::*, event::Event, models::JobStatus, request::Request};
+use super::{downloader::SharedLinkDownloader, uploader::*, dtos::*, event::Event, models::JobStatus, request::Request};
 use tokio::sync::Mutex;
 use super::message_channel::MessageChannel;
 
@@ -26,6 +26,7 @@ impl TransferManager {
     println!("Executing request {request:?}");
     match request {
       Request::DownloadSharedLink(download_request) => self.start_download(download_request).await,
+      Request::UploadFiles(upload_reqiest) => self.start_upload(upload_reqiest).await,
       Request::GetTransfers => self.broadcast_transfers().await
     }
   }
@@ -68,6 +69,39 @@ impl TransferManager {
     downloader.start_download(job_updates).await;
   }
 
+  pub async fn start_upload(&self, request: UploadFilesRequest) {
+    println!("Start upload {request:?}");
+    let id = {
+      let mut next_id = self.next_id.lock().await;
+      let cur_id = *next_id;
+      *next_id += 1;
+      cur_id
+    };
+
+    let job = self.init_upload_job(id.to_string(), &request);
+    let cloned_job = job.clone();
+    {
+      let mut transfers = self.transfers.lock().await;
+      transfers.push(job);
+    }
+
+    self.events.send(Event::TransferCreated(cloned_job.clone())).await;
+
+    let uploader = TransferUploader::new(&cloned_job);
+    let transfers = Arc::clone(&(self.transfers));
+    let events = Arc::clone(&self.events);
+    let job_updates: MessageChannel<TransferUpdate> = MessageChannel::new(move|update: TransferUpdate| {
+      // handle_transfer_update(Arc::clone(&transfers), update);
+      let transfers = Arc::clone(&transfers);
+      let events = Arc::clone(&events);
+      tokio::spawn(async move {
+        handle_transfer_update(Arc::clone(&transfers), &update, Arc::clone(&events)).await;
+      });
+    });
+    let job_updates = Arc::new(job_updates);
+    uploader.start_upload(job_updates).await;
+  }
+
   fn init_download_job(&self, id: String, request: &SharedLinkDownloadRequest) -> TransferJob {
     let files: Vec<TransferJobFile> = request.files.iter().map(|f| TransferJobFile {
         _id: f._id.clone(),
@@ -94,6 +128,35 @@ impl TransferManager {
         error: None
     };
   
+    job
+  }
+
+  fn init_upload_job(&self, id: String, request: &UploadFilesRequest) -> TransferJob {
+    let files: Vec<TransferJobFile> = request.files.iter().map(|f| TransferJobFile {
+      _id: f.transfer_file._id.clone(),
+      name: f.transfer_file.name.clone(),
+      size: f.transfer_file.size,
+      completed_size: 0,
+      local_path: f.local_path.clone(),
+      status: JobStatus::Pending,
+      error: None,
+      remote_url: f.transfer_file.upload_url.clone(),
+      chunk_size: self.chunk_size
+    }).collect();
+
+    let job = TransferJob {
+      _id: id,
+      name: request.name.clone(),
+      total_size: files.iter().map(|f| f.size).sum(),
+      completed_size: 0,
+      num_files: files.len(),
+      local_path: request.local_path.clone(),
+      files: files,
+      transfer_kind: TransferKind::Upload,
+      status: JobStatus::Pending,
+      error: None
+    };
+
     job
   }
 }
