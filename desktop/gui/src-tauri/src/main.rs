@@ -148,6 +148,7 @@ async fn main() {
     })
     .invoke_handler(tauri::generate_handler![
       download_shared_link,
+      upload_files,
       request_transfers
     ])
     .run(tauri::generate_context!())

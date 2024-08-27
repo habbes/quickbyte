@@ -52,10 +52,23 @@ export interface SharedLinkDownloadRequestFile {
     _createdAt: string;
 }
 
-export function getTransferCompletedSize(transfer: TransferJob) {
-    if (transfer.type === 'download') {
-        return transfer.files.reduce((sizeSoFar, file) => sizeSoFar + file.completedSize, 0);
-    }
+export interface UploadFilesRequest {
+    transferId: string;
+    name: string;
+    projectId?: string;
+    folderId?: string;
+    localPath: string;
+    files: UploadFilesRequestFile[];
+}
 
-    return 0;
+export interface UploadFilesRequestFile {
+    localPath: string;
+    transferFile: UploadFilesRequestTransferFile;
+}
+
+export interface UploadFilesRequestTransferFile {
+    _id: string;
+    name: string;
+    size: number;
+    uploadUrl: string;
 }
