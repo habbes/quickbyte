@@ -2,65 +2,35 @@ use azure_storage_blobs::{blob::{BlobBlockType, BlockList}, prelude::BlobClient}
 use url::Url;
 use std::{os::unix::fs::FileExt, sync::Arc, time::Instant};
 use base64::prelude::*;
+use super::dtos::*;
+use super::util::*;
 
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UploadFilesRequest {
-  transfer_id: String,
-  files: Vec<UploadFilesRequestFile>
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UploadFilesRequestFile {
-  path: String,
-  transfer_file: UploadFilesRequestTransferFile
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UploadFilesRequestTransferFile {
-  #[serde(rename = "_id")]
-  _id: String,
-  name: String,
-  size: u64,
-  upload_url: String
-}
 
 pub struct TransferUploader<'a> {
-    request: &'a UploadFilesRequest,
-    chunk_size: u64,
+    request: &'a TransferJob
 }
 
-impl TransferUploader<'_> {
-    pub fn new(request: &UploadFilesRequest) -> TransferUploader {
+impl<'a> TransferUploader<'a> {
+    pub fn new(request: &TransferJob) -> TransferUploader {
         TransferUploader {
-            request,
-            chunk_size: 0x1000 * 0x1000
+            request
         }
     }
 
     pub async fn start_upload(&self) {
-        let file_jobs: Vec<_> = self.request.files.iter().map(|f| UploadFileJob {
-            file_id: f.transfer_file._id.clone(),
-            name: f.transfer_file.name.clone(),
-            upload_url: f.transfer_file.upload_url.clone(),
-            local_path: f.path.clone(),
-            size: f.transfer_file.size,
-            chunk_size: self.chunk_size,
-            transfer_id: self.request.transfer_id.clone()
-        }).collect();
+        let file_uploaders: Vec<_> = self.request.files.iter().map(|f|
+            FileUploader::new(self.request._id.clone(), f.clone())).collect();
 
-        let count = file_jobs.len();
+        let count = file_uploaders.len();
 
-        println!("Start uploading {} files", file_jobs.len());
+        println!("Start uploading {count} files");
         let timer = Instant::now();
 
-        let mut file_upload_tasks = Vec::with_capacity(file_jobs.len());
+        let mut file_upload_tasks = Vec::with_capacity(count);
 
-        for job in file_jobs {
+        for uploader in file_uploaders {
             let task = tokio::task::spawn(async move {
-                job.upload_file().await;
+                uploader.upload_file().await;
             });
 
             file_upload_tasks.push(task);
@@ -74,35 +44,29 @@ impl TransferUploader<'_> {
     }
 }
 
-struct UploadFileJob {
+struct FileUploader {
     transfer_id: String,
-    file_id: String,
-    upload_url: String,
-    name: String,
-    local_path: String,
-    size: u64,
-    chunk_size: u64,
+    file_job: TransferJobFile
 }
 
-impl UploadFileJob {
-    pub fn get_num_chunks(&self) -> u64 {
-        assert!(self.size > 0);
-        assert!(self.chunk_size > 0);
-
-        // Calculate the number of chunks, rounding up
-        (self.size + self.chunk_size - 1) / self.chunk_size
+impl FileUploader {
+    pub fn new(transfer_id: String, file_job: TransferJobFile) -> Self {
+        Self {
+            transfer_id,
+            file_job
+        }
     }
 
     pub async fn upload_file(&self) {
         // Parse the URL and create a BlobClient
-        let url = Url::parse(&self.upload_url).unwrap();
+        let url = Url::parse(&self.file_job.remote_url).unwrap();
         let blob_client = Arc::new(BlobClient::from_sas_url(&url).unwrap());
 
         // Open the file for reading
-        let file = Arc::new(std::fs::File::open(&self.local_path).unwrap());
-        let num_chunks = self.get_num_chunks();
+        let file = Arc::new(std::fs::File::open(&self.file_job.local_path).unwrap());
+        let num_chunks = get_num_chunks(self.file_job.size, self.file_job.chunk_size);
 
-        println!("Uploading file {} in {} chunks", self.name, num_chunks);
+        println!("Uploading file {} in {} chunks", self.file_job.name, num_chunks);
         let timer = Instant::now();
         // Vector to hold all the upload tasks
         let mut upload_tasks = Vec::with_capacity(num_chunks as usize);
@@ -110,9 +74,9 @@ impl UploadFileJob {
         for i in 0..num_chunks {
             let blob_client = Arc::clone(&blob_client);
             let file = Arc::clone(&file);
-            let chunk_size = self.chunk_size;
+            let chunk_size = self.file_job.chunk_size;
             let offset = i * chunk_size;
-            let end = std::cmp::min(offset + chunk_size, self.size);
+            let end = std::cmp::min(offset + chunk_size, self.file_job.size);
 
             // Create a task for each chunk upload
             let task = tokio::task::spawn(async move {
@@ -141,7 +105,7 @@ impl UploadFileJob {
             task.await.unwrap();
         }
 
-        println!("Completed {} chunks for file {} in {}s", num_chunks, self.name, timer.elapsed().as_secs_f64());
+        println!("Completed {} chunks for file {} in {}s", num_chunks, self.file_job.name, timer.elapsed().as_secs_f64());
 
         // Check if any of the tasks failed
         // for result in results {
@@ -168,6 +132,6 @@ impl UploadFileJob {
             .into_future()
             .await.unwrap();
 
-        println!("Completed upload for file {} in {}s", self.name, timer.elapsed().as_secs_f64());
+        println!("Completed upload for file {} in {}s", self.file_job.name, timer.elapsed().as_secs_f64());
     }
 }
