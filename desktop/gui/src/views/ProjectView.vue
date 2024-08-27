@@ -144,7 +144,7 @@ async function uploadToProject() {
     return;
   }
 
-  const files = await getFileSizes({ files: Array.isArray(selected) ? selected : [selected!] });
+  const files = await getFileSizes(Array.isArray(selected) ? selected : [selected!]);
 
   const result = await trpcClient.uploadProjectMedia.mutate({
     projectId: store.selectedProjectId.value,

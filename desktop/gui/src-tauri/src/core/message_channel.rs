@@ -23,7 +23,6 @@ impl<T: std::fmt::Debug + Send + 'static> MessageChannel<T> {
     }
 
     pub async fn send(&self, request: T) {
-        println!("Sending request {request:?}");
         self.request_tx.send(request).await.unwrap(); // TODO: error handling
     }
 }

@@ -149,7 +149,8 @@ async fn main() {
     .invoke_handler(tauri::generate_handler![
       download_shared_link,
       upload_files,
-      request_transfers
+      request_transfers,
+      get_file_sizes
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
