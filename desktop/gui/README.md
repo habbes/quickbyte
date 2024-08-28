@@ -21,6 +21,16 @@ Since TypeScript cannot handle type information for `.vue` imports, they are shi
 
 You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
 
+## Use Diesel CLI for migrations and ORM operations
+
+The app uses Diesel ORM to interact with the SQLite database for data persistence (e.g. being able to resume incomplete transfers).
+
+Check out [the getting started guide](https://diesel.rs/guides/getting-started). The guide uses Postgres, but they have [SQLite examples](https://github.com/diesel-rs/diesel/tree/2.2.x/examples/sqlite) in their repo.
+
+```
+cargo install diesel_cli
+```
+
 ## Running the app
 
 
