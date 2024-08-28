@@ -30,7 +30,7 @@ impl AppContext {
           file_id,
           status,
           error
-        } => database.lock().unwrap().update_file_status(&id, &status, error.as_deref()),
+        } => database.lock().unwrap().update_file_status(&file_id, &status, error.as_deref()),
         Event::TransferFileBlockStatusUpdate {
           block_id,
           file_id,

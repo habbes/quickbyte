@@ -84,6 +84,24 @@ impl TransferManager {
     downloader.start_download(job_updates).await;
   }
 
+  pub async fn run_download(&self, job: TransferJob) {
+    let downloader = SharedLinkDownloader::new(&job);
+    let transfers = Arc::clone(&(self.transfers));
+    let events = Arc::clone(&self.events);
+    let db_sync_channel = Arc::clone(&self.db_sync_channel);
+    let job_updates: MessageChannel<TransferUpdate> = MessageChannel::new(move|update: TransferUpdate| {
+      // handle_transfer_update(Arc::clone(&transfers), update);
+      let transfers = Arc::clone(&transfers);
+      let events = Arc::clone(&events);
+      let db_sync_channel = Arc::clone(&db_sync_channel);
+      tokio::spawn(async move {
+        handle_transfer_update(Arc::clone(&transfers), &update, Arc::clone(&events), Arc::clone(&db_sync_channel)).await;
+      });
+    });
+    let job_updates = Arc::new(job_updates);
+    downloader.start_download(job_updates).await;
+  }
+
   pub async fn start_upload(&self, request: UploadFilesRequest) {
     println!("Start upload {request:?}");
     let id = {
