@@ -26,13 +26,18 @@ impl Database {
         .execute(&mut self.connection)
         .expect("Error inserting transfer into database");
 
-        let new_files = job.files.iter().map(|f| map_transfer_to_new_file(f, &job._id));
-        for file in new_files {
-            diesel::insert_into(files::table)
-            .values(&file)
+        let new_files_and_blocks: Vec<_> = job.files.iter().map(|f| map_transfer_to_new_file(f, &job._id)).collect();
+        let new_files: Vec<_> = new_files_and_blocks.iter().map(|(f, bs)| f).collect();
+        let new_blocks: Vec<_> = new_files_and_blocks.iter().flat_map(|(f, bs)| bs).collect();
+        diesel::insert_into(files::table)
+            .values(new_files)
             .execute(&mut self.connection)
             .expect("Error inserting transfer file into database");
-        }
+
+        diesel::insert_into(file_blocks::table)
+            .values(new_blocks)
+            .execute(&mut self.connection)
+            .expect("Error inserting transfer file into database");
 
         println!("Created transfer in db {job:?}");
     }
@@ -140,8 +145,8 @@ impl<'a> From<&'a TransferJob> for NewTransfer<'a> {
     }
 }
 
-fn map_transfer_to_new_file<'a>(job: &'a TransferJobFile, transfer_id: &'a str) -> NewFile<'a> {
-    NewFile {
+fn map_transfer_to_new_file<'a>(job: &'a TransferJobFile, transfer_id: &'a str) -> (NewFile<'a>, Vec<FileBlock>) {
+    (NewFile {
         id: job._id.as_str(),
         name: job.name.as_str(),
         transfer_id: transfer_id,
@@ -152,7 +157,16 @@ fn map_transfer_to_new_file<'a>(job: &'a TransferJobFile, transfer_id: &'a str) 
         block_size: job.chunk_size as i64,
         provider: "az", // TODO: get from API
         local_path: &job.local_path
-    }
+    }, map_transfer_to_new_file_blocks(job))
+}
+
+fn map_transfer_to_new_file_blocks(job: &TransferJobFile) -> Vec<FileBlock> {
+    job.blocks.iter().map(|b| FileBlock {
+        id: b._id.to_string(),
+        file_id: job._id.clone(),
+        block_index: b.index as i64,
+        status: b.status.clone().into()
+    }).collect()
 }
 
 fn map_transfer_from_db(transfer: Transfer, files: &[File]) -> TransferJob {

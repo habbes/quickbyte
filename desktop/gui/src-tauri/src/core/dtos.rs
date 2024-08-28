@@ -153,7 +153,17 @@ pub struct TransferJobFile {
     pub status: JobStatus,
     pub error: Option<String>,
     #[serde(skip_serializing)]
-    pub chunk_size: u64
+    pub chunk_size: u64,
+    pub blocks: Vec<TransferJobFileBlock>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TransferJobFileBlock {
+  #[serde(rename = "_id")]
+  pub _id: String,
+  pub index: u64,
+  pub status: JobStatus
 }
 
 #[derive(Debug)]

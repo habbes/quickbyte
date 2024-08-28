@@ -74,7 +74,7 @@ pub struct NewFile<'a> {
     pub block_size: i64,
 }
 
-#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]
+#[derive(Queryable, Identifiable, Selectable, Insertable, Debug, PartialEq)]
 #[diesel(belongs_to(File))]
 #[diesel(table_name = file_blocks)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]

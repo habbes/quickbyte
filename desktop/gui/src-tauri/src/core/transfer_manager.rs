@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::{downloader::SharedLinkDownloader, dtos::*, event::Event, message_channel::SyncMessageChannel, models::JobStatus, request::Request, uploader::*};
+use super::{downloader::SharedLinkDownloader, dtos::*, event::Event, message_channel::SyncMessageChannel, models::JobStatus, request::Request, uploader::*, util::get_num_chunks};
 use tokio::sync::Mutex;
 use super::message_channel::MessageChannel;
 
@@ -126,7 +126,8 @@ impl TransferManager {
         status: JobStatus::Pending,
         error: None,
         remote_url: f.download_url.clone(),
-        chunk_size: self.chunk_size
+        chunk_size: self.chunk_size,
+        blocks: init_file_blocks(f.size, self.chunk_size)
     }).collect();
 
     let job = TransferJob{
@@ -160,7 +161,8 @@ impl TransferManager {
       status: JobStatus::Pending,
       error: None,
       remote_url: f.transfer_file.upload_url.clone(),
-      chunk_size: self.chunk_size
+      chunk_size: self.chunk_size,
+      blocks: init_file_blocks(f.transfer_file.size, self.chunk_size)
     }).collect();
 
     let job = TransferJob {
@@ -183,6 +185,20 @@ impl TransferManager {
 
     job
   }
+}
+
+fn init_file_blocks(file_size: u64, block_size: u64) -> Vec<TransferJobFileBlock> {
+  let count = get_num_chunks(file_size, block_size);
+  let mut blocks = Vec::with_capacity(count as usize);
+  for i in 0..count {
+    blocks.push(TransferJobFileBlock {
+      _id: uuid::Uuid::new_v4().to_string(),
+      index: i,
+      status: JobStatus::Pending
+    })
+  }
+
+  blocks
 }
 
 async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update: &TransferUpdate, events: Arc<MessageChannel<Event>>) {
