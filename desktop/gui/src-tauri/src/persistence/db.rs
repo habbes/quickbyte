@@ -12,15 +12,11 @@ pub fn init(db_path: &str) -> SqliteConnection {
         create_db_file(db_path);
     }
 
+    println!("Initializing db {db_path:?}");
     let mut connection = establish_connection(db_path);
     run_migrations(&mut connection);
 
     connection
-}
-
-pub fn establish_db_connection(db_path: &str) -> SqliteConnection {
-    SqliteConnection::establish(db_path)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", db_path))
 }
 
 fn run_migrations(connection: &mut SqliteConnection) {

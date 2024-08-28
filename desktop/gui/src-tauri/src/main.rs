@@ -12,13 +12,14 @@ use tauri::Manager;
 use commands::*;
 use event_bridge::bridge_events;
 use app_context::AppContext;
+use directories::BaseDirs;
 
 #[tokio::main]
 async fn main() {
   tauri::Builder::default()
     .setup(|app| {
       let app_handle = app.handle();
-      let app_context = AppContext::new(move |event| {
+      let app_context = AppContext::init(get_db_path().as_str(), move |event| {
         bridge_events(&app_handle, event)
       });
       
@@ -34,4 +35,13 @@ async fn main() {
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
+}
+
+fn get_db_path() -> String {
+  let base_dirs = BaseDirs::new().expect("Could not get app directories");
+  let base_data_path = base_dirs.data_local_dir();
+  let base_data_path = base_data_path.join(std::path::Path::new("quickbyte"));
+  let base_data_path =  base_data_path.to_str().unwrap().to_string();
+  let db_path = base_data_path + "/data.db";
+  return String::from(db_path);
 }

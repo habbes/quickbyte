@@ -3,9 +3,9 @@ use tokio;
 
 use crate::core::request::Request;
 use crate::core::{event::Event, transfer_manager::TransferManager};
-use crate::core::message_channel::MessageChannel;
+use crate::core::message_channel::{MessageChannel, SyncMessageChannel};
+use crate::persistence::database::Database;
 
-#[derive(Debug)]
 pub struct AppContext {
   pub requests: MessageChannel<Request>,
   pub events: MessageChannel<Event>,
@@ -13,10 +13,25 @@ pub struct AppContext {
 }
 
 impl AppContext {
-  pub fn new(event_handler: impl Fn(Event) + Send + 'static) -> Self {
+  pub fn init(db_path: &str, event_handler: impl Fn(Event) + Send + 'static) -> Self {
+
+    let mut database = Database::init(db_path);
+    let saved_jobs = database.load_transfers();
+    let database = Arc::new(std::sync::Mutex::new(database));
+    let db_sync_channel = Arc::new(SyncMessageChannel::new( move|message| {
+      match message {
+        Event::TransferCreated(transfer) => database.lock().unwrap().create_transfer(&transfer),
+        _ => (),
+      };
+    }));
+
     let events = MessageChannel::new(event_handler);
-    let transfers = Arc::new(TransferManager::new(events.clone()));
+    let transfers = Arc::new(TransferManager::with_saved_transfers(saved_jobs, events.clone(), db_sync_channel.clone()));
     let cloned = Arc::clone(&transfers);
+
+    
+    
+    
     Self {
       requests: MessageChannel::new(move|request| {
         println!("Request received {request:?}");
@@ -30,7 +45,7 @@ impl AppContext {
         
       }),
       events,
-      transfers
+      transfers,
     }
   }
 }

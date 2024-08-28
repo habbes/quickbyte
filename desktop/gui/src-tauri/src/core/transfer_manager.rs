@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::{downloader::SharedLinkDownloader, uploader::*, dtos::*, event::Event, models::JobStatus, request::Request};
+use super::{downloader::SharedLinkDownloader, dtos::*, event::Event, message_channel::SyncMessageChannel, models::JobStatus, request::Request, uploader::*};
 use tokio::sync::Mutex;
 use super::message_channel::MessageChannel;
 
@@ -10,15 +10,27 @@ pub struct TransferManager {
   next_id: Mutex<u64>,
   chunk_size: u64,
   transfers: Arc<Mutex<Vec<TransferJob>>>,
+  db_sync_channel: Arc<SyncMessageChannel<Event>>,
 }
 
 impl TransferManager {
-  pub fn new(events: MessageChannel<Event>) -> Self {
+  pub fn new(events: MessageChannel<Event>, db_sync_channel: Arc<SyncMessageChannel<Event>>) -> Self {
     Self {
       events: Arc::new(events),
       next_id: Mutex::new(1),
       chunk_size: 0x1000 * 0x1000, // 16MB
-      transfers: Arc::new(Mutex::new(vec![]))
+      transfers: Arc::new(Mutex::new(vec![])),
+      db_sync_channel
+    }
+  }
+
+  pub fn with_saved_transfers(transfers: Vec<TransferJob>, events: MessageChannel<Event>, db_sync_channel: Arc<SyncMessageChannel<Event>>) -> Self {
+    Self {
+      events: Arc::new(events),
+      next_id: Mutex::new(1),
+      chunk_size: 0x1000 * 0x1000, // 16MB
+      transfers: Arc::new(Mutex::new(transfers)),
+      db_sync_channel
     }
   }
 
@@ -53,6 +65,7 @@ impl TransferManager {
     };
   
     self.events.send(Event::TransferCreated(cloned_job.clone())).await;
+    self.db_sync_channel.send(Event::TransferCreated(cloned_job.clone()));
 
     let downloader = SharedLinkDownloader::new(&cloned_job);
     let transfers = Arc::clone(&(self.transfers));
@@ -86,6 +99,7 @@ impl TransferManager {
     }
 
     self.events.send(Event::TransferCreated(cloned_job.clone())).await;
+    self.db_sync_channel.send(Event::TransferCreated(cloned_job.clone()));
 
     let uploader = TransferUploader::new(&cloned_job);
     let transfers = Arc::clone(&(self.transfers));

@@ -33,6 +33,8 @@ impl Database {
             .execute(&mut self.connection)
             .expect("Error inserting transfer file into database");
         }
+
+        println!("Created transfer in db {job:?}");
     }
 
     pub fn load_transfers(&mut self) -> Vec<TransferJob>{
@@ -52,6 +54,8 @@ impl Database {
             let job = map_transfer_from_db(transfer, &files);
             result.push(job);
         }
+
+        println!("Loaded jobs from db {result:?}");
 
         result
     }
