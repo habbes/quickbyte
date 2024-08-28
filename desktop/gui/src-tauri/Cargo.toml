@@ -25,6 +25,8 @@ futures = "0.3.30"
 url = "2.5.2"
 tokio = { version = "1", features = ["full"] }
 base64 = "0.22.1"
+diesel = { version = "2.2.0", features = ["sqlite", "returning_clauses_for_sqlite_3_35"] }
+libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
