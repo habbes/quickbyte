@@ -2,11 +2,18 @@ use serde::{Serialize, Deserialize};
 
 use super::models::JobStatus;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum TransferKind {
     Upload,
     Download
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum DownloadType {
+  LegacyTransfer,
+  ProjectShare
 }
 
 #[derive(Serialize, Deserialize, Debug)]

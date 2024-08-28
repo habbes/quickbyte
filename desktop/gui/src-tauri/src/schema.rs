@@ -1,10 +1,10 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    file_chunks (id, file_id) {
+    file_blocks (id, file_id) {
         id -> Text,
         file_id -> Text,
-        chunk_index -> Integer,
+        block_index -> Integer,
         status -> Text,
     }
 }
@@ -12,6 +12,7 @@ diesel::table! {
 diesel::table! {
     files (id) {
         id -> Text,
+        transfer_id -> Text,
         name -> Text,
         size -> Integer,
         status -> Text,
@@ -19,9 +20,8 @@ diesel::table! {
         provider -> Text,
         transfer_url -> Text,
         local_path -> Text,
-        chunk_size -> Integer,
+        block_size -> Integer,
         created_at -> Timestamp,
-        transfer_id -> Text,
     }
 }
 
@@ -43,11 +43,11 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(file_chunks -> files (file_id));
+diesel::joinable!(file_blocks -> files (file_id));
 diesel::joinable!(files -> transfers (transfer_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    file_chunks,
+    file_blocks,
     files,
     transfers,
 );
