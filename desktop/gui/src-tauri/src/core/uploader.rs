@@ -101,10 +101,19 @@ impl FileUploader {
 
                 
                 events.send(
-                    TransferUpdate::ChunkCompleted {
+                    TransferUpdate::ChunkProgress {
                         chunk_index: i,
                         chunk_id: String::from(""),
                         size: real_size,
+                        file_id: file_id.clone(),
+                        transfer_id: transfer_id.clone()
+                    }
+                ).await;
+
+                events.send(
+                    TransferUpdate::ChunkCompleted {
+                        chunk_index: i,
+                        chunk_id: String::from(""),
                         file_id: file_id.clone(),
                         transfer_id: transfer_id.clone()
                     }

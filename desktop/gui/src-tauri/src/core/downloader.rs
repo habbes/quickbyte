@@ -130,7 +130,7 @@ impl FileDownloader {
                         let file_id = file_id.clone();
                         
                         tokio::spawn(async move {
-                            events.send(TransferUpdate::ChunkCompleted {
+                            events.send(TransferUpdate::ChunkProgress {
                                 chunk_index: 0,
                                 chunk_id: String::from(""),
                                 size: fetched_len,
@@ -140,6 +140,15 @@ impl FileDownloader {
                         });
                     }
                 }
+
+                tokio::spawn(async move {
+                    events.send(TransferUpdate::ChunkCompleted {
+                        chunk_index: 0,
+                        chunk_id: String::from(""),
+                        file_id: file_id.clone(),
+                        transfer_id: transfer_id.clone() 
+                    }).await;
+                });
 
                 // println!("Finished writing chunk {} of file {} after {}s", i, file_name, chunk_timer.elapsed().as_secs_f64());
                     

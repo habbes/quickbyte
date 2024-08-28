@@ -171,9 +171,15 @@ pub enum TransferUpdate {
     ChunkCompleted {
         chunk_index: u64,
         chunk_id: String,
-        size: u64,
         file_id: String,
         transfer_id: String
+    },
+    ChunkProgress {
+      chunk_index: u64,
+      chunk_id: String,
+      size: u64,
+      file_id: String,
+      transfer_id: String
     },
     FileCompleted {
         file_id: String,

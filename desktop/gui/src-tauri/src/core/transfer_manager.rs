@@ -204,7 +204,7 @@ fn init_file_blocks(file_size: u64, block_size: u64) -> Vec<TransferJobFileBlock
 async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update: &TransferUpdate, events: Arc<MessageChannel<Event>>) {
   let mut transfers = transfers.lock().await;
   match update {
-    TransferUpdate::ChunkCompleted {
+    TransferUpdate::ChunkProgress {
       chunk_index: _,
       chunk_id: _,
       size,
@@ -216,7 +216,15 @@ async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update:
       // file.completed_size += file.size;
       // file.status = JobStatus::Completed;
       // transfer.status = JobStatus::Progress;
-      handle_chunk_completed(&mut transfers, transfer_id, file_id, *size);
+      handle_chunk_progress(&mut transfers, transfer_id, file_id, *size);
+    },
+    TransferUpdate::ChunkCompleted {
+      chunk_index,
+      chunk_id,
+      file_id,
+      transfer_id
+    } => {
+      handle_chunk_completed(&mut transfers, transfer_id, file_id, chunk_id.as_str());
     },
     TransferUpdate::FileCompleted {
       file_id,
@@ -239,12 +247,21 @@ async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update:
   events.send(Event::Transfers(transfers.clone())).await;
 }
 
-fn handle_chunk_completed(transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>, transfer_id: &str, file_id: &str, chunk_size: u64) {
+fn handle_chunk_progress(transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>, transfer_id: &str, file_id: &str, chunk_size: u64) {
   let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
   let file = transfer.files.iter_mut().find(|f| f._id == file_id).unwrap();
   file.completed_size += chunk_size;
   file.status = JobStatus::Progress;
   transfer.status = JobStatus::Progress;
+}
+
+fn handle_chunk_completed(transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>, transfer_id: &str, file_id: &str, chunk_id: &str) {
+  let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+  let file = transfer.files.iter_mut().find(|f| f._id == file_id).unwrap();
+  let block = file.blocks.iter_mut().find(|b| b._id == chunk_id).unwrap();
+  file.status = JobStatus::Progress;
+  transfer.status = JobStatus::Progress;
+  block.status = JobStatus::Completed;
 }
 
 fn handle_file_completed(transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>, transfer_id: &str, file_id: &str) {
