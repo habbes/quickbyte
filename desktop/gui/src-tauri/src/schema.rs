@@ -14,13 +14,13 @@ diesel::table! {
         id -> Text,
         transfer_id -> Text,
         name -> Text,
-        size -> Integer,
+        size -> BigInt,
         status -> Text,
         error -> Nullable<Text>,
         provider -> Text,
         transfer_url -> Text,
         local_path -> Text,
-        block_size -> Integer,
+        block_size -> BigInt,
         created_at -> Timestamp,
     }
 }
@@ -29,7 +29,7 @@ diesel::table! {
     transfers (id) {
         id -> Text,
         name -> Text,
-        total_size -> Integer,
+        total_size -> BigInt,
         status -> Text,
         error -> Nullable<Text>,
         transfer_kind -> Text,

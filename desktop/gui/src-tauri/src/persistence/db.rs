@@ -7,12 +7,15 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-pub fn init(db_path: &str) {
+pub fn init(db_path: &str) -> SqliteConnection {
     if !db_file_exists(db_path) {
         create_db_file(db_path);
     }
 
-    run_migrations(db_path);
+    let mut connection = establish_connection(db_path);
+    run_migrations(&mut connection);
+
+    connection
 }
 
 pub fn establish_db_connection(db_path: &str) -> SqliteConnection {
@@ -20,8 +23,7 @@ pub fn establish_db_connection(db_path: &str) -> SqliteConnection {
         .unwrap_or_else(|_| panic!("Error connecting to {}", db_path))
 }
 
-fn run_migrations(db_path: &str) {
-    let mut connection = establish_connection(db_path);
+fn run_migrations(connection: &mut SqliteConnection) {
     connection.run_pending_migrations(MIGRATIONS).unwrap();
 }
 

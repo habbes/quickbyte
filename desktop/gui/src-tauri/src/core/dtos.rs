@@ -9,11 +9,29 @@ pub enum TransferKind {
     Download
 }
 
+impl Into<&'static str> for &TransferKind {
+  fn into(self) -> &'static str {
+    match self {
+      TransferKind::Upload => "upload",
+      TransferKind::Download => "download",
+    }
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum DownloadType {
   LegacyTransfer,
   ProjectShare
+}
+
+impl Into<&'static str> for &DownloadType {
+    fn into(self) -> &'static str {
+      match self {
+        DownloadType::LegacyTransfer => "legacyTransfer",
+        DownloadType::ProjectShare => "projectShare"
+      }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -82,6 +100,11 @@ pub struct TransferJob {
     #[serde(rename = "type")]
     pub transfer_kind: TransferKind,
     pub local_path: String,
+    pub download_type: Option<DownloadType>,
+    pub share_id: Option<String>,
+    pub share_code: Option<String>,
+    pub share_password: Option<String>,
+    pub download_transfer_id: Option<String>,
     pub files: Vec<TransferJobFile>,
 }
 

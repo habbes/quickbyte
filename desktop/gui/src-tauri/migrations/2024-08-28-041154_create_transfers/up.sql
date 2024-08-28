@@ -2,7 +2,7 @@
 CREATE TABLE transfers(
     id VARCHAR(50) PRIMARY KEY NOT NULL,
     name VARCHAR(255) NOT NULL,
-    total_size INTEGER NOT NULL,
+    total_size BIGINT NOT NULL,
     status VARCHAR(255) NOT NULL,
     error VARCHAR(255),
     -- "download" or "upload"

@@ -20,6 +20,23 @@ pub struct Transfer {
     pub created_at: NaiveDateTime
 }
 
+#[derive(Insertable)]
+#[diesel(table_name = transfers)]
+pub struct NewTransfer<'a> {
+    pub id: &'a str,
+    pub name: &'a str,
+    pub total_size: i64,
+    pub status: &'a str,
+    pub error: Option<&'a str>,
+    pub transfer_kind: &'a str,
+    pub download_type: Option<&'a str>,
+    pub share_id: Option<&'a str>,
+    pub share_code: Option<&'a str>,
+    pub share_password: Option<&'a str>,
+    pub download_transfer_id: Option<&'a str>,
+    pub local_path: &'a str,
+}
+
 #[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]
 #[diesel(belongs_to(Transfer))]
 #[diesel(table_name = files)]
@@ -35,6 +52,22 @@ pub struct File {
     pub local_path: String,
     pub block_size: u64,
     pub created_at: NaiveDateTime
+}
+
+#[derive(Insertable)]
+#[diesel(belongs_to(Transfer))]
+#[diesel(table_name = files)]
+pub struct NewFile<'a> {
+    pub id: &'a str,
+    pub transfer_id: &'a str,
+    pub name: &'a str,
+    pub size: i64,
+    pub status: &'a str,
+    pub error: Option<&'a str>,
+    pub provider: &'a str,
+    pub transfer_url: &'a str,
+    pub local_path: &'a str,
+    pub block_size: i64,
 }
 
 #[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]

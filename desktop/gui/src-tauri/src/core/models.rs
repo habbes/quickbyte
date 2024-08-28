@@ -10,6 +10,48 @@ pub enum JobStatus {
   Error
 }
 
+impl Into<&'static str> for &JobStatus {
+  fn into(self) -> &'static str {
+    match self {
+      JobStatus::Pending => "pending",
+      JobStatus::Cancelled => "progress",
+      JobStatus::Completed => "completed",
+      JobStatus::Error => "error",
+      JobStatus::Progress => "progress"
+    }
+  }
+}
+
+impl Into<String> for JobStatus {
+  fn into(self) -> String {
+    let s: &str = (&self).into();
+    String::from(s)
+  }
+}
+
+impl From<String> for JobStatus {
+  fn from(value: String) -> Self {
+    value.as_str().into()
+  }
+}
+
+impl From<&str> for JobStatus {
+  fn from(value: &str) -> Self {
+    if value == "pending" {
+      JobStatus::Pending
+    } else if value == "cancelled" {
+      JobStatus::Cancelled
+    } else if value == "completed" {
+      JobStatus::Completed
+    } else if value == "error" {
+      JobStatus::Error
+    } else {
+      // TODO: error if unknown type
+      JobStatus::Progress
+    }
+  }
+}
+
 pub struct DownloadJob {
   pub id: i32,
   pub share_id: String,
