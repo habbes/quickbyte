@@ -4,7 +4,7 @@ diesel::table! {
     file_blocks (id, file_id) {
         id -> Text,
         file_id -> Text,
-        block_index -> Integer,
+        block_index -> BigInt,
         status -> Text,
     }
 }

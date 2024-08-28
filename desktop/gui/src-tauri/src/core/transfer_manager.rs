@@ -124,6 +124,11 @@ impl TransferManager {
         local_path: request.target_path.clone(),
         files: files,
         transfer_kind: TransferKind::Download,
+        download_type: Some(DownloadType::ProjectShare),
+        share_code: Some(request.share_code.clone()),
+        share_id: Some(request.share_id.clone()),
+        share_password: None,
+        download_transfer_id: None,
         status: JobStatus::Pending,
         error: None
     };
@@ -153,6 +158,11 @@ impl TransferManager {
       local_path: request.local_path.clone(),
       files: files,
       transfer_kind: TransferKind::Upload,
+      download_type: None,
+      share_code: None,
+      share_id: None,
+      share_password: None,
+      download_transfer_id: None,
       status: JobStatus::Pending,
       error: None
     };

@@ -18,6 +18,22 @@ impl Into<&'static str> for &TransferKind {
   }
 }
 
+impl From<String> for TransferKind {
+    fn from(value: String) -> Self {
+        value.as_str().into()
+    }
+}
+
+impl From<&str> for TransferKind {
+    fn from(value: &str) -> Self {
+        match value {
+          "upload" => Self::Upload,
+          "download" => Self::Download,
+          _ => panic!("Unable to decode transfer kind {value}. Database is potentially corrupted.")
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum DownloadType {
@@ -31,6 +47,22 @@ impl Into<&'static str> for &DownloadType {
         DownloadType::LegacyTransfer => "legacyTransfer",
         DownloadType::ProjectShare => "projectShare"
       }
+    }
+}
+
+impl From<String> for DownloadType {
+  fn from(value: String) -> Self {
+    value.as_str().into()
+  }
+}
+
+impl From<&str> for DownloadType {
+    fn from(value: &str) -> Self {
+        match value {
+          "legacyTransfer" => Self::LegacyTransfer,
+          "projectShare" => Self::ProjectShare,
+          _ => Self::ProjectShare // TODO: handle as error or panic
+        }
     }
 }
 
