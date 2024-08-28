@@ -4,6 +4,7 @@ use diesel::BelongingToDsl;
 use crate::core::dtos::TransferJobFile;
 use crate::core::dtos::TransferJobFileBlock;
 use crate::{core::dtos::TransferJob, schema::*};
+use crate::core::util::get_block_size_at_index;
 use super::{db, models::*};
 
 
@@ -188,7 +189,9 @@ fn map_transfer_from_db(transfer: Transfer, files: &[File], file_blocks: &[FileB
         local_path: f.local_path.clone(),
         error: f.error.clone(),
         chunk_size: f.block_size as u64,
-        completed_size: 0,
+        completed_size: file_blocks.iter()
+            .filter(|b| b.file_id == f.id && b.status == "completed")
+            .map(|b| get_block_size_at_index(b.block_index as u64, f.size as u64, f.block_size as u64)).sum(),
         blocks: file_blocks.iter().filter(|b| f.id == b.file_id).map(|b| TransferJobFileBlock {
             _id: b.id.clone(),
             index: b.block_index as u64,

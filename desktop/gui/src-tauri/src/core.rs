@@ -6,4 +6,4 @@ pub mod request;
 pub mod event;
 pub mod transfer_manager;
 pub mod message_channel;
-mod util;
+pub mod util;
