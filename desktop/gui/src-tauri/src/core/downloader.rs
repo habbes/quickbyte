@@ -3,6 +3,8 @@ use std::{fs::File, io::Write, os::unix::fs::FileExt, sync::Arc};
 use tokio::task;
 use futures::stream::StreamExt;
 use std::time::Instant;
+use crate::core::models::JobStatus;
+
 use super::message_channel::MessageChannel;
 
 use super::dtos::*;
@@ -88,16 +90,23 @@ impl FileDownloader {
         let file_id = self.file_job._id.clone();
         
 
-        for i in 0..num_chunks {
+        for block in &self.file_job.blocks {
+            if block.status == JobStatus::Completed {
+                continue;
+            }
+
             let blob = blob.clone();
             let file = Arc::clone(&file);
             let file_name = Arc::clone(&file_name);
             let events = Arc::clone(&events);
             let transfer_id = transfer_id.clone();
                         let file_id = file_id.clone();
+            
+            let block_index = block.index;
+            let block_id = block._id.clone();
             let task = task::spawn(async move {
-                let start_range: u64 = i as u64 * chunk_size as u64;
-                let end_range = (start_range + chunk_size as u64).min(file_size);
+                let start_range = block_index * chunk_size;
+                let end_range = (start_range + chunk_size).min(file_size);
                 let mut stream = blob
                     .get()
                     .range(start_range..end_range)
@@ -129,10 +138,11 @@ impl FileDownloader {
                         let transfer_id = transfer_id.clone();
                         let file_id = file_id.clone();
                         
+                        let block_id = block_id.clone();
                         tokio::spawn(async move {
                             events.send(TransferUpdate::ChunkProgress {
                                 chunk_index: 0,
-                                chunk_id: String::from(""),
+                                chunk_id: block_id.clone(),
                                 size: fetched_len,
                                 file_id: file_id.clone(),
                                 transfer_id: transfer_id.clone() 

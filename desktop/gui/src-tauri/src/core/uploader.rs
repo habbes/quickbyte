@@ -2,6 +2,8 @@ use azure_storage_blobs::{blob::{BlobBlockType, BlockList}, prelude::BlobClient}
 use url::Url;
 use std::{os::unix::fs::FileExt, sync::Arc, time::Instant};
 use base64::prelude::*;
+use crate::core::models::JobStatus;
+
 use super::dtos::*;
 use super::util::*;
 use super::message_channel::MessageChannel;
@@ -75,35 +77,42 @@ impl FileUploader {
         // Vector to hold all the upload tasks
         let mut upload_tasks = Vec::with_capacity(num_chunks as usize);
 
-        for i in 0..num_chunks {
+        for block in &self.file_job.blocks {
+            if block.status == JobStatus::Completed {
+                continue;
+            }
+
             let blob_client = Arc::clone(&blob_client);
             let file = Arc::clone(&file);
             let chunk_size = self.file_job.chunk_size;
-            let offset = i * chunk_size;
+            let offset = block.index * chunk_size;
             let end = std::cmp::min(offset + chunk_size, self.file_job.size);
             let real_size = end - offset;
 
             let events = Arc::clone(&self.events);
             let file_id = self.file_job._id.clone();
             let transfer_id = self.transfer_id.clone();
+
+            let block_id: String = block._id.clone();
+            let block_index = block.index;
             // Create a task for each chunk upload
             let task = tokio::task::spawn(async move {
                 let mut buffer = vec![0u8; (end - offset) as usize];
                 // file.seek(tokio::io::SeekFrom::Start(offset)).await?;
                 file.read_exact_at(&mut buffer, offset).unwrap();
                 
+                
                 // Upload the block
-                let block_id: Vec<_> = format!("{:032x}", i + 1).as_bytes().iter().map(|v| v.clone()).collect();
                 blob_client
-                    .put_block(block_id, buffer)
+                    .put_block(block_id.clone().into_bytes(), buffer)
                     .into_future()
                     .await.unwrap();
 
                 
                 events.send(
                     TransferUpdate::ChunkProgress {
-                        chunk_index: i,
-                        chunk_id: String::from(""),
+                        chunk_index: block_index,
+                        chunk_id: block_id.clone(),
                         size: real_size,
                         file_id: file_id.clone(),
                         transfer_id: transfer_id.clone()
@@ -112,8 +121,8 @@ impl FileUploader {
 
                 events.send(
                     TransferUpdate::ChunkCompleted {
-                        chunk_index: i,
-                        chunk_id: String::from(""),
+                        chunk_index: block_index,
+                        chunk_id: block_id.clone(),
                         file_id: file_id.clone(),
                         transfer_id: transfer_id.clone()
                     }
