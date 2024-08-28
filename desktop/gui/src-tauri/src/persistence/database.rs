@@ -38,6 +38,8 @@ impl Database {
     }
 
     pub fn load_transfers(&mut self) -> Vec<TransferJob>{
+        // Following code suffers from N+1 query problem.
+        // Using belonging_to didn't work, so this was a quick workaround
         let all_transfers = transfers::table
         .select(Transfer::as_select())
         .load(&mut self.connection)
