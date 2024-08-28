@@ -4,11 +4,12 @@
 pub mod core;
 pub mod commands;
 pub mod event_bridge;
+mod app_context;
 
 use tauri::Manager;
 use commands::*;
 use event_bridge::bridge_events;
-use core::app_context::AppContext;
+use app_context::AppContext;
 
 #[tokio::main]
 async fn main() {

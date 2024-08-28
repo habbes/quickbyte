@@ -1,7 +1,7 @@
 use tauri::{command, State};
 use crate::core::request::Request;
 use crate::core::dtos::*;
-use crate::core::app_context::AppContext;
+use crate::app_context::AppContext;
 
 #[command]
 pub async fn download_shared_link(context: State<'_, AppContext>, request: SharedLinkDownloadRequest) -> Result<(), ()>{
