@@ -2,6 +2,7 @@ use diesel::SqliteConnection;
 use diesel::prelude::*;
 use diesel::BelongingToDsl; 
 use crate::core::dtos::TransferJobFile;
+use crate::core::dtos::TransferJobFileBlock;
 use crate::{core::dtos::TransferJob, schema::*};
 use super::{db, models::*};
 
@@ -50,6 +51,11 @@ impl Database {
         .load(&mut self.connection)
         .expect("Failed to load transfers from database");
 
+        let all_blocks = file_blocks::table
+        .select(FileBlock::as_select())
+        .load(&mut self.connection)
+        .expect("Failed to load file blocks from database");
+
         let mut result: Vec<TransferJob> = Vec::new();
         for transfer in all_transfers {
             let files = files::table
@@ -57,10 +63,13 @@ impl Database {
             .select(File::as_select())
             .load(&mut self.connection)
             .expect("Failed to load file from database");
+
             
-            let job = map_transfer_from_db(transfer, &files);
+            
+            let job = map_transfer_from_db(transfer, &files, &all_blocks);
             result.push(job);
         }
+        
 
         println!("Loaded jobs from db {result:?}");
 
@@ -169,7 +178,7 @@ fn map_transfer_to_new_file_blocks(job: &TransferJobFile) -> Vec<FileBlock> {
     }).collect()
 }
 
-fn map_transfer_from_db(transfer: Transfer, files: &[File]) -> TransferJob {
+fn map_transfer_from_db(transfer: Transfer, files: &[File], file_blocks: &[FileBlock]) -> TransferJob {
     let files: Vec<TransferJobFile> = files.iter().map(|f| TransferJobFile {
         _id: f.id.clone(),
         name: f.name.clone(),
@@ -180,6 +189,11 @@ fn map_transfer_from_db(transfer: Transfer, files: &[File]) -> TransferJob {
         error: f.error.clone(),
         chunk_size: f.block_size as u64,
         completed_size: 0,
+        blocks: file_blocks.iter().filter(|b| f.id == b.file_id).map(|b| TransferJobFileBlock {
+            _id: b.id.clone(),
+            index: b.block_index as u64,
+            status: b.status.clone().into()
+        }).collect()
     }).collect();
 
     let transfer_job = TransferJob {
