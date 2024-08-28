@@ -70,12 +70,14 @@ impl TransferManager {
     let downloader = SharedLinkDownloader::new(&cloned_job);
     let transfers = Arc::clone(&(self.transfers));
     let events = Arc::clone(&self.events);
+    let db_sync_channel = Arc::clone(&self.db_sync_channel);
     let job_updates: MessageChannel<TransferUpdate> = MessageChannel::new(move|update: TransferUpdate| {
       // handle_transfer_update(Arc::clone(&transfers), update);
       let transfers = Arc::clone(&transfers);
       let events = Arc::clone(&events);
+      let db_sync_channel = Arc::clone(&db_sync_channel);
       tokio::spawn(async move {
-        handle_transfer_update(Arc::clone(&transfers), &update, Arc::clone(&events)).await;
+        handle_transfer_update(Arc::clone(&transfers), &update, Arc::clone(&events), Arc::clone(&db_sync_channel)).await;
       });
     });
     let job_updates = Arc::new(job_updates);
@@ -104,12 +106,14 @@ impl TransferManager {
     let uploader = TransferUploader::new(&cloned_job);
     let transfers = Arc::clone(&(self.transfers));
     let events = Arc::clone(&self.events);
+    let db_sync_channel = Arc::clone(&self.db_sync_channel);
     let job_updates: MessageChannel<TransferUpdate> = MessageChannel::new(move|update: TransferUpdate| {
       // handle_transfer_update(Arc::clone(&transfers), update);
       let transfers = Arc::clone(&transfers);
       let events = Arc::clone(&events);
+      let db_sync_channel = Arc::clone(&db_sync_channel);
       tokio::spawn(async move {
-        handle_transfer_update(Arc::clone(&transfers), &update, Arc::clone(&events)).await;
+        handle_transfer_update(Arc::clone(&transfers), &update, Arc::clone(&events), Arc::clone(&db_sync_channel)).await;
       });
     });
     let job_updates = Arc::new(job_updates);
@@ -201,7 +205,7 @@ fn init_file_blocks(file_size: u64, block_size: u64) -> Vec<TransferJobFileBlock
   blocks
 }
 
-async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update: &TransferUpdate, events: Arc<MessageChannel<Event>>) {
+async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update: &TransferUpdate, events: Arc<MessageChannel<Event>>, db_sync_channel: Arc<SyncMessageChannel<Event>>) {
   let mut transfers = transfers.lock().await;
   match update {
     TransferUpdate::ChunkProgress {
@@ -225,6 +229,12 @@ async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update:
       transfer_id
     } => {
       handle_chunk_completed(&mut transfers, transfer_id, file_id, chunk_id.as_str());
+      db_sync_channel.send(Event::TransferFileBlockStatusUpdate {
+        block_id: chunk_id.clone(),
+        file_id: file_id.clone(),
+        status: JobStatus::Completed,
+        error: None
+      });
     },
     TransferUpdate::FileCompleted {
       file_id,
@@ -236,11 +246,21 @@ async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update:
       // file.completed_size += file.size;
       // file.status = JobStatus::Completed;
       // transfer.status = JobStatus::Progress;
+      db_sync_channel.send(Event::TransferFileStatusUpdate {
+        file_id: file_id.clone(),
+        status: JobStatus::Completed,
+        error: None
+      });
     },
     TransferUpdate::TransferCompleted { transfer_id } => {
       handle_transfer_completed(&mut transfers, transfer_id);
       // let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
       // transfer.status = JobStatus::Completed;
+      db_sync_channel.send(Event::TransferStatusUpdate {
+        transfer_id: transfer_id.clone(),
+        status: JobStatus::Completed,
+        error: None
+      });
     }
   }
 

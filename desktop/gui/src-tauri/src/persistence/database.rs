@@ -3,6 +3,7 @@ use diesel::prelude::*;
 use diesel::BelongingToDsl; 
 use crate::core::dtos::TransferJobFile;
 use crate::core::dtos::TransferJobFileBlock;
+use crate::core::models::JobStatus;
 use crate::{core::dtos::TransferJob, schema::*};
 use crate::core::util::get_block_size_at_index;
 use super::{db, models::*};
@@ -75,6 +76,33 @@ impl Database {
         println!("Loaded jobs from db {result:?}");
 
         result
+    }
+
+    pub fn update_transfer_status(&mut self, id: &str, status: &JobStatus, error: Option<&str>) {
+        use transfers::dsl;
+        let status_str: &str = status.into();
+        diesel::update(dsl::transfers.find(id))
+        .set((dsl::status.eq(status_str), dsl::error.eq(error)))
+        .execute(&mut self.connection)
+        .expect("Error saving transfer status.");
+    }
+
+    pub fn update_file_status(&mut self, id: &str, status: &JobStatus, error: Option<&str>) {
+        use files::dsl;
+        let status_str: &str = status.into();
+        diesel::update(dsl::files.find(id))
+        .set((dsl::status.eq(status_str), dsl::error.eq(error)))
+        .execute(&mut self.connection)
+        .expect("Error saving transfer status.");
+    }
+
+    pub fn update_block_status(&mut self, id: &str, file_id: &str, status: &JobStatus) {
+        use file_blocks::dsl;
+        let status_str: &str = status.into();
+        diesel::update(dsl::file_blocks.find((id, file_id)))
+        .set(dsl::status.eq(status_str))
+        .execute(&mut self.connection)
+        .expect("Error saving transfer status.");
     }
 
     // pub fn load_transfers(&mut self) {

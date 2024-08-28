@@ -25,6 +25,7 @@ pub struct Transfer {
 
 #[derive(Insertable)]
 #[diesel(table_name = transfers)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct NewTransfer<'a> {
     pub id: &'a str,
     pub name: &'a str,
@@ -61,6 +62,7 @@ pub struct File {
 #[derive(Insertable)]
 #[diesel(belongs_to(Transfer))]
 #[diesel(table_name = files)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct NewFile<'a> {
     pub id: &'a str,
     pub transfer_id: &'a str,

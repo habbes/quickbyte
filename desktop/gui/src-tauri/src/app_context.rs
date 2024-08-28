@@ -21,6 +21,21 @@ impl AppContext {
     let db_sync_channel = Arc::new(SyncMessageChannel::new( move|message| {
       match message {
         Event::TransferCreated(transfer) => database.lock().unwrap().create_transfer(&transfer),
+        Event::TransferStatusUpdate {
+          transfer_id,
+          status,
+          error
+        } => database.lock().unwrap().update_transfer_status(&transfer_id, &status, error.as_deref()),
+        Event::TransferFileStatusUpdate {
+          file_id,
+          status,
+          error
+        } => database.lock().unwrap().update_file_status(&id, &status, error.as_deref()),
+        Event::TransferFileBlockStatusUpdate {
+          block_id,
+          file_id,
+          status,
+          error } => database.lock().unwrap().update_block_status(&block_id, &file_id, &status),
         _ => (),
       };
     }));
