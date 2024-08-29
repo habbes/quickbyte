@@ -314,7 +314,7 @@ fn handle_chunk_progress(transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob
 fn handle_chunk_completed(transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>, transfer_id: &str, file_id: &str, chunk_id: &str) {
   let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
   let file = transfer.files.iter_mut().find(|f| f._id == file_id).unwrap();
-  let block = file.blocks.iter_mut().find(|b| b._id == chunk_id).unwrap();
+  let block = file.blocks.iter_mut().find(|b| b._id == chunk_id).expect(format!("Block {chunk_id} not found for file {file_id}.").as_str());
   file.status = JobStatus::Progress;
   transfer.status = JobStatus::Progress;
   block.status = JobStatus::Completed;

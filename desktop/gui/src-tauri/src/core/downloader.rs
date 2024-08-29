@@ -141,7 +141,7 @@ impl FileDownloader {
                         let block_id = block_id.clone();
                         tokio::spawn(async move {
                             events.send(TransferUpdate::ChunkProgress {
-                                chunk_index: 0,
+                                chunk_index: block_index,
                                 chunk_id: block_id.clone(),
                                 size: fetched_len,
                                 file_id: file_id.clone(),
@@ -153,8 +153,8 @@ impl FileDownloader {
 
                 tokio::spawn(async move {
                     events.send(TransferUpdate::ChunkCompleted {
-                        chunk_index: 0,
-                        chunk_id: String::from(""),
+                        chunk_index: block_index,
+                        chunk_id: block_id.clone(),
                         file_id: file_id.clone(),
                         transfer_id: transfer_id.clone() 
                     }).await;

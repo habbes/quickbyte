@@ -99,6 +99,7 @@ impl Database {
     pub fn update_block_status(&mut self, id: &str, file_id: &str, status: &JobStatus) {
         use file_blocks::dsl;
         let status_str: &str = status.into();
+        println!("Saving block {id} {file_id} status {status:?}");
         diesel::update(dsl::file_blocks.find((id, file_id)))
         .set(dsl::status.eq(status_str))
         .execute(&mut self.connection)
