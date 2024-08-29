@@ -10,7 +10,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    files (id) {
+    files (id, transfer_id) {
         id -> Text,
         transfer_id -> Text,
         name -> Text,
@@ -43,7 +43,6 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(file_blocks -> files (file_id));
 diesel::joinable!(files -> transfers (transfer_id));
 
 diesel::allow_tables_to_appear_in_same_query!(

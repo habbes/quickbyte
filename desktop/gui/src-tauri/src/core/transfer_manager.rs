@@ -44,6 +44,12 @@ impl TransferManager {
       self.transfers.lock().await.push(transfer.clone()); // TODO: avoid unnecessary cloning
     }
 
+    if transfer.status != JobStatus::Pending && transfer.status != JobStatus::Progress {
+      return;
+    }
+
+    println!("Resuming transfer {}", transfer.name);
+
     self.events.send(Event::TransferCreated(transfer.clone())).await;
     match transfer.transfer_kind {
       TransferKind::Download => self.run_download(&transfer).await,
@@ -282,6 +288,7 @@ async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update:
       // transfer.status = JobStatus::Progress;
       db_sync_channel.send(Event::TransferFileStatusUpdate {
         file_id: file_id.clone(),
+        transfer_id: transfer_id.clone(),
         status: JobStatus::Completed,
         error: None
       });

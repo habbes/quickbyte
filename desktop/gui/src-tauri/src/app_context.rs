@@ -32,9 +32,10 @@ impl AppContext {
         } => database.lock().unwrap().update_transfer_status(&transfer_id, &status, error.as_deref()),
         Event::TransferFileStatusUpdate {
           file_id,
+          transfer_id,
           status,
           error
-        } => database.lock().unwrap().update_file_status(&file_id, &status, error.as_deref()),
+        } => database.lock().unwrap().update_file_status(&file_id, &transfer_id, &status, error.as_deref()),
         Event::TransferFileBlockStatusUpdate {
           block_id,
           file_id,
@@ -59,6 +60,7 @@ impl AppContext {
     });
     
     for job in saved_jobs {
+      println!("Sending resume request for recovered job {}", job.name);
       requests.send(Request::ResumeTransfer(job)).await;
     }
     

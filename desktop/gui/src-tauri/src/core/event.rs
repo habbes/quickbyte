@@ -13,6 +13,7 @@ pub enum Event {
   },
   TransferFileStatusUpdate {
     file_id: String,
+    transfer_id: String,
     status: JobStatus,
     error: Option<String>
   },

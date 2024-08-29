@@ -40,7 +40,7 @@ impl Database {
         diesel::insert_into(file_blocks::table)
             .values(new_blocks)
             .execute(&mut self.connection)
-            .expect("Error inserting transfer file into database");
+            .expect("Error inserting transfer file block into database");
 
         println!("Created transfer in db {job:?}");
     }
@@ -87,10 +87,10 @@ impl Database {
         .expect("Error saving transfer status.");
     }
 
-    pub fn update_file_status(&mut self, id: &str, status: &JobStatus, error: Option<&str>) {
+    pub fn update_file_status(&mut self, id: &str, transfer_id: &str, status: &JobStatus, error: Option<&str>) {
         use files::dsl;
         let status_str: &str = status.into();
-        diesel::update(dsl::files.find(id))
+        diesel::update(dsl::files.find((id, transfer_id)))
         .set((dsl::status.eq(status_str), dsl::error.eq(error)))
         .execute(&mut self.connection)
         .expect("Error saving transfer status.");

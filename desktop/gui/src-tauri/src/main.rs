@@ -35,6 +35,7 @@ async fn main() {
         }).await;
 
         app_handle.manage(app_context);
+        println!("App initialization complete.");
       });
       
       // app.manage(app_context);
@@ -54,7 +55,7 @@ async fn main() {
 fn get_db_path() -> String {
   let base_dirs = BaseDirs::new().expect("Could not get app directories");
   let base_data_path = base_dirs.data_local_dir();
-  let base_data_path = base_data_path.join(std::path::Path::new("quickbyte"));
+  let base_data_path = base_data_path.join(std::path::Path::new("Quickbyte"));
   let base_data_path =  base_data_path.to_str().unwrap().to_string();
   let db_path = base_data_path + "/data.db";
   return String::from(db_path);
