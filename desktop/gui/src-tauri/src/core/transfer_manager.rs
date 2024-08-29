@@ -269,6 +269,7 @@ async fn handle_transfer_update(transfers: Arc<Mutex<Vec<TransferJob>>>, update:
         status: JobStatus::Completed,
         error: None
       });
+      println!("Send complete block status {chunk_id} {file_id}");
     },
     TransferUpdate::FileCompleted {
       file_id,

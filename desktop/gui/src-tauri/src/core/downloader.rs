@@ -24,7 +24,7 @@ impl SharedLinkDownloader<'_> {
         let files = &self.request.files;
         println!("Init download of {}", files.len());
         // create file download handler for each file
-        let file_downloaders: Vec<_> = files.iter().map(|f|
+        let file_downloaders: Vec<_> = files.iter().filter(|f| f.status == JobStatus::Pending || f.status == JobStatus::Progress).map(|f|
             FileDownloader::new(f.clone(), self.request._id.clone(), Arc::clone(&events))).collect();
         // initialize the handlers to persist records
         // run the downloaders concurrently, limiting concurrency

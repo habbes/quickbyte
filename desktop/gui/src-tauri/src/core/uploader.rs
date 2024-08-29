@@ -21,7 +21,7 @@ impl<'a> TransferUploader<'a> {
     }
 
     pub async fn start_upload(&self, events: Arc<MessageChannel<TransferUpdate>>) {
-        let file_uploaders: Vec<_> = self.request.files.iter().map(|f|
+        let file_uploaders: Vec<_> = self.request.files.iter().filter(|f| f.status == JobStatus::Pending || f.status == JobStatus::Progress).map(|f|
             FileUploader::new(self.request._id.clone(), f.clone(), Arc::clone(&events))).collect();
 
         let count = file_uploaders.len();
