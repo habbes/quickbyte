@@ -13,11 +13,15 @@ pub struct AppContext {
 }
 
 impl AppContext {
-  pub async fn init(db_path: &str, event_handler: impl Fn(Event) + Send + 'static) -> Self {
-
-    let mut database = Database::init(db_path);
-    let saved_jobs = database.load_transfers();
-    let database = Arc::new(std::sync::Mutex::new(database));
+  pub async fn init(db_path: String, event_handler: impl Fn(Event) + Send + 'static) -> Self {
+    println!("Init app with db_path {db_path}");
+    let saved_jobs;
+    let database = {
+      let mut database = Database::init(&db_path);
+      saved_jobs = database.load_transfers();
+      // let database = Arc::new(std::sync::Mutex::new(database));
+      Arc::new(std::sync::Mutex::new(database))
+    };
     let db_sync_channel = Arc::new(SyncMessageChannel::new( move|message| {
       match message {
         Event::TransferCreated(transfer) => database.lock().unwrap().create_transfer(&transfer),

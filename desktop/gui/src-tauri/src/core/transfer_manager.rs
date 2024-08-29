@@ -24,22 +24,6 @@ impl TransferManager {
     }
   }
 
-  pub fn with_saved_transfers(
-    transfers: Vec<TransferJob>,
-    events: MessageChannel<Event>,
-    db_sync_channel: Arc<SyncMessageChannel<Event>>,
-    requests_channel: Arc<MessageChannel<Request>>,
-  ) -> Self {
-
-    Self {
-      events: Arc::new(events),
-      next_id: Mutex::new(1),
-      chunk_size: 0x1000 * 0x1000, // 16MB
-      transfers: Arc::new(Mutex::new(transfers)),
-      db_sync_channel
-    }
-  }
-
   pub async fn execute_request(&self, request: Request) {
     println!("Executing request {request:?}");
     match request {

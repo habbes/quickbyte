@@ -13,17 +13,31 @@ use commands::*;
 use event_bridge::bridge_events;
 use app_context::AppContext;
 use directories::BaseDirs;
+use tokio;
 
 #[tokio::main]
 async fn main() {
   tauri::Builder::default()
     .setup(|app| {
       let app_handle = app.handle();
-      let app_context = AppContext::init(get_db_path().as_str(), move |event| {
-        bridge_events(&app_handle, event)
+      // tokio::block_on()
+      // let app_context = AppContext::init(get_db_path().to_string(), move |event| {
+      //   bridge_events(&app_handle, event)
+      // });
+
+      // TODO: since this runs async, the UI might start before the app context
+      // has been initialized, which means commands won't work. Be sure to synchronize things
+      // to make sure that doesn't happen.
+      tokio::spawn(async move {
+        let cloned_handle = app_handle.clone();
+        let app_context = AppContext::init(get_db_path().to_string(), move |event| {
+          bridge_events(&cloned_handle, event)
+        }).await;
+
+        app_handle.manage(app_context);
       });
       
-      app.manage(app_context);
+      // app.manage(app_context);
 
       Ok(())
     })
