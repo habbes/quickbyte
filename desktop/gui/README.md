@@ -31,6 +31,24 @@ Check out [the getting started guide](https://diesel.rs/guides/getting-started).
 cargo install diesel_cli
 ```
 
+To create and run migrations during development, the `diesel` CLI requires a development database. Since we don't bundle the db with the app, I'd recommend creating a temporary db file at `src-tauri/test.db` for use with `diesel` migration commands:
+
+```
+cd src-tauri
+```
+
+Generate new migration:
+
+```
+diesel migration generate create_transfers --database-url testdb
+```
+
+Run migrations:
+
+```
+diesel migration run --database-url testdb
+```
+
 ## Running the app
 
 
