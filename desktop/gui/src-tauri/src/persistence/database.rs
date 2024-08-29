@@ -87,10 +87,10 @@ impl Database {
         .expect("Error saving transfer status.");
     }
 
-    pub fn update_file_status(&mut self, id: &str, transfer_id: &str, status: &JobStatus, error: Option<&str>) {
+    pub fn update_file_status(&mut self, id: &str, status: &JobStatus, error: Option<&str>) {
         use files::dsl;
         let status_str: &str = status.into();
-        diesel::update(dsl::files.find((id, transfer_id)))
+        diesel::update(dsl::files.find(id))
         .set((dsl::status.eq(status_str), dsl::error.eq(error)))
         .execute(&mut self.connection)
         .expect("Error saving transfer status.");
@@ -186,6 +186,7 @@ impl<'a> From<&'a TransferJob> for NewTransfer<'a> {
 fn map_transfer_to_new_file<'a>(job: &'a TransferJobFile, transfer_id: &'a str) -> (NewFile<'a>, Vec<FileBlock>) {
     (NewFile {
         id: job._id.as_str(),
+        remote_file_id: job.remote_file_id.as_str(),
         name: job.name.as_str(),
         transfer_id: transfer_id,
         size: job.size as i64,
@@ -210,6 +211,7 @@ fn map_transfer_to_new_file_blocks(job: &TransferJobFile) -> Vec<FileBlock> {
 fn map_transfer_from_db(transfer: Transfer, files: &[File], file_blocks: &[FileBlock]) -> TransferJob {
     let files: Vec<TransferJobFile> = files.iter().map(|f| TransferJobFile {
         _id: f.id.clone(),
+        remote_file_id: f.remote_file_id.clone(),
         name: f.name.clone(),
         size: f.size as u64,
         status: f.status.as_str().into(),

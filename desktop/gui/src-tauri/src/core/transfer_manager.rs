@@ -59,9 +59,7 @@ impl TransferManager {
 
   pub async fn start_download(&self, request: SharedLinkDownloadRequest) {
     println!("Start download {request:?}");
-    let id = uuid::Uuid::new_v4();
-
-    let job = self.init_download_job(id.to_string(), &request);
+    let job = self.init_download_job(&request);
     let cloned_job = job.clone(); // TODO: try to get reference or at least move to heap instead of sharing
     {
       let mut transfers = self.transfers.lock().await;
@@ -108,14 +106,8 @@ impl TransferManager {
 
   pub async fn start_upload(&self, request: UploadFilesRequest) {
     println!("Start upload {request:?}");
-    let id = {
-      let mut next_id = self.next_id.lock().await;
-      let cur_id = *next_id;
-      *next_id += 1;
-      cur_id
-    };
 
-    let job = self.init_upload_job(id.to_string(), &request);
+    let job = self.init_upload_job(&request);
     let cloned_job = job.clone();
     {
       let mut transfers = self.transfers.lock().await;
@@ -160,9 +152,10 @@ impl TransferManager {
     uploader.start_upload(job_updates).await;
   }
 
-  fn init_download_job(&self, id: String, request: &SharedLinkDownloadRequest) -> TransferJob {
+  fn init_download_job(&self, request: &SharedLinkDownloadRequest) -> TransferJob {
     let files: Vec<TransferJobFile> = request.files.iter().map(|f| TransferJobFile {
-        _id: f._id.clone(),
+        _id: uuid::Uuid::new_v4().to_string(),
+        remote_file_id: f._id.clone(),
         name: f.name.clone(),
         size: f.size,
         completed_size: 0,
@@ -175,7 +168,7 @@ impl TransferManager {
     }).collect();
 
     let job = TransferJob{
-        _id: id,
+        _id: uuid::Uuid::new_v4().to_string(),
         name: request.name.clone(),
         total_size: files.iter().map(|f| f.size).sum(),
         completed_size: 0,
@@ -195,9 +188,10 @@ impl TransferManager {
     job
   }
 
-  fn init_upload_job(&self, id: String, request: &UploadFilesRequest) -> TransferJob {
+  fn init_upload_job(&self, request: &UploadFilesRequest) -> TransferJob {
     let files: Vec<TransferJobFile> = request.files.iter().map(|f| TransferJobFile {
-      _id: f.transfer_file._id.clone(),
+      _id: uuid::Uuid::new_v4().to_string(),
+      remote_file_id: f.transfer_file._id.clone(),
       name: f.transfer_file.name.clone(),
       size: f.transfer_file.size,
       completed_size: 0,
@@ -210,7 +204,7 @@ impl TransferManager {
     }).collect();
 
     let job = TransferJob {
-      _id: id,
+      _id: uuid::Uuid::new_v4().to_string(),
       name: request.name.clone(),
       total_size: files.iter().map(|f| f.size).sum(),
       completed_size: 0,

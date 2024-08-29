@@ -48,6 +48,7 @@ pub struct NewTransfer<'a> {
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct File {
     pub id: String,
+    pub remote_file_id: String,
     pub transfer_id: String,
     pub name: String,
     pub size: i64,
@@ -65,6 +66,7 @@ pub struct File {
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct NewFile<'a> {
     pub id: &'a str,
+    pub remote_file_id: &'a str,
     pub transfer_id: &'a str,
     pub name: &'a str,
     pub size: i64,

@@ -145,6 +145,7 @@ pub struct TransferJob {
 pub struct TransferJobFile {
     #[serde(rename = "_id")]
     pub _id: String,
+    pub remote_file_id: String,
     pub name: String,
     pub size: u64,
     pub completed_size: u64,

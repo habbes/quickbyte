@@ -1,6 +1,7 @@
 -- Your SQL goes here
 CREATE TABLE files(
-    id VARCHAR(50) NOT NULL,
+    id VARCHAR(50) PRIMARY KEY NOT NULL,
+    remote_file_id VARCHAR(50) NOT NULL,
     transfer_id VARCHAR(50) NOT NULL,
     name VARCHAR(255) NOT NULL,
     size BIGINT NOT NULL,
@@ -13,6 +14,5 @@ CREATE TABLE files(
     local_path VARCHAR(255) NOT NULL,
     block_size BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id, transfer_id),
     FOREIGN KEY (transfer_id) REFERENCES transfers(id)
 )
