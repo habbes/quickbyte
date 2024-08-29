@@ -24,7 +24,13 @@ impl TransferManager {
     }
   }
 
-  pub fn with_saved_transfers(transfers: Vec<TransferJob>, events: MessageChannel<Event>, db_sync_channel: Arc<SyncMessageChannel<Event>>) -> Self {
+  pub fn with_saved_transfers(
+    transfers: Vec<TransferJob>,
+    events: MessageChannel<Event>,
+    db_sync_channel: Arc<SyncMessageChannel<Event>>,
+    requests_channel: Arc<MessageChannel<Request>>,
+  ) -> Self {
+
     Self {
       events: Arc::new(events),
       next_id: Mutex::new(1),
@@ -39,6 +45,7 @@ impl TransferManager {
     match request {
       Request::DownloadSharedLink(download_request) => self.start_download(download_request).await,
       Request::UploadFiles(upload_reqiest) => self.start_upload(upload_reqiest).await,
+      Request::ResumeTransfer (transfer) => self.resume_tranfer(transfer).await,
       Request::GetTransfers => self.broadcast_transfers().await
     }
   }
@@ -48,14 +55,21 @@ impl TransferManager {
     self.events.send(Event::Transfers((*self.transfers.lock().await).clone())).await;
   }
 
+  pub async fn resume_tranfer(&self, transfer: TransferJob) {
+    {
+      self.transfers.lock().await.push(transfer.clone()); // TODO: avoid unnecessary cloning
+    }
+
+    self.events.send(Event::TransferCreated(transfer.clone())).await;
+    match transfer.transfer_kind {
+      TransferKind::Download => self.run_download(&transfer).await,
+      TransferKind::Upload => self.run_upload(&transfer).await,
+    }
+  }
+
   pub async fn start_download(&self, request: SharedLinkDownloadRequest) {
     println!("Start download {request:?}");
-    let id = {
-      let mut next_id = self.next_id.lock().await;
-      let cur_id = *next_id;
-      *next_id += 1;
-      cur_id
-    };
+    let id = uuid::Uuid::new_v4();
 
     let job = self.init_download_job(id.to_string(), &request);
     let cloned_job = job.clone(); // TODO: try to get reference or at least move to heap instead of sharing
@@ -84,7 +98,7 @@ impl TransferManager {
     downloader.start_download(job_updates).await;
   }
 
-  pub async fn run_download(&self, job: TransferJob) {
+  pub async fn run_download(&self, job: &TransferJob) {
     let downloader = SharedLinkDownloader::new(&job);
     let transfers = Arc::clone(&(self.transfers));
     let events = Arc::clone(&self.events);
@@ -122,6 +136,24 @@ impl TransferManager {
     self.db_sync_channel.send(Event::TransferCreated(cloned_job.clone()));
 
     let uploader = TransferUploader::new(&cloned_job);
+    let transfers = Arc::clone(&(self.transfers));
+    let events = Arc::clone(&self.events);
+    let db_sync_channel = Arc::clone(&self.db_sync_channel);
+    let job_updates: MessageChannel<TransferUpdate> = MessageChannel::new(move|update: TransferUpdate| {
+      // handle_transfer_update(Arc::clone(&transfers), update);
+      let transfers = Arc::clone(&transfers);
+      let events = Arc::clone(&events);
+      let db_sync_channel = Arc::clone(&db_sync_channel);
+      tokio::spawn(async move {
+        handle_transfer_update(Arc::clone(&transfers), &update, Arc::clone(&events), Arc::clone(&db_sync_channel)).await;
+      });
+    });
+    let job_updates = Arc::new(job_updates);
+    uploader.start_upload(job_updates).await;
+  }
+
+  async fn run_upload(&self, job: &TransferJob) {
+    let uploader = TransferUploader::new(job);
     let transfers = Arc::clone(&(self.transfers));
     let events = Arc::clone(&self.events);
     let db_sync_channel = Arc::clone(&self.db_sync_channel);

@@ -4,5 +4,7 @@ use crate::core::dtos::*;
 pub enum Request {
     DownloadSharedLink(SharedLinkDownloadRequest),
     UploadFiles(UploadFilesRequest),
+    ResumeTransfer(TransferJob),
     GetTransfers
 }
+

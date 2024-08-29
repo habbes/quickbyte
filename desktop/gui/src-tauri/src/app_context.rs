@@ -13,7 +13,7 @@ pub struct AppContext {
 }
 
 impl AppContext {
-  pub fn init(db_path: &str, event_handler: impl Fn(Event) + Send + 'static) -> Self {
+  pub async fn init(db_path: &str, event_handler: impl Fn(Event) + Send + 'static) -> Self {
 
     let mut database = Database::init(db_path);
     let saved_jobs = database.load_transfers();
@@ -41,24 +41,25 @@ impl AppContext {
     }));
 
     let events = MessageChannel::new(event_handler);
-    let transfers = Arc::new(TransferManager::with_saved_transfers(saved_jobs, events.clone(), db_sync_channel.clone()));
+    let transfers = Arc::new(TransferManager::new( events.clone(), db_sync_channel.clone()));
     let cloned = Arc::clone(&transfers);
 
+    let requests = MessageChannel::new(move|request| {
+      println!("Request received {request:?}");
+      let cloned = Arc::clone(&cloned);
+      tokio::spawn(async move {
+        println!("Request thread spawned.");
+        println!("Request in spawned thread {request:?}");
+        cloned.execute_request(request).await;
+      });
+    });
     
-    
+    for job in saved_jobs {
+      requests.send(Request::ResumeTransfer(job)).await;
+    }
     
     Self {
-      requests: MessageChannel::new(move|request| {
-        println!("Request received {request:?}");
-        let cloned = Arc::clone(&cloned);
-        tokio::spawn(async move {
-          println!("Request thread spawned.");
-          println!("Request in spawned thread {request:?}");
-          cloned.execute_request(request).await;
-        });
-        
-        
-      }),
+      requests,
       events,
       transfers,
     }
