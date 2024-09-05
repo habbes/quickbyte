@@ -11,13 +11,14 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 // open default browser with url
 // when auth result arrives on embedded server, send request
 
-use oauth2::{basic::BasicClient, AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl};
+use oauth2::{basic::BasicClient, AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope};
 
 const CLIENT_ID: &str = "";
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 
 
 pub async fn sign_in_with_google() {
+    println!("Init sign in with google");
     let (code_challenge, code_verifier) = PkceCodeChallenge::new_random_sha256();
     let socket_addr = get_available_addr().await;
     // let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9133); // TODO: pick a random port
@@ -36,8 +37,10 @@ pub async fn sign_in_with_google() {
     let (request_url, _) = client
         .authorize_url(|| csrf_token)
         .set_pkce_challenge(code_challenge)
+        .add_scope(Scope::new("openid".to_string()))
         .url();
 
+    println!("Open browser with url {request_url}");
     open::that(request_url.to_string()).unwrap();
 
     let listener = TcpListener::bind(socket_addr).await.unwrap();
