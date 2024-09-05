@@ -6,6 +6,7 @@ pub mod commands;
 pub mod event_bridge;
 pub mod persistence;
 pub mod schema;
+pub mod auth;
 mod app_context;
 
 use tauri::Manager;

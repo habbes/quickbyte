@@ -2,6 +2,7 @@ use tauri::{command, State};
 use crate::core::request::Request;
 use crate::core::dtos::*;
 use crate::app_context::AppContext;
+use crate::auth::google_auth;
 
 #[command]
 pub async fn download_shared_link(context: State<'_, AppContext>, request: SharedLinkDownloadRequest) -> Result<(), ()>{
@@ -41,6 +42,13 @@ pub async fn get_file_sizes(files: Vec<String>) -> Result<Vec<GetFileSizeRespons
     }
 
     return Ok(result);
+}
+
+#[command]
+pub async fn sign_in_with_google() -> Result<(), ()> {
+    google_auth::sign_in_with_google().await;
+
+    Ok(())
 }
 
 
