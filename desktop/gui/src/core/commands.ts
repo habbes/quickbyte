@@ -16,3 +16,7 @@ export function uploadFiles(uploadRequest: UploadFilesRequest) {
 export function getFileSizes(files: string[]): Promise<FileSizeResponseItem[]> {
     return invoke("get_file_sizes", { files: files });
 }
+
+export function loginWithGoogle(): Promise<any> {
+    return invoke("sign_in_with_google");
+}

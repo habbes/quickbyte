@@ -47,7 +47,8 @@ async fn main() {
       download_shared_link,
       upload_files,
       request_transfers,
-      get_file_sizes
+      get_file_sizes,
+      sign_in_with_google
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

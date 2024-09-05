@@ -37,6 +37,14 @@
         >
           Login
         </UiButton>
+        <div>
+          <UiButton
+            fullWidth
+            @click="loginWithGoogle()"
+          >
+            Sign in with Google
+          </UiButton>
+        </div>
       </form>
     </div>
   </div>
@@ -47,6 +55,7 @@ import { useRouter } from "vue-router";
 import { message } from "@tauri-apps/api/dialog";
 import { trpcClient, initUserData, setToken } from "@/app-utils";
 import { UiTextInput, UiButton } from "@/components/ui";
+import { loginWithGoogle } from '@/core';
 
 const router = useRouter();
 const email = ref<string>();
