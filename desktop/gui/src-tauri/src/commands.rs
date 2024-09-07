@@ -45,8 +45,8 @@ pub async fn get_file_sizes(files: Vec<String>) -> Result<Vec<GetFileSizeRespons
 }
 
 #[command]
-pub async fn sign_in_with_google() -> Result<(), ()> {
-    google_auth::sign_in_with_google().await;
+pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<(), ()> {
+    google_auth::sign_in_with_google(handle).await;
 
     Ok(())
 }

@@ -33,7 +33,7 @@ directories = "5.0.1"
 uuid = "1.10.0"
 oauth2 = "4.4.2"
 axum = "0.7.5"
-reqwest = "0.12.7"
+reqwest = { version = "0.12.7", features = ["json"] }
 open = "5.3.0"
 
 [features]
