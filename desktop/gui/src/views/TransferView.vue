@@ -20,9 +20,7 @@
             {{ humanizeSize(transfer.totalSize) }}
           </div>
           <Icon icon="lucide:dot" />
-          <div class="flex items-center gap-1 w-16">
-            <TransferIcon :type="transfer.type" /> {{ formatPercentage(getTransferCompletedSize(transfer), transfer.totalSize ) }}
-          </div>
+          <TransferStatus :transfer="transfer" />
         </div>
       </div>
     </PageHeader>
@@ -58,13 +56,12 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { unwrapSingletonOrUndefined, pluralize, humanizeSize, formatPercentage } from "@quickbyte/common";
-import { getTransferCompletedSize } from "@/core";
 import { store } from "@/app-utils";
 import { Icon } from '@iconify/vue';
 import EmptyDataPageContainer from "@/components/EmptyDataPageContainer.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import FileTree from "@/components/FileTree.vue";
-import TransferIcon from "@/components/TransferIcon.vue";
+import TransferStatus from "@/components/TransferStatus.vue";
 
 const route = useRoute();
 const transfer = computed(() => store.transfers.value.find(t => t._id === unwrapSingletonOrUndefined(route.params.id)));

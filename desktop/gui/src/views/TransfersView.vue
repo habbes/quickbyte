@@ -33,7 +33,7 @@
           {{ humanizeSize(transfer.totalSize) }}
         </div>
         <div class="w-[85px]">
-          {{ formatPercentage(getTransferCompletedSize(transfer), transfer.totalSize, 1) }}
+          <TransferStatus :transfer="transfer" />
         </div>
       </div>
     </div>
@@ -42,8 +42,8 @@
 <script lang="ts" setup>
 import { useRouter } from "vue-router";
 import { store } from "@/app-utils";
-import { humanizeSize, formatPercentage } from "@quickbyte/common";
-import { getTransferCompletedSize } from "@/core";
+import { humanizeSize } from "@quickbyte/common";
+import TransferStatus from "@/components/TransferStatus.vue";
 
 const router = useRouter();
 const transfers = store.transfers;
