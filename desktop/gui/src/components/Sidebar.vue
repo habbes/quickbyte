@@ -7,10 +7,10 @@
     </div>
     <router-link v-else
       :to="{ name: 'login' }"
-      class="flex items-center border-b-[0.5px] border-b-gray-700 hover:bg-[#2a1824] h-12 px-2 text-sm"
+      class="flex gap-2 items-center border-b-[0.5px] border-b-gray-700 hover:bg-[#2a1824] h-12 px-2 text-sm"
       activeClass="bg-[#2a1924]"
     >
-      Login to view project
+      <Icon icon="lucide:log-in"/> Login to view project
     </router-link>
     <div class="flex-1 overflow-y-auto text-sm py-4 px-2">
       <div v-for="account in groupedProjects" :key="account._id">
@@ -36,18 +36,18 @@
       </div>
     </div>
     <router-link
-      class="flex items-center border-t-[0.5px] border-t-gray-700 hover:bg-[#2a1824] h-12 px-2 text-sm"
+      class="flex gap-2 items-center border-t-[0.5px] border-t-gray-700 hover:bg-[#2a1824] h-12 px-2 text-sm"
       activeClass="bg-[#2a1924]"
       :to="{ name: 'download-link' }"
     >
-      Download link
+      <Icon icon="lucide:link-2" /> Download link
     </router-link>
     <router-link
-      class="flex items-center border-t-[0.5px] border-t-gray-700 hover:bg-[#2a1824] h-12 px-2 text-sm"
+      class="flex items-center gap-2 border-t-[0.5px] border-t-gray-700 hover:bg-[#2a1824] h-12 px-2 text-sm"
       activeClass="bg-[#2a1924]"
       :to="{ name: 'transfers' }"
     >
-      Transfers
+      <Icon icon="lucide:arrow-up-down" /> Transfers
     </router-link>
   </div>
 </template>
@@ -56,6 +56,7 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { store, setCurrentProject } from "@/app-utils";
 import type { WithRole, Project } from '@quickbyte/common';
+import { Icon } from "@iconify/vue";
 
 type AccountWithProjects = {
   _id: string;
