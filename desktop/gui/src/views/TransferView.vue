@@ -20,8 +20,8 @@
             {{ humanizeSize(transfer.totalSize) }}
           </div>
           <Icon icon="lucide:dot" />
-          <div>
-            {{ formatPercentage(getTransferCompletedSize(transfer), transfer.totalSize ) }}
+          <div class="flex items-center gap-1 w-16">
+            <TransferIcon :type="transfer.type" /> {{ formatPercentage(getTransferCompletedSize(transfer), transfer.totalSize ) }}
           </div>
         </div>
       </div>
@@ -39,7 +39,7 @@
             <div>
               {{ humanizeSize(item.file.size) }}
             </div>
-            <div>
+            <div class="w-10">
               {{ formatPercentage(item.file.completedSize, item.file.size) }}
             </div>
           </div>
@@ -64,6 +64,7 @@ import { Icon } from '@iconify/vue';
 import EmptyDataPageContainer from "@/components/EmptyDataPageContainer.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import FileTree from "@/components/FileTree.vue";
+import TransferIcon from "@/components/TransferIcon.vue";
 
 const route = useRoute();
 const transfer = computed(() => store.transfers.value.find(t => t._id === unwrapSingletonOrUndefined(route.params.id)));

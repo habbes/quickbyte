@@ -11,9 +11,11 @@ export interface TransferJob {
     status: JobStatus;
     error?: string;
     files: TransferFileJob[],
-    type: 'upload'|'download';
+    type: TransferType;
     // add other fields, e.g. date fields
 }
+
+export type TransferType = 'upload'|'download';
 
 export interface TransferFileJob {
     _id: string;
