@@ -14,7 +14,7 @@
           @click="fetchLink()"
           primary
           submit
-          sm
+          class="h-8"
         >
           Verify link
         </UiButton>
