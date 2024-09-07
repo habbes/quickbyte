@@ -15,4 +15,5 @@ CREATE TABLE files(
     block_size BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (transfer_id) REFERENCES transfers(id)
+    ON DELETE CASCADE
 )

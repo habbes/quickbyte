@@ -9,4 +9,5 @@ CREATE TABLE file_blocks(
     status VARCHAR(50) NOT NULL,
     PRIMARY KEY (id, file_id),
     FOREIGN KEY (file_id) REFERENCES files(id)
+    ON DELETE CASCADE
 )
