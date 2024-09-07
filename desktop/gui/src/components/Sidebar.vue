@@ -1,9 +1,14 @@
 <template>
   <div class="w-[250px] text-white flex flex-col">
     <div v-if="user"
-      class="flex items-center border-b-[0.5px] border-b-gray-700 h-12 px-2 text-sm"
+      class="flex justify-between items-center border-b-[0.5px] border-b-gray-700 h-12 px-2 text-sm"
     >
-      {{ user.name }}
+      <div class="flex gap-2 items-center">
+        <Icon icon="lucide:circle-user-round" /> {{ user.name }}
+      </div>
+      <div title="Sign out" class="cursor-pointer">
+        <Icon icon="lucide:log-out"/>
+      </div>
     </div>
     <router-link v-else
       :to="{ name: 'login' }"
