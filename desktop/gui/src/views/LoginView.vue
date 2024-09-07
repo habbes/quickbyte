@@ -37,12 +37,14 @@
         >
           Login
         </UiButton>
+        <OrSeparator />
         <div>
           <UiButton
             fill
+            class=""
             @click="loginWithGoogle()"
           >
-            Sign in with Google
+            <img class="w-5" :src="googleLogo"> Sign in with Google
           </UiButton>
         </div>
       </form>
@@ -56,6 +58,8 @@ import { message } from "@tauri-apps/api/dialog";
 import { trpcClient, initUserData, setToken } from "@/app-utils";
 import { UiTextInput, UiButton } from "@/components/ui";
 import { loginWithGoogle } from '@/core';
+import googleLogo from '@/assets/google-g-logo.png'
+import OrSeparator from "@/components/OrSeparator.vue";
 
 const router = useRouter();
 const email = ref<string>();
