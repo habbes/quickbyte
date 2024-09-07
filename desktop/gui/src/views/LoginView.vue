@@ -18,7 +18,7 @@
             required
           />
         </div>
-        <div>
+        <div class="flex flex-col gap-1">
           <UiTextInput
             label="Enter password"
             v-model="password"
@@ -27,10 +27,13 @@
             fullWidth
             required
           />
+          <div class="text-xs flex items-center justify-end">
+            <a href="https://quickbyte.com/auth/password-reset" target="_blank" class="text-gray-400 hover:text-gray-300">Forgot password?</a>
+          </div>
         </div>
         <UiButton
           fill
-          @click="login()"
+          submit
           primary
           :loading="loading"
           :disabled="loading"
@@ -93,7 +96,7 @@ async function login() {
     router.push({ name: 'project' });
   }
   catch (e: any) {
-    await message(`Error: {e}`, { type: 'error' });
+    await message(`Error: ${e.message}`, { type: 'error' });
   }
   finally {
     loading.value = false;
