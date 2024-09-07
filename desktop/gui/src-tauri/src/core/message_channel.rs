@@ -43,6 +43,8 @@ impl<T: std::fmt::Debug + Send + 'static> SyncMessageChannel<T> {
             while let Ok(message) = rx.recv() {
                 handler(message);
             }
+
+            println!("Sync message channel receiver thread closed");
         });
 
         Self {

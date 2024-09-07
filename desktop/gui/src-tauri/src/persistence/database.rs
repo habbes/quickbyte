@@ -230,13 +230,15 @@ fn map_transfer_from_db(transfer: Transfer, files: &[File], file_blocks: &[FileB
         }).collect()
     }).collect();
 
+    println!("file completed size {}", files[0].completed_size);
+
     let transfer_job = TransferJob {
         _id: transfer.id.clone(),
         name: transfer.name.clone(),
         total_size: transfer.total_size as u64,
         num_files: files.len(),
         status: transfer.status.into(),
-        completed_size: 0,
+        completed_size: files.iter().map(|f| f.completed_size).sum(),
         error: transfer.error,
         transfer_kind: transfer.transfer_kind.into(),
         download_type: transfer.download_type.map(|v| v.into()),
@@ -247,6 +249,8 @@ fn map_transfer_from_db(transfer: Transfer, files: &[File], file_blocks: &[FileB
         download_transfer_id: transfer.download_transfer_id,
         files
     };
+
+    println!("transfer completed size {}", transfer_job.completed_size);
 
     transfer_job
 }

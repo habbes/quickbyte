@@ -91,6 +91,7 @@ impl FileDownloader {
         
 
         for block in &self.file_job.blocks {
+            println!("Block {} status {:?}", block._id, block.status);
             if block.status == JobStatus::Completed {
                 continue;
             }
