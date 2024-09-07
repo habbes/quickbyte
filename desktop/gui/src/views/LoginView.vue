@@ -29,7 +29,7 @@
           />
         </div>
         <UiButton
-          fullWidth
+          fill
           @click="login()"
           primary
           :loading="loading"
@@ -39,7 +39,7 @@
         </UiButton>
         <div>
           <UiButton
-            fullWidth
+            fill
             @click="loginWithGoogle()"
           >
             Sign in with Google
