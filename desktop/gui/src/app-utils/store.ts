@@ -4,6 +4,7 @@ import { trpcClient } from "./api.js";
 import {
     TransferJob,
 } from "@/core";
+import { deleteToken } from "./auth";
 
 const user = ref<UserWithAccount>();
 const accounts = ref<AccountWithSubscription[]>([]);
@@ -48,6 +49,14 @@ const store = {
     }
 };
 
+function signOutAndClearUserData() {
+    deleteToken();
+    user.value = undefined;
+    accounts.value = [];
+    projects.value = [];
+    selectedProjectId.value = undefined;
+}
+
 type Store = typeof store;
 
-export { store, initUserData, setCurrentProject, type Store };
+export { store, initUserData, setCurrentProject, signOutAndClearUserData, type Store };

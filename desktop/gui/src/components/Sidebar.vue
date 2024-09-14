@@ -3,10 +3,10 @@
     <div v-if="user"
       class="flex justify-between items-center border-b-[0.5px] border-b-gray-700 h-12 px-2 text-sm"
     >
-      <div class="flex gap-2 items-center">
+      <div class="flex gap-2 items-center" :title="`Signed in as ${user.name}`">
         <Icon icon="lucide:circle-user-round" /> {{ user.name }}
       </div>
-      <div title="Sign out" class="cursor-pointer">
+      <div @click="signOut" title="Sign out" class="cursor-pointer">
         <Icon icon="lucide:log-out"/>
       </div>
     </div>
@@ -59,7 +59,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
-import { store, setCurrentProject } from "@/app-utils";
+import { store, signOutAndClearUserData, setCurrentProject } from "@/app-utils";
 import type { WithRole, Project } from '@quickbyte/common';
 import { Icon } from "@iconify/vue";
 
@@ -103,6 +103,11 @@ function toggleAccountExpanded(id: string) {
   } else {
     collapsedAccounts.value.add(id);
   }
+}
+
+function signOut() {
+  signOutAndClearUserData();
+  router.push({ name: 'home' });
 }
 
 </script>
