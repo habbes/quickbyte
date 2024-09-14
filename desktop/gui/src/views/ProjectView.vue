@@ -108,7 +108,7 @@ watch(() => store.user, () => {
   if (!store.user.value) {
     router.push({ name: "login" });
   }
-});
+}, { immediate: true });
 
 watch(store.selectedProjectId, async () => {
   console.log('project id changed to', store.selectedProjectId.value)

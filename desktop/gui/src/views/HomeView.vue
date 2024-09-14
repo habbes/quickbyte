@@ -29,7 +29,7 @@ const actions = [
   {
     title: 'Open projects',
     subTitle: 'Upload or download files from a project.',
-    target: '',
+    target: 'project',
     icon: 'lucide:square-chart-gantt'
   },
   {
