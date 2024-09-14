@@ -1,9 +1,9 @@
 <template>
-  <div class="p-2 flex flex-col gap-2 h-full">
+  <div class="p-2 justify-center flex flex-col gap-2 h-full">
     <div
       v-for="action in actions" :key="action.title"
       @click="router.push({ name: action.target })"
-      class="flex gap-5 items-center rounded-sm shadow-md bg-[#201d2c] px-5 py-5 cursor-pointer hover:ring-1"
+      class="flex lg:w-[600px] lg:mx-auto gap-5 items-center rounded-sm shadow-md bg-[#201d2c] px-5 py-5 cursor-pointer hover:ring-1"
     >
       <div>
         <Icon :icon="action.icon" class="text-3xl"/>
@@ -37,6 +37,12 @@ const actions = [
     subTitle: 'Download files from a shared link.',
     target: 'download-link',
     icon: 'lucide:link-2'
+  },
+  {
+    title: 'Transfers',
+    subTitle: 'Show your current or past transfers.',
+    target: 'transfers',
+    icon: 'lucide:arrow-up-down'
   }
 ];
 
