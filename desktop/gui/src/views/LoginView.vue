@@ -6,7 +6,7 @@
         class="flex flex-col gap-4 w-[400px]"
       >
         <div class="text-sm text-gray-200">
-          Login to your Quickbyte account to access your projects
+          Sign in to your Quickbyte account to access your projects
         </div>
         <div>
           <UiTextInput
@@ -28,7 +28,7 @@
             required
           />
           <div class="text-xs flex items-center justify-end">
-            <a href="https://quickbyte.com/auth/password-reset" target="_blank" class="text-gray-400 hover:text-gray-300">Forgot password?</a>
+            <a href="https://quickbyte.io/auth/password-reset" target="_blank" class="text-gray-400 hover:text-gray-300">Forgot password?</a>
           </div>
         </div>
         <UiButton
@@ -49,6 +49,12 @@
           >
             <img class="w-5" :src="googleLogo"> Sign in with Google
           </UiButton>
+        </div>
+        <div class="flex text-xs w-full items-center justify-center">
+          <p>
+            Don't have an account?
+            <a href="https://quickbyte.io/auth/signup" target="_blank" class="text-gray-400 hover:text-gray-300">Sign up on Quickbyte</a>.
+          </p>
         </div>
       </form>
     </div>
