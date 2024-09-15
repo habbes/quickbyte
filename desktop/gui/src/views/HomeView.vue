@@ -3,13 +3,13 @@
     <div
       v-for="action in actions" :key="action.title"
       @click="router.push({ name: action.target })"
-      class="flex lg:w-[600px] lg:mx-auto gap-5 items-center rounded-sm shadow-md bg-[#201d2c] px-5 py-5 cursor-pointer hover:ring-1"
+      class="group flex lg:w-[600px] lg:mx-auto gap-5 items-center rounded-sm shadow-md bg-[#201d2c] px-5 py-5 cursor-pointer hover:ring-1"
     >
       <div>
-        <Icon :icon="action.icon" class="text-3xl"/>
+        <Icon :icon="action.icon" class="text-3xl text-gray-400"/>
       </div>
       <div class="flex flex-col gap-1">
-        <div class="text-md">
+        <div class="text-md text-gray-200 group-hover:text-white">
           {{ action.title }}
         </div>
         <div class="text-xs text-gray-400">
