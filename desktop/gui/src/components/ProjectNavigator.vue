@@ -34,11 +34,11 @@
     </div>
 
     <div class="flex-1 overflow-y-auto px-2 py-2">
-      <div v-if="itemsQueryPending">
-        loading...
+      <div v-if="itemsQueryPending" class="flex w-full h-full items-center justify-center">
+        <LoadingSpinner />
       </div>
       <div
-        v-else
+        v-else-if="items.length"
         class="grid gap-4 grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
       >
         <div
@@ -57,6 +57,9 @@
           </div>
         </div>
       </div>
+      <div v-else class="text-sm text-gray-200 h-full w-full flex justify-center items-center">
+        No items found in this folder.
+      </div>
     </div>
   </div>
 </template>
@@ -68,6 +71,7 @@ import { UiButton } from "@/components/ui";
 import { isDefined, type Project, type ProjectItem } from "@quickbyte/common";
 import { open } from "@tauri-apps/api/dialog";
 import ProjectItemIcon from '@/components/ProjectItemIcon.vue';
+import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import { uploadFiles, getFileSizes, findCommonBasePath, type UploadFilesRequest } from "@/core";
 import { Icon } from "@iconify/vue";
 
