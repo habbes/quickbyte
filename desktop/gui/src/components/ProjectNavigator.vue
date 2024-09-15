@@ -3,13 +3,20 @@
     <!-- <div class="px-2 py-2">{{ project.name }}</div> -->
 
     <div class="flex px-2 justify-between items-center border-b-[0.5px] border-b-gray-700 h-12">
-      <div>
-        <div class="text-sm">
+      <div class="flex items-center gap-2">
+        <div class="text-sm cursor-pointer" @click="openRootFolder()">
           {{ project.name }}
         </div>
-        <div v-for="pathItem in currentPath" :key="pathItem._id">
-          <span>/</span>
-          <div class="text-xm">
+        <div
+          v-for="pathItem in currentPath"
+          :key="pathItem._id"
+          class="flex items-center gap-1"
+        >
+          <Icon icon="lucide:chevron-right" />
+          <div
+            class="text-sm cursor-pointer text-gray-200 hover:text-white"
+            @click="openFolder(pathItem._id)"
+          >
             {{ pathItem.name }}
           </div>
         </div>
@@ -37,6 +44,7 @@
         <div
           v-for="item in items"
           :key="item._id"
+          @click="onItemClick(item)"
           class="w-full aspect-square flex flex-col gap-2 cursor-pointer"
         >
           <div class="flex justify-center">
@@ -57,10 +65,11 @@ import { watch, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { trpcClient, useProjectItemsQuery } from "@/app-utils";
 import { UiButton } from "@/components/ui";
-import { isDefined, type Project } from "@quickbyte/common";
+import { isDefined, type Project, type ProjectItem } from "@quickbyte/common";
 import { open } from "@tauri-apps/api/dialog";
 import ProjectItemIcon from '@/components/ProjectItemIcon.vue';
 import { uploadFiles, getFileSizes, findCommonBasePath, type UploadFilesRequest } from "@/core";
+import { Icon } from "@iconify/vue";
 
 const props = defineProps<{
   project: Project
@@ -69,9 +78,9 @@ const props = defineProps<{
 const router = useRouter();
 
 const projectId = computed(() => props.project._id);
-const folderId = ref<string>();
+const currentFolderId = ref<string>();
 
-const itemsQuery = useProjectItemsQuery(projectId, folderId);
+const itemsQuery = useProjectItemsQuery(projectId, currentFolderId);
 const itemsQueryPending = computed(() => itemsQuery.isPending.value);
 const items = computed(() => itemsQuery.data.value ? itemsQuery.data.value.items : []);
 const currentFolder = computed(() => itemsQuery.data.value?.folder);
@@ -81,9 +90,22 @@ watch(() => props.project, () => {
   console.log('project id changed to', props.project);
   // await fetchProjects()
   // reset selected folder
-  folderId.value = undefined;
+  currentFolderId.value = undefined;
 }, { immediate: true });
 
+function openFolder(folderId: string|undefined) {
+  currentFolderId.value = folderId;
+}
+
+function openRootFolder() {
+  openFolder(undefined);
+}
+
+function onItemClick(item: ProjectItem) {
+  if (item.type === 'folder') {
+    openFolder(item._id);
+  }
+}
 
 async function uploadToProject() {
   // Open a selection dialog for directories
@@ -100,7 +122,7 @@ async function uploadToProject() {
 
   const result = await trpcClient.uploadProjectMedia.mutate({
     projectId: props.project._id,
-    folderId: folderId.value,
+    folderId: currentFolderId.value,
     provider: 'az',
     region: 'northsa',
     files: files.map(f => ({
