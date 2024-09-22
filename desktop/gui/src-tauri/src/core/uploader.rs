@@ -10,19 +10,21 @@ use super::message_channel::MessageChannel;
 
 
 pub struct TransferUploader<'a> {
-    request: &'a TransferJob
+    request: &'a TransferJob,
+    transfer_queue: Arc<BlockTransferQueue>,
 }
 
 impl<'a> TransferUploader<'a> {
-    pub fn new(request: &TransferJob) -> TransferUploader {
+    pub fn new(request: &TransferJob, transfer_queue: Arc<BlockTransferQueue>) -> TransferUploader {
         TransferUploader {
-            request
+            request,
+            transfer_queue
         }
     }
 
     pub async fn start_upload(&self, events: Arc<MessageChannel<TransferUpdate>>) {
         let file_uploaders: Vec<_> = self.request.files.iter().filter(|f| f.status == JobStatus::Pending || f.status == JobStatus::Progress).map(|f|
-            FileUploader::new(self.request._id.clone(), f.clone(), Arc::clone(&events))).collect();
+            FileUploader::new(self.request._id.clone(), f.clone(), self.transfer_queue.clone(), Arc::clone(&events))).collect();
 
         let count = file_uploaders.len();
 
@@ -51,36 +53,43 @@ impl<'a> TransferUploader<'a> {
 struct FileUploader {
     transfer_id: String,
     file_job: TransferJobFile,
-    events: Arc<MessageChannel<TransferUpdate>>
+    events: Arc<MessageChannel<TransferUpdate>>,
+    transfer_queue: Arc<BlockTransferQueue>
 }
 
 impl FileUploader {
-    pub fn new(transfer_id: String, file_job: TransferJobFile, events: Arc<MessageChannel<TransferUpdate>>) -> Self {
+    pub fn new(transfer_id: String, file_job: TransferJobFile, transfer_queue: Arc<BlockTransferQueue>, events: Arc<MessageChannel<TransferUpdate>>) -> Self {
         Self {
             transfer_id,
             file_job,
-            events
+            events,
+            transfer_queue
         }
     }
 
-    pub async fn queue_blocks_for_upload(&self, blocks_queue: Arc<BlockTransferQueue>) {
+    pub async fn upload_file(&self) {
         let url = Url::parse(&self.file_job.remote_url).expect("Failed to parse remote url");
         let blob_client = Arc::new(BlobClient::from_sas_url(&url).expect("Failed to create Block client"));
         let file = Arc::new(std::fs::File::open(&self.file_job.local_path).expect("Failed to open local file for download"));
+        let file_id = self.file_job._id.clone();
+        let transfer_id = self.transfer_id.clone();
+        let timer = Instant::now();
         let (tx, mut rx) = tokio::sync::mpsc::channel(self.file_job.blocks.len());
 
+        let mut num_to_send = 0;
         for block in &self.file_job.blocks {
             if block.status == JobStatus::Completed {
                 continue;
             }
 
+            num_to_send += 1;
             let chunk_size = self.file_job.chunk_size;
             let offset = block.index * chunk_size;
             let end = std::cmp::min(offset + chunk_size, self.file_job.size);
             let real_size = end - offset;
 
 
-            blocks_queue.send(BlockTransferRequest::Upload(
+            self.transfer_queue.send(BlockTransferRequest::Upload(
                 Box::new(BlockUploadRequest {
                     block: block.clone(),
                     offset: offset,
@@ -94,27 +103,32 @@ impl FileUploader {
 
         drop(tx); // drop the original tx since since it's not held by any worker
 
+        let mut num_completed = 0;
+        // once all the workers have finished transmitting updates, the channel
+        // will be closed.
         while let Some(block_update) = rx.recv().await {
             match block_update {
                 BlockTransferUpdate::Progress {
-                    block_id: block_id,
-                    block_index: block_index,
-                    size: transferred_size,
+                    block_id,
+                    block_index,
+                    size,
                 }  => {
                     self.events.send(
                         TransferUpdate::ChunkProgress {
                             chunk_index: block_index,
                             chunk_id: block_id.clone(),
-                            size: transferred_size,
+                            size,
                             file_id: file_id.clone(),
                             transfer_id: transfer_id.clone()
                         }
                     ).await;
                 },
                 BlockTransferUpdate::Completed {
-                    block_id: block_id,
-                    block_index: block_index,
+                    block_id,
+                    block_index,
                 } => {
+                    num_completed += 1;
+                    println!("Completed {num_completed}/{num_to_send}");
                     self.events.send(
                         TransferUpdate::ChunkCompleted {
                             chunk_index: block_index,
@@ -125,17 +139,41 @@ impl FileUploader {
                     ).await;
                 },
                 BlockTransferUpdate::Failed {
-                    block_id: _,
-                    block_index: _,
-                    error: _
+                    block_id,
+                    block_index,
+                    error
                 } => {
-
+                    println!("Failed to upload block {block_index} id: {block_id}: {error}");
                 }
-            }
+            };
         }
+
+        let blocks = &self.file_job.blocks;
+        let  block_ids: Vec<_> = blocks.iter().map(|b| {
+            let bytes: Vec<_> = b._id.as_bytes().iter().map(|v| v.clone()).collect();
+            BlobBlockType::new_uncommitted(bytes)
+        }).collect();
+
+        println!("block list {:?}", block_ids);
+        let block_list = BlockList {
+            blocks: block_ids
+        };
+
+        blob_client
+            .put_block_list(block_list)
+            .into_future()
+            .await.unwrap();
+
+        println!("Completed upload for file {} in {}s", self.file_job.name, timer.elapsed().as_secs_f64());
+        self.events.send(
+            TransferUpdate::FileCompleted {
+                file_id: self.file_job._id.clone(),
+                transfer_id: self.transfer_id.clone()
+            }
+        ).await;
     }
 
-    pub async fn upload_file(&self) {
+    pub async fn upload_file_old(&self) {
         // Parse the URL and create a BlobClient
         let url = Url::parse(&self.file_job.remote_url).unwrap();
         let blob_client = Arc::new(BlobClient::from_sas_url(&url).unwrap());
