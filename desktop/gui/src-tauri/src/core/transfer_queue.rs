@@ -66,6 +66,7 @@ impl BlockTransferQueue {
         let mut producers: Vec<ChunkTransmitter> = Vec::with_capacity(concurrency);
 
         for i in 0..concurrency {
+            println!("Initializing block transfer worker {i}");
             let (tx, mut rx) = mpsc::channel(1);
             producers.push(tx);
             
@@ -81,6 +82,7 @@ impl BlockTransferQueue {
         tokio::spawn(async move {
             let mut next_channel = 0;
             while let Some(message) = rx.recv().await {
+                println!("Received block transfer request, sent to worker channel {next_channel}");
                 // create a bunch of channels
                 producers[next_channel].send(message).await.expect("Error sending chunk message to handler");
                 next_channel = (next_channel + 1) % producers.len();
@@ -91,6 +93,7 @@ impl BlockTransferQueue {
     }
 
     pub async fn send(&self, chunk: BlockTransferRequest) -> Result<(), AppError> {
+        println!("Send block transfer request to queue");
         let tx = self.tx.clone();
         tx.send(chunk).await?;
         Ok(())
@@ -106,6 +109,7 @@ async fn transfer_block(request: BlockTransferRequest) {
 }
 
 async fn upload_block(request: Box<BlockUploadRequest>) {
+    println!("Uploading block {} size {}", request.block.index, request.size);
     let mut buffer = vec![0u8; request.size as usize];
     // file.seek(tokio::io::SeekFrom::Start(offset)).await?;
     let file = request.file;
@@ -123,10 +127,12 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
         block_id: request.block._id.clone(),
         block_index: request.block.index,
         size: request.size
-    }).await;
+    }).await.expect("Failed to send block progress update");
 
     request.update_channel.send(BlockTransferUpdate::Completed {
         block_id: request.block._id.clone(),
         block_index: request.block.index,
-    }).await;
+    }).await.expect("Failed to send block completion update");
+
+    println!("Completed uploading block {} size {}", request.block.index, request.size);
 }

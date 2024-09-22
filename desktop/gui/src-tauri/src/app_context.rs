@@ -50,17 +50,13 @@ impl AppContext {
     let cloned = Arc::clone(&transfers);
 
     let requests = MessageChannel::new(move|request| {
-      println!("Request received {request:?}");
       let cloned = Arc::clone(&cloned);
       tokio::spawn(async move {
-        println!("Request thread spawned.");
-        println!("Request in spawned thread {request:?}");
         cloned.execute_request(request).await;
       });
     });
     
     for job in saved_jobs {
-      println!("Sending resume request for recovered job {}", job.name);
       requests.send(Request::ResumeTransfer(job)).await;
     }
     

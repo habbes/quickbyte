@@ -35,12 +35,14 @@ impl<'a> TransferUploader<'a> {
 
         for uploader in file_uploaders {
             let task = tokio::task::spawn(async move {
+                println!("Start upload file {}", uploader.file_job.name);
                 uploader.upload_file().await;
             });
 
             file_upload_tasks.push(task);
         }
 
+        println!("Transfer uploader waiting for file jobs to complete");
         for task in file_upload_tasks {
             task.await.unwrap();
         }
@@ -68,6 +70,7 @@ impl FileUploader {
     }
 
     pub async fn upload_file(&self) {
+        println!("Uploading file {}", self.file_job.name);
         let url = Url::parse(&self.file_job.remote_url).expect("Failed to parse remote url");
         let blob_client = Arc::new(BlobClient::from_sas_url(&url).expect("Failed to create Block client"));
         let file = Arc::new(std::fs::File::open(&self.file_job.local_path).expect("Failed to open local file for download"));
@@ -89,6 +92,13 @@ impl FileUploader {
             let real_size = end - offset;
 
 
+            println!("Sent block {} of file {} to queue", block.index, self.file_job.name);
+            // Since the transfer queue is bounded, the task might block at this point
+            // this means we won't start receiving progress updates until all the
+            // blocks have been queued. And that will wait until all but the last
+            // batch have been uploaded.
+            // We should either make sure the queue does not block or 
+            // we start receiving updates before we finish sending the tasks.
             self.transfer_queue.send(BlockTransferRequest::Upload(
                 Box::new(BlockUploadRequest {
                     block: block.clone(),
@@ -101,7 +111,10 @@ impl FileUploader {
             )).await.expect("Failed to send block to transfer queue");
         }
 
+        println!("Waiting of for updates from {num_to_send} blocks (out of a total {num_completed})");
+        println!("Dropping unused transmitter");
         drop(tx); // drop the original tx since since it's not held by any worker
+        println!("Dropped unused transmitter");
 
         let mut num_completed = 0;
         // once all the workers have finished transmitting updates, the channel
@@ -113,6 +126,7 @@ impl FileUploader {
                     block_index,
                     size,
                 }  => {
+                    println!("Block {block_index} progressed by {size} bytes");
                     self.events.send(
                         TransferUpdate::ChunkProgress {
                             chunk_index: block_index,
@@ -148,13 +162,15 @@ impl FileUploader {
             };
         }
 
+        println!("Completed all {num_to_send} blocks from file {}", self.file_job.name);
+
         let blocks = &self.file_job.blocks;
         let  block_ids: Vec<_> = blocks.iter().map(|b| {
             let bytes: Vec<_> = b._id.as_bytes().iter().map(|v| v.clone()).collect();
             BlobBlockType::new_uncommitted(bytes)
         }).collect();
 
-        println!("block list {:?}", block_ids);
+        println!("block list {:?}", block_ids.len());
         let block_list = BlockList {
             blocks: block_ids
         };
