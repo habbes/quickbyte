@@ -1,4 +1,6 @@
 use tokio::sync::mpsc::error::SendError;
+
+#[derive(Debug)]
 pub enum AppError {
     Internal(String),
 }

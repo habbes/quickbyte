@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
-use tokio::sync::{mpsc};
+use azure_storage_blobs::prelude::BlobClient;
+use tokio::sync::mpsc;
+use std::{os::unix::fs::FileExt};
 
-use super::error::AppError;
+use super::{dtos::{TransferJobFileBlock, TransferUpdate}, error::AppError, message_channel::MessageChannel};
 
 // chunks from all transfers will be queued through
 // a single channel
@@ -10,25 +12,53 @@ use super::error::AppError;
 // to prioritize chunks to upload
 
 #[derive(Debug)]
-pub struct ChunkTransferRequest {
+pub enum BlockTransferRequest {
     // file handle (or file name)
     // file id
     // transfer id
     // chunk id
     // chunk index
     // uploader
+    Upload(Box<BlockUploadRequest>),
 }
 
-type ChunkTransmitter = mpsc::Sender<ChunkTransferRequest>;
-pub type SharedChunkedTransferQueue = Arc<ChunkedTransferQueue>;
+#[derive(Debug)]
+pub struct BlockUploadRequest {
+    pub block: TransferJobFileBlock,
+    pub offset: u64,
+    pub size: u64,
+    pub file: Arc<std::fs::File>,
+    pub client: Arc<BlobClient>,
+    pub update_channel: mpsc::Sender<BlockTransferUpdate>,
+}
 
 #[derive(Debug)]
-pub struct ChunkedTransferQueue {
+pub enum BlockTransferUpdate {
+    Progress {
+        block_id: String,
+        block_index: u64,
+        size: u64,
+    },
+    Completed {
+        block_id: String,
+        block_index: u64,
+    },
+    Failed {
+        block_id: String,
+        block_index: u64,
+        error: String
+    },
+}
+
+type ChunkTransmitter = mpsc::Sender<BlockTransferRequest>;
+
+#[derive(Debug)]
+pub struct BlockTransferQueue {
     tx: ChunkTransmitter,
 }
 
-impl ChunkedTransferQueue {
-    pub fn init(buffer_size: usize) -> SharedChunkedTransferQueue {
+impl BlockTransferQueue {
+    pub fn init(buffer_size: usize) -> BlockTransferQueue {
         let (tx, mut rx) = mpsc::channel(buffer_size);
 
         // create task channels
@@ -42,7 +72,7 @@ impl ChunkedTransferQueue {
             tokio::spawn(async move {
                 while let Some(message) = rx.recv().await {
                     // await handler
-                    println!("Received chunk transfer request {:?}", message);
+                    transfer_block(message).await;
                 }
             });
         }
@@ -57,12 +87,46 @@ impl ChunkedTransferQueue {
             }
         });
 
-        Arc::new(Self { tx })
+        Self { tx }
     }
 
-    pub async fn send(&self, chunk: ChunkTransferRequest) -> Result<(), AppError> {
+    pub async fn send(&self, chunk: BlockTransferRequest) -> Result<(), AppError> {
         let tx = self.tx.clone();
         tx.send(chunk).await?;
         Ok(())
     }
+}
+
+async fn transfer_block(request: BlockTransferRequest) {
+    match request {
+        BlockTransferRequest::Upload(upload_request) => {
+            upload_block(upload_request).await;
+        }
+    }
+}
+
+async fn upload_block(request: Box<BlockUploadRequest>) {
+    let mut buffer = vec![0u8; request.size as usize];
+    // file.seek(tokio::io::SeekFrom::Start(offset)).await?;
+    let file = request.file;
+    file.read_exact_at(&mut buffer, request.offset).unwrap();
+    
+    
+    // Upload the block
+    request.client
+        .put_block(request.block._id.clone().into_bytes(), buffer)
+        .into_future()
+        .await.expect("Failed to put block to Azure blob");
+
+    
+    request.update_channel.send(BlockTransferUpdate::Progress {
+        block_id: request.block._id.clone(),
+        block_index: request.block.index,
+        size: request.size
+    }).await;
+
+    request.update_channel.send(BlockTransferUpdate::Completed {
+        block_id: request.block._id.clone(),
+        block_index: request.block.index,
+    }).await;
 }

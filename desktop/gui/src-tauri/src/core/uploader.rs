@@ -4,7 +4,7 @@ use std::{os::unix::fs::FileExt, sync::Arc, time::Instant};
 use base64::prelude::*;
 use crate::core::models::JobStatus;
 
-use super::dtos::*;
+use super::{dtos::*, transfer_queue::{BlockTransferQueue, BlockTransferRequest, BlockTransferUpdate, BlockUploadRequest}};
 use super::util::*;
 use super::message_channel::MessageChannel;
 
@@ -60,6 +60,78 @@ impl FileUploader {
             transfer_id,
             file_job,
             events
+        }
+    }
+
+    pub async fn queue_blocks_for_upload(&self, blocks_queue: Arc<BlockTransferQueue>) {
+        let url = Url::parse(&self.file_job.remote_url).expect("Failed to parse remote url");
+        let blob_client = Arc::new(BlobClient::from_sas_url(&url).expect("Failed to create Block client"));
+        let file = Arc::new(std::fs::File::open(&self.file_job.local_path).expect("Failed to open local file for download"));
+        let (tx, mut rx) = tokio::sync::mpsc::channel(self.file_job.blocks.len());
+
+        for block in &self.file_job.blocks {
+            if block.status == JobStatus::Completed {
+                continue;
+            }
+
+            let chunk_size = self.file_job.chunk_size;
+            let offset = block.index * chunk_size;
+            let end = std::cmp::min(offset + chunk_size, self.file_job.size);
+            let real_size = end - offset;
+
+
+            blocks_queue.send(BlockTransferRequest::Upload(
+                Box::new(BlockUploadRequest {
+                    block: block.clone(),
+                    offset: offset,
+                    size: real_size,
+                    file: Arc::clone(&file),
+                    client: blob_client.clone(),
+                    update_channel: tx.clone()
+                })
+            )).await.expect("Failed to send block to transfer queue");
+        }
+
+        drop(tx); // drop the original tx since since it's not held by any worker
+
+        while let Some(block_update) = rx.recv().await {
+            match block_update {
+                BlockTransferUpdate::Progress {
+                    block_id: block_id,
+                    block_index: block_index,
+                    size: transferred_size,
+                }  => {
+                    self.events.send(
+                        TransferUpdate::ChunkProgress {
+                            chunk_index: block_index,
+                            chunk_id: block_id.clone(),
+                            size: transferred_size,
+                            file_id: file_id.clone(),
+                            transfer_id: transfer_id.clone()
+                        }
+                    ).await;
+                },
+                BlockTransferUpdate::Completed {
+                    block_id: block_id,
+                    block_index: block_index,
+                } => {
+                    self.events.send(
+                        TransferUpdate::ChunkCompleted {
+                            chunk_index: block_index,
+                            chunk_id: block_id.clone(),
+                            file_id: file_id.clone(),
+                            transfer_id: transfer_id.clone()
+                        }
+                    ).await;
+                },
+                BlockTransferUpdate::Failed {
+                    block_id: _,
+                    block_index: _,
+                    error: _
+                } => {
+
+                }
+            }
         }
     }
 
