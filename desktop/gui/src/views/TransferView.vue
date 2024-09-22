@@ -1,12 +1,12 @@
 <template>
   <div v-if="transfer">
     <PageHeader>
-      <div class="h-full flex-1 flex items-center text-sm justify-between">
+      <div class="h-full flex-1 flex items-center text-sm gap-2 justify-between">
         <div class="flex gap-2 items-center">
           <router-link :to="{ name: 'transfers' }" title="Go back" class="hover:text-white">
             <Icon icon="lucide:arrow-left" />
           </router-link>
-          <div>
+          <div class="truncate text-ellipsis whitespace-nowrap overflow-hidden" :title="transfer.name">
             {{ transfer.name }}
           </div>
         </div>
