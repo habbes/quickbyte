@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
-use super::{downloader::SharedLinkDownloader, dtos::*, event::Event, message_channel::SyncMessageChannel, models::JobStatus, request::Request, uploader::*, util::get_num_chunks};
+use super::{downloader::SharedLinkDownloader, dtos::*, event::Event, message_channel::SyncMessageChannel, models::JobStatus, request::Request, transfer_queue::BlockTransferQueue, uploader::*, util::get_num_chunks};
 use tokio::sync::Mutex;
 use super::message_channel::MessageChannel;
+
+const CONCURRENCY: u32 = 32;
 
 #[derive(Debug)]
 pub struct TransferManager {
@@ -11,6 +13,7 @@ pub struct TransferManager {
   chunk_size: u64,
   transfers: Arc<Mutex<Vec<TransferJob>>>,
   db_sync_channel: Arc<SyncMessageChannel<Event>>,
+  transfer_queue: Arc<BlockTransferQueue>
 }
 
 impl TransferManager {
@@ -20,7 +23,8 @@ impl TransferManager {
       next_id: Mutex::new(1),
       chunk_size: 0x1000 * 0x1000, // 16MB
       transfers: Arc::new(Mutex::new(vec![])),
-      db_sync_channel
+      db_sync_channel,
+      transfer_queue: Arc::new(BlockTransferQueue::init(CONCURRENCY as usize))
     }
   }
 
@@ -117,7 +121,7 @@ impl TransferManager {
     self.events.send(Event::TransferCreated(cloned_job.clone())).await;
     self.db_sync_channel.send(Event::TransferCreated(cloned_job.clone()));
 
-    let uploader = TransferUploader::new(&cloned_job);
+    let uploader = TransferUploader::new(&cloned_job, self.transfer_queue.clone());
     let transfers = Arc::clone(&(self.transfers));
     let events = Arc::clone(&self.events);
     let db_sync_channel = Arc::clone(&self.db_sync_channel);
@@ -135,7 +139,7 @@ impl TransferManager {
   }
 
   async fn run_upload(&self, job: &TransferJob) {
-    let uploader = TransferUploader::new(job);
+    let uploader = TransferUploader::new(job, self.transfer_queue.clone());
     let transfers = Arc::clone(&(self.transfers));
     let events = Arc::clone(&self.events);
     let db_sync_channel = Arc::clone(&self.db_sync_channel);
