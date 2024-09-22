@@ -7,3 +7,5 @@ pub mod event;
 pub mod transfer_manager;
 pub mod message_channel;
 pub mod util;
+pub mod error;
+mod transfer_queue;
