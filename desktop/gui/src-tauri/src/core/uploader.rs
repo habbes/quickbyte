@@ -1,7 +1,6 @@
 use azure_storage_blobs::{blob::{BlobBlockType, BlockList}, prelude::BlobClient};
 use url::Url;
 use std::{os::unix::fs::FileExt, sync::Arc, time::Instant};
-use base64::prelude::*;
 use crate::core::models::JobStatus;
 
 use super::{dtos::*, transfer_queue::{BlockTransferQueue, BlockTransferRequest, BlockTransferUpdate, BlockUploadRequest}};
@@ -54,7 +53,7 @@ impl<'a> TransferUploader<'a> {
 
 struct FileUploader {
     transfer_id: String,
-    file_job: TransferJobFile,
+    file_job: Arc<TransferJobFile>,
     events: Arc<MessageChannel<TransferUpdate>>,
     transfer_queue: Arc<BlockTransferQueue>
 }
@@ -63,7 +62,7 @@ impl FileUploader {
     pub fn new(transfer_id: String, file_job: TransferJobFile, transfer_queue: Arc<BlockTransferQueue>, events: Arc<MessageChannel<TransferUpdate>>) -> Self {
         Self {
             transfer_id,
-            file_job,
+            file_job: Arc::new(file_job),
             events,
             transfer_queue
         }
@@ -79,44 +78,51 @@ impl FileUploader {
         let timer = Instant::now();
         let (tx, mut rx) = tokio::sync::mpsc::channel(self.file_job.blocks.len());
 
+        let file_job = self.file_job.clone();
+        let transfer_queue = self.transfer_queue.clone();
         let mut num_to_send = 0;
-        for block in &self.file_job.blocks {
-            if block.status == JobStatus::Completed {
-                continue;
+        
+        let block_blob_client = blob_client.clone();
+        tokio::spawn(async move {
+            for block in &file_job.blocks {
+                if block.status == JobStatus::Completed {
+                    continue;
+                }
+
+                num_to_send += 1;
+                let chunk_size = file_job.chunk_size;
+                let offset = block.index * chunk_size;
+                let end = std::cmp::min(offset + chunk_size, file_job.size);
+                let real_size = end - offset;
+
+
+                println!("Sent block {} of file {} to queue", block.index, file_job.name);
+                // Since the transfer queue is bounded, the task might block at this point
+                // this means we won't start receiving progress updates until all the
+                // blocks have been queued. And that will wait until all but the last
+                // batch have been uploaded.
+                // We should either make sure the queue does not block or 
+                // we start receiving updates before we finish sending the tasks.
+                transfer_queue.send(BlockTransferRequest::Upload(
+                    Box::new(BlockUploadRequest {
+                        block: block.clone(),
+                        offset: offset,
+                        size: real_size,
+                        file: Arc::clone(&file),
+                        client: block_blob_client.clone(),
+                        update_channel: tx.clone()
+                    })
+                )).await.expect("Failed to send block to transfer queue");
             }
-
-            num_to_send += 1;
-            let chunk_size = self.file_job.chunk_size;
-            let offset = block.index * chunk_size;
-            let end = std::cmp::min(offset + chunk_size, self.file_job.size);
-            let real_size = end - offset;
-
-
-            println!("Sent block {} of file {} to queue", block.index, self.file_job.name);
-            // Since the transfer queue is bounded, the task might block at this point
-            // this means we won't start receiving progress updates until all the
-            // blocks have been queued. And that will wait until all but the last
-            // batch have been uploaded.
-            // We should either make sure the queue does not block or 
-            // we start receiving updates before we finish sending the tasks.
-            self.transfer_queue.send(BlockTransferRequest::Upload(
-                Box::new(BlockUploadRequest {
-                    block: block.clone(),
-                    offset: offset,
-                    size: real_size,
-                    file: Arc::clone(&file),
-                    client: blob_client.clone(),
-                    update_channel: tx.clone()
-                })
-            )).await.expect("Failed to send block to transfer queue");
-        }
-
+        });
+        
+        let mut num_completed = 0;
         println!("Waiting of for updates from {num_to_send} blocks (out of a total {num_completed})");
         println!("Dropping unused transmitter");
-        drop(tx); // drop the original tx since since it's not held by any worker
+        
         println!("Dropped unused transmitter");
 
-        let mut num_completed = 0;
+        
         // once all the workers have finished transmitting updates, the channel
         // will be closed.
         while let Some(block_update) = rx.recv().await {
