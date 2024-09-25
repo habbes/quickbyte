@@ -1,10 +1,15 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use azure_storage_blobs::prelude::BlobClient;
+use futures::stream::StreamExt;
+use std::os::unix::fs::FileExt;
 use tokio::sync::mpsc;
-use std::{os::unix::fs::FileExt};
 
-use super::{dtos::{TransferJobFileBlock, TransferUpdate}, error::AppError, message_channel::MessageChannel};
+use super::{
+    dtos::{TransferJobFileBlock, TransferUpdate},
+    error::AppError,
+    message_channel::MessageChannel,
+};
 
 // chunks from all transfers will be queued through
 // a single channel
@@ -20,10 +25,21 @@ pub enum BlockTransferRequest {
     // chunk index
     // uploader
     Upload(Box<BlockUploadRequest>),
+    Download(Box<BlockDownloadRequest>),
 }
 
 #[derive(Debug)]
 pub struct BlockUploadRequest {
+    pub block: TransferJobFileBlock,
+    pub offset: u64,
+    pub size: u64,
+    pub file: Arc<std::fs::File>,
+    pub client: Arc<BlobClient>,
+    pub update_channel: mpsc::Sender<BlockTransferUpdate>,
+}
+
+#[derive(Debug)]
+pub struct BlockDownloadRequest {
     pub block: TransferJobFileBlock,
     pub offset: u64,
     pub size: u64,
@@ -46,7 +62,7 @@ pub enum BlockTransferUpdate {
     Failed {
         block_id: String,
         block_index: u64,
-        error: String
+        error: String,
     },
 }
 
@@ -69,7 +85,7 @@ impl BlockTransferQueue {
             println!("Initializing block transfer worker {i}");
             let (tx, mut rx) = mpsc::channel(1);
             producers.push(tx);
-            
+
             tokio::spawn(async move {
                 while let Some(message) = rx.recv().await {
                     // await handler
@@ -77,14 +93,17 @@ impl BlockTransferQueue {
                 }
             });
         }
-        
+
         // handle forwarding messages to handlers
         tokio::spawn(async move {
             let mut next_channel = 0;
             while let Some(message) = rx.recv().await {
                 println!("Received block transfer request, sent to worker channel {next_channel}");
                 // create a bunch of channels
-                producers[next_channel].send(message).await.expect("Error sending chunk message to handler");
+                producers[next_channel]
+                    .send(message)
+                    .await
+                    .expect("Error sending chunk message to handler");
                 next_channel = (next_channel + 1) % producers.len();
             }
         });
@@ -104,35 +123,99 @@ async fn transfer_block(request: BlockTransferRequest) {
     match request {
         BlockTransferRequest::Upload(upload_request) => {
             upload_block(upload_request).await;
+        },
+        BlockTransferRequest::Download(download_request) => {
+            download_block(download_request).await;
         }
     }
 }
 
 async fn upload_block(request: Box<BlockUploadRequest>) {
-    println!("Uploading block {} size {}", request.block.index, request.size);
+    println!(
+        "Uploading block {} size {}",
+        request.block.index, request.size
+    );
     let mut buffer = vec![0u8; request.size as usize];
     // file.seek(tokio::io::SeekFrom::Start(offset)).await?;
     let file = request.file;
     file.read_exact_at(&mut buffer, request.offset).unwrap();
-    
-    
+
     // Upload the block
-    request.client
+    request
+        .client
         .put_block(request.block._id.clone().into_bytes(), buffer)
         .into_future()
-        .await.expect("Failed to put block to Azure blob");
+        .await
+        .expect("Failed to put block to Azure blob");
 
+    request
+        .update_channel
+        .send(BlockTransferUpdate::Progress {
+            block_id: request.block._id.clone(),
+            block_index: request.block.index,
+            size: request.size,
+        })
+        .await
+        .expect("Failed to send block progress update");
+
+    request
+        .update_channel
+        .send(BlockTransferUpdate::Completed {
+            block_id: request.block._id.clone(),
+            block_index: request.block.index,
+        })
+        .await
+        .expect("Failed to send block completion update");
+
+    println!(
+        "Completed uploading block {} size {}",
+        request.block.index, request.size
+    );
+}
+
+async fn download_block(request: Box<BlockDownloadRequest>) {
+    println!(
+        "Downloading block {} size {}",
+        request.block.index, request.size
+    );
+
+    // let block_index = request.block.index;
+    // let block_id = block._id.clone();
+
+    let start_range = request.offset;
+    let end_range = request.offset + request.size;
+    let mut stream = request.client
+        .get()
+        .range(start_range..end_range)
+        .chunk_size(request.size)
+        .into_stream();
+
+    // println!("Writing chunk {} of file {}", i, file_name);
+    let mut chunk_progress = 0 as u64;
     
-    request.update_channel.send(BlockTransferUpdate::Progress {
-        block_id: request.block._id.clone(),
-        block_index: request.block.index,
-        size: request.size
-    }).await.expect("Failed to send block progress update");
+    while let Some(value) = stream.next().await {
+        let mut body = value.unwrap().data;
+        // For each response, we stream the body instead of collecting it all
+        while let Some(value) = body.next().await {
+            let value = value.unwrap();
+            // println!("Got stream item of size {} for chunk {}", value.len(), i);
+            request.file.write_all_at(&value, start_range + chunk_progress)
+                .unwrap();
+            let fetched_len = value.len() as u64;
+            chunk_progress += value.len() as u64;
+
+            // TODO Is this blocking? should this be sent in a separate task?
+            // Investigate impact of sending through a one shot channel
+            request.update_channel.send(BlockTransferUpdate::Progress {
+                block_id: request.block._id.clone(),
+                block_index: request.block.index,
+                size: fetched_len
+            }).await.expect("Failed to send chunk download progress update.");
+        }
+    }
 
     request.update_channel.send(BlockTransferUpdate::Completed {
-        block_id: request.block._id.clone(),
+        block_id: request.block._id,
         block_index: request.block.index,
-    }).await.expect("Failed to send block completion update");
-
-    println!("Completed uploading block {} size {}", request.block.index, request.size);
+    }).await.expect("Failed to send chunk download completion update.");
 }
