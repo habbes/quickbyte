@@ -8,6 +8,7 @@ use crate::core::models::JobStatus;
 use super::message_channel::MessageChannel;
 
 use super::dtos::*;
+use super::transfer_queue::BlockTransferQueue;
 
 pub struct SharedLinkDownloader<'a> {
     request: &'a TransferJob
@@ -20,12 +21,12 @@ impl SharedLinkDownloader<'_> {
         }
     }
 
-    pub async fn start_download(&self, events: Arc<MessageChannel<TransferUpdate>>) {
+    pub async fn start_download(&self, transfer_queue: Arc<BlockTransferQueue>, events: Arc<MessageChannel<TransferUpdate>>) {
         let files = &self.request.files;
         println!("Init download of {}", files.len());
         // create file download handler for each file
         let file_downloaders: Vec<_> = files.iter().filter(|f| f.status == JobStatus::Pending || f.status == JobStatus::Progress).map(|f|
-            FileDownloader::new(f.clone(), self.request._id.clone(), Arc::clone(&events))).collect();
+            FileDownloader::new(f.clone(), self.request._id.clone(), transfer_queue.clone(), Arc::clone(&events))).collect();
         // initialize the handlers to persist records
         // run the downloaders concurrently, limiting concurrency
         let mut tasks = Vec::with_capacity(file_downloaders.len());
@@ -51,14 +52,16 @@ struct FileDownloader {
     file_job: TransferJobFile,
     transfer_id: String,
     events: Arc<MessageChannel<TransferUpdate>>,
+    transfer_queue: Arc<BlockTransferQueue>,
 }
 
 impl FileDownloader {
-    pub fn new(file: TransferJobFile, transfer_id: String, events: Arc<MessageChannel<TransferUpdate>>) -> FileDownloader {
+    pub fn new(file: TransferJobFile, transfer_id: String, transfer_queue: Arc<BlockTransferQueue>, events: Arc<MessageChannel<TransferUpdate>>) -> FileDownloader {
         FileDownloader {
             file_job: file,
             transfer_id,
-            events
+            events,
+            transfer_queue
         }
     }
 

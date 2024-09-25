@@ -87,7 +87,7 @@ impl TransferManager {
       });
     });
     let job_updates = Arc::new(job_updates);
-    downloader.start_download(job_updates).await;
+    downloader.start_download(self.transfer_queue.clone(), job_updates).await;
   }
 
   pub async fn run_download(&self, job: &TransferJob) {
@@ -105,7 +105,7 @@ impl TransferManager {
       });
     });
     let job_updates = Arc::new(job_updates);
-    downloader.start_download(job_updates).await;
+    downloader.start_download(self.transfer_queue.clone(), job_updates).await;
   }
 
   pub async fn start_upload(&self, request: UploadFilesRequest) {
