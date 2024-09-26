@@ -1,9 +1,9 @@
 use azure_storage_blobs::prelude::BlobClient;
-use std::{fs::File, io::Write, os::unix::fs::FileExt, sync::Arc};
+use std::{fs::File, io::Write, sync::Arc};
 use tokio::task;
-use futures::stream::StreamExt;
 use std::time::Instant;
 use crate::core::models::JobStatus;
+use crate::core::transfer_queue::{BlockDownloadRequest, BlockTransferRequest, BlockTransferUpdate};
 
 use super::message_channel::MessageChannel;
 
@@ -73,121 +73,99 @@ impl FileDownloader {
         let file_path = std::path::Path::new(&self.file_job.local_path);
         let directory = file_path.parent().unwrap();
         std::fs::create_dir_all(directory).unwrap();
-        let file = File::create(std::path::Path::new(&self.file_job.local_path)).unwrap();
-        // set file len on disk
-        file.set_len(self.file_job.size).unwrap();
-
+        let file = File::create(std::path::Path::new(&self.file_job.local_path)).expect("Failed to create file for download");
         let mut file = Arc::new(file);
+        // set file len on disk
+        file.set_len(self.file_job.size).expect("Failed to initialze file length on disk.");
 
-        let num_chunks = get_num_chunks(self.file_job.size, self.file_job.chunk_size);
         let url = url::Url::parse(&self.file_job.remote_url).unwrap();
-        let blob = BlobClient::from_sas_url(&url).unwrap();
-        let chunk_size = self.file_job.chunk_size;
-        let file_size = self.file_job.size;
-        let mut tasks = Vec::new();
-        let file_name = Arc::new(self.file_job.name.clone());
-        println!("Need {} chunks for file {}", num_chunks, self.file_job.name);
+        let blob = Arc::new(BlobClient::from_sas_url(&url).expect("Failed to initialized blob client from download url"));
 
-        let events = Arc::clone(&self.events);
-        let transfer_id = self.transfer_id.clone();
-        let file_id = self.file_job._id.clone();
-        
+        let file_job = self.file_job.clone();
+        let transfer_queue = self.transfer_queue.clone();
 
-        for block in &self.file_job.blocks {
-            println!("Block {} status {:?}", block._id, block.status);
-            if block.status == JobStatus::Completed {
-                continue;
-            }
+        let (tx, mut rx) = tokio::sync::mpsc::channel(self.file_job.blocks.len());
 
-            let blob = blob.clone();
-            let file = Arc::clone(&file);
-            let file_name = Arc::clone(&file_name);
-            let events = Arc::clone(&events);
-            let transfer_id = transfer_id.clone();
-                        let file_id = file_id.clone();
-            
-            let block_index = block.index;
-            let block_id = block._id.clone();
-            let task = task::spawn(async move {
-                let start_range = block_index * chunk_size;
-                let end_range = (start_range + chunk_size).min(file_size);
-                let mut stream = blob
-                    .get()
-                    .range(start_range..end_range)
-                    .chunk_size(chunk_size)
-                    .into_stream();
-                
-                // println!("Writing chunk {} of file {}", i, file_name);
-                let mut chunk_progress = 0 as u64;
-                let chunk_timer = Instant::now();
-                let events = Arc::clone(&events);
-                let transfer_id = transfer_id.clone();
-                        let file_id = file_id.clone();
-                while let Some(value) = stream.next().await {
-                    let mut body = value.unwrap().data;
-                    // For each response, we stream the body instead of collecting it all
-                    // into one large allocation.
-                    // This also let's us calculate progress more granularly
-                    let events = Arc::clone(&events);
-                    let transfer_id = transfer_id.clone();
-                    let file_id = file_id.clone();
-                    while let Some(value) = body.next().await {
-                        let value = value.unwrap();
-                        // println!("Got stream item of size {} for chunk {}", value.len(), i);
-                        file.write_all_at(&value, start_range + chunk_progress).unwrap();
-                        let fetched_len = value.len() as u64;
-                        chunk_progress += value.len() as u64;
-
-                        let events = Arc::clone(&events);
-                        let transfer_id = transfer_id.clone();
-                        let file_id = file_id.clone();
-                        
-                        let block_id = block_id.clone();
-                        tokio::spawn(async move {
-                            events.send(TransferUpdate::ChunkProgress {
-                                chunk_index: block_index,
-                                chunk_id: block_id.clone(),
-                                size: fetched_len,
-                                file_id: file_id.clone(),
-                                transfer_id: transfer_id.clone() 
-                            }).await
-                        });
-                    }
+        let block_file = file.clone();
+        tokio::spawn(async move {
+            for block in &file_job.blocks {
+                if block.status == JobStatus::Completed {
+                    continue;
                 }
 
-                tokio::spawn(async move {
-                    events.send(TransferUpdate::ChunkCompleted {
-                        chunk_index: block_index,
-                        chunk_id: block_id.clone(),
-                        file_id: file_id.clone(),
-                        transfer_id: transfer_id.clone() 
-                    }).await;
-                });
+                let chunk_size = file_job.chunk_size;
+                let offset = block.index * chunk_size;
+                let end = std::cmp::min(offset + chunk_size, file_job.size);
+                let real_size = end - offset;
 
-                // println!("Finished writing chunk {} of file {} after {}s", i, file_name, chunk_timer.elapsed().as_secs_f64());
-                    
-                Ok::<(), azure_core::Error>(())
-            });
+                println!("Sent download block {} of file {} to queue", block.index, file_job.name);
 
-            tasks.push(task);
+                transfer_queue.send(BlockTransferRequest::Download(
+                    Box::new(BlockDownloadRequest {
+                        block: block.clone(),
+                        offset,
+                        size: real_size,
+                        file: block_file.clone(),
+                        client: blob.clone(),
+                        update_channel: tx.clone()
+                    })
+                )).await.expect("Failed to send download block to queue");
+            }
+        });
+
+        let mut num_completed = 0;
+
+        while let Some(block_update) = rx.recv().await {
+            match block_update {
+                BlockTransferUpdate::Progress {
+                    block_id,
+                    block_index,
+                    size,
+                }  => {
+                    println!("Block {block_index} progressed by {size} bytes");
+                    self.events.send(
+                        TransferUpdate::ChunkProgress {
+                            chunk_index: block_index,
+                            chunk_id: block_id.clone(),
+                            size,
+                            file_id: self.file_job._id.clone(),
+                            transfer_id: self.transfer_id.clone()
+                        }
+                    ).await;
+                },
+                BlockTransferUpdate::Completed {
+                    block_id,
+                    block_index,
+                } => {
+                    num_completed += 1;
+                    println!("Completed {num_completed}");
+                    self.events.send(
+                        TransferUpdate::ChunkCompleted {
+                            chunk_index: block_index,
+                            chunk_id: block_id.clone(),
+                            file_id: self.file_job._id.clone(),
+                            transfer_id: self.transfer_id.clone()
+                        }
+                    ).await;
+                },
+                BlockTransferUpdate::Failed {
+                    block_id,
+                    block_index,
+                    error
+                } => {
+                    println!("Failed to upload block {block_index} id: {block_id}: {error}");
+                }
+            }
         }
-
-        for task in tasks {
-            let _ = task.await.unwrap();
-        }
+        
 
         println!("Finish downloading file {} after {}s. Flushing...", self.file_job.name, started_file.elapsed().as_secs_f64());
         file.flush().unwrap();
         println!("Completed flushing file {} after {}s", self.file_job.name, started_file.elapsed().as_secs_f64());
 
-        events.send(TransferUpdate::FileCompleted { file_id: file_id.clone(), transfer_id: transfer_id.clone() }).await;
+        self.events.send(TransferUpdate::FileCompleted {
+            file_id: self.file_job._id.clone(),
+            transfer_id: self.transfer_id.clone()
+        }).await;
     }
-}
-
-fn get_num_chunks(file_size: u64, chunk_size: u64) -> u64{
-    assert!(file_size > 0);
-    assert!(chunk_size > 0);
-
-    // Calculate the number of chunks, rounding up
-    (file_size + chunk_size - 1) / chunk_size
 }
