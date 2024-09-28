@@ -29,21 +29,6 @@ impl<'a> TransferUploader<'a> {
     }
 
     pub async fn start_upload(&self, events: Arc<MessageChannel<TransferUpdate>>) {
-        let file_uploaders: Vec<_> = self
-            .request
-            .files
-            .iter()
-            .filter(|f| f.status == JobStatus::Pending || f.status == JobStatus::Progress)
-            .map(|f| {
-                FileUploader::new(
-                    self.request._id.clone(),
-                    f.clone(),
-                    self.transfer_queue.clone(),
-                    Arc::clone(&events),
-                )
-            })
-            .collect();
-        
         let mut dispatchers = vec![];
         let mut watchers = vec![];
         for file in &self.request.files {
@@ -59,8 +44,7 @@ impl<'a> TransferUploader<'a> {
             }
         }
 
-        let count = file_uploaders.len();
-
+        let count = dispatchers.len();
         println!("Start uploading {count} files");
         let timer = Instant::now();
 
