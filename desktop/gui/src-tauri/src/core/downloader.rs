@@ -103,11 +103,20 @@ struct FileDownloadBlocksDispatcher {
     file_started_tx: tokio::sync::oneshot::Sender<FileTransferStartedMessage>
 }
 
+struct FileDownloadCompletionWatcher {
+    file_job: Arc<TransferJobFile>,
+    transfer_id: String,
+    update_rx: tokio::sync::mpsc::Receiver<BlockTransferUpdate>,
+    events: Arc<MessageChannel<TransferUpdate>>,
+    file_started_rx: tokio::sync::oneshot::Receiver<FileTransferStartedMessage>,
+}
+
 #[derive(Debug)]
 struct FileTransferStartedMessage {
     file: Arc<std::sync::RwLock<std::fs::File>>,
     started_at: std::time::Instant,
 }
+
 
 impl FileDownloadBlocksDispatcher {
     pub async fn queue_file(self) {
@@ -160,15 +169,6 @@ impl FileDownloadBlocksDispatcher {
     }
 }
 
-
-struct FileDownloadCompletionWatcher {
-    file_job: Arc<TransferJobFile>,
-    transfer_id: String,
-    update_rx: tokio::sync::mpsc::Receiver<BlockTransferUpdate>,
-    events: Arc<MessageChannel<TransferUpdate>>,
-    file_started_rx: tokio::sync::oneshot::Receiver<FileTransferStartedMessage>,
-}
-
 impl FileDownloadCompletionWatcher {
     pub async fn wait_transfer_complete(mut self) {
         let mut num_completed = 0;
@@ -184,7 +184,6 @@ impl FileDownloadCompletionWatcher {
                     block_index,
                     size,
                 }  => {
-                    println!("Block {block_index} progressed by {size} bytes");
                     self.events.send(
                         TransferUpdate::ChunkProgress {
                             chunk_index: block_index,
@@ -200,7 +199,7 @@ impl FileDownloadCompletionWatcher {
                     block_index,
                 } => {
                     num_completed += 1;
-                    println!("Completed {num_completed}");
+                    println!("Completed {num_completed} blocks for file {:?}", self.file_job.name);
                     self.events.send(
                         TransferUpdate::ChunkCompleted {
                             chunk_index: block_index,
