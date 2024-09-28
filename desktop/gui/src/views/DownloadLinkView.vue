@@ -40,9 +40,22 @@ import { open } from "@tauri-apps/api/dialog";
 import { downloadSharedLink } from "@/core";
 import { trpcClient } from "../app-utils/index.js";
 import { UiTextInput, UiButton } from "@/components/ui";
-import { unwrapSingleton, GetAllProjectShareFilesForDownloadResult } from "@quickbyte/common";
+import { unwrapSingleton, GetAllProjectShareFilesForDownloadResult, ensure } from "@quickbyte/common";
 import FileTree from "@/components/FileTree.vue";
 import PageFooter from "@/components/PageFooter.vue"
+
+type DownloadLinkParts = ProjectShareLinkParts | LegacyTransferLinkParts;
+
+type ProjectShareLinkParts = {
+  type: "projectShare";
+  shareId: string;
+  code: string;
+}
+
+type LegacyTransferLinkParts = {
+  type: "legacyTransfer",
+  downloadId: string;
+}
 
 const router = useRouter();
 const link = ref<string>();
@@ -55,6 +68,8 @@ async function fetchLink() {
   const segments = link.value.split('/');
   const shareId = segments.at(-2)!;
   const code = segments.at(-1)!;
+
+  // TODO: handle different link types
 
   console.log('target path', targetPath.value);
   console.log('sharedId', shareId);
@@ -124,6 +139,36 @@ async function downloadFiles() {
   }
   catch (e: any) {
     alert(`Error ${e}`);
+  }
+}
+
+function getLinkParts(rawLink: string): DownloadLinkParts {
+  const unsupportedLinkError = "You entered an nsupported link. Make sure to use a valid Quickbyte shared link."
+  const url = new URL(rawLink);
+  // TODO: confirm the domain matches the configured base webapp URL
+  const path = url.pathname;
+  if (path.startsWith("/share")) {
+    const parts = path.split("/");
+    // path has format /share/<shareId>/<code>
+    ensure(parts.length > 3, unsupportedLinkError);
+    const shareId = parts[2];
+    const code = parts[3];
+    return {
+      type: 'projectShare',
+      shareId,
+      code
+    };
+  } else if (path.startsWith("/d")) {
+    const parts = path.split("/");
+    // path format /d/<transferId>
+    ensure(parts.length > 2, unsupportedLinkError);
+    const downloadId = parts[2];
+    return {
+      type: 'legacyTransfer',
+      downloadId
+    };
+  } else {
+    throw new Error(unsupportedLinkError)
   }
 }
 </script>
