@@ -1,6 +1,5 @@
 use azure_storage_blobs::prelude::BlobClient;
 use std::{fs::File, io::Write, sync::Arc};
-use tokio::task;
 use std::time::Instant;
 use crate::core::models::JobStatus;
 use crate::core::transfer_queue::{BlockDownloadRequest, BlockTransferRequest, BlockTransferUpdate};
@@ -62,7 +61,7 @@ impl SharedLinkDownloader<'_> {
         }
 
         for task in tasks {
-            task.await;
+            task.await.unwrap();
         }
     
         events.send(TransferUpdate::TransferCompleted { transfer_id: self.request._id.clone() }).await;
@@ -80,7 +79,6 @@ fn init_file_downloader(
     let (file_started_tx, file_started_rx) = tokio::sync::oneshot::channel();
     let dispatcher = FileDownloadBlocksDispatcher {
         file_job: file_job.clone(),
-        transfer_id: transfer_id.clone(),
         transfer_queue: transfer_queue.clone(),
         update_tx: tx,
         file_started_tx
@@ -89,7 +87,6 @@ fn init_file_downloader(
     let completion_watcher = FileDownloadCompletionWatcher {
         file_job: file_job,
         transfer_id: transfer_id.clone(),
-        transfer_queue: transfer_queue.clone(),
         update_rx: rx,
         events,
         file_started_rx
@@ -100,7 +97,6 @@ fn init_file_downloader(
 
 struct FileDownloadBlocksDispatcher {
     file_job: Arc<TransferJobFile>,
-    transfer_id: String,
     transfer_queue: Arc<BlockTransferQueue>,
     update_tx: tokio::sync::mpsc::Sender<BlockTransferUpdate>,
     file_started_tx: tokio::sync::oneshot::Sender<FileTransferStartedMessage>
@@ -108,9 +104,10 @@ struct FileDownloadBlocksDispatcher {
 
 #[derive(Debug)]
 struct FileTransferStartedMessage {
-    file: Arc<std::fs::File>,
+    file: Arc<std::sync::RwLock<std::fs::File>>,
     started_at: std::time::Instant,
 }
+
 impl FileDownloadBlocksDispatcher {
     pub async fn queue_file(self) {
         // create file
@@ -120,10 +117,10 @@ impl FileDownloadBlocksDispatcher {
         let directory = file_path.parent().unwrap();
         std::fs::create_dir_all(directory).unwrap();
         let file = File::create(std::path::Path::new(&self.file_job.local_path)).expect("Failed to create file for download");
-        let file = Arc::new(file);
     
         file.set_len(self.file_job.size).expect("Failed to initialze file length on disk.");
         // set file len on disk
+        let file = Arc::new(std::sync::RwLock::new(file));
 
         self.file_started_tx.send(FileTransferStartedMessage {
             file: file.clone(),
@@ -166,14 +163,13 @@ impl FileDownloadBlocksDispatcher {
 struct FileDownloadCompletionWatcher {
     file_job: Arc<TransferJobFile>,
     transfer_id: String,
-    transfer_queue: Arc<BlockTransferQueue>,
     update_rx: tokio::sync::mpsc::Receiver<BlockTransferUpdate>,
     events: Arc<MessageChannel<TransferUpdate>>,
-    file_started_rx: tokio::sync::oneshot::Receiver<FileTransferStartedMessage>
+    file_started_rx: tokio::sync::oneshot::Receiver<FileTransferStartedMessage>,
 }
 
 impl FileDownloadCompletionWatcher {
-    pub async fn wait_transfer_complete(&self) {
+    pub async fn wait_transfer_complete(mut self) {
         let mut num_completed = 0;
 
         let file_started_event = self.file_started_rx.await.expect("Failed to receive file started event");
@@ -182,10 +178,6 @@ impl FileDownloadCompletionWatcher {
 
         while let Some(block_update) = self.update_rx.recv().await {
             match block_update {
-                // this will be the first message transferred
-                BlockTransferUpdate::TransferStarted {
-                    block_id, block_index, size 
-                },
                 BlockTransferUpdate::Progress {
                     block_id,
                     block_index,
@@ -229,7 +221,12 @@ impl FileDownloadCompletionWatcher {
         
 
         println!("Finish downloading file {} after {}s. Flushing...", self.file_job.name, started_at.elapsed().as_secs_f64());
-        file.flush().expect("Failed to flush file");
+        file
+        .write()
+        .expect("Failed to acquire file write lock")
+        .flush()
+        .expect("Failed to flush file");
+
         println!("Completed flushing file {} after {}s", self.file_job.name, started_at.elapsed().as_secs_f64());
 
         self.events.send(TransferUpdate::FileCompleted {

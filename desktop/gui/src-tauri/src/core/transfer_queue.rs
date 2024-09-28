@@ -43,7 +43,7 @@ pub struct BlockDownloadRequest {
     pub block: TransferJobFileBlock,
     pub offset: u64,
     pub size: u64,
-    pub file: Arc<std::fs::File>,
+    pub file: Arc<std::sync::RwLock<std::fs::File>>,
     pub client: Arc<BlobClient>,
     pub update_channel: mpsc::Sender<BlockTransferUpdate>,
 }
@@ -199,7 +199,9 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
         while let Some(value) = body.next().await {
             let value = value.unwrap();
             // println!("Got stream item of size {} for chunk {}", value.len(), i);
-            request.file.write_all_at(&value, start_range + chunk_progress)
+            request.file.read()
+                .expect("Failed to acquire file lock")
+                .write_all_at(&value, start_range + chunk_progress)
                 .unwrap();
             let fetched_len = value.len() as u64;
             chunk_progress += value.len() as u64;
