@@ -21,7 +21,7 @@
         v-for="transfer in transfers"
         :key="transfer._id"
         class="group flex py-2 border-b-[0.5px] border-b-gray-700 cursor-pointer"
-        @dblclick="goToTransfer(transfer._id)"
+        @click="goToTransfer(transfer._id)"
       >
         <div class="flex-1 group-hover:text-white">
           {{ transfer.name }}
