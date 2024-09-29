@@ -45,6 +45,7 @@ async fn main() {
     })
     .invoke_handler(tauri::generate_handler![
       download_shared_link,
+      download_legacy_transfer_link,
       upload_files,
       request_transfers,
       get_file_sizes,

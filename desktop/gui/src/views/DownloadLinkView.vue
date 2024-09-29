@@ -100,9 +100,10 @@ async function downloadFiles() {
       await downloadLegacyTransferLink({
         transferId: downloadMetadata.value.transferId,
         name: downloadMetadata.value.name,
+        downloadRequestId: downloadMetadata.value.downloadRequestId,
         targetPath: targetPath.value,
         files: files.value
-      })
+      });
     }
 
     router.push({ name: 'transfers' });
@@ -167,13 +168,13 @@ async function fetchLink() {
       };
     }
   } catch (e) {
-    alert(`Error: ${e}`);
+    alert(e);
   }
 }
 
 function getLinkParts(rawLink: string): DownloadLinkParts {
-  const unsupportedLinkError = "You entered an nsupported link. Make sure to use a valid Quickbyte shared link."
-  const url = new URL(rawLink);
+  const unsupportedLinkError = "You entered an unsupported link. Make sure to use a valid Quickbyte shared link."
+  const url = parseUrl(rawLink);
   // TODO: confirm the domain matches the configured base webapp URL
   const path = url.pathname;
   if (path.startsWith("/share")) {
@@ -198,6 +199,14 @@ function getLinkParts(rawLink: string): DownloadLinkParts {
     };
   } else {
     throw new Error(unsupportedLinkError)
+  }
+}
+
+function parseUrl(rawLink: string) {
+  try {
+    return new URL(rawLink);
+  } catch (e) {
+    throw new Error("The link you entered is not a valid URL. Please entered a valid Quickbyte shared link.");
   }
 }
 </script>

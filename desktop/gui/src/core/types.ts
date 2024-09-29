@@ -39,6 +39,7 @@ export interface LegacyTransferLinkDownloadRequest {
     transferId: string;
     name: string;
     targetPath: string;
+    downloadRequestId: string;
     files: DownloadTransferFileResult[];
 }
 
