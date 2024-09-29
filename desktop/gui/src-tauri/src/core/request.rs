@@ -2,10 +2,15 @@ use crate::core::dtos::*;
 
 #[derive(Debug)]
 pub enum Request {
-    DownloadSharedLink(SharedLinkDownloadRequest),
-    DownloadLegacyTransferLink(LegacyTransferLinkDownloadRequest),
+    DownloadFiles(DownloadFilesRequest),
     UploadFiles(UploadFilesRequest),
     ResumeTransfer(TransferJob),
     GetTransfers
+}
+
+#[derive(Debug)]
+pub enum DownloadFilesRequest {
+    FromSharedLink(SharedLinkDownloadRequest),
+    FromLegacyTransferLink(LegacyTransferLinkDownloadRequest)
 }
 

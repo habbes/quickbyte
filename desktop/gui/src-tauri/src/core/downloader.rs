@@ -9,13 +9,13 @@ use super::message_channel::MessageChannel;
 use super::dtos::*;
 use super::transfer_queue::BlockTransferQueue;
 
-pub struct SharedLinkDownloader<'a> {
+pub struct TransferDownloader<'a> {
     request: &'a TransferJob
 }
 
-impl SharedLinkDownloader<'_> {
-    pub fn new(request: &TransferJob) -> SharedLinkDownloader {
-        SharedLinkDownloader {
+impl TransferDownloader<'_> {
+    pub fn new(request: &TransferJob) -> TransferDownloader {
+        TransferDownloader {
             request,
         }
     }

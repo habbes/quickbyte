@@ -1,5 +1,5 @@
 use tauri::{command, State};
-use crate::core::request::Request;
+use crate::core::request::{DownloadFilesRequest, Request};
 use crate::core::dtos::*;
 use crate::app_context::AppContext;
 use crate::auth::google_auth;
@@ -7,14 +7,14 @@ use crate::auth::google_auth;
 #[command]
 pub async fn download_shared_link(context: State<'_, AppContext>, request: SharedLinkDownloadRequest) -> Result<(), ()>{
     println!("Shared link download command received.");
-    context.requests.send(Request::DownloadSharedLink(request)).await;
+    context.requests.send(Request::DownloadFiles(DownloadFilesRequest::FromSharedLink(request))).await;
     Ok(())
 }
 
 #[command]
 pub async fn download_legacy_transfer_link(context: State<'_, AppContext>, request: LegacyTransferLinkDownloadRequest) -> Result<(), ()> {
     println!("Legacy transfer link download command received.");
-    context.requests.send(Request::DownloadLegacyTransferLink(request)).await;
+    context.requests.send(Request::DownloadFiles(DownloadFilesRequest::FromLegacyTransferLink(request))).await;
     Ok(())
 }
 
