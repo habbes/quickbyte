@@ -19,6 +19,30 @@
       </div>
     </PageFooter>
   </div>
+  <Dialog ref="dialog" v-model:open="sharedLinkPasswordRequired" :modal="true">
+    <DialogContent class="bg-[#383848] border-none rounded-md">
+      <DialogTitle class="text-gray-100">Password required</DialogTitle>
+      <DialogDescription class="text-gray-300">
+        The link you entered is password-protected. Enter the password
+        to access the shared files.
+      </DialogDescription>
+      <div>
+        <UiTextInput v-model="sharedLinkPassword" label="Password" type="password" fill fullWidth />
+      </div>
+      <DialogFooter>
+        <UiButton @click="closePasswordDialog()" default>
+          Cancel
+        </UiButton>
+        <UiButton
+          @click="fetchProjectShareLinkWithPassword()"
+          primary
+          type="submit"
+        >
+          Save changes
+        </UiButton>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
 <script lang="ts" setup>
 import { ref } from "vue";
@@ -30,6 +54,9 @@ import { UiTextInput, UiButton } from "@/components/ui";
 import { unwrapSingleton, DownloadTransferFileResult, ensure } from "@quickbyte/common";
 import FileTree from "@/components/FileTree.vue";
 import PageFooter from "@/components/PageFooter.vue"
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+
+const dialog = ref<typeof Dialog>();
 
 type DownloadLinkParts = ProjectShareLinkParts | LegacyTransferLinkParts;
 
@@ -118,18 +145,12 @@ async function downloadFiles() {
 async function fetchLink() {
   if (!link.value) return;
   try {
-    // clear saved password
-    sharedLinkPassword.value = undefined;
-    const segments = link.value.split('/');
-    const shareId = segments.at(-2)!;
-    const code = segments.at(-1)!;
-
     const linkParts = getLinkParts(link.value);
 
     if (linkParts.type === 'projectShare') {
       const shareResult = await trpcClient.getProjectShareItems.query({
-        shareId,
-        code
+        shareId: linkParts.shareId,
+        code: linkParts.code
       });
 
       if ("passwordRequired" in shareResult) {
@@ -142,19 +163,20 @@ async function fetchLink() {
       }
 
       const filesResult = await trpcClient.getAllProjectShareFilesForDownload.query({
-        shareId,
-        shareCode: code,
+        shareId: linkParts.shareId,
+        shareCode: linkParts.code,
       });
 
-      // TODO: handle errors
+      // TODO: handle errors in fileResult.errors
 
       files.value = filesResult.files;
       downloadMetadata.value = {
         type: "projectShare",
-        shareId: shareId,
-        code,
+        shareId: linkParts.shareId,
+        code: linkParts.code,
         name: shareResult.name
       };
+
     } else if (linkParts.type === 'legacyTransfer') {
       const result = await trpcClient.requestLegacyTransferDownload.query({
         transferId: linkParts.downloadId,
@@ -172,6 +194,60 @@ async function fetchLink() {
       };
     }
   } catch (e: any) {
+    alert(`Error: ${e.message}`);
+  }
+}
+
+async function fetchProjectShareLinkWithPassword() {
+  if (!link.value) return;
+  try {
+    const linkParts = getLinkParts(link.value);
+    if (linkParts.type !== 'projectShare') {
+      return;
+    }
+
+    if (!sharedLinkPassword.value) {
+      return;
+    }
+
+    const shareResult = await trpcClient.getProjectShareItems.query({
+      shareId: linkParts.shareId,
+      code: linkParts.code,
+      password: sharedLinkPassword.value
+    });
+
+    if ("passwordRequired" in shareResult) {
+      // We shouldn't get here since we provided a password,
+      // but the compiler doesn't know
+      sharedLinkPasswordRequired.value = true;
+      return;
+    }
+
+    if (!shareResult.allowDownload) {
+      throw new Error("The specified link does not allow downloads.");
+    }
+
+    const filesResult = await trpcClient.getAllProjectShareFilesForDownload.query({
+      shareId: linkParts.shareId,
+      shareCode: linkParts.code,
+      password: sharedLinkPassword.value
+    });
+
+    // TODO: handle errors in fileResult.errors
+
+    files.value = filesResult.files;
+    downloadMetadata.value = {
+      type: "projectShare",
+      shareId: linkParts.shareId,
+      code: linkParts.code,
+      name: shareResult.name,
+      password: sharedLinkPassword.value
+    };
+
+    sharedLinkPasswordRequired.value = false;
+    sharedLinkPassword.value = undefined;
+  }
+  catch (e: any) {
     alert(`Error: ${e.message}`);
   }
 }
@@ -204,6 +280,11 @@ function getLinkParts(rawLink: string): DownloadLinkParts {
   } else {
     throw new Error(unsupportedLinkError)
   }
+}
+
+function closePasswordDialog() {
+  sharedLinkPasswordRequired.value = false;
+  sharedLinkPassword.value = undefined;
 }
 
 function parseUrl(rawLink: string) {
