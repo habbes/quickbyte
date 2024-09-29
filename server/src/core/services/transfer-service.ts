@@ -1,6 +1,6 @@
 import { Collection, UpdateFilter } from "mongodb";
 import { createAppError, createInvalidAppStateError, createNotFoundError, createOperationNotSupportedError, createResourceNotFoundError, createSubscriptionInsufficientError, createSubscriptionRequiredError, createValidationError, rethrowIfAppError } from '../error.js';
-import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project } from '../models.js';
+import { AuthContext, createPersistedModel, TransferFile, Transfer, DbTransfer,  DownloadRequest, Project, LegacyDownloadRequestArgs } from '../models.js';
 import { IStorageHandler, IStorageHandlerProvider, S3StorageHandler } from './storage/index.js'
 import { IPlaybackPackagerProvider, ITransactionService, PlaybackPackager } from "./index.js";
 import { Database, updateNowBy } from "../db.js";
@@ -355,9 +355,9 @@ export class TransferDownloadService {
         this.downloadsCollection = db.downloads();
     }
 
-    async requestDownload(transferId: string, args: DownloadRequestArgs): Promise<DownloadTransferResult> {
+    async requestDownload(args: LegacyDownloadRequestArgs): Promise<DownloadTransferResult> {
         try {
-            const id = transferId;
+            const id = args.transferId;
 
             const [transfer, files] = await Promise.all([
                 this.collection.findOne({ _id: id, expiresAt: { $gt: new Date()} }),
@@ -919,12 +919,6 @@ export interface GetTransferResult extends Transfer {
 
 export interface GetTransferFileResult extends TransferFile {
     uploadUrl: string;
-}
-
-export interface DownloadRequestArgs {
-    ip?: string;
-    countryCode?: string;
-    userAgent?: string;
 }
 
 export interface DownloadRequestUpdateArgs {

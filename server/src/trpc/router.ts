@@ -18,7 +18,8 @@ UpdateProjectShareMediaCommentArgs,
 GetProjectShareMediaByIdArgs,
 GetAllProjectShareFilesForDownloadArgs,
 DeleteProjectArgs,
-UpdateMediaVersionsArgs
+UpdateMediaVersionsArgs,
+LegacyDownloadRequestArgs
 } from '@quickbyte/common';
 import { z } from 'zod';
 
@@ -231,6 +232,11 @@ export const appRouter = router({
     .input(GetAllProjectShareFilesForDownloadArgs)
     .query(({ input, ctx }) =>
         ctx.app.sharedProjects.getAllProjectShareFilesForDownload(input)),
+
+    requestLegacyTransferDownload: publicProcedure
+    .input(LegacyDownloadRequestArgs)
+    .query(({ input, ctx }) =>
+        ctx.app.downloads.requestDownload(input)),
     
     getUserAuthMethod: publicProcedure
     .input(CheckUserAuthMethodArgs)
