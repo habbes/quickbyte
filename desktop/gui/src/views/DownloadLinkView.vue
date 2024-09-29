@@ -66,6 +66,8 @@ const link = ref<string>();
 const targetPath = ref<string | null | undefined>();
 const files = ref<DownloadTransferFileResult[]>();
 const downloadMetadata = ref<DownloadMetadata>();
+const sharedLinkPassword = ref<string>();
+const sharedLinkPasswordRequired = ref(false);
 
 async function downloadFiles() {
   if (!link.value) return;
@@ -116,6 +118,8 @@ async function downloadFiles() {
 async function fetchLink() {
   if (!link.value) return;
   try {
+    // clear saved password
+    sharedLinkPassword.value = undefined;
     const segments = link.value.split('/');
     const shareId = segments.at(-2)!;
     const code = segments.at(-1)!;
@@ -129,7 +133,7 @@ async function fetchLink() {
       });
 
       if ("passwordRequired" in shareResult) {
-        // TODO: handle password
+        sharedLinkPasswordRequired.value = true;
         return;
       }
 
@@ -167,8 +171,8 @@ async function fetchLink() {
         name: result.name,
       };
     }
-  } catch (e) {
-    alert(e);
+  } catch (e: any) {
+    alert(`Error: ${e.message}`);
   }
 }
 
