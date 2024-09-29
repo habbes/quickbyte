@@ -70,24 +70,26 @@ async function fetchLink() {
   const code = segments.at(-1)!;
 
   // TODO: handle different link types
+  const linkParts = getLinkParts(link.value);
 
-  console.log('target path', targetPath.value);
-  console.log('sharedId', shareId);
-  console.log('code', code);
-  console.log(`shareId ${shareId}, code ${code}`);
-  // const args = {
-  //   shareId,
-  //   code
-  // };
-  // const result = await trpcClient.getProjectShareItems.query(args);
-  const result = await trpcClient.getAllProjectShareFilesForDownload.query({
-    shareId,
-    shareCode: code
-  });
+  if (linkParts.type === 'projectShare') {
+    const result = await trpcClient.getAllProjectShareFilesForDownload.query({
+      shareId,
+      shareCode: code
+    });
 
-  files.value = result.files;
+    files.value = result.files;
+    console.log('files', files.value);
+  } else if (linkParts.type === 'legacyTransfer') {
+    const result = await trpcClient.requestLegacyTransferDownload.query({
+      transferId: linkParts.downloadId,
+      countryCode: undefined,
+      ip: undefined,
+      userAgent: undefined
+    });
 
-  console.log('files', files.value);
+    files.value = result.files;
+  }
 }
 async function downloadFiles() {
   if (!link.value) return;
@@ -127,12 +129,12 @@ async function downloadFiles() {
     console.log(`Result\n${JSON.stringify(result, null, 2)}`);
 
     await downloadSharedLink({
-        shareId: shareId,
-        shareCode: code,
-        name: "Files to Download",
-        targetPath: targetPath.value,
-        // @ts-ignore
-        files: result.files
+      shareId: shareId,
+      shareCode: code,
+      name: "Files to Download",
+      targetPath: targetPath.value,
+      // @ts-ignore
+      files: result.files
     });
 
     router.push({ name: 'transfers' });
