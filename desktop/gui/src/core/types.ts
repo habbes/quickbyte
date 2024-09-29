@@ -1,4 +1,4 @@
-
+import type { DownloadTransferFileResult } from "@quickbyte/common";
 export type JobStatus = 'pending' | 'completed' | 'cancelled' | 'error' | 'progress';
 
 export interface TransferJob {
@@ -32,26 +32,14 @@ export interface SharedLinkDownloadRequest {
     shareCode: string;
     name: string;
     targetPath: string;
-    files: DownloadRequestFile[];
+    files: DownloadTransferFileResult[];
 }
 
 export interface LegacyTransferLinkDownloadRequest {
     transferId: string;
     name: string;
     targetPath: string;
-    files: DownloadRequestFile[];
-}
-
-export interface DownloadRequestFile {
-    _id: string;
-    transferId: string;
-    name: string;
-    size: number;
-    accountId: string;
-    downloadUrl: string;
-    region: string;
-    provider: string;
-    _createdAt: string;
+    files: DownloadTransferFileResult[];
 }
 
 export interface UploadFilesRequest {

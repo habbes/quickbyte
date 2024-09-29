@@ -24,7 +24,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { open } from "@tauri-apps/api/dialog";
-import { downloadSharedLink } from "@/core";
+import { downloadSharedLink, downloadLegacyTransferLink } from "@/core";
 import { trpcClient } from "../app-utils/index.js";
 import { UiTextInput, UiButton } from "@/components/ui";
 import { unwrapSingleton, DownloadTransferFileResult, ensure } from "@quickbyte/common";
@@ -66,6 +66,51 @@ const link = ref<string>();
 const targetPath = ref<string | null | undefined>();
 const files = ref<DownloadTransferFileResult[]>();
 const downloadMetadata = ref<DownloadMetadata>();
+
+async function downloadFiles() {
+  if (!link.value) return;
+  if (!downloadMetadata.value || !files.value?.length) {
+    return;
+  }
+
+  try {
+    const saveDialogResult = await open({
+      title: 'Download files too...',
+      directory: true,
+      multiple: false
+    });
+
+    if (!saveDialogResult) {
+      alert("No destination selected");
+      return;
+    }
+
+
+    targetPath.value = unwrapSingleton(saveDialogResult);
+
+    if (downloadMetadata.value.type === "projectShare") {
+      await downloadSharedLink({
+        shareId: downloadMetadata.value.shareId,
+        shareCode: downloadMetadata.value.code,
+        name: downloadMetadata.value.name,
+        targetPath: targetPath.value,
+        files: files.value
+      });
+    } else {
+      await downloadLegacyTransferLink({
+        transferId: downloadMetadata.value.transferId,
+        name: downloadMetadata.value.name,
+        targetPath: targetPath.value,
+        files: files.value
+      })
+    }
+
+    router.push({ name: 'transfers' });
+  }
+  catch (e: any) {
+    alert(`Error ${e}`);
+  }
+}
 
 async function fetchLink() {
   if (!link.value) return;
@@ -123,46 +168,6 @@ async function fetchLink() {
     }
   } catch (e) {
     alert(`Error: ${e}`);
-  }
-}
-async function downloadFiles() {
-  if (!link.value) return;
-  if (!downloadMetadata.value || !files.value?.length) {
-    return;
-  }
-
-  try {
-    const saveDialogResult = await open({
-      title: 'Download files too...',
-      directory: true,
-      multiple: false
-    });
-
-    if (!saveDialogResult) {
-      alert("No destination selected");
-      return;
-    }
-
-
-    targetPath.value = unwrapSingleton(saveDialogResult);
-
-    if (downloadMetadata.value.type === "projectShare") {
-      await downloadSharedLink({
-        shareId: downloadMetadata.value.shareId,
-        shareCode: downloadMetadata.value.code,
-        name: downloadMetadata.value.name,
-        targetPath: targetPath.value,
-        // @ts-ignore
-        files: result.files
-      });
-    } else {
-
-    }
-
-    router.push({ name: 'transfers' });
-  }
-  catch (e: any) {
-    alert(`Error ${e}`);
   }
 }
 

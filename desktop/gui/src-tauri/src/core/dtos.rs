@@ -76,8 +76,6 @@ pub struct ShareDownloadFile {
   pub size: u64,
   pub account_id: String,
   pub download_url: String,
-  pub provider: String,
-  pub region: String,
   #[serde(rename = "_createdAt")]
   pub _created_at: String,
 }
