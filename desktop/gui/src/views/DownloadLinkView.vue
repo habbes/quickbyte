@@ -2,29 +2,16 @@
   <div class="flex flex-col h-full">
     <form class="flex px-4 py-2 gap-2 items-center border-b-[0.5px] border-b-gray-700 h-12" @submit.prevent>
       <div class="flex-1">
-        <UiTextInput
-          v-model="link"
-          fullWidth
-          placeholder="Enter download link"
-          required
-        />
+        <UiTextInput v-model="link" fullWidth placeholder="Enter download link" required />
       </div>
       <div>
-        <UiButton
-          @click="fetchLink()"
-          primary
-          submit
-          class="h-8"
-        >
+        <UiButton @click="fetchLink()" primary submit class="h-8">
           Verify link
         </UiButton>
       </div>
     </form>
     <div class="flex-1 overflow-y-auto">
-      <FileTree 
-        v-if="files"
-        :files="files"
-      />
+      <FileTree v-if="files" :files="files" />
     </div>
     <PageFooter v-if="files && files.length">
       <div class="flex flex-1 justify-end">
@@ -40,7 +27,7 @@ import { open } from "@tauri-apps/api/dialog";
 import { downloadSharedLink } from "@/core";
 import { trpcClient } from "../app-utils/index.js";
 import { UiTextInput, UiButton } from "@/components/ui";
-import { unwrapSingleton, GetAllProjectShareFilesForDownloadResult, ensure } from "@quickbyte/common";
+import { unwrapSingleton, DownloadTransferFileResult, ensure } from "@quickbyte/common";
 import FileTree from "@/components/FileTree.vue";
 import PageFooter from "@/components/PageFooter.vue"
 
@@ -57,42 +44,93 @@ type LegacyTransferLinkParts = {
   downloadId: string;
 }
 
+type DownloadMetadata = ProjectShareDownloadMetadata | LegacyTransferDownloadMetadata;
+
+type ProjectShareDownloadMetadata = {
+  type: "projectShare",
+  shareId: string;
+  code: string;
+  password?: string;
+  name: string;
+}
+
+type LegacyTransferDownloadMetadata = {
+  type: "legacyTransfer",
+  transferId: string;
+  name: string;
+  downloadRequestId: string;
+}
+
 const router = useRouter();
 const link = ref<string>();
-const targetPath = ref<string|null|undefined>();
-const files = ref<GetAllProjectShareFilesForDownloadResult["files"]>();
+const targetPath = ref<string | null | undefined>();
+const files = ref<DownloadTransferFileResult[]>();
+const downloadMetadata = ref<DownloadMetadata>();
 
 async function fetchLink() {
   if (!link.value) return;
+  try {
+    const segments = link.value.split('/');
+    const shareId = segments.at(-2)!;
+    const code = segments.at(-1)!;
 
-  const segments = link.value.split('/');
-  const shareId = segments.at(-2)!;
-  const code = segments.at(-1)!;
+    const linkParts = getLinkParts(link.value);
 
-  // TODO: handle different link types
-  const linkParts = getLinkParts(link.value);
+    if (linkParts.type === 'projectShare') {
+      const shareResult = await trpcClient.getProjectShareItems.query({
+        shareId,
+        code
+      });
 
-  if (linkParts.type === 'projectShare') {
-    const result = await trpcClient.getAllProjectShareFilesForDownload.query({
-      shareId,
-      shareCode: code
-    });
+      if ("passwordRequired" in shareResult) {
+        // TODO: handle password
+        return;
+      }
 
-    files.value = result.files;
-    console.log('files', files.value);
-  } else if (linkParts.type === 'legacyTransfer') {
-    const result = await trpcClient.requestLegacyTransferDownload.query({
-      transferId: linkParts.downloadId,
-      countryCode: undefined,
-      ip: undefined,
-      userAgent: undefined
-    });
+      if (!shareResult.allowDownload) {
+        throw new Error("The specified link does not allow downloads.");
+      }
 
-    files.value = result.files;
+      const filesResult = await trpcClient.getAllProjectShareFilesForDownload.query({
+        shareId,
+        shareCode: code,
+      });
+
+      // TODO: handle errors
+
+      files.value = filesResult.files;
+      downloadMetadata.value = {
+        type: "projectShare",
+        shareId: shareId,
+        code,
+        name: shareResult.name
+      };
+    } else if (linkParts.type === 'legacyTransfer') {
+      const result = await trpcClient.requestLegacyTransferDownload.query({
+        transferId: linkParts.downloadId,
+        countryCode: undefined,
+        ip: undefined,
+        userAgent: undefined
+      });
+
+      files.value = result.files;
+      downloadMetadata.value = {
+        type: 'legacyTransfer',
+        transferId: linkParts.downloadId,
+        downloadRequestId: result.downloadRequestId,
+        name: result.name,
+      };
+    }
+  } catch (e) {
+    alert(`Error: ${e}`);
   }
 }
 async function downloadFiles() {
   if (!link.value) return;
+  if (!downloadMetadata.value || !files.value?.length) {
+    return;
+  }
+
   try {
     const saveDialogResult = await open({
       title: 'Download files too...',
@@ -105,37 +143,21 @@ async function downloadFiles() {
       return;
     }
 
+
     targetPath.value = unwrapSingleton(saveDialogResult);
-    const segments = link.value.split('/');
-    const shareId = segments.at(-2)!;
-    const code = segments.at(-1)!;
 
-    console.log('target path', targetPath.value);
-    console.log('sharedId', shareId);
-    console.log('code', code);
-    console.log(`shareId ${shareId}, code ${code}`);
-    // const args = {
-    //   shareId,
-    //   code
-    // };
-    // const result = await trpcClient.getProjectShareItems.query(args);
-    const result = await trpcClient.getAllProjectShareFilesForDownload.query({
-      shareId,
-      shareCode: code
-    });
+    if (downloadMetadata.value.type === "projectShare") {
+      await downloadSharedLink({
+        shareId: downloadMetadata.value.shareId,
+        shareCode: downloadMetadata.value.code,
+        name: downloadMetadata.value.name,
+        targetPath: targetPath.value,
+        // @ts-ignore
+        files: result.files
+      });
+    } else {
 
-    files.value = result.files;
-
-    console.log(`Result\n${JSON.stringify(result, null, 2)}`);
-
-    await downloadSharedLink({
-      shareId: shareId,
-      shareCode: code,
-      name: "Files to Download",
-      targetPath: targetPath.value,
-      // @ts-ignore
-      files: result.files
-    });
+    }
 
     router.push({ name: 'transfers' });
   }
