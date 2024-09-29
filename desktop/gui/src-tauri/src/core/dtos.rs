@@ -76,6 +76,8 @@ pub struct ShareDownloadFile {
   pub size: u64,
   pub account_id: String,
   pub download_url: String,
+  pub provider: String,
+  pub region: String,
   #[serde(rename = "_createdAt")]
   pub _created_at: String,
 }
@@ -88,6 +90,16 @@ pub struct SharedLinkDownloadRequest {
     pub name: String,
     pub target_path: String,
     pub files: Vec<ShareDownloadFile>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyTransferLinkDownloadRequest {
+  pub transfer_id: String,
+  pub download_request_id: String,
+  pub name: String,
+  pub target_path: String,
+  pub files: Vec<ShareDownloadFile>
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]

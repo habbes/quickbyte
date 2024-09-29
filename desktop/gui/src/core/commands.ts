@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api";
-import type { SharedLinkDownloadRequest, UploadFilesRequest, FileSizeResponseItem } from "./types.js";
+import type { SharedLinkDownloadRequest, LegacyTransferLinkDownloadRequest, UploadFilesRequest, FileSizeResponseItem } from "./types.js";
 
 export function requestTransfers() {
     return invoke('request_transfers');
@@ -7,6 +7,10 @@ export function requestTransfers() {
 
 export function downloadSharedLink(downloadLinkRequest: SharedLinkDownloadRequest) {
     return invoke('download_shared_link', { request: downloadLinkRequest });
+}
+
+export function downloadLegacyTransferLink(downloadLinkRequest: LegacyTransferLinkDownloadRequest) {
+    return invoke("download_legacy_transfer_link", { request: downloadLinkRequest });
 }
 
 export function uploadFiles(uploadRequest: UploadFilesRequest) {

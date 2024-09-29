@@ -32,16 +32,25 @@ export interface SharedLinkDownloadRequest {
     shareCode: string;
     name: string;
     targetPath: string;
-    files: SharedLinkDownloadRequestFile[];
+    files: DownloadRequestFile[];
 }
 
-export interface SharedLinkDownloadRequestFile {
+export interface LegacyTransferLinkDownloadRequest {
+    transferId: string;
+    name: string;
+    targetPath: string;
+    files: DownloadRequestFile[];
+}
+
+export interface DownloadRequestFile {
     _id: string;
     transferId: string;
     name: string;
     size: number;
     accountId: string;
     downloadUrl: string;
+    region: string;
+    provider: string;
     _createdAt: string;
 }
 

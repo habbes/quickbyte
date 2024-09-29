@@ -12,6 +12,13 @@ pub async fn download_shared_link(context: State<'_, AppContext>, request: Share
 }
 
 #[command]
+pub async fn download_legacy_transfer_link(context: State<'_, AppContext>, request: LegacyTransferLinkDownloadRequest) -> Result<(), ()> {
+    println!("Legacy transfer link download command received.");
+    context.requests.send(Request::DownloadLegacyTransferLink(request)).await;
+    Ok(())
+}
+
+#[command]
 pub async fn upload_files(context: State<'_, AppContext>, request: UploadFilesRequest) -> Result<(), ()>{
     println!("Upload files command received.");
     context.requests.send(Request::UploadFiles(request)).await;
