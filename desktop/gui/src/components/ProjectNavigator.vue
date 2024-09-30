@@ -68,7 +68,7 @@ import { watch, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { trpcClient, useProjectItemsQuery, store } from "@/app-utils";
 import { UiButton } from "@/components/ui";
-import { isDefined, type Project, type ProjectItem } from "@quickbyte/common";
+import { ensure, isDefined, type Project, type ProjectItem } from "@quickbyte/common";
 import { open } from "@tauri-apps/api/dialog";
 import ProjectItemIcon from '@/components/ProjectItemIcon.vue';
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
@@ -128,7 +128,7 @@ async function uploadToProject() {
     projectId: props.project._id,
     folderId: currentFolderId.value,
     provider: store.preferredProvider.value.provider,
-    region: store.preferredProvider.value.bestRegions[0],
+    region: ensure(store.preferredProvider.value.bestRegions[0], "Could not retrieve best region"),
     files: files.map(f => ({
       name: f.name,
       size: f.size
