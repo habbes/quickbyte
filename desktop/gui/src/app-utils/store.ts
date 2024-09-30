@@ -5,16 +5,22 @@ import {
     TransferJob,
 } from "@/core";
 import { deleteToken } from "./auth";
+import { getPreferredProvider } from "./providers";
 
 const user = ref<UserWithAccount>();
 const accounts = ref<AccountWithSubscription[]>([]);
 const projects = ref<WithRole<Project>[]>([]);
 const selectedProjectId = ref<string>();
 const currentProject = computed(() => projects.value.find(p => p._id === selectedProjectId.value ));
+const preferredProvider = ref<{
+    provider: string;
+    bestRegions: string[]
+}>({
+    provider: 'name',
+    bestRegions: ['eastus']
+});
 
 const transfers = ref<TransferJob[]>([]);
-
-
 
 async function initUserData() {
     // TODO: error handling?
@@ -25,6 +31,11 @@ async function initUserData() {
     if (projects.value.length) {
         selectedProjectId.value = data.defaultProjectId || projects.value[0]._id;
     }
+
+    getPreferredProvider().then(result => {
+        console.log('preferred provider', result);
+        preferredProvider.value = result;
+    });
 
     return data;
 }
@@ -40,6 +51,7 @@ const store = {
     currentProject,
     selectedProjectId,
     transfers,
+    preferredProvider,
     addTransfer(transfer: TransferJob) {
         transfers.value.push(transfer)
     },

@@ -257,6 +257,10 @@ export const appRouter = router({
     .input(PasswordResetArgs)
     .mutation(({ input, ctx }) =>
         ctx.app.auth.resetPassword(input)),
+
+    getStorageProviders: publicProcedure
+    .query(({ ctx }) =>
+        ctx.app.storageProvider.getHandlerInfos())
     
 });
 

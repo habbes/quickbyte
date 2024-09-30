@@ -66,7 +66,7 @@
 <script lang="ts" setup>
 import { watch, ref, computed } from "vue";
 import { useRouter } from "vue-router";
-import { trpcClient, useProjectItemsQuery } from "@/app-utils";
+import { trpcClient, useProjectItemsQuery, store } from "@/app-utils";
 import { UiButton } from "@/components/ui";
 import { isDefined, type Project, type ProjectItem } from "@quickbyte/common";
 import { open } from "@tauri-apps/api/dialog";
@@ -127,8 +127,8 @@ async function uploadToProject() {
   const result = await trpcClient.uploadProjectMedia.mutate({
     projectId: props.project._id,
     folderId: currentFolderId.value,
-    provider: 'az',
-    region: 'northsa',
+    provider: store.preferredProvider.value.provider,
+    region: store.preferredProvider.value.bestRegions[0],
     files: files.map(f => ({
       name: f.name,
       size: f.size
