@@ -418,6 +418,10 @@ async fn handle_transfer_update(
                 status: JobStatus::Completed,
                 error: None,
             });
+
+            events.send(
+                Event::TransferCompleted(
+                    transfers.iter().find(|t| &t._id == transfer_id).unwrap().clone())).await;
         }
     }
 
