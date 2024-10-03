@@ -82,6 +82,7 @@ dependencies = [
  "diesel_migrations",
  "directories",
  "futures",
+ "keyring",
  "libsqlite3-sys",
  "oauth2",
  "open 5.3.0",
@@ -2252,6 +2253,17 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "keyring"
+version = "3.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fa83d1ca02db069b5fbe94b23b584d588e989218310c9c15015bb5571ef1a94"
+dependencies = [
+ "byteorder",
+ "security-framework",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
