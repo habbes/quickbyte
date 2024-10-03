@@ -24,3 +24,11 @@ export function getFileSizes(files: string[]): Promise<FileSizeResponseItem[]> {
 export function loginWithGoogle(): Promise<any> {
     return invoke("sign_in_with_google");
 }
+
+export function tryGetUserToken(): Promise<string|undefined> {
+    return invoke("try_get_user_token");
+}
+
+export function setUserToken(token: string): Promise<void> {
+    return invoke("set_user_token", { token });
+}
