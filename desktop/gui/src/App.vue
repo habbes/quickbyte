@@ -7,9 +7,11 @@
 import { onMounted } from "vue";
 import AppLayout from "@/components/AppLayout.vue";
 import { requestTransfers } from "@/core";
+import { tryLoadStoredUserSession } from "@/app-utils";
 
 onMounted(async () => {
   console.log('request transfers');
   await requestTransfers();
+  await tryLoadStoredUserSession();
 });
 </script>

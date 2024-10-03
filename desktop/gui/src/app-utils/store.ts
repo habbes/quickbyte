@@ -3,8 +3,9 @@ import type { UserWithAccount, AccountWithSubscription, WithRole, Project } from
 import { trpcClient } from "./api.js";
 import {
     TransferJob,
+    tryGetUserToken
 } from "@/core";
-import { deleteToken } from "./auth";
+import { deleteToken, setToken } from "./auth";
 import { getPreferredProvider } from "./providers";
 
 const user = ref<UserWithAccount>();
@@ -40,6 +41,17 @@ async function initUserData() {
     return data;
 }
 
+async function tryLoadStoredUserSession() {
+    const token = await tryGetUserToken();
+    console.log('obtained token from store', token);
+    if (!token) {
+        return;
+    }
+
+    setToken(token);
+    await initUserData();
+}
+
 function setCurrentProject(projectId: string) {
     selectedProjectId.value = projectId;
 }
@@ -71,4 +83,4 @@ function signOutAndClearUserData() {
 
 type Store = typeof store;
 
-export { store, initUserData, setCurrentProject, signOutAndClearUserData, type Store };
+export { store, initUserData, setCurrentProject, signOutAndClearUserData, tryLoadStoredUserSession, type Store };

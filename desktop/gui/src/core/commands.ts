@@ -25,7 +25,7 @@ export function loginWithGoogle(): Promise<any> {
     return invoke("sign_in_with_google");
 }
 
-export function tryGetUserToken(): Promise<string|undefined> {
+export function tryGetUserToken(): Promise<string|undefined|null> {
     return invoke("try_get_user_token");
 }
 
