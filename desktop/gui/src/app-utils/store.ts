@@ -3,7 +3,7 @@ import type { UserWithAccount, AccountWithSubscription, WithRole, Project } from
 import { trpcClient } from "./api.js";
 import {
     TransferJob,
-    tryGetUserToken
+    tryLoadPersistedUserToken
 } from "@/core";
 import { deleteToken, setToken } from "./auth";
 import { getPreferredProvider } from "./providers";
@@ -42,7 +42,7 @@ async function initUserData() {
 }
 
 async function tryLoadStoredUserSession() {
-    const token = await tryGetUserToken();
+    const token = await tryLoadPersistedUserToken();
     console.log('obtained token from store', token);
     if (!token) {
         return;

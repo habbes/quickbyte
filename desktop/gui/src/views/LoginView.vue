@@ -66,7 +66,7 @@ import { useRouter } from "vue-router";
 import { message } from "@tauri-apps/api/dialog";
 import { trpcClient, initUserData, setToken } from "@/app-utils";
 import { UiTextInput, UiButton } from "@/components/ui";
-import { loginWithGoogle } from '@/core';
+import { loginWithGoogle, persistUserToken } from '@/core';
 import googleLogo from '@/assets/google-g-logo.png'
 import OrSeparator from "@/components/OrSeparator.vue";
 
@@ -96,6 +96,7 @@ async function login() {
 
     if ('authToken' in result) {
       setToken(result.authToken.code);
+      await persistUserToken(result.authToken.code);
     }
 
     await initUserData();

@@ -25,10 +25,10 @@ export function loginWithGoogle(): Promise<any> {
     return invoke("sign_in_with_google");
 }
 
-export function tryGetUserToken(): Promise<string|undefined|null> {
+export function tryLoadPersistedUserToken(): Promise<string|undefined|null> {
     return invoke("try_get_user_token");
 }
 
-export function setUserToken(token: string): Promise<void> {
+export function persistUserToken(token: string): Promise<void> {
     return invoke("set_user_token", { token });
 }
