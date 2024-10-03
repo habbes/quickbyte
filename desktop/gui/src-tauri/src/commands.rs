@@ -3,6 +3,7 @@ use crate::core::request::{DownloadFilesRequest, Request};
 use crate::core::dtos::*;
 use crate::app_context::AppContext;
 use crate::auth::google_auth;
+use crate::auth::auth_store;
 
 #[command]
 pub async fn download_shared_link(context: State<'_, AppContext>, request: SharedLinkDownloadRequest) -> Result<(), ()>{
@@ -55,6 +56,21 @@ pub async fn get_file_sizes(files: Vec<String>) -> Result<Vec<GetFileSizeRespons
 pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<(), ()> {
     google_auth::sign_in_with_google(handle).await;
 
+    Ok(())
+}
+
+#[command]
+pub fn try_get_user_token() -> Result<Option<String>, ()> {
+    if let Some(token) = auth_store::try_get_user_token() {
+        Ok(Some(token.token))
+    } else {
+        Ok(None)
+    }
+}
+
+#[command]
+pub fn set_user_token(token: String) -> Result<(), ()> {
+    auth_store::set_user_token(&token);
     Ok(())
 }
 
