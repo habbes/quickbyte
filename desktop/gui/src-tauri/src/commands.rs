@@ -74,6 +74,12 @@ pub fn set_user_token(token: String) -> Result<(), ()> {
     Ok(())
 }
 
+#[command]
+pub fn delete_user_token() -> Result<(), ()> {
+    auth_store::delete_user_token();
+    Ok(())
+}
+
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetFileSizeResponse {

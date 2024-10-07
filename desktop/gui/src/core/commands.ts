@@ -32,3 +32,7 @@ export function tryLoadPersistedUserToken(): Promise<string|undefined|null> {
 export function persistUserToken(token: string): Promise<void> {
     return invoke("set_user_token", { token });
 }
+
+export function deletePersistedUserToken(): Promise<void> {
+    return invoke("delete_user_token");
+}

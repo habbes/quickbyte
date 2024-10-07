@@ -3,7 +3,8 @@ import type { UserWithAccount, AccountWithSubscription, WithRole, Project } from
 import { trpcClient } from "./api.js";
 import {
     TransferJob,
-    tryLoadPersistedUserToken
+    tryLoadPersistedUserToken,
+    deletePersistedUserToken
 } from "@/core";
 import { deleteToken, setToken } from "./auth";
 import { getPreferredProvider } from "./providers";
@@ -73,12 +74,13 @@ const store = {
     }
 };
 
-function signOutAndClearUserData() {
+async function signOutAndClearUserData() {
     deleteToken();
     user.value = undefined;
     accounts.value = [];
     projects.value = [];
     selectedProjectId.value = undefined;
+    deletePersistedUserToken();
 }
 
 type Store = typeof store;

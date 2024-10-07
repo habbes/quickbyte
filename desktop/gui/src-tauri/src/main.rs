@@ -51,7 +51,8 @@ async fn main() {
       get_file_sizes,
       sign_in_with_google,
       try_get_user_token,
-      set_user_token
+      set_user_token,
+      delete_user_token
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
