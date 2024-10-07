@@ -48,7 +48,10 @@
           class="w-full aspect-square flex flex-col gap-2 cursor-pointer"
         >
           <div class="flex justify-center">
-            <ProjectItemIcon :item="item" class="text-5xl text-gray-400" />
+            <div v-if="item.type === 'media' && item.item.thumbnailUrl">
+              <img :src="item.item.thumbnailUrl" class="img h-[50px] " />
+            </div>
+            <ProjectItemIcon v-else :item="item" class="text-5xl text-gray-400" />
           </div>
           <div :title="item.name"
             class="text-xs text-center text-ellipsis whitespace-nowrap overflow-hidden"
