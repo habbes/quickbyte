@@ -21,6 +21,10 @@ export function getFileSizes(files: string[]): Promise<FileSizeResponseItem[]> {
     return invoke("get_file_sizes", { files: files });
 }
 
+export function showPathInFileManager(path: string): Promise<void> {
+    return invoke("show_path_in_file_manager", { path });
+}
+
 export function loginWithGoogle(): Promise<any> {
     return invoke("sign_in_with_google");
 }

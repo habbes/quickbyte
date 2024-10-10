@@ -53,6 +53,12 @@ pub async fn get_file_sizes(files: Vec<String>) -> Result<Vec<GetFileSizeRespons
 }
 
 #[command]
+pub async fn show_path_in_file_manager(path: String) -> Result<(), ()> {
+    showfile::show_path_in_file_manager(path);
+    Ok(())
+}
+
+#[command]
 pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<(), ()> {
     google_auth::sign_in_with_google(handle).await;
 
@@ -79,7 +85,6 @@ pub fn delete_user_token() -> Result<(), ()> {
     auth_store::delete_user_token();
     Ok(())
 }
-
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetFileSizeResponse {

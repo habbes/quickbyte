@@ -15,10 +15,12 @@ use event_bridge::bridge_events;
 use app_context::AppContext;
 use directories::BaseDirs;
 use tokio;
+use tauri_plugin_context_menu;
 
 #[tokio::main]
 async fn main() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_context_menu::init())
     .setup(|app| {
       let app_handle = app.handle();
       // tokio::block_on()
@@ -49,6 +51,7 @@ async fn main() {
       upload_files,
       request_transfers,
       get_file_sizes,
+      show_path_in_file_manager,
       sign_in_with_google,
       try_get_user_token,
       set_user_token,
