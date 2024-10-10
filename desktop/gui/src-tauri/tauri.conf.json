@@ -21,7 +21,7 @@
         "all": true
       },
       "shell": {
-        "open": true
+        "open": ".+"
       }
     },
     "bundle": {
