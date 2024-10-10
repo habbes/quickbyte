@@ -22,6 +22,7 @@
         :key="transfer._id"
         class="group flex py-2 border-b-[0.5px] border-b-gray-700 cursor-pointer"
         @click="goToTransfer(transfer._id)"
+        @contextmenu="showContextMenu($event, transfer)"
       >
         <div class="flex-1 group-hover:text-white">
           {{ transfer.name }}
@@ -40,8 +41,10 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { showMenu } from "tauri-plugin-context-menu";
 import { useRouter } from "vue-router";
 import { store } from "@/app-utils";
+import { type TransferJob, showPathInFileManager } from "@/core";
 import { humanizeSize } from "@quickbyte/common";
 import TransferStatus from "@/components/TransferStatus.vue";
 
@@ -50,5 +53,17 @@ const transfers = store.transfers;
 
 function goToTransfer(id: string) {
   router.push({ name: 'transfer', params: { id } });
+}
+
+function showContextMenu(event: MouseEvent, transfer: TransferJob) {
+  event.preventDefault();
+  showMenu({
+    items: [{
+      label: 'Reveal in Finder', // TODO use 'Explorer' on Windows
+      event: async function() {
+        showPathInFileManager(transfer.localPath);
+      }
+    }]
+  });
 }
 </script>
