@@ -104,8 +104,6 @@ const treeItems = computed<TreeEntry[]>(() => {
 function getFileTree(info: FolderInfo, startPath: string): TreeEntry[] {
   const rootFolders = folderInfo.value.folderParentMap.get(startPath) || [];
 
-  
-
   const result: TreeEntry[] = [];
 
   for (const folder of rootFolders) {

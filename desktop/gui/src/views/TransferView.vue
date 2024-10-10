@@ -29,7 +29,10 @@
         :files="transfer.files"
         v-slot="{ item }"
       >
-        <div class="flex flex-1 w-full justify-between items-center" v-if="item.file">
+        <div
+          class="flex flex-1 w-full justify-between items-center" v-if="item.file"
+          @contextmenu="showFileContextMenu($event, item.file)"
+        >
           <div>
             {{ item.title }}
           </div>
@@ -57,7 +60,9 @@ import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { unwrapSingletonOrUndefined, pluralize, humanizeSize, formatPercentage } from "@quickbyte/common";
 import { store } from "@/app-utils";
+import { type TransferFileJob, showPathInFileManager } from "@/core";
 import { Icon } from '@iconify/vue';
+import { showMenu } from "tauri-plugin-context-menu";
 import EmptyDataPageContainer from "@/components/EmptyDataPageContainer.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import FileTree from "@/components/FileTree.vue";
@@ -65,4 +70,19 @@ import TransferStatus from "@/components/TransferStatus.vue";
 
 const route = useRoute();
 const transfer = computed(() => store.transfers.value.find(t => t._id === unwrapSingletonOrUndefined(route.params.id)));
+
+// TODO: we should have a 'Reveal in Finder' context menu for
+// items for folder nodes too.
+
+function showFileContextMenu(event: MouseEvent, fileJob: TransferFileJob) {
+  event.preventDefault();
+  showMenu({
+    items: [{
+      label: "Reveal in Finder",
+      event: () => {
+        return showPathInFileManager(fileJob.localPath)
+      }
+    }]
+  })
+}
 </script>
