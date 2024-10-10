@@ -141,7 +141,18 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
     let mut buffer = BytesMut::with_capacity(request.size as usize);
     // file.seek(tokio::io::SeekFrom::Start(offset)).await?;
     let file = request.file;
-    file.read_exact_at(&mut buffer, request.offset).unwrap();
+    if let Err(file_err) = file.read_exact_at(&mut buffer, request.offset) {
+        let msg = AppError::from(file_err).to_string();
+        println!("Failed to read file block at {:?}", request.offset);
+        request.update_channel
+        .send(BlockTransferUpdate::Failed {
+            block_id: request.block._id.clone(),
+            block_index: request.block.index,
+            error: msg
+        }).await.ok();
+
+        return;
+    }
 
     // Upload the block
     let mut retry = true;
