@@ -196,6 +196,11 @@ pub enum TransferUpdate {
         file_id: String,
         transfer_id: String
     },
+    FileFailed {
+      file_id: String,
+      transfer_id: String,
+      error: String
+    },
     TransferCompleted {
         transfer_id: String,
     }

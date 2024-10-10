@@ -3,13 +3,13 @@ use azure_storage_blobs::{
     blob::{BlobBlockType, BlockList},
     prelude::BlobClient,
 };
-use std::{os::unix::fs::FileExt, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 use url::Url;
 
-use super::message_channel::MessageChannel;
-use super::util::*;
 use super::{
     dtos::*,
+    error::*,
+    message_channel::MessageChannel,
     transfer_queue::{
         BlockTransferQueue, BlockTransferRequest, BlockTransferUpdate, BlockUploadRequest,
     },
@@ -33,14 +33,27 @@ impl<'a> TransferUploader<'a> {
         let mut watchers = vec![];
         for file in &self.request.files {
             if file.status == JobStatus::Pending || file.status == JobStatus::Progress {
-                let (dispatcher, watcher) = init_file_upload(
+                match init_file_upload(
                     self.request._id.clone(),
                     file.clone(),
                     self.transfer_queue.clone(),
-                    events.clone());
-                
-                dispatchers.push(dispatcher);
-                watchers.push(watcher);
+                    events.clone()) {
+                    
+                    Ok((dispatcher, watcher)) => {
+                        dispatchers.push(dispatcher);
+                        watchers.push(watcher);
+                    },
+                    Err(err) => {
+                        events.send(TransferUpdate::FileFailed {
+                            file_id: file._id.clone(),
+                            transfer_id: self.request._id.clone(),
+                            error: err.to_string()
+                        }).await;
+
+                        return;
+                    }
+
+                }
             }
         }
 
@@ -71,7 +84,7 @@ impl<'a> TransferUploader<'a> {
 
         println!("Transfer uploader waiting for file jobs to complete");
         for task in tasks {
-            task.await.unwrap();
+            task.await.expect("Failed to complete file upload task");
         }
 
         println!(
@@ -93,11 +106,16 @@ fn init_file_upload(
     file_job: TransferJobFile,
     transfer_queue: Arc<BlockTransferQueue>,
     events: Arc<MessageChannel<TransferUpdate>>
-) -> (FileUploadBlockDispatcher, FileUploadCompletionWatcher) {
+) -> Result<(FileUploadBlockDispatcher, FileUploadCompletionWatcher), AppError> {
 
-    let url = Url::parse(&file_job.remote_url).expect("Failed to parse remote url");
+    let url = Url::parse(&file_job.remote_url)
+        .or(Err(AppError::General("invalid file upload URL".into())))?;
+
     let blob_client =
-        Arc::new(BlobClient::from_sas_url(&url).expect("Failed to create Block client"));
+        BlobClient::from_sas_url(&url)
+        // TODO: should map Azure Error to AppError via From, but compiler fails for some reason
+        .map_err(|e|AppError::Transfer("Failed to create client".into()))
+        .map(Arc::new)?;
 
     let (file_started_tx, file_started_rx) = tokio::sync::oneshot::channel();
     let (update_tx, update_rx) = tokio::sync::mpsc::channel(file_job.blocks.len());
@@ -120,7 +138,7 @@ fn init_file_upload(
         blob_client
     };
 
-    (dispatcher, watcher)
+    Ok((dispatcher, watcher))
 }
 
 #[derive(Debug)]
