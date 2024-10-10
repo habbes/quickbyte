@@ -113,8 +113,6 @@ fn init_file_upload(
 
     let blob_client =
         BlobClient::from_sas_url(&url)
-        // TODO: should map Azure Error to AppError via From, but compiler fails for some reason
-        .map_err(|e|AppError::Transfer("Failed to create client".into()))
         .map(Arc::new)?;
 
     let (file_started_tx, file_started_rx) = tokio::sync::oneshot::channel();
@@ -262,6 +260,17 @@ impl FileUploadCompletionWatcher {
                     error,
                 } => {
                     println!("Failed to upload block {block_index} id: {block_id}: {error}");
+                    self.events
+                    .send(TransferUpdate::FileFailed {
+                        file_id: self.file_job._id.clone(),
+                        transfer_id: self.transfer_id.clone(),
+                        error: error
+                    })
+                    .await;
+
+                    // TODO: will this close the receiver? will it also cause the
+                    // transmitter to panick?
+                    return;
                 }
             };
         }
@@ -283,11 +292,38 @@ impl FileUploadCompletionWatcher {
         println!("block list {:?}", block_ids.len());
         let block_list = BlockList { blocks: block_ids };
 
-        self.blob_client
-            .put_block_list(block_list)
-            .into_future()
-            .await
-            .unwrap();
+        let mut retry = true;
+        while retry {
+            match self.blob_client
+                .put_block_list(block_list.clone())// TODO cloning is potentially expensive here, tr
+                .into_future()
+                .await {
+                Ok(_) => { retry = false; }
+                Err(err) => {
+                    match err.kind() {
+                        azure_storage::ErrorKind::Io => {
+                            println!("Got IO error while putting block list, retrying: {err:?}");
+                            retry = true;
+                        },
+                        _ => {
+                            self.events
+                            .send(TransferUpdate::FileFailed {
+                                file_id: self.file_job._id.clone(),
+                                transfer_id: self.transfer_id.clone(),
+                                error: format!("failed to complete upload due to error: {err:?}")
+                            })
+                            .await;
+                            println!(
+                                "Failed to complete for file {} after {}s",
+                                self.file_job.name,
+                                started_at.elapsed().as_secs_f64()
+                            );
+                            return;
+                        }
+                    }
+                }
+            }
+        }
 
         println!(
             "Completed upload for file {} in {}s",
