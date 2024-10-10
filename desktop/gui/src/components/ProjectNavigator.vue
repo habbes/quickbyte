@@ -39,26 +39,29 @@
       </div>
       <div
         v-else-if="items.length"
-        class="grid gap-4 grid-cols-[repeat(auto-fill,minmax(100px,1fr))]"
+        class="flex flexr-row"
       >
-        <div
-          v-for="item in items"
-          :key="item._id"
-          @click="onItemClick(item)"
-          class="w-full aspect-square flex flex-col gap-2 cursor-pointer"
-        >
-          <div class="flex justify-center">
-            <div v-if="item.type === 'media' && item.item.thumbnailUrl">
-              <img :src="item.item.thumbnailUrl" class="img h-[50px] " />
-            </div>
-            <ProjectItemIcon v-else :item="item" class="text-5xl text-gray-400" />
-          </div>
-          <div :title="item.name"
-            class="text-xs text-center text-ellipsis whitespace-nowrap overflow-hidden"
+        <div class="flex-1 grid gap-4 grid-cols-[repeat(auto-fill,minmax(100px,1fr))]">
+          <div
+            v-for="item in items"
+            :key="item._id"
+            @click="onItemClick(item)"
+            class="w-full aspect-square flex flex-col gap-2 cursor-pointer"
           >
-            {{ item.name }}
+            <div class="flex justify-center">
+              <div v-if="item.type === 'media' && item.item.thumbnailUrl">
+                <img :src="item.item.thumbnailUrl" class="img h-[50px] " />
+              </div>
+              <ProjectItemIcon v-else :item="item" class="text-5xl text-gray-400" />
+            </div>
+            <div :title="item.name"
+              class="text-xs text-center text-ellipsis whitespace-nowrap overflow-hidden"
+            >
+              {{ item.name }}
+            </div>
           </div>
         </div>
+        <ProjectSidebar v-if="sidebarOpen" class="w-80" />
       </div>
       <div v-else class="text-sm text-gray-200 h-full w-full flex justify-center items-center">
         No items found in this folder.
@@ -75,6 +78,7 @@ import { ensure, isDefined, type Project, type ProjectItem } from "@quickbyte/co
 import { open } from "@tauri-apps/api/dialog";
 import ProjectItemIcon from '@/components/ProjectItemIcon.vue';
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
+import ProjectSidebar from "@/components/ProjectSidebar.vue";
 import { uploadFiles, getFileSizes, findCommonBasePath, type UploadFilesRequest } from "@/core";
 import { Icon } from "@iconify/vue";
 
@@ -92,6 +96,8 @@ const itemsQueryPending = computed(() => itemsQuery.isPending.value);
 const items = computed(() => itemsQuery.data.value ? itemsQuery.data.value.items : []);
 const currentFolder = computed(() => itemsQuery.data.value?.folder);
 const currentPath = computed(() => currentFolder.value?.path || []);
+const selectedItems = ref<Set<string>>(new Set());
+const sidebarOpen = computed(() => selectedItems.value.size > 0);
 
 watch(() => props.project, () => {
   console.log('project id changed to', props.project);
