@@ -52,6 +52,11 @@ pub async fn get_file_sizes(files: Vec<String>) -> Result<Vec<GetFileSizeRespons
     return Ok(result);
 }
 
+// Using a third-party package because Tauri "open" does not
+// provide a way to open a folder with a specific file selected.
+// This feature is useful to implement the "Reveal in Finder/Explorer"
+// feature.
+// See: https://github.com/tauri-apps/plugins-workspace/issues/999
 #[command]
 pub async fn show_path_in_file_manager(path: String) -> Result<(), ()> {
     showfile::show_path_in_file_manager(path);
