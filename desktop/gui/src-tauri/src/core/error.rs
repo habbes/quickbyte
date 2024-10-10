@@ -1,7 +1,8 @@
 use tokio::sync::mpsc::error::{SendError, RecvError};
 // see: https://docs.rs/thiserror/latest/thiserror/
 use thiserror::Error;
-use azure_core::{error::ErrorKind as AzureErrorKind, StatusCode, Result as AzureResult};
+use azure_core::{StatusCode, Result as AzureResult};
+use azure_storage::{Error as AzureError, ErrorKind as AzureErrorKind};
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -25,8 +26,8 @@ impl<T> From<SendError<T>> for AppError {
     }
 }
 
-impl From<azure_core::error::Error> for AppError {
-    fn from(value: azure_core::error::Error) -> Self {
+impl From<AzureError> for AppError {
+    fn from(value: AzureError) -> Self {
         match value.kind() {
             AzureErrorKind::HttpResponse { status, error_code } => match status {
                 StatusCode::Forbidden => AppError::FileTransferLinkAuth(format!("{error_code:?}")),
