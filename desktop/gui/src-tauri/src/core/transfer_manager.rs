@@ -397,18 +397,28 @@ async fn handle_transfer_update(
             transfer_id,
         } => {
             handle_file_completed(&mut transfers, transfer_id, file_id);
-            // let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
-            // let file = transfer.files.iter_mut().find(|f| f._id == file_id).unwrap();
-            // file.completed_size += file.size;
-            // file.status = JobStatus::Completed;
-            // transfer.status = JobStatus::Progress;
+
             db_sync_channel.send(Event::TransferFileStatusUpdate {
                 file_id: file_id.clone(),
                 transfer_id: transfer_id.clone(),
                 status: JobStatus::Completed,
                 error: None,
             });
-        }
+        },
+        TransferUpdate::FileFailed {
+            file_id,
+            transfer_id,
+            error
+        } => {
+            handle_file_failed(&mut transfers, &transfer_id, file_id, error.clone());
+
+            db_sync_channel.send(Event::TransferFileStatusUpdate {
+                file_id: file_id.clone(),
+                transfer_id: transfer_id.clone(),
+                status: JobStatus::Error,
+                error: Some(error.clone()),
+            });
+        },
         TransferUpdate::TransferCompleted { transfer_id } => {
             handle_transfer_completed(&mut transfers, transfer_id);
             // let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
@@ -480,6 +490,23 @@ fn handle_file_completed(
         .unwrap();
     file.completed_size = file.size;
     file.status = JobStatus::Completed;
+    transfer.status = JobStatus::Progress;
+}
+
+fn handle_file_failed(
+    transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>,
+    transfer_id: &str,
+    file_id: &str,
+    error: String,
+) {
+    let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+    let file = transfer
+        .files
+        .iter_mut()
+        .find(|f| f._id == file_id)
+        .unwrap();
+    file.status = JobStatus::Error;
+    file.error = Some(error);
     transfer.status = JobStatus::Progress;
 }
 
