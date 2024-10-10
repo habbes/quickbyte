@@ -4,6 +4,8 @@ use azure_storage_blobs::prelude::BlobClient;
 use futures::stream::StreamExt;
 use std::os::unix::fs::FileExt;
 use tokio::sync::mpsc;
+use bytes::{BytesMut, BufMut, Bytes};
+
 
 use super::{
     dtos::{TransferJobFileBlock, TransferUpdate},
@@ -135,18 +137,44 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
         "Uploading block {} size {}",
         request.block.index, request.size
     );
-    let mut buffer = vec![0u8; request.size as usize];
+    // let mut buffer = vec![0u8; request.size as usize];
+    let mut buffer = BytesMut::with_capacity(request.size as usize);
     // file.seek(tokio::io::SeekFrom::Start(offset)).await?;
     let file = request.file;
     file.read_exact_at(&mut buffer, request.offset).unwrap();
 
     // Upload the block
-    request
-        .client
-        .put_block(request.block._id.clone().into_bytes(), buffer)
-        .into_future()
-        .await
-        .expect("Failed to put block to Azure blob");
+    let mut retry = true;
+    while retry {
+        match request
+            .client
+            .put_block(request.block._id.clone().into_bytes(), buffer.clone())
+            .into_future()
+            .await {
+            Ok(_) => { retry = false; },
+            Err(err) => {
+                match err.kind() {
+                    azure_storage::ErrorKind::Io => {
+                        println!("Got I/O error while uploading block {}, err: {err:?}, retrying...", request.block.index);
+                        retry = true;
+                    }
+                    _ => {
+                        let msg = AppError::from(err).to_string();
+                        println!("Failed to upload block {} with error {msg}", request.block.index);
+                        request.update_channel
+                        .send(BlockTransferUpdate::Failed {
+                            block_id: request.block._id.clone(),
+                            block_index: request.block.index,
+                            error: msg
+                        })
+                        .await.ok(); // igonore send error because the receiver may have been closed intentionally (e.g. due to failed block)
+                        
+                        return;
+                    }
+                }
+            }
+        }
+    }
 
     request
         .update_channel
@@ -156,7 +184,7 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
             size: request.size,
         })
         .await
-        .expect("Failed to send block progress update");
+        .ok();
 
     request
         .update_channel
@@ -165,7 +193,7 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
             block_index: request.block.index,
         })
         .await
-        .expect("Failed to send block completion update");
+        .ok();
 
     println!(
         "Completed uploading block {} size {}",

@@ -295,7 +295,7 @@ impl FileUploadCompletionWatcher {
         let mut retry = true;
         while retry {
             match self.blob_client
-                .put_block_list(block_list.clone())// TODO cloning is potentially expensive here, tr
+                .put_block_list(block_list.clone())// TODO: Can we create a shared ref instead of cloning?
                 .into_future()
                 .await {
                 Ok(_) => { retry = false; }
@@ -306,11 +306,12 @@ impl FileUploadCompletionWatcher {
                             retry = true;
                         },
                         _ => {
+                            let msg = AppError::from(err).to_string();
                             self.events
                             .send(TransferUpdate::FileFailed {
                                 file_id: self.file_job._id.clone(),
                                 transfer_id: self.transfer_id.clone(),
-                                error: format!("failed to complete upload due to error: {err:?}")
+                                error: msg
                             })
                             .await;
                             println!(
