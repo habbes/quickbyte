@@ -82,6 +82,15 @@ impl Database {
         .expect("Error saving transfer status.");
     }
 
+    pub fn delete_transfer(&mut self, transfer_id: &str) {
+        use transfers::dsl;
+        use crate::schema::transfers::id;
+
+        diesel::delete(dsl::transfers.filter(id.eq(transfer_id)))
+        .execute(&mut self.connection)
+        .expect("Error deleting transfer");
+    }
+
     pub fn update_file_status(&mut self, id: &str, status: &JobStatus, error: Option<&str>) {
         use files::dsl;
         let status_str: &str = status.into();

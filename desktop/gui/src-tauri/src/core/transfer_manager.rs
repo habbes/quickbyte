@@ -1,3 +1,4 @@
+use std::ops::Index;
 use std::sync::Arc;
 
 use super::message_channel::MessageChannel;
@@ -42,6 +43,9 @@ impl TransferManager {
             Request::UploadFiles(upload_reqiest) => self.start_upload(upload_reqiest).await,
             Request::ResumeTransfer(transfer) => self.resume_tranfer(transfer).await,
             Request::GetTransfers => self.broadcast_transfers().await,
+            Request::DeleteTransfer {
+                transfer_id
+            } => self.delete_transfer(&transfer_id).await,
         }
     }
 
@@ -49,6 +53,16 @@ impl TransferManager {
         self.events
             .send(Event::Transfers((*self.transfers.lock().await).clone()))
             .await;
+    }
+
+    pub async fn delete_transfer(&self, transfer_id: &str) {
+        let mut transfers = self.transfers.lock().await;
+        let index = transfers.iter().position(|t| t._id == transfer_id);
+        if let Some(index) = index {
+            transfers.remove(index);
+            self.events.send(Event::TransferDeleted { transfer_id: String::from(transfer_id) }).await;
+            self.db_sync_channel.send(Event::TransferDeleted { transfer_id: String::from(transfer_id) });
+        }
     }
 
     pub async fn resume_tranfer(&self, transfer: TransferJob) {

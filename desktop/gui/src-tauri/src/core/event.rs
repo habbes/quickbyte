@@ -29,6 +29,9 @@ pub enum Event {
     remote_transfer_id: String,
     file_id: String,
     remote_file_id: String,
+  },
+  TransferDeleted {
+    transfer_id: String,
   }
 }
 

@@ -41,6 +41,9 @@ impl AppContext {
           file_id,
           status,
           error } => database.lock().unwrap().update_block_status(&block_id, &file_id, &status),
+        Event::TransferDeleted {
+          transfer_id
+        } => database.lock().unwrap().delete_transfer(&transfer_id),
         _ => (),
       };
     }));

@@ -5,7 +5,8 @@ pub enum Request {
     DownloadFiles(DownloadFilesRequest),
     UploadFiles(UploadFilesRequest),
     ResumeTransfer(TransferJob),
-    GetTransfers
+    GetTransfers,
+    DeleteTransfer { transfer_id: String }
 }
 
 #[derive(Debug)]
