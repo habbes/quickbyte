@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Instant};
+use std::{io::Write, sync::Arc, time::Instant};
 
 use azure_storage_blobs::prelude::BlobClient;
 use futures::stream::StreamExt;

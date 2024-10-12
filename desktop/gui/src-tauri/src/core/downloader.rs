@@ -299,11 +299,21 @@ impl FileDownloadCompletionWatcher {
         
 
         println!("Finish downloading file {} after {}s. Flushing...", self.file_job.name, started_at.elapsed().as_secs_f64());
-        file
+
+        let flush_result = file
         .write()
         .expect("Failed to acquire file write lock")
-        .flush()
-        .expect("Failed to flush file");
+        .flush();
+
+        if let Err(err) = flush_result {
+            self.events.send(TransferUpdate::FileFailed {
+                file_id: self.file_job._id.clone(),
+                transfer_id: self.transfer_id.clone(),
+                error: AppError::from(err).to_string()
+            }).await;
+
+            return;
+        }
 
         println!("Completed flushing file {} after {}s", self.file_job.name, started_at.elapsed().as_secs_f64());
 
