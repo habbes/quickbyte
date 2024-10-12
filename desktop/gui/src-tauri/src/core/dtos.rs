@@ -142,6 +142,7 @@ pub struct TransferJob {
     #[serde(rename = "type")]
     pub transfer_kind: TransferKind,
     pub local_path: String,
+    pub upload_transfer_id: Option<String>,
     pub download_type: Option<DownloadType>,
     pub share_id: Option<String>,
     pub share_code: Option<String>,
