@@ -10,6 +10,7 @@ pub fn bridge_events(app: &AppHandle, event: Event) {
   match event {
     Event::TransferCreated(transfer) => app.emit_all("transfer_created", transfer).unwrap(),
     Event::Transfers(transfers) => app.emit_all("transfers", transfers).unwrap(),
+    Event::TransferDeleted { transfer_id } => app.emit_all("transfer_deleted", transfer_id).unwrap(),
     Event::TransferCompleted(transfer) => {
       let message = match transfer.transfer_kind {
         TransferKind::Download => format!("Finished downloading files '{}' from Quickbyte.", transfer.name),

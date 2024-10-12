@@ -69,8 +69,12 @@ const store = {
         transfers.value.push(transfer)
     },
     setTransfers(list: TransferJob[]) {
-        console.log('Update transfers with', list);
         transfers.value = list;
+    },
+    deleteTransfer(transferId: string) {
+        const index = transfers.value.findIndex(t => t._id === transferId);
+        if (index < 0) return;
+        transfers.value.splice(index, 1);
     }
 };
 

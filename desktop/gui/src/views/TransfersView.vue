@@ -44,9 +44,11 @@
 import { showMenu } from "tauri-plugin-context-menu";
 import { useRouter } from "vue-router";
 import { store } from "@/app-utils";
-import { type TransferJob, showPathInFileManager } from "@/core";
+import { type TransferJob, showPathInFileManager, deleteTransfer } from "@/core";
 import { humanizeSize } from "@quickbyte/common";
 import TransferStatus from "@/components/TransferStatus.vue";
+
+type ContextMenuOptions = Parameters<typeof showMenu>[0];
 
 const router = useRouter();
 const transfers = store.transfers;
@@ -57,13 +59,23 @@ function goToTransfer(id: string) {
 
 function showContextMenu(event: MouseEvent, transfer: TransferJob) {
   event.preventDefault();
+
+  const items: ContextMenuOptions['items'] = [{
+    label: 'Reveal in Finder', // TODO use 'Explorer' on Windows
+    event: async function() {
+      showPathInFileManager(transfer.localPath);
+    }
+  }];
+
+  if (transfer.status !== 'pending' && transfer.status !== 'progress') {
+    items.push({
+      label: 'Delete records',
+      event: async () => deleteTransfer(transfer._id)
+    });
+  }
+
   showMenu({
-    items: [{
-      label: 'Reveal in Finder', // TODO use 'Explorer' on Windows
-      event: async function() {
-        showPathInFileManager(transfer.localPath);
-      }
-    }]
+    items
   });
 }
 </script>

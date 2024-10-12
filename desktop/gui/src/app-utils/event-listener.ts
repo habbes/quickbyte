@@ -12,6 +12,9 @@ function initGlobalEventListener(store: Store, apiClient: TrpcApiClient) {
             console.log('transfers', transfers);
             store.setTransfers(transfers)
         },
+        onTransferDeleted(transferId) {
+            store.deleteTransfer(transferId);
+        },
         async onTransferCompleted(transfer) {
             if (transfer.type !== 'upload') return;
 

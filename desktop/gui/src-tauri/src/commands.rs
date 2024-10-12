@@ -31,6 +31,12 @@ pub async fn request_transfers(context: State<'_, AppContext>) -> Result<(), ()>
 }
 
 #[command]
+pub async fn delete_transfer(context: State<'_, AppContext>, id: String) -> Result<(), ()> {
+    context.requests.send(Request::DeleteTransfer { transfer_id: id }).await;
+    Ok(())
+}
+
+#[command]
 pub async fn get_file_sizes(files: Vec<String>) -> Result<Vec<GetFileSizeResponse>, AppError> {
     let mut result = Vec::with_capacity(files.len());
     // TODO: get the file sizes concurrently

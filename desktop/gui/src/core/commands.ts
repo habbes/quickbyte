@@ -13,6 +13,10 @@ export function downloadLegacyTransferLink(downloadLinkRequest: LegacyTransferLi
     return invoke("download_legacy_transfer_link", { request: downloadLinkRequest });
 }
 
+export function deleteTransfer(localTransferId: string) {
+    return invoke("delete_transfer", { id: localTransferId });
+}
+
 export function uploadFiles(uploadRequest: UploadFilesRequest) {
     return invoke("upload_files", { request: uploadRequest });
 }

@@ -50,6 +50,7 @@ async fn main() {
       download_legacy_transfer_link,
       upload_files,
       request_transfers,
+      delete_transfer,
       get_file_sizes,
       show_path_in_file_manager,
       sign_in_with_google,
