@@ -1,6 +1,7 @@
 use azure_storage_blobs::prelude::BlobClient;
 use std::{fs::File, io::Write, sync::Arc};
 use std::time::Instant;
+use crate::core::error::AppError;
 use crate::core::models::JobStatus;
 use crate::core::transfer_queue::{BlockDownloadRequest, BlockTransferRequest, BlockTransferUpdate};
 
@@ -100,7 +101,7 @@ struct FileDownloadBlocksDispatcher {
     file_job: Arc<TransferJobFile>,
     transfer_queue: Arc<BlockTransferQueue>,
     update_tx: tokio::sync::mpsc::Sender<BlockTransferUpdate>,
-    file_started_tx: tokio::sync::oneshot::Sender<FileTransferStartedMessage>
+    file_started_tx: tokio::sync::oneshot::Sender<FileTransferStartMessage>
 }
 
 struct FileDownloadCompletionWatcher {
@@ -108,13 +109,18 @@ struct FileDownloadCompletionWatcher {
     transfer_id: String,
     update_rx: tokio::sync::mpsc::Receiver<BlockTransferUpdate>,
     events: Arc<MessageChannel<TransferUpdate>>,
-    file_started_rx: tokio::sync::oneshot::Receiver<FileTransferStartedMessage>,
+    file_started_rx: tokio::sync::oneshot::Receiver<FileTransferStartMessage>,
 }
 
 #[derive(Debug)]
-struct FileTransferStartedMessage {
-    file: Arc<std::sync::RwLock<std::fs::File>>,
-    started_at: std::time::Instant,
+enum FileTransferStartMessage {
+    Success {
+        file: Arc<std::sync::RwLock<std::fs::File>>,
+        started_at: std::time::Instant,
+    },
+    Failed {
+        error: String
+    }
 }
 
 
@@ -124,21 +130,72 @@ impl FileDownloadBlocksDispatcher {
         let started_at = Instant::now();
         println!("Start download for file {}", self.file_job.name);
         let file_path = std::path::Path::new(&self.file_job.local_path);
-        let directory = file_path.parent().unwrap();
-        std::fs::create_dir_all(directory).unwrap();
-        let file = File::create(std::path::Path::new(&self.file_job.local_path)).expect("Failed to create file for download");
+        let directory = match file_path.parent() {
+            Some(parent) => parent,
+            None => {
+                self.file_started_tx.send(FileTransferStartMessage::Failed {
+                    error: format!("Failed to find parent directory of file {file_path:?}")
+                }).expect("Failed to send file transfer started event");
+
+                return;
+            }
+        };
+
+        if let Err(err) = std::fs::create_dir_all(directory) {
+            self.file_started_tx.send(FileTransferStartMessage::Failed {
+                error: AppError::from(err).to_string()
+            }).expect("Failed to send file transfer started event");
+
+            return;
+        };
     
-        file.set_len(self.file_job.size).expect("Failed to initialze file length on disk.");
-        // set file len on disk
+        let file = match File::create(std::path::Path::new(&self.file_job.local_path)) {
+            Ok(f) => f,
+            Err(err) => {
+                self.file_started_tx.send(FileTransferStartMessage::Failed {
+                    error: AppError::from(err).to_string()
+                }).expect("Failed to send file transfer started event");
+    
+                return;
+            }
+        };
+    
+        if let Err(err) = file.set_len(self.file_job.size) {
+            self.file_started_tx.send(FileTransferStartMessage::Failed {
+                error: AppError::from(err).to_string()
+            }).expect("Failed to send file transfer started event");
+
+            return;
+        }
+
+        let url = match url::Url::parse(&self.file_job.remote_url) {
+            Ok(url) => url,
+            Err(err) => {
+                self.file_started_tx.send(FileTransferStartMessage::Failed {
+                    error: err.to_string()
+                }).expect("Failed to send file transfer started event");
+    
+                return;
+            }
+        };
+
+        let blob = match BlobClient::from_sas_url(&url) {
+            Ok(b) => Arc::new(b),
+            Err(err) => {
+                self.file_started_tx.send(FileTransferStartMessage::Failed {
+                    error: AppError::from(err).to_string()
+                }).expect("Failed to send file transfer started event");
+    
+                return;
+            }
+        };
+        
         let file = Arc::new(std::sync::RwLock::new(file));
 
-        self.file_started_tx.send(FileTransferStartedMessage {
+        self.file_started_tx.send(FileTransferStartMessage::Success {
             file: file.clone(),
             started_at: started_at
         }).expect("Failed to send file transfer started event");
-
-        let url = url::Url::parse(&self.file_job.remote_url).expect("Failed to parse url");
-        let blob = Arc::new(BlobClient::from_sas_url(&url).expect("Failed to initialized blob client from download url"));
 
         let file_job = self.file_job.clone();
         let transfer_queue = self.transfer_queue.clone();
@@ -174,8 +231,20 @@ impl FileDownloadCompletionWatcher {
         let mut num_completed = 0;
 
         let file_started_event = self.file_started_rx.await.expect("Failed to receive file started event");
-        let file = file_started_event.file;
-        let started_at = file_started_event.started_at;
+        let (file, started_at) = match file_started_event {
+            FileTransferStartMessage::Success { file, started_at } => (file, started_at),
+            FileTransferStartMessage::Failed { error } => {
+                self.events.send(
+                    TransferUpdate::FileFailed {
+                        file_id: self.file_job._id.clone(),
+                        transfer_id: self.transfer_id.clone(),
+                        error: error
+                    }
+                ).await;
+
+                return;
+            }
+        };
 
         while let Some(block_update) = self.update_rx.recv().await {
             match block_update {
