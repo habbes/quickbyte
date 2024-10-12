@@ -34,6 +34,7 @@ diesel::table! {
         status -> Text,
         error -> Nullable<Text>,
         transfer_kind -> Text,
+        upload_transfer_id -> Nullable<Text>,
         download_type -> Nullable<Text>,
         share_id -> Nullable<Text>,
         share_code -> Nullable<Text>,
