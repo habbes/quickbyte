@@ -36,12 +36,27 @@
           <div>
             {{ item.title }}
           </div>
-          <div class="flex gap-2 items-center">
+          <div class="flex gap-4 items-center">
             <div>
               {{ humanizeSize(item.file.size) }}
             </div>
             <div class="w-10">
               {{ formatPercentage(item.file.completedSize, item.file.size) }}
+            </div>
+            <div v-if="item.file.status === 'pending'" title="Pending">
+              <Icon icon="lucide:clock" />
+            </div>
+            <div v-else-if="item.file.status === 'cancelled'" title="Cancelled by user">
+              <Icon icon="lucide:ban" />
+            </div>
+            <div v-else-if="item.file.status === 'completed'" title="Transfer complete">
+              <Icon icon="lucide:circle-check" />
+            </div>
+            <div v-else-if="item.file.status === 'error'" :title="item.file.error">
+              <Icon icon="lucide:triangle-alert" />
+            </div>
+            <div v-else-if="item.file.status === 'progress'" title="Transfer in progress">
+              <Icon icon="lucide:arrow-up-down" />
             </div>
           </div>
         </div>
