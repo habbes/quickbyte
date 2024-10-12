@@ -35,7 +35,6 @@ impl TransferManager {
     }
 
     pub async fn execute_request(&self, request: Request) {
-        println!("Executing request {request:?}");
         match request {
             Request::DownloadFiles(download_request) => {
                 self.start_download(download_request).await
@@ -47,7 +46,6 @@ impl TransferManager {
     }
 
     pub async fn broadcast_transfers(&self) {
-        println!("Get transfers request handling.");
         self.events
             .send(Event::Transfers((*self.transfers.lock().await).clone()))
             .await;
@@ -62,8 +60,6 @@ impl TransferManager {
           return;
       }
 
-      println!("Resuming transfer {}", transfer.name);
-
       self.events
           .send(Event::TransferCreated(transfer.clone()))
           .await;
@@ -74,7 +70,6 @@ impl TransferManager {
     }
 
     pub async fn start_download(&self, request: DownloadFilesRequest) {
-      println!("Start download {request:?}");
       let job = match request {
         DownloadFilesRequest::FromSharedLink(shared_link_request) => {
           self.init_download_job_from_project_share_link(&shared_link_request)
@@ -150,8 +145,6 @@ impl TransferManager {
     }
 
     pub async fn start_upload(&self, request: UploadFilesRequest) {
-        println!("Start upload {request:?}");
-
         let job = self.init_upload_job(&request);
         let cloned_job = job.clone();
         {
@@ -245,6 +238,7 @@ impl TransferManager {
             local_path: request.target_path.clone(),
             files: files,
             transfer_kind: TransferKind::Download,
+            upload_transfer_id: None,
             download_type: Some(DownloadType::ProjectShare),
             share_code: Some(request.share_code.clone()),
             share_id: Some(request.share_id.clone()),
@@ -288,6 +282,7 @@ impl TransferManager {
             local_path: request.target_path.clone(),
             files: files,
             transfer_kind: TransferKind::Download,
+            upload_transfer_id: None,
             download_type: Some(DownloadType::LegacyTransfer),
             share_code: None,
             share_id: None,
@@ -328,6 +323,7 @@ impl TransferManager {
             local_path: request.local_path.clone(),
             files: files,
             transfer_kind: TransferKind::Upload,
+            upload_transfer_id: Some(request.transfer_id.clone()),
             download_type: None,
             share_code: None,
             share_id: None,
@@ -390,7 +386,6 @@ async fn handle_transfer_update(
                 status: JobStatus::Completed,
                 error: None,
             });
-            println!("Send complete block status {chunk_id} {file_id}");
         }
         TransferUpdate::FileCompleted {
             file_id,
@@ -404,6 +399,18 @@ async fn handle_transfer_update(
                 status: JobStatus::Completed,
                 error: None,
             });
+            
+            let transfer = transfers.iter().find(|t| t._id.as_str() == transfer_id).unwrap();
+            if transfer.transfer_kind == TransferKind::Upload && transfer.upload_transfer_id != None {
+                let file = transfer.files.iter().find(|f| f._id.as_str() == file_id).unwrap();
+
+                events.send(Event::TransferFileUploadComplete {
+                    transfer_id: transfer_id.clone(),
+                    remote_transfer_id: transfer.upload_transfer_id.clone().unwrap(),
+                    file_id: file_id.clone() ,
+                    remote_file_id: file.remote_file_id.clone()
+                }).await;
+            }
         },
         TransferUpdate::FileFailed {
             file_id,

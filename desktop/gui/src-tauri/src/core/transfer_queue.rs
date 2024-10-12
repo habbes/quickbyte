@@ -4,7 +4,7 @@ use azure_storage_blobs::prelude::BlobClient;
 use futures::stream::StreamExt;
 use std::os::unix::fs::FileExt;
 use tokio::sync::mpsc;
-use bytes::{BytesMut, BufMut, Bytes};
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 
 
 use super::{
@@ -84,7 +84,6 @@ impl BlockTransferQueue {
         let mut producers: Vec<ChunkTransmitter> = Vec::with_capacity(concurrency);
 
         for i in 0..concurrency {
-            println!("Initializing block transfer worker {i}");
             let (tx, mut rx) = mpsc::channel(1);
             producers.push(tx);
 
@@ -100,7 +99,6 @@ impl BlockTransferQueue {
         tokio::spawn(async move {
             let mut next_channel = 0;
             while let Some(message) = rx.recv().await {
-                println!("Received block transfer request, sent to worker channel {next_channel}");
                 // create a bunch of channels
                 producers[next_channel]
                     .send(message)
@@ -137,8 +135,11 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
         "Uploading block {} size {}",
         request.block.index, request.size
     );
-    // let mut buffer = vec![0u8; request.size as usize];
-    let mut buffer = BytesMut::with_capacity(request.size as usize);
+
+    // Considered using Bytes instead of Arc<Vec<u8>> but I got an error when
+    // calling put_block with the BytesMut, will investigate later.
+    let mut buffer = vec![0u8; request.size as usize];
+    // let mut buffer = BytesMut::with_capacity(request.size as usize);
     // file.seek(tokio::io::SeekFrom::Start(offset)).await?;
     let file = request.file;
     if let Err(file_err) = file.read_exact_at(&mut buffer, request.offset) {

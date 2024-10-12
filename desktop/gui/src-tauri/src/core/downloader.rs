@@ -23,7 +23,6 @@ impl TransferDownloader<'_> {
 
     pub async fn start_download(&self, transfer_queue: Arc<BlockTransferQueue>, events: Arc<MessageChannel<TransferUpdate>>) {
         let files = &self.request.files;
-        println!("Init download of {}", files.len());
         
         let mut dispatchers: Vec<FileDownloadBlocksDispatcher> = vec![];
         let mut watchers = vec![];
@@ -128,7 +127,7 @@ impl FileDownloadBlocksDispatcher {
     pub async fn queue_file(self) {
         // create file
         let started_at = Instant::now();
-        println!("Start download for file {}", self.file_job.name);
+
         let file_path = std::path::Path::new(&self.file_job.local_path);
         let directory = match file_path.parent() {
             Some(parent) => parent,
@@ -209,8 +208,6 @@ impl FileDownloadBlocksDispatcher {
             let offset = block.index * chunk_size;
             let end = std::cmp::min(offset + chunk_size, file_job.size);
             let real_size = end - offset;
-
-            println!("Sent download block {} of file {} to queue", block.index, file_job.name);
 
             transfer_queue.send(BlockTransferRequest::Download(
                 Box::new(BlockDownloadRequest {

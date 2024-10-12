@@ -23,7 +23,13 @@ pub enum Event {
     status: JobStatus,
     error: Option<String>
   },
-  Transfers(Vec<TransferJob>)
+  Transfers(Vec<TransferJob>),
+  TransferFileUploadComplete {
+    transfer_id: String,
+    remote_transfer_id: String,
+    file_id: String,
+    remote_file_id: String,
+  }
 }
 
 #[derive(Debug)]
