@@ -12,7 +12,6 @@ pub fn init(db_path: &str) -> SqliteConnection {
         create_db_file(db_path);
     }
 
-    println!("Initializing db {db_path:?}");
     let mut connection = establish_connection(db_path);
     run_migrations(&mut connection);
 

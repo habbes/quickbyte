@@ -9,16 +9,20 @@ use crate::schema::*;
 #[diesel(table_name = transfers)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct Transfer {
+    // Local ID of the transfer (not the ID in Quickbyte API)
     pub id: String,
     pub name: String,
     pub total_size: i64,
     pub status: String,
     pub error: Option<String>,
     pub transfer_kind: String,
+    // ID of the transfer in Quickbyte API if this is an upload
+    pub upload_transfer_id: Option<String>,
     pub download_type: Option<String>,
     pub share_id: Option<String>,
     pub share_code: Option<String>,
     pub share_password: Option<String>,
+    // ID of the transfer in Quickbyte if this is a legacy shared transfer
     pub download_transfer_id: Option<String>,
     pub local_path: String,
 }
@@ -38,6 +42,7 @@ pub struct NewTransfer<'a> {
     pub share_code: Option<&'a str>,
     pub share_password: Option<&'a str>,
     pub download_transfer_id: Option<&'a str>,
+    pub upload_transfer_id: Option<&'a str>,
     pub local_path: &'a str,
 }
 

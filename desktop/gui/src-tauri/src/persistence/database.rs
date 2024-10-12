@@ -41,8 +41,6 @@ impl Database {
             .values(new_blocks)
             .execute(&mut self.connection)
             .expect("Error inserting transfer file block into database");
-
-        println!("Created transfer in db {job:?}");
     }
 
     pub fn load_transfers(&mut self) -> Vec<TransferJob>{
@@ -71,9 +69,6 @@ impl Database {
             let job = map_transfer_from_db(transfer, &files, &all_blocks);
             result.push(job);
         }
-        
-
-        println!("Loaded jobs from db {result:?}");
 
         result
     }
@@ -99,7 +94,6 @@ impl Database {
     pub fn update_block_status(&mut self, id: &str, file_id: &str, status: &JobStatus) {
         use file_blocks::dsl;
         let status_str: &str = status.into();
-        println!("Saving block {id} {file_id} status {status:?}");
         diesel::update(dsl::file_blocks.find((id, file_id)))
         .set(dsl::status.eq(status_str))
         .execute(&mut self.connection)
@@ -174,6 +168,7 @@ impl<'a> From<&'a TransferJob> for NewTransfer<'a> {
             status: (&job.status).into(),
             error: job.error.as_ref().map(|v| v.as_str()),
             transfer_kind: (&job.transfer_kind).into(),
+            upload_transfer_id: job.upload_transfer_id.as_ref().map(|v| v.as_str()),
             download_type: job.download_type.as_ref().map(|v| v.into()),
             share_id: job.share_id.as_ref().map(|v| v.as_str()),
             share_code: job.share_code.as_ref().map(|v| v.as_str()),
@@ -230,8 +225,6 @@ fn map_transfer_from_db(transfer: Transfer, files: &[File], file_blocks: &[FileB
         }).collect()
     }).collect();
 
-    println!("file completed size {}", files[0].completed_size);
-
     let transfer_job = TransferJob {
         _id: transfer.id.clone(),
         name: transfer.name.clone(),
@@ -241,6 +234,7 @@ fn map_transfer_from_db(transfer: Transfer, files: &[File], file_blocks: &[FileB
         completed_size: files.iter().map(|f| f.completed_size).sum(),
         error: transfer.error,
         transfer_kind: transfer.transfer_kind.into(),
+        upload_transfer_id: transfer.upload_transfer_id,
         download_type: transfer.download_type.map(|v| v.into()),
         local_path: transfer.local_path,
         share_id: transfer.share_id,
@@ -249,8 +243,6 @@ fn map_transfer_from_db(transfer: Transfer, files: &[File], file_blocks: &[FileB
         download_transfer_id: transfer.download_transfer_id,
         files
     };
-
-    println!("transfer completed size {}", transfer_job.completed_size);
 
     transfer_job
 }
