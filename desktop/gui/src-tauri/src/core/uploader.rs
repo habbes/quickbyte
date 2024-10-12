@@ -144,7 +144,7 @@ struct FileUploadBlockDispatcher {
     file_job: Arc<TransferJobFile>,
     transfer_queue: Arc<BlockTransferQueue>,
     update_tx: tokio::sync::mpsc::Sender<BlockTransferUpdate>,
-    file_started_tx: tokio::sync::oneshot::Sender<FileUploadStartedMessage>,
+    file_started_tx: tokio::sync::oneshot::Sender<FileUploadStartMessage>,
     blob_client: Arc<BlobClient>,
 }
 
@@ -153,29 +153,39 @@ struct FileUploadCompletionWatcher {
     file_job: Arc<TransferJobFile>,
     transfer_id: String,
     update_rx: tokio::sync::mpsc::Receiver<BlockTransferUpdate>,
-    file_started_rx: tokio::sync::oneshot::Receiver<FileUploadStartedMessage>,
+    file_started_rx: tokio::sync::oneshot::Receiver<FileUploadStartMessage>,
     events: Arc<MessageChannel<TransferUpdate>>,
     blob_client: Arc<BlobClient>,
 }
 
 #[derive(Debug)]
-struct FileUploadStartedMessage {
-    started_at: std::time::Instant,
+enum FileUploadStartMessage {
+    Success {
+        started_at: std::time::Instant,
+    },
+    Failed {
+        error: String
+    }
 }
 
 impl FileUploadBlockDispatcher {
     pub async fn queue_file(self) {
         println!("Uploading file {}", self.file_job.name);
 
-        let file = Arc::new(
-            std::fs::File::open(&self.file_job.local_path)
-                .expect("Failed to open local file for download"),
-        );
+        let file = match std::fs::File::open(&self.file_job.local_path) {
+            Ok(file) => Arc::new(file),
+            Err(err) => {
+                self.file_started_tx.send(FileUploadStartMessage::Failed {
+                    error: AppError::from(err).to_string()
+                }).expect("Failed to send file upload failed message.");
+                return;
+            }
+        };
 
         // technically, this doesn't indicate when the file upload starts,
         // but when the file queueing start. To track file start,
         // we should trigger this after the first block is queue.
-        self.file_started_tx.send(FileUploadStartedMessage {
+        self.file_started_tx.send(FileUploadStartMessage::Success {
             started_at: std::time::Instant::now()
         }).expect("Failed to send file upload started event.");
 
@@ -217,8 +227,18 @@ impl FileUploadBlockDispatcher {
 
 impl FileUploadCompletionWatcher {
     pub async fn wait_upload_complete(mut self) {
-        let file_started_event = self.file_started_rx.await.expect("Failed to receive file upload started event.");
-        let started_at = file_started_event.started_at;
+        let started_at = match self.file_started_rx.await.expect("Failed to receive file upload started event.") {
+            FileUploadStartMessage::Success { started_at } => started_at,
+            FileUploadStartMessage::Failed { error } => {
+                self.events.send(TransferUpdate::FileFailed {
+                    file_id: self.file_job._id.clone(),
+                    transfer_id: self.transfer_id.clone(),
+                    error: error
+                }).await;
+
+                return;
+            }
+        };
         
         let mut num_completed = 0;
         while let Some(block_update) = self.update_rx.recv().await {
