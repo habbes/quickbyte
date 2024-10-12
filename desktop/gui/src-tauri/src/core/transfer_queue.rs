@@ -287,7 +287,6 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
                                 }
                             }
                         }
-                        
                     }
                 }
                 Err(err) => {

@@ -215,6 +215,15 @@ impl FileDownloadCompletionWatcher {
                     error
                 } => {
                     println!("Failed to upload block {block_index} id: {block_id}: {error}");
+                    self.events
+                    .send(TransferUpdate::FileFailed {
+                        file_id: self.file_job._id.clone(),
+                        transfer_id: self.transfer_id.clone(),
+                        error: error
+                    })
+                    .await;
+
+                    return;
                 }
             }
         }
