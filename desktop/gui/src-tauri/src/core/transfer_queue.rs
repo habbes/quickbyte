@@ -221,37 +221,94 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
     // let block_index = request.block.index;
     // let block_id = block._id.clone();
 
+    let mut retry = true; // retry on network error
     let start_range = request.offset;
     let end_range = request.offset + request.size;
-    let mut stream = request.client
-        .get()
-        .range(start_range..end_range)
-        .chunk_size(request.size)
-        .into_stream();
-
-    // println!("Writing chunk {} of file {}", i, file_name);
-    let mut chunk_progress = 0 as u64;
     
-    while let Some(value) = stream.next().await {
-        let mut body = value.unwrap().data;
-        // For each response, we stream the body instead of collecting it all
-        while let Some(value) = body.next().await {
-            let value = value.unwrap();
-            // println!("Got stream item of size {} for chunk {}", value.len(), i);
-            request.file.read()
-                .expect("Failed to acquire file lock")
-                .write_all_at(&value, start_range + chunk_progress)
-                .unwrap();
-            let fetched_len = value.len() as u64;
-            chunk_progress += value.len() as u64;
+    while retry {
+        // for simplicity, we retry the entire block on error even if
+        // some parts of the block were already successfully downloaded
+        // and streamed in the file.
+        let mut stream = request.client
+            .get()
+            .range(start_range..end_range)
+            .chunk_size(request.size)
+            .into_stream();
 
-            // TODO Is this blocking? should this be sent in a separate task?
-            // Investigate impact of sending through a one shot channel
-            request.update_channel.send(BlockTransferUpdate::Progress {
-                block_id: request.block._id.clone(),
-                block_index: request.block.index,
-                size: fetched_len
-            }).await.expect("Failed to send chunk download progress update.");
+        // println!("Writing chunk {} of file {}", i, file_name);
+        let mut chunk_progress = 0 as u64;
+        'read_stream_loop: while let Some(value) = stream.next().await {
+            match value {
+                Ok(response) => {
+                    let mut body = response.data;
+                    // For each response, we stream the body instead of collecting it all
+                    while let Some(value) = body.next().await {
+                        match value {
+                            Ok(value) => {
+                                let file_write_result = request.file.read()
+                                .expect("Failed to acquire file lock")
+                                .write_all_at(&value, start_range + chunk_progress);
+
+                                if let Err(err) = file_write_result {
+                                    let msg = AppError::from(err).to_string();
+                                    request.update_channel.send(BlockTransferUpdate::Failed {
+                                        block_id: request.block._id.clone(),
+                                        block_index: request.block.index,
+                                        error: msg
+                                    }).await.ok();
+                                    return;
+                                }
+                                
+                                let fetched_len = value.len() as u64;
+                                chunk_progress += value.len() as u64;
+
+                                // TODO Is this blocking? should this be sent in a separate task?
+                                // Investigate impact of sending through a one shot channel
+                                request.update_channel.send(BlockTransferUpdate::Progress {
+                                    block_id: request.block._id.clone(),
+                                    block_index: request.block.index,
+                                    size: fetched_len
+                                }).await.ok(); // ignore error because we can close receiver intentionally
+                            }
+                            Err(err) => {
+                                if *err.kind() == azure_storage::ErrorKind::Io {
+                                    println!("I/O error when downloading block {err:?}, retrying...");
+                                    retry = true;
+                                    break 'read_stream_loop;
+                                } else {
+                                    let msg = AppError::from(err).to_string();
+                                    println!("Error when downloading file {msg} failed");
+                                    request.update_channel.send(BlockTransferUpdate::Failed {
+                                        block_id: request.block._id.clone(),
+                                        block_index: request.block.index,
+                                        error: msg
+                                    }).await.ok();
+                                    return;
+                                }
+                            }
+                        }
+                        
+                    }
+                }
+                Err(err) => {
+                    if *err.kind() == azure_storage::ErrorKind::Io {
+                        println!("I/O error when downloading block {err:?}, retrying...");
+                        retry = true;
+                        break 'read_stream_loop;
+                    } else {
+                        let msg = AppError::from(err).to_string();
+                        println!("Error when downloading file {msg} failed");
+                        request.update_channel.send(BlockTransferUpdate::Failed {
+                            block_id: request.block._id.clone(),
+                            block_index: request.block.index,
+                            error: msg
+                        }).await.ok();
+                        return;
+                    }
+                }
+            }
+
+            retry = false;
         }
     }
 
