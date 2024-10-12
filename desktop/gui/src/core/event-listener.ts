@@ -8,10 +8,24 @@ export class GlobalEventListener {
     listen() {
         listen('transfers', event => this.handlers.onTransfers(event.payload as TransferJob[]));
         listen('transfer_created', event => this.handlers.onTransferCreated(event.payload as TransferJob));
+        listen('transfer_completed', event => this.handlers.onTransferCompleted(event.payload as TransferJob));
+        listen('transfer_file_upload_completed', event => this.handlers.onTransferFileUploadCompleted(event.payload as TransferFileCompletedEvent));
     }
 }
 
 export interface GlobalEventHandler {
     onTransfers(transfers: TransferJob[]): unknown;
     onTransferCreated(transferCreated: TransferJob): unknown;
+    onTransferCompleted(transferCompleted: TransferJob): unknown;
+    onTransferFileUploadCompleted(fileCompleted: TransferFileCompletedEvent): unknown;
+}
+
+export interface TransferCompletedEvent {
+    transferId: string;
+    duration: number
+}
+
+export interface TransferFileCompletedEvent {
+    transferId: string;
+    fileId: string;
 }

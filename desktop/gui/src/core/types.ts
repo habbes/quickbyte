@@ -12,6 +12,7 @@ export interface TransferJob {
     error?: string;
     files: TransferFileJob[],
     type: TransferType;
+    uploadTransferId?: string;
     // add other fields, e.g. date fields
 }
 
@@ -24,7 +25,8 @@ export interface TransferFileJob {
     completedSize: number;
     remoteUrl: string;
     localPath: string;
-    status: JobStatus
+    status: JobStatus;
+    error?: string;
 }
 
 export interface SharedLinkDownloadRequest {
