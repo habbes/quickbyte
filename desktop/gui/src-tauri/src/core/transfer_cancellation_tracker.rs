@@ -1,12 +1,15 @@
-use std::{collections::HashMap, sync::{Arc, RwLock}};
+use std::{collections::HashMap, ops::Deref, sync::{Arc, RwLock}};
 
 use super::{dtos::TransferJob, error::AppError};
 
-pub struct TransferCancellationTracker {
-    locks: HashMap<String, HashMap<String, Arc<RwLock<bool>>>>
+type FileCancellationLock = Arc<RwLock<bool>>;
+
+#[derive(Debug)]
+pub struct TransferCancellationTrackerCollection {
+    locks: HashMap<String, Arc<HashMap<String, FileCancellationLock>>>
 }
 
-impl TransferCancellationTracker {
+impl TransferCancellationTrackerCollection {
     pub fn new() -> Self {
         let locks = HashMap::new();
 
@@ -23,7 +26,7 @@ impl TransferCancellationTracker {
                 file_locks.insert(file._id.clone(), Arc::new(RwLock::new(false)));
             }
 
-            locks.insert(job._id.clone(), file_locks);
+            locks.insert(job._id.clone(), Arc::new(file_locks));
         }
 
         Self {
@@ -41,7 +44,7 @@ impl TransferCancellationTracker {
 
     pub fn cancel_transfer(&mut self, transfer_id: &str) -> Result<(), AppError> {
         if let Some(file_locks) = self.locks.get(transfer_id) {
-            for (_, lock) in file_locks {
+            for (_, lock) in file_locks.deref() {
                 let mut cancelled = lock.write().unwrap();
                 *cancelled = true;
             }
@@ -52,14 +55,20 @@ impl TransferCancellationTracker {
         Err(AppError::Internal(format!("Failed to find {transfer_id} for cancellation")))
     }
 
-    pub fn get_cancellation_tracker(&self, transfer_id: &str, file_id: &str) -> Result<FileCancellationTracker, AppError> {
-        let lock = self.get_file_cancellation_lock(transfer_id, file_id)?;
+    pub fn get_transfer_cancellation_tracker(&self, transfer_id: &str) -> Result<TransferCancellationTracker, AppError> {
+        let locks = self.get_transfer_cancellation_locks(transfer_id)?;
 
-        Ok(
-            FileCancellationTracker {
-                lock: lock.clone()
-            }
-        )
+        Ok(TransferCancellationTracker {
+            locks: locks
+        })
+    }
+
+    fn get_transfer_cancellation_locks(&self, transfer_id: &str) -> Result<Arc<HashMap<String, FileCancellationLock>>, AppError> {
+        if let Some(file_locks) = self.locks.get(transfer_id) {
+            return Ok(file_locks.clone());
+        }
+
+        Err(AppError::Internal(format!("Failed to transfer {transfer_id} for cancellation")))
     }
 
     fn get_file_cancellation_lock(&self, transfer_id: &str, file_id: &str) -> Result<Arc<RwLock<bool>>, AppError> {
@@ -73,12 +82,31 @@ impl TransferCancellationTracker {
     }
 }
 
+pub struct TransferCancellationTracker {
+    locks: Arc<HashMap<String, Arc<RwLock<bool>>>>
+}
+
+impl TransferCancellationTracker {
+    pub fn get_file_cancellation_tracker(&self, file_id: &str) -> Result<FileCancellationTracker, AppError> {
+        if let Some(lock) = self.locks.get(file_id) {
+            return Ok(
+                FileCancellationTracker {
+                    lock: lock.clone()
+                }
+            );
+        }
+
+        Err(AppError::Internal(format!("Failed to find file {file_id}for cancellation")))
+    }
+}
+
+#[derive(Clone)]
 pub struct FileCancellationTracker {
     lock: Arc<RwLock<bool>>,
 }
 
 impl FileCancellationTracker {
-    fn is_cancelled(&self) -> bool {
+    pub fn is_cancelled(&self) -> bool {
         let cancelled = self.lock.read().unwrap();
         *cancelled
     }
