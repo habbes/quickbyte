@@ -34,6 +34,15 @@ impl TransferCancellationTrackerCollection {
         }
     }
 
+    pub fn add_job(&mut self, job: &TransferJob) {
+        let mut file_locks = HashMap::with_capacity(job.files.len());
+        for file in &job.files {
+            file_locks.insert(file._id.clone(), Arc::new(RwLock::new(false)));
+        }
+
+        self.locks.insert(job._id.clone(), Arc::new(file_locks));
+    }
+
     pub fn cancel_file(&mut self, transfer_id: &str, file_id: &str) -> Result<(), AppError> {
         let lock = self.get_file_cancellation_lock(transfer_id, file_id)?;
         let mut cancelled = lock.write().unwrap();
