@@ -233,7 +233,7 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
     
     while retry {
         if request.cancellation.is_cancelled() {
-            println!("Detected file cancelled during block download. Skipping block.");
+            println!("Detected file cancelled during block download. Skipping block {} {}", request.block._id, request.block.index);
             break;
         }
         // for simplicity, we retry the entire block on error even if
@@ -299,7 +299,7 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
                         }
 
                         if request.cancellation.is_cancelled() {
-                            println!("Detected file cancelled during block chunk download. Skipping block.");
+                            println!("Detected file cancelled during block chunk download. Skipping block {} {}.", request.block._id, request.block.index);
                             break;
                         }
                     }

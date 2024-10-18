@@ -282,6 +282,8 @@ impl FileDownloadCompletionWatcher {
             }
         };
 
+        let mut cancelled = false;
+
         while let Some(block_update) = self.update_rx.recv().await {
             match block_update {
                 BlockTransferUpdate::Progress {
@@ -335,6 +337,7 @@ impl FileDownloadCompletionWatcher {
                     block_index,
                 } => {
                     println!("Block download cancelled {block_index} id: {block_id}");
+                    cancelled = true;
                     self.events
                     .send(TransferUpdate::FileCancelled { 
                         file_id: self.file_job._id.clone(),
@@ -343,6 +346,13 @@ impl FileDownloadCompletionWatcher {
                     .await;
                 }
             }
+        }
+        
+        if cancelled {
+            std::fs::remove_file(self.file_job.local_path.clone())
+            .expect(format!("Failed to delete cancelled file {}", self.file_job.local_path).as_str());
+            println!("File cancelled, don't flush or report completion. TODO delete file");
+            return;
         }
         
 
