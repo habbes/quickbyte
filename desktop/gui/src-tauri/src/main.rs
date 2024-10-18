@@ -51,6 +51,7 @@ async fn main() {
       upload_files,
       request_transfers,
       delete_transfer,
+      cancel_transfer_file,
       get_file_sizes,
       show_path_in_file_manager,
       sign_in_with_google,

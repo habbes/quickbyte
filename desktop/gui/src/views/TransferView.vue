@@ -73,15 +73,17 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-import { unwrapSingletonOrUndefined, pluralize, humanizeSize, formatPercentage } from "@quickbyte/common";
+import { unwrapSingletonOrUndefined, pluralize, humanizeSize, formatPercentage, ensure } from "@quickbyte/common";
 import { store } from "@/app-utils";
-import { type TransferFileJob, showPathInFileManager } from "@/core";
+import { type TransferFileJob, showPathInFileManager, cancelTranferFile } from "@/core";
 import { Icon } from '@iconify/vue';
 import { showMenu } from "tauri-plugin-context-menu";
 import EmptyDataPageContainer from "@/components/EmptyDataPageContainer.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import FileTree from "@/components/FileTree.vue";
 import TransferStatus from "@/components/TransferStatus.vue";
+
+type ContextMenuOptions = Parameters<typeof showMenu>[0];
 
 const route = useRoute();
 const transfer = computed(() => store.transfers.value.find(t => t._id === unwrapSingletonOrUndefined(route.params.id)));
@@ -91,13 +93,27 @@ const transfer = computed(() => store.transfers.value.find(t => t._id === unwrap
 
 function showFileContextMenu(event: MouseEvent, fileJob: TransferFileJob) {
   event.preventDefault();
+  
+  const items: ContextMenuOptions["items"] = [{
+    label: "Reveal in Finder",
+    event: () => {
+      return showPathInFileManager(fileJob.localPath)
+    }
+  }];
+
+  if (fileJob.status === 'pending' || fileJob.status === 'progress') {
+    const transferId = ensure(transfer.value?._id);
+    items.push({
+      label: 'Cancel file transfer',
+      event: () => cancelTranferFile({
+        transferId: transferId,
+        fileId: fileJob._id
+      })
+    })
+  }
+
   showMenu({
-    items: [{
-      label: "Reveal in Finder",
-      event: () => {
-        return showPathInFileManager(fileJob.localPath)
-      }
-    }]
+    items
   })
 }
 </script>
