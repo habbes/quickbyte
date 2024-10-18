@@ -65,10 +65,12 @@ impl TransferManager {
             self.events.send(Event::TransferDeleted { transfer_id: String::from(transfer_id) }).await;
             self.db_sync_channel.send(Event::TransferDeleted { transfer_id: String::from(transfer_id) });
         }
+
+        self.cancellation_trackers.lock().unwrap().remove_job(transfer_id);
     }
 
     pub async fn cancel_transfer_file(&self, request: CancelTransferFileRequest) {
-        self.cancellation_trackers.lock().unwrap().cancel_file(&request.transfer_id, &request.file_id);
+        self.cancellation_trackers.lock().unwrap().cancel_file(&request.transfer_id, &request.file_id).expect("Failed to cancel transfer");
 
         // TODO update file status in in-memory and persistent db
         let mut transfers = self.transfers.lock().await;

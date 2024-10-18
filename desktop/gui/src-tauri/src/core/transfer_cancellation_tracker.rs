@@ -43,6 +43,10 @@ impl TransferCancellationTrackerCollection {
         self.locks.insert(job._id.clone(), Arc::new(file_locks));
     }
 
+    pub fn remove_job(&mut self, job_id: &str) {
+        self.locks.remove(job_id);
+    }
+
     pub fn cancel_file(&mut self, transfer_id: &str, file_id: &str) -> Result<(), AppError> {
         let lock = self.get_file_cancellation_lock(transfer_id, file_id)?;
         let mut cancelled = lock.write().unwrap();
