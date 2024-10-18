@@ -135,6 +135,12 @@ pub struct CancelTransferFileRequest {
   pub file_id: String,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelTransferRequest {
+  pub transfer_id: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TransferJob {

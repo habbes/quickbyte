@@ -7,6 +7,7 @@ pub enum Request {
     ResumeTransfer(TransferJob),
     GetTransfers,
     DeleteTransfer { transfer_id: String },
+    CancelTransfer(CancelTransferRequest),
     CancelTransferFile(CancelTransferFileRequest)
 }
 

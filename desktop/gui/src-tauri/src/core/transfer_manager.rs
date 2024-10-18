@@ -46,6 +46,7 @@ impl TransferManager {
             Request::GetTransfers => self.broadcast_transfers().await,
             Request::DeleteTransfer { transfer_id } => self.delete_transfer(&transfer_id).await,
             Request::CancelTransferFile(request) => self.cancel_transfer_file(request).await,
+            Request::CancelTransfer(request) => self.cancel_transfer(&request.transfer_id).await
         }
     }
 
@@ -76,14 +77,45 @@ impl TransferManager {
             .remove_job(transfer_id);
     }
 
+    pub async fn cancel_transfer(&self, transfer_id: &str) {
+        self.cancellation_trackers
+            .write()
+            .unwrap()
+            .cancel_transfer(&transfer_id)
+            .expect("Failed to cancel transfer");
+
+
+        let mut transfers = self.transfers.lock().await;
+        if let Some(transfer) = transfers.iter_mut().find(|t| t._id == transfer_id) {
+            if transfer.status != JobStatus::Pending && transfer.status != JobStatus::Progress {
+                return;
+            }
+        
+            transfer.status = JobStatus::Cancelled;
+
+            for file in &mut transfer.files {
+                if file.status == JobStatus::Pending || file.status == JobStatus::Progress {
+                    file.status = JobStatus::Cancelled;
+                }
+            }
+
+            println!("Send transfer cancelled update to DB");
+            self.db_sync_channel.send(Event::TransferStatusUpdate {
+                transfer_id: String::from(transfer_id),
+                status: JobStatus::Cancelled,
+                error: None
+            });
+            // println!("Send transfers update {transfers:?}");
+            self.events.send(Event::Transfers(transfers.clone())).await;
+        }
+    }
+
     pub async fn cancel_transfer_file(&self, request: CancelTransferFileRequest) {
         self.cancellation_trackers
             .write()
             .unwrap()
             .cancel_file(&request.transfer_id, &request.file_id)
             .expect("Failed to cancel transfer");
-
-        // TODO update file status in in-memory and persistent db
        
         let mut transfers = self.transfers.lock().await;
         if let Some(transfer) = transfers.iter_mut().find(|t| t._id == request.transfer_id) {
@@ -459,6 +491,7 @@ async fn handle_transfer_update(
             transfer_id,
         } => {
             handle_chunk_completed(&mut transfers, transfer_id, file_id, chunk_id.as_str());
+            
             db_sync_channel.send(Event::TransferFileBlockStatusUpdate {
                 block_id: chunk_id.clone(),
                 file_id: file_id.clone(),
