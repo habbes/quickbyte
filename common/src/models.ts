@@ -603,6 +603,9 @@ export type WithCreator<T> = T & {
     }
 };
 
+export const ClientAppType = z.enum(['webApp', 'desktopTransferApp']);
+export type ClientAppType = z.infer<typeof ClientAppType>;
+
 /**
  * Arbitrary line
  */
