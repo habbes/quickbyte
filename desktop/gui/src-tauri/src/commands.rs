@@ -3,7 +3,7 @@ use crate::core::error::AppError;
 use crate::core::request::{DownloadFilesRequest, Request};
 use crate::core::dtos::*;
 use crate::app_context::AppContext;
-use crate::auth::google_auth;
+use crate::auth::google_auth::{self, SignInWithGoogleResult};
 use crate::auth::auth_store;
 
 #[command]
@@ -85,10 +85,8 @@ pub async fn show_path_in_file_manager(path: String) -> Result<(), ()> {
 }
 
 #[command]
-pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<(), ()> {
-    google_auth::sign_in_with_google(handle).await;
-
-    Ok(())
+pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<SignInWithGoogleResult, AppError> {
+    google_auth::sign_in_with_google(handle).await
 }
 
 #[command]
