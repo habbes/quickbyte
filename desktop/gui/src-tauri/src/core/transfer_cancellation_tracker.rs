@@ -113,7 +113,7 @@ impl TransferCancellationTracker {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FileCancellationTracker {
     lock: Arc<RwLock<bool>>,
 }

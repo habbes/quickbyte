@@ -1,4 +1,3 @@
-use std::sync::{Arc};
 use super::message_channel::MessageChannel;
 use super::request::DownloadFilesRequest;
 use super::transfer_cancellation_tracker::TransferCancellationTrackerCollection;
@@ -7,6 +6,7 @@ use super::{
     models::JobStatus, request::Request, transfer_queue::BlockTransferQueue, uploader::*,
     util::get_num_chunks,
 };
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
 const CONCURRENCY: u32 = 32;
@@ -16,7 +16,7 @@ pub struct TransferManager {
     events: Arc<MessageChannel<Event>>,
     chunk_size: u64,
     transfers: Arc<Mutex<Vec<TransferJob>>>,
-    cancellation_trackers: std::sync::Mutex<TransferCancellationTrackerCollection>,
+    cancellation_trackers: std::sync::RwLock<TransferCancellationTrackerCollection>,
     db_sync_channel: Arc<SyncMessageChannel<Event>>,
     transfer_queue: Arc<BlockTransferQueue>,
 }
@@ -32,22 +32,20 @@ impl TransferManager {
             transfers: Arc::new(Mutex::new(vec![])),
             db_sync_channel,
             transfer_queue: Arc::new(BlockTransferQueue::init(CONCURRENCY as usize)),
-            cancellation_trackers: std::sync::Mutex::new(TransferCancellationTrackerCollection::new())
+            cancellation_trackers: std::sync::RwLock::new(
+                TransferCancellationTrackerCollection::new(),
+            ),
         }
     }
 
     pub async fn execute_request(&self, request: Request) {
         match request {
-            Request::DownloadFiles(download_request) => {
-                self.start_download(download_request).await
-            }
+            Request::DownloadFiles(download_request) => self.start_download(download_request).await,
             Request::UploadFiles(upload_reqiest) => self.start_upload(upload_reqiest).await,
             Request::ResumeTransfer(transfer) => self.resume_tranfer(transfer).await,
             Request::GetTransfers => self.broadcast_transfers().await,
-            Request::DeleteTransfer {
-                transfer_id
-            } => self.delete_transfer(&transfer_id).await,
-            Request::CancelTransferFile(request) => self.cancel_transfer_file(request).await
+            Request::DeleteTransfer { transfer_id } => self.delete_transfer(&transfer_id).await,
+            Request::CancelTransferFile(request) => self.cancel_transfer_file(request).await,
         }
     }
 
@@ -62,15 +60,28 @@ impl TransferManager {
         let index = transfers.iter().position(|t| t._id == transfer_id);
         if let Some(index) = index {
             transfers.remove(index);
-            self.events.send(Event::TransferDeleted { transfer_id: String::from(transfer_id) }).await;
-            self.db_sync_channel.send(Event::TransferDeleted { transfer_id: String::from(transfer_id) });
+            self.events
+                .send(Event::TransferDeleted {
+                    transfer_id: String::from(transfer_id),
+                })
+                .await;
+            self.db_sync_channel.send(Event::TransferDeleted {
+                transfer_id: String::from(transfer_id),
+            });
         }
 
-        self.cancellation_trackers.lock().unwrap().remove_job(transfer_id);
+        self.cancellation_trackers
+            .write()
+            .unwrap()
+            .remove_job(transfer_id);
     }
 
     pub async fn cancel_transfer_file(&self, request: CancelTransferFileRequest) {
-        self.cancellation_trackers.lock().unwrap().cancel_file(&request.transfer_id, &request.file_id).expect("Failed to cancel transfer");
+        self.cancellation_trackers
+            .write()
+            .unwrap()
+            .cancel_file(&request.transfer_id, &request.file_id)
+            .expect("Failed to cancel transfer");
 
         // TODO update file status in in-memory and persistent db
         let mut transfers = self.transfers.lock().await;
@@ -84,106 +95,123 @@ impl TransferManager {
             file_id: request.file_id.clone(),
             transfer_id: request.transfer_id.clone(),
             status: JobStatus::Cancelled,
-            error: None
+            error: None,
         });
-        
+
         self.events.send(Event::Transfers(transfers.clone())).await;
     }
 
     pub async fn resume_tranfer(&self, transfer: TransferJob) {
-      {
-          self.transfers.lock().await.push(transfer.clone()); // TODO: avoid unnecessary cloning
-          self.cancellation_trackers.lock().unwrap().add_job(&transfer);
-      }
+        {
+            self.transfers.lock().await.push(transfer.clone()); // TODO: avoid unnecessary cloning
+            self.cancellation_trackers
+                .write()
+                .unwrap()
+                .add_job(&transfer);
+        }
 
-      if transfer.status != JobStatus::Pending && transfer.status != JobStatus::Progress {
-          return;
-      }
+        if transfer.status != JobStatus::Pending && transfer.status != JobStatus::Progress {
+            return;
+        }
 
-      self.events
-          .send(Event::TransferCreated(transfer.clone()))
-          .await;
-      match transfer.transfer_kind {
-          TransferKind::Download => self.run_download(&transfer).await,
-          TransferKind::Upload => self.run_upload(&transfer).await,
-      }
+        self.events
+            .send(Event::TransferCreated(transfer.clone()))
+            .await;
+        match transfer.transfer_kind {
+            TransferKind::Download => self.run_download(&transfer).await,
+            TransferKind::Upload => self.run_upload(&transfer).await,
+        }
     }
 
     pub async fn start_download(&self, request: DownloadFilesRequest) {
-      let job = match request {
-        DownloadFilesRequest::FromSharedLink(shared_link_request) => {
-          self.init_download_job_from_project_share_link(&shared_link_request)
-        }
-        DownloadFilesRequest::FromLegacyTransferLink(legacy_transfer_request) => {
-          self.init_download_job_from_legacy_transfer_link(&legacy_transfer_request)
-        }
-      };
+        let job = match request {
+            DownloadFilesRequest::FromSharedLink(shared_link_request) => {
+                self.init_download_job_from_project_share_link(&shared_link_request)
+            }
+            DownloadFilesRequest::FromLegacyTransferLink(legacy_transfer_request) => {
+                self.init_download_job_from_legacy_transfer_link(&legacy_transfer_request)
+            }
+        };
 
-      let cloned_job = job.clone(); // TODO: try to get reference or at least move to heap instead of sharing
-      {
-          let mut transfers = self.transfers.lock().await;
-          transfers.push(job);
-      };
+        let cloned_job = job.clone(); // TODO: try to get reference or at least move to heap instead of sharing
+        {
+            let mut transfers = self.transfers.lock().await;
+            transfers.push(job);
+        };
 
-      self.cancellation_trackers.lock().unwrap().add_job(&cloned_job);
+        self.cancellation_trackers
+            .write()
+            .unwrap()
+            .add_job(&cloned_job);
 
-      self.events
-          .send(Event::TransferCreated(cloned_job.clone()))
-          .await;
-      self.db_sync_channel
-          .send(Event::TransferCreated(cloned_job.clone()));
+        self.events
+            .send(Event::TransferCreated(cloned_job.clone()))
+            .await;
+        self.db_sync_channel
+            .send(Event::TransferCreated(cloned_job.clone()));
 
-      let downloader = TransferDownloader::new(&cloned_job);
-      let transfers = Arc::clone(&(self.transfers));
-      let events = Arc::clone(&self.events);
-      let db_sync_channel = Arc::clone(&self.db_sync_channel);
-      let job_updates: MessageChannel<TransferUpdate> =
-          MessageChannel::new(move |update: TransferUpdate| {
-              // handle_transfer_update(Arc::clone(&transfers), update);
-              let transfers = Arc::clone(&transfers);
-              let events = Arc::clone(&events);
-              let db_sync_channel = Arc::clone(&db_sync_channel);
-              tokio::spawn(async move {
-                  handle_transfer_update(
-                      Arc::clone(&transfers),
-                      &update,
-                      Arc::clone(&events),
-                      Arc::clone(&db_sync_channel),
-                  )
-                  .await;
-              });
-          });
-      let job_updates = Arc::new(job_updates);
-      downloader
-          .start_download(self.transfer_queue.clone(), job_updates)
-          .await;
+        let cancellation_tracker = self.cancellation_trackers
+            .read()
+            .unwrap()
+            .get_transfer_cancellation_tracker(&cloned_job._id)
+            .expect("Failed to get cancellation tracker");
+        let downloader = TransferDownloader::new(&cloned_job, cancellation_tracker);
+        let transfers = Arc::clone(&(self.transfers));
+        let events = Arc::clone(&self.events);
+        let db_sync_channel = Arc::clone(&self.db_sync_channel);
+        let job_updates: MessageChannel<TransferUpdate> =
+            MessageChannel::new(move |update: TransferUpdate| {
+                // handle_transfer_update(Arc::clone(&transfers), update);
+                let transfers = Arc::clone(&transfers);
+                let events = Arc::clone(&events);
+                let db_sync_channel = Arc::clone(&db_sync_channel);
+                tokio::spawn(async move {
+                    handle_transfer_update(
+                        Arc::clone(&transfers),
+                        &update,
+                        Arc::clone(&events),
+                        Arc::clone(&db_sync_channel),
+                    )
+                    .await;
+                });
+            });
+        let job_updates = Arc::new(job_updates);
+        downloader
+            .start_download(self.transfer_queue.clone(), job_updates)
+            .await;
     }
 
     pub async fn run_download(&self, job: &TransferJob) {
-      let downloader = TransferDownloader::new(&job);
-      let transfers = Arc::clone(&(self.transfers));
-      let events = Arc::clone(&self.events);
-      let db_sync_channel = Arc::clone(&self.db_sync_channel);
-      let job_updates: MessageChannel<TransferUpdate> =
-          MessageChannel::new(move |update: TransferUpdate| {
-              // handle_transfer_update(Arc::clone(&transfers), update);
-              let transfers = Arc::clone(&transfers);
-              let events = Arc::clone(&events);
-              let db_sync_channel = Arc::clone(&db_sync_channel);
-              tokio::spawn(async move {
-                  handle_transfer_update(
-                      Arc::clone(&transfers),
-                      &update,
-                      Arc::clone(&events),
-                      Arc::clone(&db_sync_channel),
-                  )
-                  .await;
-              });
-          });
-      let job_updates = Arc::new(job_updates);
-      downloader
-          .start_download(self.transfer_queue.clone(), job_updates)
-          .await;
+        let cancellation_tracker = self.cancellation_trackers
+            .read()
+            .unwrap()
+            .get_transfer_cancellation_tracker(&job._id)
+            .expect("Could not get cancellation tracker for job");
+
+        let downloader = TransferDownloader::new(&job, cancellation_tracker);
+        let transfers = Arc::clone(&(self.transfers));
+        let events = Arc::clone(&self.events);
+        let db_sync_channel = Arc::clone(&self.db_sync_channel);
+        let job_updates: MessageChannel<TransferUpdate> =
+            MessageChannel::new(move |update: TransferUpdate| {
+                // handle_transfer_update(Arc::clone(&transfers), update);
+                let transfers = Arc::clone(&transfers);
+                let events = Arc::clone(&events);
+                let db_sync_channel = Arc::clone(&db_sync_channel);
+                tokio::spawn(async move {
+                    handle_transfer_update(
+                        Arc::clone(&transfers),
+                        &update,
+                        Arc::clone(&events),
+                        Arc::clone(&db_sync_channel),
+                    )
+                    .await;
+                });
+            });
+        let job_updates = Arc::new(job_updates);
+        downloader
+            .start_download(self.transfer_queue.clone(), job_updates)
+            .await;
     }
 
     pub async fn start_upload(&self, request: UploadFilesRequest) {
@@ -194,7 +222,10 @@ impl TransferManager {
             transfers.push(job);
         }
 
-        self.cancellation_trackers.lock().unwrap().add_job(&cloned_job);
+        self.cancellation_trackers
+            .write()
+            .unwrap()
+            .add_job(&cloned_job);
 
         self.events
             .send(Event::TransferCreated(cloned_job.clone()))
@@ -443,23 +474,33 @@ async fn handle_transfer_update(
                 status: JobStatus::Completed,
                 error: None,
             });
-            
-            let transfer = transfers.iter().find(|t| t._id.as_str() == transfer_id).unwrap();
-            if transfer.transfer_kind == TransferKind::Upload && transfer.upload_transfer_id != None {
-                let file = transfer.files.iter().find(|f| f._id.as_str() == file_id).unwrap();
 
-                events.send(Event::TransferFileUploadComplete {
-                    transfer_id: transfer_id.clone(),
-                    remote_transfer_id: transfer.upload_transfer_id.clone().unwrap(),
-                    file_id: file_id.clone() ,
-                    remote_file_id: file.remote_file_id.clone()
-                }).await;
+            let transfer = transfers
+                .iter()
+                .find(|t| t._id.as_str() == transfer_id)
+                .unwrap();
+            if transfer.transfer_kind == TransferKind::Upload && transfer.upload_transfer_id != None
+            {
+                let file = transfer
+                    .files
+                    .iter()
+                    .find(|f| f._id.as_str() == file_id)
+                    .unwrap();
+
+                events
+                    .send(Event::TransferFileUploadComplete {
+                        transfer_id: transfer_id.clone(),
+                        remote_transfer_id: transfer.upload_transfer_id.clone().unwrap(),
+                        file_id: file_id.clone(),
+                        remote_file_id: file.remote_file_id.clone(),
+                    })
+                    .await;
             }
-        },
+        }
         TransferUpdate::FileFailed {
             file_id,
             transfer_id,
-            error
+            error,
         } => {
             handle_file_failed(&mut transfers, &transfer_id, file_id, error.clone());
 
@@ -470,6 +511,15 @@ async fn handle_transfer_update(
                 error: Some(error.clone()),
             });
         },
+        TransferUpdate::FileCancelled {
+            file_id,
+            transfer_id
+        } => {
+            // Since transfers and files are marked as cancelled
+            // before cancellation request is sent to the downloaders/uploaders
+            // we don't need to handle cancellation again here since the UI and DB
+            // are already updated.
+        } ,
         TransferUpdate::TransferCompleted { transfer_id } => {
             handle_transfer_completed(&mut transfers, transfer_id);
             // let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
@@ -480,9 +530,15 @@ async fn handle_transfer_update(
                 error: None,
             });
 
-            events.send(
-                Event::TransferCompleted(
-                    transfers.iter().find(|t| &t._id == transfer_id).unwrap().clone())).await;
+            events
+                .send(Event::TransferCompleted(
+                    transfers
+                        .iter()
+                        .find(|t| &t._id == transfer_id)
+                        .unwrap()
+                        .clone(),
+                ))
+                .await;
         }
     }
 

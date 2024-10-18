@@ -8,16 +8,19 @@ use crate::core::transfer_queue::{BlockDownloadRequest, BlockTransferRequest, Bl
 use super::message_channel::MessageChannel;
 
 use super::dtos::*;
+use super::transfer_cancellation_tracker::{FileCancellationTracker, TransferCancellationTracker};
 use super::transfer_queue::BlockTransferQueue;
 
 pub struct TransferDownloader<'a> {
-    request: &'a TransferJob
+    request: &'a TransferJob,
+    cancellation_tracker: TransferCancellationTracker,
 }
 
 impl TransferDownloader<'_> {
-    pub fn new(request: &TransferJob) -> TransferDownloader {
+    pub fn new(request: &TransferJob, cancellation_tracker: TransferCancellationTracker) -> TransferDownloader {
         TransferDownloader {
             request,
+            cancellation_tracker
         }
     }
 
@@ -29,11 +32,16 @@ impl TransferDownloader<'_> {
         // consider sorting files by size so smaller files can be downloaded and completed first
         for f in files {
             if f.status == JobStatus::Pending || f.status == JobStatus::Progress {
+                let cancellation_tracker = self.cancellation_tracker
+                    .get_file_cancellation_tracker(&f._id)
+                    .expect("Failed to get cancellation tracker for file");
                 let (dispatcher, watcher) = init_file_downloader(
                     f.clone(),
                     self.request._id.clone(),
                     transfer_queue.clone(),
-                    events.clone());
+                    events.clone(),
+                    cancellation_tracker
+                );
                 
                 dispatchers.push(dispatcher);
                 watchers.push(watcher);
@@ -48,7 +56,11 @@ impl TransferDownloader<'_> {
         let mut tasks = vec![];
         tasks.push(tokio::spawn(async move {
             for dispatcher in dispatchers {
-                dispatcher.queue_file().await;
+                if !dispatcher.cancellation_tracker.is_cancelled() {
+                    dispatcher.queue_file().await;
+                } else {
+                    println!("File is cancelled, skip queueing");
+                }
             }
         }));
 
@@ -74,6 +86,7 @@ fn init_file_downloader(
     transfer_id: String,
     transfer_queue: Arc<BlockTransferQueue>,
     events: Arc<MessageChannel<TransferUpdate>>,
+    cancellation_tracker: FileCancellationTracker,
 ) -> (FileDownloadBlocksDispatcher, FileDownloadCompletionWatcher) {
     let file_job = Arc::new(file_job);
     let (tx, rx) = tokio::sync::mpsc::channel(file_job.blocks.len());
@@ -82,7 +95,8 @@ fn init_file_downloader(
         file_job: file_job.clone(),
         transfer_queue: transfer_queue.clone(),
         update_tx: tx,
-        file_started_tx
+        file_started_tx,
+        cancellation_tracker
     };
 
     let completion_watcher = FileDownloadCompletionWatcher {
@@ -100,7 +114,8 @@ struct FileDownloadBlocksDispatcher {
     file_job: Arc<TransferJobFile>,
     transfer_queue: Arc<BlockTransferQueue>,
     update_tx: tokio::sync::mpsc::Sender<BlockTransferUpdate>,
-    file_started_tx: tokio::sync::oneshot::Sender<FileTransferStartMessage>
+    file_started_tx: tokio::sync::oneshot::Sender<FileTransferStartMessage>,
+    cancellation_tracker: FileCancellationTracker
 }
 
 struct FileDownloadCompletionWatcher {
@@ -119,7 +134,8 @@ enum FileTransferStartMessage {
     },
     Failed {
         error: String
-    }
+    },
+    Cancelled
 }
 
 
@@ -127,6 +143,13 @@ impl FileDownloadBlocksDispatcher {
     pub async fn queue_file(self) {
         // create file
         let started_at = Instant::now();
+
+        if self.cancellation_tracker.is_cancelled() {
+            self.file_started_tx.send(FileTransferStartMessage::Failed {
+                error: String::from("Download cancelled")
+            }).expect("Failed to send file transfer started event");
+            return;
+        }
 
         let file_path = std::path::Path::new(&self.file_job.local_path);
         let directory = match file_path.parent() {
@@ -204,6 +227,11 @@ impl FileDownloadBlocksDispatcher {
                 continue;
             }
 
+            if self.cancellation_tracker.is_cancelled() {
+                println!("File {} {} cancelled, stop queuing blocks", file_job._id, file_job.name);
+                break;
+            }
+
             let chunk_size = file_job.chunk_size;
             let offset = block.index * chunk_size;
             let end = std::cmp::min(offset + chunk_size, file_job.size);
@@ -216,7 +244,8 @@ impl FileDownloadBlocksDispatcher {
                     size: real_size,
                     file: file.clone(),
                     client: blob.clone(),
-                    update_channel: self.update_tx.clone()
+                    update_channel: self.update_tx.clone(),
+                    cancellation: self.cancellation_tracker.clone(),
                 })
             )).await.expect("Failed to send download block to queue");
         }
@@ -236,6 +265,16 @@ impl FileDownloadCompletionWatcher {
                         file_id: self.file_job._id.clone(),
                         transfer_id: self.transfer_id.clone(),
                         error: error
+                    }
+                ).await;
+
+                return;
+            },
+            FileTransferStartMessage::Cancelled => {
+                self.events.send(
+                    TransferUpdate::FileCancelled {
+                        file_id: self.file_job._id.clone(),
+                        transfer_id: self.transfer_id.clone()
                     }
                 ).await;
 
@@ -280,7 +319,7 @@ impl FileDownloadCompletionWatcher {
                     block_index,
                     error
                 } => {
-                    println!("Failed to upload block {block_index} id: {block_id}: {error}");
+                    println!("Failed to download block {block_index} id: {block_id}: {error}");
                     self.events
                     .send(TransferUpdate::FileFailed {
                         file_id: self.file_job._id.clone(),
@@ -290,6 +329,18 @@ impl FileDownloadCompletionWatcher {
                     .await;
 
                     return;
+                },
+                BlockTransferUpdate::Cancelled {
+                    block_id,
+                    block_index,
+                } => {
+                    println!("Block download cancelled {block_index} id: {block_id}");
+                    self.events
+                    .send(TransferUpdate::FileCancelled { 
+                        file_id: self.file_job._id.clone(),
+                        transfer_id: self.transfer_id.clone(),
+                    })
+                    .await;
                 }
             }
         }

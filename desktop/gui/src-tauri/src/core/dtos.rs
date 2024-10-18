@@ -209,6 +209,10 @@ pub enum TransferUpdate {
       transfer_id: String,
       error: String
     },
+    FileCancelled {
+      file_id: String,
+      transfer_id: String
+    },
     TransferCompleted {
         transfer_id: String,
     }

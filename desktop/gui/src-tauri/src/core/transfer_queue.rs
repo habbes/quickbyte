@@ -10,7 +10,7 @@ use bytes::{Buf, BufMut, Bytes, BytesMut};
 use super::{
     dtos::{TransferJobFileBlock, TransferUpdate},
     error::AppError,
-    message_channel::MessageChannel,
+    message_channel::MessageChannel, transfer_cancellation_tracker::FileCancellationTracker,
 };
 
 // chunks from all transfers will be queued through
@@ -48,6 +48,7 @@ pub struct BlockDownloadRequest {
     pub file: Arc<std::sync::RwLock<std::fs::File>>,
     pub client: Arc<BlobClient>,
     pub update_channel: mpsc::Sender<BlockTransferUpdate>,
+    pub cancellation: FileCancellationTracker
 }
 
 #[derive(Debug)]
@@ -58,6 +59,10 @@ pub enum BlockTransferUpdate {
         size: u64,
     },
     Completed {
+        block_id: String,
+        block_index: u64,
+    },
+    Cancelled {
         block_id: String,
         block_index: u64,
     },
@@ -227,6 +232,10 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
     let end_range = request.offset + request.size;
     
     while retry {
+        if request.cancellation.is_cancelled() {
+            println!("Detected file cancelled during block download. Skipping block.");
+            break;
+        }
         // for simplicity, we retry the entire block on error even if
         // some parts of the block were already successfully downloaded
         // and streamed in the file.
@@ -288,6 +297,11 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
                                 }
                             }
                         }
+
+                        if request.cancellation.is_cancelled() {
+                            println!("Detected file cancelled during block chunk download. Skipping block.");
+                            break;
+                        }
                     }
                 }
                 Err(err) => {
@@ -312,8 +326,15 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
         }
     }
 
-    request.update_channel.send(BlockTransferUpdate::Completed {
-        block_id: request.block._id,
-        block_index: request.block.index,
-    }).await.expect("Failed to send chunk download completion update.");
+    if request.cancellation.is_cancelled() {
+        request.update_channel.send(BlockTransferUpdate::Cancelled {
+            block_id: request.block._id.clone(),
+            block_index: request.block.index
+        }).await.expect("Failed to send chunk download cancellation update.");
+    } else {
+        request.update_channel.send(BlockTransferUpdate::Completed {
+            block_id: request.block._id,
+            block_index: request.block.index,
+        }).await.expect("Failed to send chunk download completion update.");
+    }
 }

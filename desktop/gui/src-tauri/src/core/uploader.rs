@@ -291,6 +291,22 @@ impl FileUploadCompletionWatcher {
                     // TODO: will this close the receiver? will it also cause the
                     // transmitter to panick?
                     return;
+                },
+                BlockTransferUpdate::Cancelled {
+                    block_id,
+                    block_index,
+                } => {
+                    println!("Block upload cancelled {block_index} id: {block_id}");
+                    self.events
+                    .send(TransferUpdate::FileCancelled {
+                        file_id: self.file_job._id.clone(),
+                        transfer_id: self.transfer_id.clone(),
+                    })
+                    .await;
+
+                    // TODO: will this close the receiver? will it also cause the
+                    // transmitter to panick?
+                    return;
                 }
             };
         }
@@ -313,6 +329,7 @@ impl FileUploadCompletionWatcher {
         let block_list = BlockList { blocks: block_ids };
 
         let mut retry = true;
+        // TODO don't retry if cancelled
         while retry {
             match self.blob_client
                 .put_block_list(block_list.clone())// TODO: Can we create a shared ref instead of cloning?
