@@ -79,8 +79,17 @@ export interface AppConfig {
     // S3
     s3AccessKeyId: string;
     s3SecretAccessKey: string;
-    // Google auth:
+    /**
+     * Google Client ID used on the Web App
+     */
     googleClientId: string;
+    /**
+     * Google Client ID used on the Desktop Transfer App
+     */
+    googleClientIdForDesktopTransferApp: string;
+    /**
+     * @deprecated
+     */
     googleClientSecret: string;
     // Email
     emailProvider: 'mailjet'|'local';
@@ -159,6 +168,7 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN'),
         webappBaseUrl: getRequiredEnv(env, 'WEBAPP_BASE_URL'),
         googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
+        googleClientIdForDesktopTransferApp: getRequiredEnv(env, 'GOOGLE_CLIENT_ID_DESKTOP_TRANSFER_APP'),
         googleClientSecret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
         emailAnnouncementPassword: getRequiredEnv(env, "EMAIL_ANNOUNCEMENT_PASSWORD"),
         // TODO: Consider removing these if don't add cloudflare integration by June 2024

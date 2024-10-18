@@ -171,6 +171,7 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
         aadClientSecret: config.aadClientSecret,
         aadTenantId: config.aadTenantId,
         googleClientId: config.googleClientId,
+        desktopTransferAppGoogleClientId: config.googleClientIdForDesktopTransferApp,
         googleClientSecret: config.googleClientSecret,
         accounts,
         email: emailHandler,
