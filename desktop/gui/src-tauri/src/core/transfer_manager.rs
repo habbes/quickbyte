@@ -269,7 +269,17 @@ impl TransferManager {
         self.db_sync_channel
             .send(Event::TransferCreated(cloned_job.clone()));
 
-        let uploader = TransferUploader::new(&cloned_job, self.transfer_queue.clone());
+        let cancellation_tracker = self.cancellation_trackers
+            .read()
+            .unwrap()
+            .get_transfer_cancellation_tracker(&cloned_job._id)
+            .expect("Could not get cancellation tracker for job");
+
+        let uploader = TransferUploader::new(
+            &cloned_job, self.transfer_queue.clone(),
+            cancellation_tracker
+        );
+    
         let transfers = Arc::clone(&(self.transfers));
         let events = Arc::clone(&self.events);
         let db_sync_channel = Arc::clone(&self.db_sync_channel);
@@ -294,7 +304,17 @@ impl TransferManager {
     }
 
     async fn run_upload(&self, job: &TransferJob) {
-        let uploader = TransferUploader::new(job, self.transfer_queue.clone());
+        let cancellation_tracker = self.cancellation_trackers
+            .read()
+            .unwrap()
+            .get_transfer_cancellation_tracker(&job._id)
+            .expect("Failed to get cancellation tracker");
+
+        let uploader = TransferUploader::new(
+            job, self.transfer_queue.clone(),
+            cancellation_tracker
+        );
+
         let transfers = Arc::clone(&(self.transfers));
         let events = Arc::clone(&self.events);
         let db_sync_channel = Arc::clone(&self.db_sync_channel);

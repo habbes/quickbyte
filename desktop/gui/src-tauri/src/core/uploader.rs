@@ -7,24 +7,27 @@ use std::{sync::Arc, time::Instant};
 use url::Url;
 
 use super::{
-    dtos::*,
-    error::*,
-    message_channel::MessageChannel,
-    transfer_queue::{
+    dtos::*, error::*, message_channel::MessageChannel, transfer_cancellation_tracker::{FileCancellationTracker, TransferCancellationTracker}, transfer_queue::{
         BlockTransferQueue, BlockTransferRequest, BlockTransferUpdate, BlockUploadRequest,
-    },
+    }
 };
 
 pub struct TransferUploader<'a> {
     request: &'a TransferJob,
     transfer_queue: Arc<BlockTransferQueue>,
+    cancellation_tracker: TransferCancellationTracker,
 }
 
 impl<'a> TransferUploader<'a> {
-    pub fn new(request: &TransferJob, transfer_queue: Arc<BlockTransferQueue>) -> TransferUploader {
+    pub fn new(
+        request: &TransferJob,
+        transfer_queue: Arc<BlockTransferQueue>,
+        cancellation_tracker: TransferCancellationTracker
+    ) -> TransferUploader {
         TransferUploader {
             request,
             transfer_queue,
+            cancellation_tracker
         }
     }
 
@@ -33,11 +36,16 @@ impl<'a> TransferUploader<'a> {
         let mut watchers = vec![];
         for file in &self.request.files {
             if file.status == JobStatus::Pending || file.status == JobStatus::Progress {
+                let cancellation_tracker = self.cancellation_tracker
+                    .get_file_cancellation_tracker(&file._id)
+                    .expect("Failed to get cancellation tracker for file");
+
                 match init_file_upload(
                     self.request._id.clone(),
                     file.clone(),
                     self.transfer_queue.clone(),
-                    events.clone()) {
+                    events.clone(),
+                    cancellation_tracker) {
                     
                     Ok((dispatcher, watcher)) => {
                         dispatchers.push(dispatcher);
@@ -69,7 +77,11 @@ impl<'a> TransferUploader<'a> {
         let mut tasks = vec![];
         tasks.push(tokio::spawn(async move {
             for dispatcher in dispatchers {
-                dispatcher.queue_file().await;
+                if !dispatcher.cancellation_tracker.is_cancelled() {
+                    dispatcher.queue_file().await;
+                } else {
+                    println!("File is cancelled, skip queueing");
+                }
             }
         }));
 
@@ -105,7 +117,8 @@ fn init_file_upload(
     transfer_id: String,
     file_job: TransferJobFile,
     transfer_queue: Arc<BlockTransferQueue>,
-    events: Arc<MessageChannel<TransferUpdate>>
+    events: Arc<MessageChannel<TransferUpdate>>,
+    cancellation_tracker: FileCancellationTracker
 ) -> Result<(FileUploadBlockDispatcher, FileUploadCompletionWatcher), AppError> {
 
     let url = Url::parse(&file_job.remote_url)
@@ -124,7 +137,8 @@ fn init_file_upload(
         transfer_queue: transfer_queue.clone(),
         update_tx,
         blob_client: blob_client.clone(),
-        file_started_tx
+        file_started_tx,
+        cancellation_tracker: cancellation_tracker.clone()
     };
 
     let watcher = FileUploadCompletionWatcher {
@@ -133,7 +147,8 @@ fn init_file_upload(
         update_rx,
         file_started_rx,
         events,
-        blob_client
+        blob_client,
+        cancellation_tracker: cancellation_tracker
     };
 
     Ok((dispatcher, watcher))
@@ -146,6 +161,7 @@ struct FileUploadBlockDispatcher {
     update_tx: tokio::sync::mpsc::Sender<BlockTransferUpdate>,
     file_started_tx: tokio::sync::oneshot::Sender<FileUploadStartMessage>,
     blob_client: Arc<BlobClient>,
+    cancellation_tracker: FileCancellationTracker
 }
 
 #[derive(Debug)]
@@ -156,6 +172,7 @@ struct FileUploadCompletionWatcher {
     file_started_rx: tokio::sync::oneshot::Receiver<FileUploadStartMessage>,
     events: Arc<MessageChannel<TransferUpdate>>,
     blob_client: Arc<BlobClient>,
+    cancellation_tracker: FileCancellationTracker
 }
 
 #[derive(Debug)]
@@ -165,12 +182,20 @@ enum FileUploadStartMessage {
     },
     Failed {
         error: String
-    }
+    },
+    Cancelled
 }
 
 impl FileUploadBlockDispatcher {
     pub async fn queue_file(self) {
         println!("Uploading file {}", self.file_job.name);
+
+        if self.cancellation_tracker.is_cancelled() {
+            self.file_started_tx.send(FileUploadStartMessage::Cancelled)
+            .expect("Failed to send file cancellation message");
+
+            return;
+        }
 
         let file = match std::fs::File::open(&self.file_job.local_path) {
             Ok(file) => Arc::new(file),
@@ -198,15 +223,16 @@ impl FileUploadBlockDispatcher {
                     continue;
                 }
 
+                if self.cancellation_tracker.is_cancelled() {
+                    println!("File {} {} cancelled, stop queuing blocks", file_job._id, file_job.name);
+                    break;
+                }
+
                 let chunk_size = file_job.chunk_size;
                 let offset = block.index * chunk_size;
                 let end = std::cmp::min(offset + chunk_size, file_job.size);
                 let real_size = end - offset;
 
-                println!(
-                    "Sent block {} of file {} to queue",
-                    block.index, file_job.name
-                );
                 // Since the transfer queue is bounded, the task might block at this point until
                 // some items in the queue have completed their transfer
                 self.transfer_queue
@@ -217,6 +243,7 @@ impl FileUploadBlockDispatcher {
                         file: Arc::clone(&file),
                         client: blob_client.clone(),
                         update_channel: self.update_tx.clone(),
+                        cancellation: self.cancellation_tracker.clone()
                     })))
                     .await
                     .expect("Failed to send block to transfer queue");
@@ -237,10 +264,21 @@ impl FileUploadCompletionWatcher {
                 }).await;
 
                 return;
+            },
+            FileUploadStartMessage::Cancelled => {
+                self.events.send(
+                    TransferUpdate::FileCancelled {
+                        file_id: self.file_job._id.clone(),
+                        transfer_id: self.transfer_id.clone()
+                    }
+                ).await;
+
+                return;
             }
         };
         
         let mut num_completed = 0;
+
         while let Some(block_update) = self.update_rx.recv().await {
             match block_update {
                 BlockTransferUpdate::Progress {
@@ -303,12 +341,12 @@ impl FileUploadCompletionWatcher {
                         transfer_id: self.transfer_id.clone(),
                     })
                     .await;
-
-                    // TODO: will this close the receiver? will it also cause the
-                    // transmitter to panick?
-                    return;
                 }
             };
+        }
+
+        if self.cancellation_tracker.is_cancelled() {
+            return;
         }
 
         println!(
@@ -331,6 +369,18 @@ impl FileUploadCompletionWatcher {
         let mut retry = true;
         // TODO don't retry if cancelled
         while retry {
+            if self.cancellation_tracker.is_cancelled() {
+                println!("Block list cancelled for {}", self.file_job.name);
+                self.events
+                .send(TransferUpdate::FileCancelled {
+                    file_id: self.file_job._id.clone(),
+                    transfer_id: self.transfer_id.clone(),
+                })
+                .await;
+
+                return;
+            }
+
             match self.blob_client
                 .put_block_list(block_list.clone())// TODO: Can we create a shared ref instead of cloning?
                 .into_future()

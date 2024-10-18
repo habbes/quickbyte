@@ -38,6 +38,7 @@ pub struct BlockUploadRequest {
     pub file: Arc<std::fs::File>,
     pub client: Arc<BlobClient>,
     pub update_channel: mpsc::Sender<BlockTransferUpdate>,
+    pub cancellation: FileCancellationTracker
 }
 
 #[derive(Debug)]
@@ -163,6 +164,10 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
     // Upload the block
     let mut retry = true;
     while retry {
+        if request.cancellation.is_cancelled() {
+            println!("Detected file cancelled during block download. Skipping block {} {}", request.block._id, request.block.index);
+            break;
+        }
         match request
             .client
             .put_block(request.block._id.clone().into_bytes(), buffer.clone())
@@ -191,6 +196,17 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
                 }
             }
         }
+    }
+
+    if request.cancellation.is_cancelled() {
+        request
+        .update_channel
+        .send(BlockTransferUpdate::Cancelled {
+            block_id: request.block._id.clone(),
+            block_index: request.block.index,
+        })
+        .await
+        .ok();
     }
 
     request
