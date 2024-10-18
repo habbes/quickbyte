@@ -8,23 +8,25 @@ use super::{
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
+type DbChannel = Arc<SyncMessageChannel<Event>>;
+type EventChannel = Arc<MessageChannel<Event>>;
 
 const CONCURRENCY: u32 = 32;
 
 #[derive(Debug)]
 pub struct TransferManager {
-    events: Arc<MessageChannel<Event>>,
+    events: EventChannel,
     chunk_size: u64,
     transfers: Arc<Mutex<Vec<TransferJob>>>,
     cancellation_trackers: std::sync::RwLock<TransferCancellationTrackerCollection>,
-    db_sync_channel: Arc<SyncMessageChannel<Event>>,
+    db_sync_channel: DbChannel,
     transfer_queue: Arc<BlockTransferQueue>,
 }
 
 impl TransferManager {
     pub fn new(
         events: MessageChannel<Event>,
-        db_sync_channel: Arc<SyncMessageChannel<Event>>,
+        db_sync_channel: DbChannel,
     ) -> Self {
         Self {
             events: Arc::new(events),
@@ -497,11 +499,6 @@ async fn handle_transfer_update(
             file_id,
             transfer_id,
         } => {
-            // let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
-            // let file = transfer.files.iter_mut().find(|f| f._id == file_id).unwrap();
-            // file.completed_size += file.size;
-            // file.status = JobStatus::Completed;
-            // transfer.status = JobStatus::Progress;
             handle_chunk_progress(&mut transfers, transfer_id, file_id, *size);
         }
         TransferUpdate::ChunkCompleted {
@@ -510,34 +507,24 @@ async fn handle_transfer_update(
             file_id,
             transfer_id,
         } => {
-            handle_chunk_completed(&mut transfers, transfer_id, file_id, chunk_id.as_str());
-            
-            db_sync_channel.send(Event::TransferFileBlockStatusUpdate {
-                block_id: chunk_id.clone(),
-                file_id: file_id.clone(),
-                status: JobStatus::Completed,
-                error: None,
-            });
+            handle_chunk_completed(
+                &mut transfers,
+                transfer_id,
+                file_id, 
+                chunk_id.as_str(),
+                db_sync_channel);
         }
         TransferUpdate::FileCompleted {
             file_id,
             transfer_id,
         } => {
-            handle_file_completed(&mut transfers, transfer_id, file_id);
-
-            db_sync_channel.send(Event::TransferFileStatusUpdate {
-                file_id: file_id.clone(),
-                transfer_id: transfer_id.clone(),
-                status: JobStatus::Completed,
-                error: None,
-            });
+            handle_file_completed(&mut transfers, transfer_id, file_id, db_sync_channel);
 
             let transfer = transfers
                 .iter()
                 .find(|t| t._id.as_str() == transfer_id)
                 .unwrap();
-            if transfer.transfer_kind == TransferKind::Upload && transfer.upload_transfer_id != None
-            {
+            if transfer.status.is_active() && transfer.transfer_kind == TransferKind::Upload && transfer.upload_transfer_id != None {
                 let file = transfer
                     .files
                     .iter()
@@ -559,14 +546,7 @@ async fn handle_transfer_update(
             transfer_id,
             error,
         } => {
-            handle_file_failed(&mut transfers, &transfer_id, file_id, error.clone());
-
-            db_sync_channel.send(Event::TransferFileStatusUpdate {
-                file_id: file_id.clone(),
-                transfer_id: transfer_id.clone(),
-                status: JobStatus::Error,
-                error: Some(error.clone()),
-            });
+            handle_file_failed(&mut transfers, &transfer_id, file_id, error.clone(), db_sync_channel);
         },
         TransferUpdate::FileCancelled {
             file_id,
@@ -578,15 +558,8 @@ async fn handle_transfer_update(
             // are already updated.
         } ,
         TransferUpdate::TransferCompleted { transfer_id } => {
-            handle_transfer_completed(&mut transfers, transfer_id);
-            // let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
-            // transfer.status = JobStatus::Completed;
-            db_sync_channel.send(Event::TransferStatusUpdate {
-                transfer_id: transfer_id.clone(),
-                status: JobStatus::Completed,
-                error: None,
-            });
-
+            handle_transfer_completed(&mut transfers, transfer_id, db_sync_channel);
+            
             events
                 .send(Event::TransferCompleted(
                     transfers
@@ -607,18 +580,26 @@ fn handle_chunk_progress(
     transfer_id: &str,
     file_id: &str,
     chunk_size: u64,
+
 ) {
     let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+    if transfer.status.is_terminal() {
+        return;
+    }
+
     let file = transfer
         .files
         .iter_mut()
         .find(|f| f._id == file_id)
         .unwrap();
-    if file.status == JobStatus::Pending || file.status == JobStatus::Progress {
-        file.completed_size += chunk_size;
-        file.status = JobStatus::Progress;
-        transfer.status = JobStatus::Progress;
+
+    if file.status.is_terminal() {
+        return;
     }
+
+    file.completed_size += chunk_size;
+    file.status = JobStatus::Progress;
+    transfer.status = JobStatus::Progress;
 }
 
 fn handle_chunk_completed(
@@ -626,13 +607,23 @@ fn handle_chunk_completed(
     transfer_id: &str,
     file_id: &str,
     chunk_id: &str,
+    db_sync_channel: DbChannel
 ) {
     let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+    if transfer.status.is_terminal() {
+        return;
+    }
+
     let file = transfer
         .files
         .iter_mut()
         .find(|f| f._id == file_id)
         .unwrap();
+
+    if file.status.is_terminal() {
+        return;
+    }
+
     let block = file
         .blocks
         .iter_mut()
@@ -641,22 +632,50 @@ fn handle_chunk_completed(
     file.status = JobStatus::Progress;
     transfer.status = JobStatus::Progress;
     block.status = JobStatus::Completed;
+
+
+    db_sync_channel.send(Event::TransferFileBlockStatusUpdate {
+        block_id: String::from(chunk_id),
+        file_id: String::from(file_id),
+        status: JobStatus::Completed,
+        error: None,
+    });
 }
 
 fn handle_file_completed(
     transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>,
     transfer_id: &str,
     file_id: &str,
+    db_sync_channel: DbChannel
 ) {
+    let file_id = String::from(file_id);
+    let transfer_id = String::from(transfer_id);
+
     let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+    if transfer.status.is_terminal() {
+        return;
+    }
+
     let file = transfer
         .files
         .iter_mut()
         .find(|f| f._id == file_id)
         .unwrap();
+
+    if file.status.is_terminal() {
+        return;
+    }
+
     file.completed_size = file.size;
     file.status = JobStatus::Completed;
     transfer.status = JobStatus::Progress;
+
+    db_sync_channel.send(Event::TransferFileStatusUpdate {
+        file_id: file_id.clone(),
+        transfer_id: transfer_id.clone(),
+        status: JobStatus::Completed,
+        error: None,
+    });
 }
 
 fn handle_file_failed(
@@ -664,23 +683,56 @@ fn handle_file_failed(
     transfer_id: &str,
     file_id: &str,
     error: String,
+    db_sync_channel: DbChannel
 ) {
+    let transfer_id = String::from(transfer_id);
+    let file_id = String::from(file_id);
+
     let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+    if transfer.status.is_terminal() {
+        return;
+    }
+
     let file = transfer
         .files
         .iter_mut()
         .find(|f| f._id == file_id)
         .unwrap();
+
+    if file.status.is_terminal() {
+        return;
+    }
+
     file.status = JobStatus::Error;
-    file.error = Some(error);
+    file.error = Some(error.clone());
     transfer.status = JobStatus::Progress;
+
+    db_sync_channel.send(Event::TransferFileStatusUpdate {
+        file_id: file_id.clone(),
+        transfer_id: transfer_id.clone(),
+        status: JobStatus::Error,
+        error: Some(error),
+    });
 }
 
 fn handle_transfer_completed(
     transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>,
     transfer_id: &str,
+    db_sync_channel: DbChannel
 ) {
-    // let mut transfers = self.transfers.lock().await;
+    let transfer_id = String::from(transfer_id);
+
     let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+    if transfer.status.is_terminal() {
+        return;
+    }
+
     transfer.status = JobStatus::Completed;
+
+    db_sync_channel.send(Event::TransferStatusUpdate {
+        transfer_id: transfer_id.clone(),
+        status: JobStatus::Completed,
+        error: None,
+    });
+
 }

@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum JobStatus {
   Pending,
@@ -8,6 +8,16 @@ pub enum JobStatus {
   Completed,
   Cancelled,
   Error
+}
+
+impl JobStatus {
+  pub fn is_active(self) -> bool {
+    !self.is_terminal()
+  }
+
+  pub fn is_terminal(self) -> bool {
+    self == JobStatus::Cancelled || self == JobStatus::Completed || self == JobStatus::Error
+  }
 }
 
 impl Into<&'static str> for JobStatus {

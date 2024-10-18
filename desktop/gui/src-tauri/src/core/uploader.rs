@@ -413,6 +413,14 @@ impl FileUploadCompletionWatcher {
             }
         }
 
+        if self.cancellation_tracker.is_cancelled() {
+            self.events.send(TransferUpdate::FileCancelled {
+                file_id: self.file_job._id.clone(),
+                transfer_id: self.transfer_id.clone()
+            }).await;
+            return;
+        }
+
         println!(
             "Completed upload for file {} in {}s",
             self.file_job.name,

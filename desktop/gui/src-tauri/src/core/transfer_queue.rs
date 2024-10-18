@@ -207,6 +207,8 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
         })
         .await
         .ok();
+        
+        return;
     }
 
     request
