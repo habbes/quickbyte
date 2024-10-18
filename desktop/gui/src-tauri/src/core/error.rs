@@ -1,4 +1,5 @@
-use tokio::sync::mpsc::error::{SendError, RecvError};
+use tokio::sync::mpsc::error::{SendError};
+use tokio::sync::oneshot::error::RecvError;
 // see: https://docs.rs/thiserror/latest/thiserror/
 use thiserror::Error;
 use azure_core::{StatusCode, Result as AzureResult};
@@ -18,11 +19,19 @@ pub enum AppError {
     FileTransferLinkAuth(String),
     #[error("network error: {0}")]
     Network(String),
+    #[error("authentication error: {0}")]
+    AuthError(String)
 }
 
 impl<T> From<SendError<T>> for AppError {
     fn from(value: SendError<T>) -> Self {
-        AppError::Internal(String::from("failed to send message over channel"))
+        AppError::Internal(format!("failed to send message over channel: {value}"))
+    }
+}
+
+impl From<RecvError> for AppError {
+    fn from(value: RecvError) -> Self {
+        AppError::Internal(format!("failed to recieve message over channel: {value}"))
     }
 }
 

@@ -116,7 +116,8 @@ async function loginWithGoogle() {
     console.log('google token result', googleResult);
 
     const result = await trpcClient.loginWithGoogle.mutate({
-      idToken: googleResult.idToken
+      idToken: googleResult.idToken,
+      appType: 'desktopTransferApp' // necessary to ensure server uses the correct client ID
     });
 
     if ('authToken' in result) {
