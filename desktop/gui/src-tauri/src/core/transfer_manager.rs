@@ -16,7 +16,7 @@ pub struct TransferManager {
     events: Arc<MessageChannel<Event>>,
     chunk_size: u64,
     transfers: Arc<Mutex<Vec<TransferJob>>>,
-    cancellation_trackers: TransferCancellationTrackerCollection,
+    cancellation_trackers: std::sync::Mutex<TransferCancellationTrackerCollection>,
     db_sync_channel: Arc<SyncMessageChannel<Event>>,
     transfer_queue: Arc<BlockTransferQueue>,
 }
@@ -32,7 +32,7 @@ impl TransferManager {
             transfers: Arc::new(Mutex::new(vec![])),
             db_sync_channel,
             transfer_queue: Arc::new(BlockTransferQueue::init(CONCURRENCY as usize)),
-            cancellation_trackers: TransferCancellationTrackerCollection::new()
+            cancellation_trackers: std::sync::Mutex::new(TransferCancellationTrackerCollection::new())
         }
     }
 
@@ -67,8 +67,8 @@ impl TransferManager {
         }
     }
 
-    pub async fn cancel_transfer_file(&mut self, request: CancelTransferFileRequest) {
-        self.cancellation_trackers.cancel_file(&request.transfer_id, &request.file_id);
+    pub async fn cancel_transfer_file(&self, request: CancelTransferFileRequest) {
+        self.cancellation_trackers.lock().unwrap().cancel_file(&request.transfer_id, &request.file_id);
 
         // TODO update file status in in-memory and persistent db
         let mut transfers = self.transfers.lock().await;
@@ -88,10 +88,10 @@ impl TransferManager {
         self.events.send(Event::Transfers(transfers.clone())).await;
     }
 
-    pub async fn resume_tranfer(&mut self, transfer: TransferJob) {
+    pub async fn resume_tranfer(&self, transfer: TransferJob) {
       {
           self.transfers.lock().await.push(transfer.clone()); // TODO: avoid unnecessary cloning
-          self.cancellation_trackers.add_job(&transfer);
+          self.cancellation_trackers.lock().unwrap().add_job(&transfer);
       }
 
       if transfer.status != JobStatus::Pending && transfer.status != JobStatus::Progress {
@@ -107,7 +107,7 @@ impl TransferManager {
       }
     }
 
-    pub async fn start_download(&mut self, request: DownloadFilesRequest) {
+    pub async fn start_download(&self, request: DownloadFilesRequest) {
       let job = match request {
         DownloadFilesRequest::FromSharedLink(shared_link_request) => {
           self.init_download_job_from_project_share_link(&shared_link_request)
@@ -123,7 +123,7 @@ impl TransferManager {
           transfers.push(job);
       };
 
-      self.cancellation_trackers.add_job(&cloned_job);
+      self.cancellation_trackers.lock().unwrap().add_job(&cloned_job);
 
       self.events
           .send(Event::TransferCreated(cloned_job.clone()))
@@ -184,7 +184,7 @@ impl TransferManager {
           .await;
     }
 
-    pub async fn start_upload(&mut self, request: UploadFilesRequest) {
+    pub async fn start_upload(&self, request: UploadFilesRequest) {
         let job = self.init_upload_job(&request);
         let cloned_job = job.clone();
         {
@@ -192,7 +192,7 @@ impl TransferManager {
             transfers.push(job);
         }
 
-        self.cancellation_trackers.add_job(&cloned_job);
+        self.cancellation_trackers.lock().unwrap().add_job(&cloned_job);
 
         self.events
             .send(Event::TransferCreated(cloned_job.clone()))

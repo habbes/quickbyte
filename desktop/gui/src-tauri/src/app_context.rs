@@ -7,9 +7,7 @@ use crate::core::message_channel::{MessageChannel, SyncMessageChannel};
 use crate::persistence::database::Database;
 
 pub struct AppContext {
-  pub requests: MessageChannel<Request>,
-  pub events: MessageChannel<Event>,
-  transfers: Arc<TransferManager>,
+  pub requests: MessageChannel<Request>
 }
 
 impl AppContext {
@@ -50,12 +48,11 @@ impl AppContext {
 
     let events = MessageChannel::new(event_handler);
     let transfers = Arc::new(TransferManager::new( events.clone(), db_sync_channel.clone()));
-    let cloned = Arc::clone(&transfers);
 
     let requests = MessageChannel::new(move|request| {
-      let cloned = Arc::clone(&cloned);
+      let transfers = transfers.clone();
       tokio::spawn(async move {
-        cloned.execute_request(request).await;
+        transfers.execute_request(request).await;
       });
     });
     
@@ -64,9 +61,7 @@ impl AppContext {
     }
     
     Self {
-      requests,
-      events,
-      transfers,
+      requests
     }
   }
 }
