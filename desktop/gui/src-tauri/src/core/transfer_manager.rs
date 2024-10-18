@@ -47,7 +47,7 @@ impl TransferManager {
             Request::DeleteTransfer {
                 transfer_id
             } => self.delete_transfer(&transfer_id).await,
-            Request::CancelTransferFile(request) => 
+            Request::CancelTransferFile(request) => self.cancel_transfer_file(request).await
         }
     }
 
@@ -67,10 +67,25 @@ impl TransferManager {
         }
     }
 
-    pub fn cancel_transfer_file(&mut self, request: CancelTransferFileRequest) {
+    pub async fn cancel_transfer_file(&mut self, request: CancelTransferFileRequest) {
         self.cancellation_trackers.cancel_file(&request.transfer_id, &request.file_id);
 
         // TODO update file status in in-memory and persistent db
+        let mut transfers = self.transfers.lock().await;
+        if let Some(transfer) = transfers.iter_mut().find(|t| t._id == request.transfer_id) {
+            if let Some(f) = transfer.files.iter_mut().find(|f| f._id == request.file_id) {
+                f.status = JobStatus::Cancelled;
+            }
+        }
+
+        self.db_sync_channel.send(Event::TransferFileStatusUpdate {
+            file_id: request.file_id.clone(),
+            transfer_id: request.transfer_id.clone(),
+            status: JobStatus::Cancelled,
+            error: None
+        });
+        
+        self.events.send(Event::Transfers(transfers.clone())).await;
     }
 
     pub async fn resume_tranfer(&mut self, transfer: TransferJob) {
@@ -361,11 +376,6 @@ impl TransferManager {
         };
 
         job
-    }
-
-    async fn cancel_transfer_file(&self, request: CancelTransferFileRequest) {
-        let transfer = self.transfers.lock().await.iter().find(|f| f._id == request.transfer_id);
-        
     }
 }
 
