@@ -530,15 +530,16 @@ async fn handle_transfer_update(
                     .iter()
                     .find(|f| f._id.as_str() == file_id)
                     .unwrap();
-
-                events
-                    .send(Event::TransferFileUploadComplete {
-                        transfer_id: transfer_id.clone(),
-                        remote_transfer_id: transfer.upload_transfer_id.clone().unwrap(),
-                        file_id: file_id.clone(),
-                        remote_file_id: file.remote_file_id.clone(),
-                    })
-                    .await;
+                if file.status == JobStatus::Completed {
+                    events
+                        .send(Event::TransferFileUploadComplete {
+                            transfer_id: transfer_id.clone(),
+                            remote_transfer_id: transfer.upload_transfer_id.clone().unwrap(),
+                            file_id: file_id.clone(),
+                            remote_file_id: file.remote_file_id.clone(),
+                        })
+                        .await;
+                }
             }
         }
         TransferUpdate::FileFailed {
@@ -560,15 +561,24 @@ async fn handle_transfer_update(
         TransferUpdate::TransferCompleted { transfer_id } => {
             handle_transfer_completed(&mut transfers, transfer_id, db_sync_channel);
             
-            events
-                .send(Event::TransferCompleted(
-                    transfers
-                        .iter()
-                        .find(|t| &t._id == transfer_id)
-                        .unwrap()
-                        .clone(),
-                ))
-                .await;
+            let transfer = transfers
+            .iter()
+            .find(|t| &t._id == transfer_id)
+            .unwrap()
+            .clone();
+            
+            // transfer may have been cancelled before complete message was sent
+            if transfer.status == JobStatus::Completed {
+                events
+                    .send(Event::TransferCompleted(
+                        transfers
+                            .iter()
+                            .find(|t| &t._id == transfer_id)
+                            .unwrap()
+                            .clone(),
+                    ))
+                    .await;
+            }
         }
     }
 
