@@ -52,7 +52,7 @@ impl TransferCancellationTrackerCollection {
         let mut cancelled = lock.write().unwrap();
         *cancelled = true;
 
-        return Err(AppError::Internal(format!("Failed to find file {file_id} of transfer {transfer_id} for cancellation")));
+        Ok(())
     }
 
     pub fn cancel_transfer(&mut self, transfer_id: &str) -> Result<(), AppError> {
@@ -85,10 +85,9 @@ impl TransferCancellationTrackerCollection {
     }
 
     fn get_file_cancellation_lock(&self, transfer_id: &str, file_id: &str) -> Result<Arc<RwLock<bool>>, AppError> {
-        if let Some(file_locks) = self.locks.get(transfer_id) {
-            if let Some(lock) = file_locks.get(file_id) {
-                return Ok(lock.clone());
-            }
+        let file_locks = self.get_transfer_cancellation_locks(transfer_id)?;
+        if let Some(lock) = file_locks.get(file_id) {
+            return Ok(lock.clone());
         }
 
         return Err(AppError::Internal(format!("Failed to find file {file_id} of transfer {transfer_id} for cancellation")));
