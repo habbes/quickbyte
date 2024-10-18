@@ -10,6 +10,12 @@ pub enum JobStatus {
   Error
 }
 
+impl Into<&'static str> for JobStatus {
+  fn into(self) -> &'static str {
+    (&self).into()
+  }
+}
+
 impl Into<&'static str> for &JobStatus {
   fn into(self) -> &'static str {
     match self {

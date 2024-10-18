@@ -70,6 +70,10 @@ export interface FileSizesRequest {
     files: string[];
 }
 
+export interface CancelTransferRequest {
+    transferId: string;
+}
+
 export interface CancelTransferFileRequest {
     transferId: string;
     fileId: string;

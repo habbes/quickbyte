@@ -44,7 +44,7 @@
 import { showMenu } from "tauri-plugin-context-menu";
 import { useRouter } from "vue-router";
 import { store } from "@/app-utils";
-import { type TransferJob, showPathInFileManager, deleteTransfer } from "@/core";
+import { type TransferJob, showPathInFileManager, deleteTransfer, cancelTransfer } from "@/core";
 import { humanizeSize } from "@quickbyte/common";
 import TransferStatus from "@/components/TransferStatus.vue";
 
@@ -66,6 +66,13 @@ function showContextMenu(event: MouseEvent, transfer: TransferJob) {
       showPathInFileManager(transfer.localPath);
     }
   }];
+
+  if (transfer.status === 'pending' || transfer.status === 'progress') {
+    items.push({
+      label: 'Cancel transfer',
+      event: async () => cancelTransfer({ transferId: transfer._id })
+    })
+  }
 
   if (transfer.status !== 'pending' && transfer.status !== 'progress') {
     items.push({

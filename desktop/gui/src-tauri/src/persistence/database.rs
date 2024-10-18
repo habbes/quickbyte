@@ -79,6 +79,11 @@ impl Database {
         .set((dsl::status.eq(status_str), dsl::error.eq(error)))
         .execute(&mut self.connection)
         .expect("Error saving transfer status.");
+
+        if *status == JobStatus::Cancelled {
+            // mark all pending/progress files as cancelled as well
+            self.mark_transfer_files_as_cancelled(id);
+        }
     }
 
     pub fn delete_transfer(&mut self, transfer_id: &str) {
@@ -106,6 +111,27 @@ impl Database {
         .set(dsl::status.eq(status_str))
         .execute(&mut self.connection)
         .expect("Error saving transfer status.");
+    }
+
+    fn mark_transfer_files_as_cancelled(&mut self, transfer_id: &str) {
+        use files::dsl;
+        use crate::schema::files;
+        let cancelled_str: &str = JobStatus::Cancelled.into();
+        let pending_str: &str = JobStatus::Pending.into();
+        let progress_str: &str = JobStatus::Progress.into();
+        
+        diesel::update(
+            dsl::files.filter(
+                files::transfer_id.eq(transfer_id)
+                .and(
+                    files::status.eq(pending_str)
+                    .or(files::status.eq(progress_str))
+                )
+            )
+        )
+        .set(dsl::status.eq(cancelled_str))
+        .execute(&mut self.connection)
+        .expect("Error saving files as cancelled");
     }
 
     // pub fn load_transfers(&mut self) {

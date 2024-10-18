@@ -24,5 +24,8 @@ const icon = computed(() =>
 const statusMessage = computed(() =>
   props.transfer.status === 'error' ? props.transfer.error || 'Error occurred during transfer.'
   : props.transfer.status === 'pending' ? `The ${props.transfer.type} has been queued.`
-  :  '');
+  : props.transfer.status === 'cancelled' ? 'Transfer cancelled by user.'
+  : props.transfer.status === 'progress' ? `The ${props.transfer.type} is in progress.`
+  : props.transfer.status === 'completed' ? 'Transfer complete'
+  : '');
 </script>
