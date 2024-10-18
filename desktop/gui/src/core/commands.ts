@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api";
-import type { SharedLinkDownloadRequest, LegacyTransferLinkDownloadRequest, UploadFilesRequest, FileSizeResponseItem, CancelTransferFileRequest, CancelTransferRequest } from "./types.js";
+import type { SharedLinkDownloadRequest, LegacyTransferLinkDownloadRequest, UploadFilesRequest, FileSizeResponseItem, CancelTransferFileRequest, CancelTransferRequest, GoogleTokenResult } from "./types.js";
 
 export function requestTransfers() {
     return invoke('request_transfers');
@@ -37,7 +37,7 @@ export function showPathInFileManager(path: string): Promise<void> {
     return invoke("show_path_in_file_manager", { path });
 }
 
-export function loginWithGoogle(): Promise<any> {
+export function loginWithGoogle(): Promise<GoogleTokenResult> {
     return invoke("sign_in_with_google");
 }
 

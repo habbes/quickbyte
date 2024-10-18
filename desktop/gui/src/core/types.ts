@@ -84,3 +84,7 @@ export interface FileSizeResponseItem {
     name: string;
     size: number;
 }
+
+export interface GoogleTokenResult {
+    idToken: string;
+}

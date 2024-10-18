@@ -66,7 +66,7 @@ import { useRouter } from "vue-router";
 import { message } from "@tauri-apps/api/dialog";
 import { trpcClient, initUserData, setToken } from "@/app-utils";
 import { UiTextInput, UiButton } from "@/components/ui";
-import { loginWithGoogle, persistUserToken } from '@/core';
+import { loginWithGoogle as getGoogleToken, persistUserToken } from '@/core';
 import googleLogo from '@/assets/google-g-logo.png'
 import OrSeparator from "@/components/OrSeparator.vue";
 
@@ -107,6 +107,29 @@ async function login() {
   }
   finally {
     loading.value = false;
+  }
+}
+
+async function loginWithGoogle() {
+  try {
+    const googleResult = await getGoogleToken();
+    console.log('google token result', googleResult);
+
+    const result = await trpcClient.loginWithGoogle.mutate({
+      idToken: googleResult.idToken
+    });
+
+    if ('authToken' in result) {
+      setToken(result.authToken.code);
+      await persistUserToken(result.authToken.code);
+    }
+
+    await initUserData();
+    router.push({ name: 'project' });
+  }
+  catch (e: any) {
+    console.log('Error', e);
+    await message(`Error: ${e.message}`, { type: 'error' });
   }
 }
 </script>
