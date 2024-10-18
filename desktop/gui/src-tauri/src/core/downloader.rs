@@ -351,7 +351,7 @@ impl FileDownloadCompletionWatcher {
         if cancelled {
             std::fs::remove_file(self.file_job.local_path.clone())
             .expect(format!("Failed to delete cancelled file {}", self.file_job.local_path).as_str());
-            println!("File cancelled, don't flush or report completion. TODO delete file");
+            println!("File cancelled, delete file.");
             return;
         }
         

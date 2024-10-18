@@ -84,13 +84,16 @@ impl TransferManager {
             .expect("Failed to cancel transfer");
 
         // TODO update file status in in-memory and persistent db
+       
         let mut transfers = self.transfers.lock().await;
         if let Some(transfer) = transfers.iter_mut().find(|t| t._id == request.transfer_id) {
             if let Some(f) = transfer.files.iter_mut().find(|f| f._id == request.file_id) {
                 f.status = JobStatus::Cancelled;
+                println!("Updated file status to cancelled");
             }
         }
 
+        println!("Send file cancelled update to DB");
         self.db_sync_channel.send(Event::TransferFileStatusUpdate {
             file_id: request.file_id.clone(),
             transfer_id: request.transfer_id.clone(),
@@ -98,6 +101,7 @@ impl TransferManager {
             error: None,
         });
 
+        // println!("Send transfers update {transfers:?}");
         self.events.send(Event::Transfers(transfers.clone())).await;
     }
 
@@ -557,9 +561,12 @@ fn handle_chunk_progress(
         .iter_mut()
         .find(|f| f._id == file_id)
         .unwrap();
-    file.completed_size += chunk_size;
-    file.status = JobStatus::Progress;
-    transfer.status = JobStatus::Progress;
+    if file.status == JobStatus::Pending || file.status == JobStatus::Progress {
+        file.completed_size += chunk_size;
+        file.status = JobStatus::Progress;
+        transfer.status = JobStatus::Progress;
+        println!("Updated chunk progress for {transfer_id} {file_id} {chunk_size}");
+    }
 }
 
 fn handle_chunk_completed(
