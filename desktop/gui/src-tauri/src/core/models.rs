@@ -14,7 +14,7 @@ impl Into<&'static str> for &JobStatus {
   fn into(self) -> &'static str {
     match self {
       JobStatus::Pending => "pending",
-      JobStatus::Cancelled => "progress",
+      JobStatus::Cancelled => "cancelled",
       JobStatus::Completed => "completed",
       JobStatus::Error => "error",
       JobStatus::Progress => "progress"

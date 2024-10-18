@@ -565,7 +565,6 @@ fn handle_chunk_progress(
         file.completed_size += chunk_size;
         file.status = JobStatus::Progress;
         transfer.status = JobStatus::Progress;
-        println!("Updated chunk progress for {transfer_id} {file_id} {chunk_size}");
     }
 }
 

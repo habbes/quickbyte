@@ -20,6 +20,7 @@ impl AppContext {
       // let database = Arc::new(std::sync::Mutex::new(database));
       Arc::new(std::sync::Mutex::new(database))
     };
+
     let db_sync_channel = Arc::new(SyncMessageChannel::new( move|message| {
       match message {
         Event::TransferCreated(transfer) => database.lock().unwrap().create_transfer(&transfer),

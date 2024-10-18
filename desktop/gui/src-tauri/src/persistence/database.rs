@@ -31,6 +31,7 @@ impl Database {
 
         let new_files_and_blocks: Vec<_> = job.files.iter().map(|f| map_transfer_to_new_file(f, &job._id)).collect();
         let new_files: Vec<_> = new_files_and_blocks.iter().map(|(f, bs)| f).collect();
+
         let new_blocks: Vec<_> = new_files_and_blocks.iter().flat_map(|(f, bs)| bs).collect();
         diesel::insert_into(files::table)
             .values(new_files)
@@ -64,8 +65,6 @@ impl Database {
             .load(&mut self.connection)
             .expect("Failed to load file from database");
 
-            
-            
             let job = map_transfer_from_db(transfer, &files, &all_blocks);
             result.push(job);
         }
