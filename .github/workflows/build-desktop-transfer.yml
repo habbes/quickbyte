@@ -58,14 +58,14 @@ jobs:
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
         run: npm install
         
-
+      - name: generate config override
+        run: echo "{\"package\":{\"productName\":\"Quickbyte Transfer Staging\"}}" > config.override.json
 
       # see: https://github.com/tauri-apps/tauri-action
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SERVER_BASE_URL: 'https://quickbyte-staging.up.railway.app'
-          CONFIG: '{\"package\":{\"productName\":\"Quickbyte Transfer Test\"}}'
         with:
           projectPath: desktop/gui
-          args: '${{ matrix.args }} --config $CONFIG'
+          args: '${{ matrix.args }} --config config_override.json'
