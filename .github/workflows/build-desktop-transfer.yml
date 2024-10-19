@@ -62,7 +62,13 @@ jobs:
         run: echo "{\"package\":{\"productName\":\"Quickbyte Transfer Staging\"}}" > config_override.json && cat config_override.json
 
       - name: test env vars
-        run: echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID\nGOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET\nSERVER_BASE_URL=$SERVER_BASE_URL" > src-tauri/.env && cat src-tauri/.env
+        run: |
+          echo "
+          GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+          GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+          SERVER_BASE_URL=$SERVER_BASE_URL
+          " > src-tauri/.env && cat src-tauri/.env
+
         env:
           GOOGLE_CLIENT_ID: ${{ vars.STAGING_GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ vars.STAGING_GOOGLE_CLIENT_SECRET }}
