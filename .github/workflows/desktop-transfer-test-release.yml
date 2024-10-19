@@ -26,6 +26,7 @@ jobs:
         bundle_identifier: 'io.quickbyte.desktoptransfer.dev'
         server_base_url: 'https://quickbyte-staging.up.railway.app'
         should_release: true
+        release_prefix: test
         prerelease: true
         create_artifacts: false
     secrets:
