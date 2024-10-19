@@ -154,7 +154,7 @@ jobs:
           repo: 'quickbyte-releases'
           tagName: 'transfer-${{ inputs.release_prefix }}v__VERSION__'
           releaseName: '${{ inputs.app_name}} __VERSION__'
-          releaseDraft: false
+          releaseDraft: true
           prerelease: ${{ inputs.prerelease }}
       
       - name: upload bundle artifacts
