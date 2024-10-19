@@ -149,10 +149,12 @@ jobs:
         with:
           projectPath: desktop/gui
           args: '${{ matrix.args }} --config config_override.json'
-          repo: 'habbes/quickbyte-releases'
+          owner: 'habbes'
+          releaseCommitish: main
+          repo: 'quickbyte-releases'
           tagName: 'transfer-${{ inputs.release_prefix }}v__VERSION__'
           releaseName: '${{ inputs.app_name}} __VERSION__'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: ${{ inputs.prerelease }}
       
       - name: upload bundle artifacts
