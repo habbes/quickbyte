@@ -2,7 +2,6 @@ use std::{io::{Read, Seek, SeekFrom, Write}, sync::Arc, time::Instant};
 
 use azure_storage_blobs::prelude::BlobClient;
 use futures::stream::StreamExt;
-use std::os::unix::fs::FileExt;
 use tokio::sync::mpsc;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 
