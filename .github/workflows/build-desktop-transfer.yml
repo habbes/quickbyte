@@ -61,13 +61,26 @@ jobs:
       - name: generate config override
         run: echo "{\"package\":{\"productName\":\"Quickbyte Transfer Staging\"}}" > config_override.json && cat config_override.json
 
+      - name: test env vars
+        run: echo $GOOGLE_CLIENT_ID $GOOGLE_CLIENT_SECRET
+        env:
+          GOOGLE_CLIENT_ID: ${{ vars.STAGING_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ vars.STAGING_GOOGLE_CLIENT_SECRET }}
+
       # see: https://github.com/tauri-apps/tauri-action
-      - uses: tauri-apps/tauri-action@v0
+      - name: build app bundles
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOOGLE_CLIENT_ID: ${{ secrets.STAGING_GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.STAGING_GOOGLE_CLIENT_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ vars.STAGING_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ vars.STAGING_GOOGLE_CLIENT_SECRET }}
           SERVER_BASE_URL: 'https://quickbyte-staging.up.railway.app'
         with:
           projectPath: desktop/gui
           args: '${{ matrix.args }} --config config_override.json'
+      
+      - name: upload bundle artifacts
+        uses: actions/upload-artifacts@v4
+        with:
+          name: app-bundles
+          path: desktop/gui/src-tauri/target
