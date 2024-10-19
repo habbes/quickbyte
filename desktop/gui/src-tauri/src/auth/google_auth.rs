@@ -59,7 +59,6 @@ pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<SignInWithG
         .add_scope(Scope::new("profile".to_string()))
         .url();
 
-    println!("Open browser with url {request_url}");
     open::that(request_url.to_string()).unwrap();
 
     let (result_tx, mut result_rx ) = sync::mpsc::channel(1);
@@ -78,8 +77,6 @@ pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<SignInWithG
         .recv()
         .await
         .ok_or_else(|| AppError::Internal(String::from("Failed to get Google auth result")))?;
-
-    println!("Received token result {res:?}");
 
     match res {
         GoogleAuthResult::Success { id_token } => Ok(SignInWithGoogleResult { id_token }),
@@ -180,8 +177,6 @@ async fn authorize_handler(auth: Extension<AuthState>, query: Query<CallbackQuer
         .await
         .unwrap();
 
-    println!("Auth success, access token: {:?}, refresh token: {:#?}", token.access_token().secret().to_string(), token.refresh_token().unwrap().secret().to_string());
-
     let client_id = get_client_id();
     let client_secret = get_client_secret();
 
@@ -210,16 +205,10 @@ async fn authorize_handler(auth: Extension<AuthState>, query: Query<CallbackQuer
         // return "Authentication failed.";
     }
 
-    println!("SUCCESSFUL refresh_token request");
-
     let token: GoogleRefreshAuthResponse = token_response.json().await.unwrap();
-    println!("TOken resp {token:#?}");
 
     let id_token = token.id_token.unwrap();
-    println!("ID TOKEN {id_token}");
     result_tx.send(GoogleAuthResult::Success { id_token: id_token }).await.expect("Failed to send result message");
-    println!("Sent result");
-
     
-    String::from("Login successful. You can close this browser tab and return to the Quickbyte app.")
+    String::from(success_message)
 }
