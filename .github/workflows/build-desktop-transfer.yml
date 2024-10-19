@@ -89,5 +89,5 @@ jobs:
       - name: upload bundle artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: app-bundles
+          name: app-bundle-${{matrix.platform}} ${{matrix.args}}
           path: desktop/gui/src-tauri/target
