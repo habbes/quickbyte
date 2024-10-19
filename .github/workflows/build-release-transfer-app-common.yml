@@ -152,7 +152,7 @@ jobs:
           owner: 'habbes'
           releaseCommitish: main
           repo: 'quickbyte-releases'
-          tagName: 'transfer-${{ inputs.release_prefix }}v__VERSION__'
+          tagName: 'desktop-transfer-${{ inputs.release_prefix }}v__VERSION__'
           releaseName: '${{ inputs.app_name}} __VERSION__'
           # The tag is not created for the release if it's marked as draft
           releaseDraft: false

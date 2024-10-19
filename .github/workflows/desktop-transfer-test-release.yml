@@ -17,7 +17,18 @@ defaults:
     shell: bash
     working-directory: desktop/gui
 jobs:
+  get-date:
+    name: Get current data
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d-%H-%M-%S')"
+    outputs:
+      date: ${{ steps.date.outputs.date }}
+
   build_app:
+    needs: get-date
     permissions:
       contents: write
     uses: ./.github/workflows/build-release-transfer-app-common.yml
@@ -26,7 +37,7 @@ jobs:
         bundle_identifier: 'io.quickbyte.desktoptransfer.dev'
         server_base_url: 'https://quickbyte-staging.up.railway.app'
         should_release: true
-        release_prefix: test
+        release_prefix: test-${{ needs.get-date.outputs.date }}-
         prerelease: true
         create_artifacts: false
     secrets:
