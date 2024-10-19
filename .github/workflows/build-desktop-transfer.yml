@@ -65,6 +65,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SERVER_BASE_URL: 'https://quickbyte-staging.up.railway.app'
+          CONFIG: '{\"package\":{\"productName\":\"Quickbyte Transfer Test\"}}'
         with:
           projectPath: desktop/gui
-          args: '${{ matrix.args }} --config "{"package":{\"productName\":\"Quickbyte Transfer Test\"}}"'
+          args: '${{ matrix.args }} --config $CONFIG'
