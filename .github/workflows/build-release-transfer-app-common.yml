@@ -91,7 +91,7 @@ jobs:
         run: |
           echo "{
             \"package\": {
-              \"productName\":\"${{ inputs.app_name }}"
+              \"productName\":\"${{ inputs.app_name }}\"
             },
             \"tauri\": {
               \"bundle\": {
