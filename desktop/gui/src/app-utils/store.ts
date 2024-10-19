@@ -1,13 +1,18 @@
 import { ref, computed } from "vue";
-import type { UserWithAccount, AccountWithSubscription, WithRole, Project } from "@quickbyte/common";
-import { trpcClient } from "./api.js";
+import { type UserWithAccount, type AccountWithSubscription, type WithRole, type Project, ensure } from "@quickbyte/common";
+import { setTrpcUrl, trpcClient } from "./api.js";
 import {
     TransferJob,
+    AppInfo,
     tryLoadPersistedUserToken,
-    deletePersistedUserToken
+    deletePersistedUserToken,
+    getAppInfo as requestAppInfo
 } from "@/core";
 import { deleteToken, setToken } from "./auth";
 import { getPreferredProvider } from "./providers";
+
+
+const appInfo = ref<AppInfo>();
 
 const user = ref<UserWithAccount>();
 const accounts = ref<AccountWithSubscription[]>([]);
@@ -24,9 +29,19 @@ const preferredProvider = ref<{
 
 const transfers = ref<TransferJob[]>([]);
 
+async function loadAppInfo() {
+    const info = await requestAppInfo();
+    setTrpcUrl(`${info.serverBaseUrl}/trpc`);
+    appInfo.value = info;
+}
+
+function getAppInfo() {
+    return ensure(appInfo.value, 'Could not read app info. Ensure app info has been loaded first.');
+}
+
 async function initUserData() {
     // TODO: error handling?
-    const data = await trpcClient.getCurrentUserData.query();
+    const data = await trpcClient().getCurrentUserData.query();
     user.value = data.user;
     accounts.value = data.accounts;
     projects.value = data.projects;
@@ -89,4 +104,4 @@ async function signOutAndClearUserData() {
 
 type Store = typeof store;
 
-export { store, initUserData, setCurrentProject, signOutAndClearUserData, tryLoadStoredUserSession, type Store };
+export { store, loadAppInfo, getAppInfo, initUserData, setCurrentProject, signOutAndClearUserData, tryLoadStoredUserSession, type Store };

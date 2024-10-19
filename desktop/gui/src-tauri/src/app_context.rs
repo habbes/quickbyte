@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use tokio;
 
-use crate::core::models::AppConfig;
+use crate::core::models::AppInfo;
 use crate::core::request::Request;
 use crate::core::{event::Event, transfer_manager::TransferManager};
 use crate::core::message_channel::{MessageChannel, SyncMessageChannel};
@@ -9,11 +9,11 @@ use crate::persistence::database::Database;
 
 pub struct AppContext {
   pub requests: MessageChannel<Request>,
-  pub config: AppConfig
+  pub config: AppInfo
 }
 
 impl AppContext {
-  pub async fn init(db_path: String, config: AppConfig, event_handler: impl Fn(Event) + Send + 'static) -> Self {
+  pub async fn init(db_path: String, config: AppInfo, event_handler: impl Fn(Event) + Send + 'static) -> Self {
     println!("Init app with db_path {db_path}");
     let saved_jobs;
     let database = {

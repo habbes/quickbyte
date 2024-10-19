@@ -148,7 +148,7 @@ async function fetchLink() {
     const linkParts = getLinkParts(link.value);
 
     if (linkParts.type === 'projectShare') {
-      const shareResult = await trpcClient.getProjectShareItems.query({
+      const shareResult = await trpcClient().getProjectShareItems.query({
         shareId: linkParts.shareId,
         code: linkParts.code
       });
@@ -162,7 +162,7 @@ async function fetchLink() {
         throw new Error("The specified link does not allow downloads.");
       }
 
-      const filesResult = await trpcClient.getAllProjectShareFilesForDownload.query({
+      const filesResult = await trpcClient().getAllProjectShareFilesForDownload.query({
         shareId: linkParts.shareId,
         shareCode: linkParts.code,
       });
@@ -178,7 +178,7 @@ async function fetchLink() {
       };
 
     } else if (linkParts.type === 'legacyTransfer') {
-      const result = await trpcClient.requestLegacyTransferDownload.query({
+      const result = await trpcClient().requestLegacyTransferDownload.query({
         transferId: linkParts.downloadId,
         countryCode: undefined,
         ip: undefined,
@@ -210,7 +210,7 @@ async function fetchProjectShareLinkWithPassword() {
       return;
     }
 
-    const shareResult = await trpcClient.getProjectShareItems.query({
+    const shareResult = await trpcClient().getProjectShareItems.query({
       shareId: linkParts.shareId,
       code: linkParts.code,
       password: sharedLinkPassword.value
@@ -227,7 +227,7 @@ async function fetchProjectShareLinkWithPassword() {
       throw new Error("The specified link does not allow downloads.");
     }
 
-    const filesResult = await trpcClient.getAllProjectShareFilesForDownload.query({
+    const filesResult = await trpcClient().getAllProjectShareFilesForDownload.query({
       shareId: linkParts.shareId,
       shareCode: linkParts.code,
       password: sharedLinkPassword.value

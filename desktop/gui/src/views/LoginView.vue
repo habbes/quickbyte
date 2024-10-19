@@ -89,7 +89,7 @@ async function login() {
 
     // TODO: use getUserAuthMethod to check whether
     // user logs in with password or google
-    const result = await trpcClient.login.mutate({
+    const result = await trpcClient().login.mutate({
       email: email.value,
       password: password.value
     });
@@ -114,7 +114,7 @@ async function loginWithGoogle() {
   try {
     const googleResult = await getGoogleToken();
 
-    const result = await trpcClient.loginWithGoogle.mutate({
+    const result = await trpcClient().loginWithGoogle.mutate({
       idToken: googleResult.idToken,
       appType: 'desktopTransferApp' // necessary to ensure server uses the correct client ID
     });

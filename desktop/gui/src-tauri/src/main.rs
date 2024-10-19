@@ -9,7 +9,7 @@ pub mod schema;
 pub mod auth;
 mod app_context;
 
-use core::models::AppConfig;
+use core::models::AppInfo;
 
 use tauri::Manager;
 use commands::*;
@@ -31,7 +31,7 @@ async fn main() {
       let config = app_handle.config();
       println!("Binary name {:?}", config.package.binary_name());
       let package = &config.package;
-      let app_config = AppConfig {
+      let app_config = AppInfo {
         name: package.product_name.clone().expect("Failed to get app product name"),
         version: package.version.clone().expect("Failed to get app version"),
         server_base_url: std::env::var("SERVER_BASE_URL").expect("Failed to get SERVER_BASE_URL")
@@ -55,6 +55,7 @@ async fn main() {
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![
+      get_app_info,
       download_shared_link,
       download_legacy_transfer_link,
       upload_files,

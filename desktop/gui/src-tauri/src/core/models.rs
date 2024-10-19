@@ -70,7 +70,7 @@ impl From<&str> for JobStatus {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct AppConfig {
+pub struct AppInfo {
   pub name: String,
   pub version: String,
   pub server_base_url: String,

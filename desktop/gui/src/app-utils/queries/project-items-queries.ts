@@ -15,7 +15,7 @@ export function useProjectItemsQuery(projectId: MaybeRef<string>, folderId?: May
     const queryKey = getProjectItemsQueryKey(projectId, folderId);
     const result = useQuery({
         queryKey,
-        queryFn: () => trpcClient.getProjectItems.query({
+        queryFn: () => trpcClient().getProjectItems.query({
             projectId: unref(projectId),
             folderId: unref(folderId)
         }),

@@ -2,7 +2,7 @@ import { ensure } from "@quickbyte/common";
 import { trpcClient } from "./api.js";
 
 export async function getPreferredProvider() {
-    const providers = await trpcClient.getStorageProviders.query();
+    const providers = await trpcClient().getStorageProviders.query();
     // TODO: only Azure is supported at the moment
     const provider = ensure(providers.find(p => p.name == "az"), "Could not find support provider");
     const latencyResults = await compareLatency(provider.availableRegions);

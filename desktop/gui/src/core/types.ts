@@ -88,3 +88,9 @@ export interface FileSizeResponseItem {
 export interface GoogleTokenResult {
     idToken: string;
 }
+
+export interface AppInfo {
+    name: string;
+    version: string;
+    serverBaseUrl: string;
+}

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api";
-import type { SharedLinkDownloadRequest, LegacyTransferLinkDownloadRequest, UploadFilesRequest, FileSizeResponseItem, CancelTransferFileRequest, CancelTransferRequest, GoogleTokenResult } from "./types.js";
+import type { SharedLinkDownloadRequest, LegacyTransferLinkDownloadRequest, UploadFilesRequest, FileSizeResponseItem, CancelTransferFileRequest, CancelTransferRequest, GoogleTokenResult, AppInfo } from "./types.js";
 
 export function requestTransfers() {
     return invoke('request_transfers');
@@ -51,4 +51,8 @@ export function persistUserToken(token: string): Promise<void> {
 
 export function deletePersistedUserToken(): Promise<void> {
     return invoke("delete_user_token");
+}
+
+export function getAppInfo(): Promise<AppInfo> {
+    return invoke("get_app_info")
 }

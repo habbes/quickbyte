@@ -1,10 +1,18 @@
+use std::sync::Arc;
+
 use tauri::{command, State};
 use crate::core::error::AppError;
+use crate::core::models::AppInfo;
 use crate::core::request::{DownloadFilesRequest, Request};
 use crate::core::dtos::*;
 use crate::app_context::AppContext;
 use crate::auth::google_auth::{self, SignInWithGoogleResult};
 use crate::auth::auth_store;
+
+#[command]
+pub fn get_app_info(context: State<'_, AppContext>) -> Result<AppInfo, ()> {
+    Ok(context.config.clone())
+}
 
 #[command]
 pub async fn download_shared_link(context: State<'_, AppContext>, request: SharedLinkDownloadRequest) -> Result<(), ()>{
