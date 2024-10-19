@@ -129,7 +129,7 @@ struct FileDownloadCompletionWatcher {
 #[derive(Debug)]
 enum FileTransferStartMessage {
     Success {
-        file: Arc<std::sync::RwLock<std::fs::File>>,
+        file: Arc<std::sync::Mutex<std::fs::File>>,
         started_at: std::time::Instant,
     },
     Failed {
@@ -212,7 +212,7 @@ impl FileDownloadBlocksDispatcher {
             }
         };
         
-        let file = Arc::new(std::sync::RwLock::new(file));
+        let file = Arc::new(std::sync::Mutex::new(file));
 
         self.file_started_tx.send(FileTransferStartMessage::Success {
             file: file.clone(),
@@ -359,7 +359,7 @@ impl FileDownloadCompletionWatcher {
         println!("Finish downloading file {} after {}s. Flushing...", self.file_job.name, started_at.elapsed().as_secs_f64());
 
         let flush_result = file
-        .write()
+        .lock()
         .expect("Failed to acquire file write lock")
         .flush();
 

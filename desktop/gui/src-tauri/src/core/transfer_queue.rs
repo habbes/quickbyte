@@ -46,7 +46,7 @@ pub struct BlockDownloadRequest {
     pub block: TransferJobFileBlock,
     pub offset: u64,
     pub size: u64,
-    pub file: Arc<std::sync::RwLock<std::fs::File>>,
+    pub file: Arc<std::sync::Mutex<std::fs::File>>,
     pub client: Arc<BlobClient>,
     pub update_channel: mpsc::Sender<BlockTransferUpdate>,
     pub cancellation: FileCancellationTracker
@@ -285,9 +285,18 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
                     while let Some(value) = body.next().await {
                         match value {
                             Ok(value) => {
-                                let file_write_result = request.file.read()
-                                .expect("Failed to acquire file lock")
-                                .write_all_at(&value, start_range + chunk_progress);
+                                // TODO: I had used the file.write_exact_at API which does not require seeking
+                                // or locking, but it doesn't compile on Windows :(
+                                // TODO: consider whether using async file APIs from tokio is better for perf
+                                let file_write_result = {
+                                    let mut file = request.file.lock()
+                                        .expect("Failed to acquire file lock");
+                                    if let Err(e) = file.seek(SeekFrom::Start(start_range + chunk_progress)) {
+                                        Err(e)
+                                    } else {
+                                        file.write_all(&value)
+                                    }
+                                };
 
                                 if let Err(err) = file_write_result {
                                     let msg = AppError::from(err).to_string();
