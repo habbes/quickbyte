@@ -3,7 +3,7 @@ use azure_storage_blobs::{
     blob::{BlobBlockType, BlockList},
     prelude::BlobClient,
 };
-use std::{sync::Arc, time::Instant};
+use std::{sync::{Arc, Mutex}, time::Instant};
 use url::Url;
 
 use super::{
@@ -198,7 +198,7 @@ impl FileUploadBlockDispatcher {
         }
 
         let file = match std::fs::File::open(&self.file_job.local_path) {
-            Ok(file) => Arc::new(file),
+            Ok(file) => Arc::new(Mutex::new(file)),
             Err(err) => {
                 self.file_started_tx.send(FileUploadStartMessage::Failed {
                     error: AppError::from(err).to_string()

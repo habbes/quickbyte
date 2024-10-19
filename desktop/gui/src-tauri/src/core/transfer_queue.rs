@@ -1,4 +1,4 @@
-use std::{io::Write, sync::Arc, time::Instant};
+use std::{io::{Read, Seek, SeekFrom, Write}, sync::Arc, time::Instant};
 
 use azure_storage_blobs::prelude::BlobClient;
 use futures::stream::StreamExt;
@@ -35,7 +35,7 @@ pub struct BlockUploadRequest {
     pub block: TransferJobFileBlock,
     pub offset: u64,
     pub size: u64,
-    pub file: Arc<std::fs::File>,
+    pub file: Arc<std::sync::Mutex<std::fs::File>>,
     pub client: Arc<BlobClient>,
     pub update_channel: mpsc::Sender<BlockTransferUpdate>,
     pub cancellation: FileCancellationTracker
@@ -147,8 +147,20 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
     let mut buffer = vec![0u8; request.size as usize];
     // let mut buffer = BytesMut::with_capacity(request.size as usize);
     // file.seek(tokio::io::SeekFrom::Start(offset)).await?;
+    // TODO: I had used the read_exact_at API which does not require seeking
+    // or locking, but it doesn't compile on Windows :(
+    // TODO: consider whether using async file APIs from tokio is better for perf
     let file = request.file;
-    if let Err(file_err) = file.read_exact_at(&mut buffer, request.offset) {
+    let file_read_result = {
+        let mut file = file.lock().unwrap();
+        if let Err(e) = file.seek(SeekFrom::Start(request.offset)) {
+            Err(e)
+        } else {
+            file.read_exact(&mut buffer)
+        }
+    };
+
+    if let Err(file_err) = file_read_result {
         let msg = AppError::from(file_err).to_string();
         println!("Failed to read file block at {:?}", request.offset);
         request.update_channel
