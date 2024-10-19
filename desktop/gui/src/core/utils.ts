@@ -28,7 +28,7 @@ function findCommonBasePathSegments(paths: string[][], rootPath = ""): string[] 
         return paths[0];
     }
 
-    
+
     const minLength = Math.min(paths[0].length, paths[1].length);
     let lastCommonIndex = -1;
     for (let i = 0; i < minLength; i++) {
@@ -50,4 +50,23 @@ function findCommonBasePathSegments(paths: string[][], rootPath = ""): string[] 
 
 export function computeUserAgent(app: AppInfo, os: OsInfo) {
     return `quickbyte-app=desktopTransfer;version=${app.version};os-type=${os.type};os-platform=${os.platform};os-arch=${os.arch};os-version=${os.version}`;
+}
+
+export function disableDefaultContextMenuInReleaseMode() {
+    // borrowed from: https://github.com/tauri-apps/wry/issues/30
+    // console.log('window.location.hostname', window.location.hostname);
+    // alert(window.location.hostname);
+    if (window.location.hostname !== 'tauri.localhost') {
+        return
+    }
+
+    document.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        return false;
+    }, { capture: true })
+
+    document.addEventListener('selectstart', e => {
+        e.preventDefault();
+        return false;
+    }, { capture: true })
 }
