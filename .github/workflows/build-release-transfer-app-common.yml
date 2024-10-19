@@ -150,9 +150,8 @@ jobs:
           projectPath: desktop/gui
           args: '${{ matrix.args }} --config config_override.json'
           # repo: 'habbes/quickbyte-releases'
-          releaseCommitish: 'main'
-          tagName: desktop-transfer-${{ inputs.release_prefix }}-app-v__VERSION__
-          releaseName: '${{ inputs.app_name}} v__VERSION__'
+          tagName: 'transfer-${{ inputs.release_prefix }}v__VERSION__'
+          releaseName: '${{ inputs.app_name}} __VERSION__'
           releaseDraft: true
           prerelease: ${{ inputs.prerelease }}
       
