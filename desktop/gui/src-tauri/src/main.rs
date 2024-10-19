@@ -42,7 +42,7 @@ async fn main() {
       // to make sure that doesn't happen.
       tokio::spawn(async move {
         let cloned_handle = app_handle.clone();
-        let app_context = AppContext::init(get_db_path().to_string(), app_config, move |event| {
+        let app_context = AppContext::init(get_db_path(&app_config.name).to_string(), app_config, move |event| {
           bridge_events(&cloned_handle, event)
         }).await;
 
@@ -74,10 +74,11 @@ async fn main() {
     .expect("error while running tauri application");
 }
 
-fn get_db_path() -> String {
+fn get_db_path(app_name: &str) -> String {
+  let app_name = app_name.replace(" ", "");
   let base_dirs = BaseDirs::new().expect("Could not get app directories");
   let base_data_path = base_dirs.data_local_dir();
-  let base_data_path = base_data_path.join(std::path::Path::new("Quickbyte"));
+  let base_data_path = base_data_path.join(std::path::Path::new(&app_name));
   let base_data_path =  base_data_path.to_str().unwrap().to_string();
   let db_path = base_data_path + "/data.db";
   return String::from(db_path);
