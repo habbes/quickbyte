@@ -26,6 +26,7 @@ jobs:
         server_base_url: 'https://quickbyte-staging.up.railway.app'
         should_release: true
         prelease: true
+        create_artifacts: false
     secrets:
         google_client_id: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_ID }}
         google_client_secret: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_SECRET }}

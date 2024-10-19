@@ -25,6 +25,7 @@ jobs:
         server_base_url: 'https://api.quickbyte.io'
         should_release: true
         prelease: false
+        create_artifacts: false
     secrets:
         google_client_id: ${{ secrets.DESKTOP_TRANSFER_OFFICIAL_GOOGLE_CLIENT_ID }}
         google_client_secret: ${{ secrets.DESKTOP_TRANSFER_OFFICIAL_GOOGLE_CLIENT_SECRET }}
