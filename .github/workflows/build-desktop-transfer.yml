@@ -3,6 +3,10 @@ name: 'Build Quickbyte Transfer desktop app'
 on:
   push:
 
+defaults:
+  run:
+    shell: bash
+    working-directory: desktop/gui
 jobs:
   build-app:
     permissions:
@@ -37,7 +41,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'yarn' # Set this to npm, yarn or pnpm.
+          cache: 'npm' # Set this to npm, yarn or pnpm.
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -48,11 +52,13 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: 'desktop/gui/src-tauri -> target'
 
       - name: install frontend dependencies
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
-        run: yarn install # change this to npm or pnpm depending on which one you use.
+        run: npm install
+        
+
 
       # see: https://github.com/tauri-apps/tauri-action
       - uses: tauri-apps/tauri-action@v0
