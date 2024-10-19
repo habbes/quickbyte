@@ -22,11 +22,11 @@ const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 
 fn get_client_id() -> String {
-    std::env::var("GOOGLE_CLIENT_ID").expect("Failed to load GOOGLE_CLIENT_ID")
+    dotenv!("GOOGLE_CLIENT_ID").to_string()
 }
 
 fn get_client_secret() -> String  {
-    std::env::var("GOOGLE_CLIENT_SECRET").expect("Failed to load GOOGLE_CLIENT_SECRET")
+    dotenv!("GOOGLE_CLIENT_SECRET").to_string()
 }
 
 

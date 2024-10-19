@@ -1,9 +1,3 @@
-
-
-const KEYRING_SERVICE: &str = "Quickbyte Transfer Authentication";
-const KEYRING_USER: &str = "Quickbyte Transfer Signed User";
-
-
 pub struct AuthStore {
     keyring_service: String,
     keyring_user: String,

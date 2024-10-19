@@ -1,5 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#[macro_use]
+extern crate dotenvy_macro;
 
 pub mod core;
 pub mod commands;
@@ -29,12 +31,12 @@ async fn main() {
       let app_handle = app.handle();
 
       let config = app_handle.config();
-      println!("Binary name {:?}", config.package.binary_name());
+
       let package = &config.package;
       let app_config = AppInfo {
         name: package.product_name.clone().expect("Failed to get app product name"),
         version: package.version.clone().expect("Failed to get app version"),
-        server_base_url: std::env::var("SERVER_BASE_URL").expect("Failed to get SERVER_BASE_URL")
+        server_base_url: dotenv!("SERVER_BASE_URL").to_string()
       };
 
       // TODO: since this runs async, the UI might start before the app context
