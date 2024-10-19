@@ -67,8 +67,10 @@ jobs:
             \"package\": {
               \"productName\":\"Quickbyte Transfer Staging\"
             },
-            \"bundle\": {
-              \"identifier\":\"io.quickbyte.desktoptransfer.staging\"
+            \"tauri\": {
+              \"bundle\": {
+                \"identifier\":\"io.quickbyte.desktoptransfer.staging\"
+              }
             }
           }" > config_override.json && cat config_override.json
       
