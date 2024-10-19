@@ -54,3 +54,14 @@ diesel migration run --database-url testdb
 ```
 cargo tauri dev
 ```
+
+## Building and configuration
+
+.env vars - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SERVER_BASE_URL
+
+tauri.conf.json - name, identifier, version
+
+db_bath
+
+key_ring
+
