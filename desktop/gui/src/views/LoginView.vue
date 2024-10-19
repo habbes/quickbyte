@@ -64,7 +64,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { message } from "@tauri-apps/api/dialog";
-import { trpcClient, initUserData, setToken } from "@/app-utils";
+import { trpcClient, initUserData, setToken, getAppUserAgent } from "@/app-utils";
 import { UiTextInput, UiButton } from "@/components/ui";
 import { loginWithGoogle as getGoogleToken, persistUserToken } from '@/core';
 import googleLogo from '@/assets/google-g-logo.png'
@@ -116,6 +116,7 @@ async function loginWithGoogle() {
 
     const result = await trpcClient().loginWithGoogle.mutate({
       idToken: googleResult.idToken,
+      userAgent: getAppUserAgent(),
       appType: 'desktopTransferApp' // necessary to ensure server uses the correct client ID
     });
 

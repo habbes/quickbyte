@@ -1,18 +1,20 @@
 import { ref, computed } from "vue";
 import { type UserWithAccount, type AccountWithSubscription, type WithRole, type Project, ensure } from "@quickbyte/common";
-import { setTrpcUrl, trpcClient } from "./api.js";
+import { setTrpcUrl, setTrpcUserAgent, trpcClient } from "./api.js";
 import {
     TransferJob,
     AppInfo,
+    OsInfo,
     tryLoadPersistedUserToken,
     deletePersistedUserToken,
-    getAppInfo as requestAppInfo
+    getAppInfo as requestAppInfo,
+    getOsInfo,
+computeUserAgent
 } from "@/core";
 import { deleteToken, setToken } from "./auth";
 import { getPreferredProvider } from "./providers";
 
-
-const appInfo = ref<AppInfo>();
+const appInfo = ref<{ app: AppInfo, os: OsInfo }>();
 
 const user = ref<UserWithAccount>();
 const accounts = ref<AccountWithSubscription[]>([]);
@@ -29,10 +31,19 @@ const preferredProvider = ref<{
 
 const transfers = ref<TransferJob[]>([]);
 
+const appUserAgent = computed(() => {
+    if (!appInfo.value) {
+        return "quickbyte-app=desktopTransfer";
+    }
+
+    return computeUserAgent(appInfo.value.app, appInfo.value.os);
+});
+
 async function loadAppInfo() {
-    const info = await requestAppInfo();
-    setTrpcUrl(`${info.serverBaseUrl}/trpc`);
-    appInfo.value = info;
+    const [app, os] = await Promise.all([requestAppInfo(), getOsInfo()]);
+    appInfo.value = { app, os };
+    setTrpcUrl(`${app.serverBaseUrl}/trpc`);
+    setTrpcUserAgent(computeUserAgent(app, os));
 }
 
 function getAppInfo() {
@@ -72,6 +83,10 @@ function setCurrentProject(projectId: string) {
     selectedProjectId.value = projectId;
 }
 
+function getAppUserAgent() {
+    return appUserAgent.value;
+}
+
 const store = {
     user,
     projects,
@@ -104,4 +119,4 @@ async function signOutAndClearUserData() {
 
 type Store = typeof store;
 
-export { store, loadAppInfo, getAppInfo, initUserData, setCurrentProject, signOutAndClearUserData, tryLoadStoredUserSession, type Store };
+export { store, loadAppInfo, getAppInfo, getAppUserAgent, initUserData, setCurrentProject, signOutAndClearUserData, tryLoadStoredUserSession, type Store };

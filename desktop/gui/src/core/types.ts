@@ -94,3 +94,10 @@ export interface AppInfo {
     version: string;
     serverBaseUrl: string;
 }
+
+export interface OsInfo {
+    platform: string;
+    type: string;
+    arch: string;
+    version: string;
+}

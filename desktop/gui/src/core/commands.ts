@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api";
-import type { SharedLinkDownloadRequest, LegacyTransferLinkDownloadRequest, UploadFilesRequest, FileSizeResponseItem, CancelTransferFileRequest, CancelTransferRequest, GoogleTokenResult, AppInfo } from "./types.js";
+import * as os from "@tauri-apps/api/os";
+import type { SharedLinkDownloadRequest, LegacyTransferLinkDownloadRequest, UploadFilesRequest, FileSizeResponseItem, CancelTransferFileRequest, CancelTransferRequest, GoogleTokenResult, AppInfo, OsInfo } from "./types.js";
 
 export function requestTransfers() {
     return invoke('request_transfers');
@@ -55,4 +56,20 @@ export function deletePersistedUserToken(): Promise<void> {
 
 export function getAppInfo(): Promise<AppInfo> {
     return invoke("get_app_info")
+}
+
+export async function getOsInfo(): Promise<OsInfo> {
+    const [platform, type, arch, version] = await Promise.all([
+        os.platform(),
+        os.type(),
+        os.arch(),
+        os.version()
+    ]);
+
+    return {
+        platform,
+        type,
+        arch,
+        version
+    };
 }

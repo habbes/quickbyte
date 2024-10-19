@@ -10,13 +10,17 @@ export function createTrpcClient(config: TrpcClientConfig) {
                 url: config.baseUrl,
                 async headers() {
                     const token = await config.getToken();
+                    const headers: Record<string, string> = {};
+
                     if (token) {
-                        return {
-                            Authorization: `Bearer ${token}`
-                        }
+                        headers.Authorization = `Bearer ${token}`;
                     }
 
-                    return {};
+                    if (config.userAgent) {
+                        headers["User-Agent"] = config.userAgent;
+                    }
+
+                    return headers;
                 }
             })
         ]
@@ -27,6 +31,7 @@ export function createTrpcClient(config: TrpcClientConfig) {
 
 export interface TrpcClientConfig {
     baseUrl: string;
+    userAgent?: string;
     getToken(): Promise<string|undefined>;
 }
 

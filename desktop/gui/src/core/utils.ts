@@ -1,4 +1,4 @@
-import { TransferJob } from "./types";
+import { AppInfo, OsInfo, TransferJob } from "./types";
 
 export function getTransferCompletedSize(transfer: TransferJob) {
     return transfer.files.reduce((sizeSoFar, file) => sizeSoFar + file.completedSize, 0);
@@ -46,4 +46,8 @@ function findCommonBasePathSegments(paths: string[][], rootPath = ""): string[] 
     const basePath = paths[0].slice(0, lastCommonIndex + 1);
     // TODO: this is inefficient, unnecessary array allocations and copies
     return findCommonBasePathSegments([basePath, ...paths.slice(2)]);
+}
+
+export function computeUserAgent(app: AppInfo, os: OsInfo) {
+    return `quickbyte-app=desktopTransfer;version=${app.version};os-type=${os.type};os-platform=${os.platform};os-arch=${os.arch};os-version=${os.version}`;
 }

@@ -49,6 +49,7 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { open } from "@tauri-apps/api/dialog";
 import { downloadSharedLink, downloadLegacyTransferLink } from "@/core";
+import { getAppUserAgent } from "@/app-utils";
 import { trpcClient } from "../app-utils/index.js";
 import { UiTextInput, UiButton } from "@/components/ui";
 import { unwrapSingleton, DownloadTransferFileResult, ensure } from "@quickbyte/common";
@@ -182,7 +183,7 @@ async function fetchLink() {
         transferId: linkParts.downloadId,
         countryCode: undefined,
         ip: undefined,
-        userAgent: undefined
+        userAgent: getAppUserAgent()
       });
 
       files.value = result.files;
