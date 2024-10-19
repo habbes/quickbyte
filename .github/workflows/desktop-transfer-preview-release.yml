@@ -25,7 +25,7 @@ jobs:
         bundle_identifier: 'io.quickbyte.desktoptransfer.preview'
         server_base_url: 'https://quickbyte-staging.up.railway.app'
         should_release: true
-        prelease: true
+        prerelease: true
         create_artifacts: false
     secrets:
         google_client_id: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_ID }}
