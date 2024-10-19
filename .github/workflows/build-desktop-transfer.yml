@@ -67,4 +67,4 @@ jobs:
           SERVER_BASE_URL: 'https://quickbyte-staging.up.railway.app'
         with:
           projectPath: desktop/gui
-          args: '${{ matrix.args }} --config "{\"package\":{\"productName\":\"Quickbyte Transfer Staging\"}}"'
+          args: '${{ matrix.args }} --config "{"package":{\"productName\":\"Quickbyte Transfer Test\"}}"'
