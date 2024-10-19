@@ -32,6 +32,8 @@ async fn main() {
 
       let config = app_handle.config();
 
+      println!("SERVER_BASE_URL {}", dotenv!("SERVER_BASE_URL"));
+
       let package = &config.package;
       let app_config = AppInfo {
         name: package.product_name.clone().expect("Failed to get app product name"),
