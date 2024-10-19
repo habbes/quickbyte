@@ -16,9 +16,11 @@ use app_context::AppContext;
 use directories::BaseDirs;
 use tokio;
 use tauri_plugin_context_menu;
+use dotenvy::dotenv;
 
 #[tokio::main]
 async fn main() {
+  dotenv().ok();
   tauri::Builder::default()
     .plugin(tauri_plugin_context_menu::init())
     .setup(|app| {

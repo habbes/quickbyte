@@ -18,11 +18,16 @@ use oauth2::{basic::BasicClient, reqwest::async_http_client, AuthUrl, Authorizat
 use crate::core::error::AppError;
 
 // See: https://developers.google.com/identity/protocols/oauth2 and https://developers.google.com/identity/protocols/oauth2/native-app
-
-const CLIENT_ID: &str = "GOOGLE_CLIENT_ID";
-const CLIENT_SECRET: &str = "GOOGLE_CLIENT_SECRET";
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
+
+fn get_client_id() -> String {
+    std::env::var("GOOGLE_CLIENT_ID").expect("Failed to load GOOGLE_CLIENT_ID")
+}
+
+fn get_client_secret() -> String  {
+    std::env::var("GOOGLE_CLIENT_SECRET").expect("Failed to load GOOGLE_CLIENT_SECRET")
+}
 
 
 pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<SignInWithGoogleResult, AppError> {
@@ -36,8 +41,8 @@ pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<SignInWithG
     let redirect_url = Url::parse(&redirect_url).unwrap();
     let redirect_url = RedirectUrl::from_url(redirect_url);
 
-    let client_id = ClientId::new(String::from(CLIENT_ID));
-    let client_secret = ClientSecret::new(String::from(CLIENT_SECRET));
+    let client_id = ClientId::new(get_client_id());
+    let client_secret = ClientSecret::new(get_client_secret());
     // Google auth endpoint
     let auth_url = AuthUrl::from_url(Url::parse(AUTH_URL).unwrap());
     let token_url = TokenUrl::from_url(Url::parse(TOKEN_URL).unwrap());
@@ -165,41 +170,7 @@ async fn authorize_handler(auth: Extension<AuthState>, query: Query<CallbackQuer
         return String::from(success_message); // never let them know your next move
     }
 
-    println!("Authorization code {}", query.code.secret());
-    println!("Code challenge {:?}", auth.pkce.0);
-    println!("Code verifier {}", auth.pkce.1);
-
-    // attempting to make a http request directly because
-    // the oauth2 library does not expose the id token,
-    // but currently getting an invalid_request error.
-    // I suspect the code verifier
     let client = Client::new();
-    let redirect_url = format!("{}/callback", auth.socket_addr);
-    // let code_verifier = PkceCodeVerifier::new(auth.pkce.1.clone());
-    let code_verifier = auth.pkce.1.clone();
-    let token_request_data = [
-        ("client_id", CLIENT_ID),
-        ("client_secret", CLIENT_SECRET),
-        ("code", query.code.secret()),
-        ("grant_type", "authorization_code"),
-        ("redirect_uri", &redirect_url),
-        ("code_verifier", &code_verifier)
-    ];
-    // println!("Token request {token_request_data:#?}");
-    // let token_response = client.post(TOKEN_URL)
-    // .form(&token_request_data)
-    // .send()
-    // .await.unwrap();
-
-    // if !token_response.status().is_success() {
-    //     let error_response: GoogleAuthTokenErrorResponse = token_response.json().await.unwrap();
-    //     return format!("Error: {}, {}", error_response.error, error_response.error_description);
-    //     // println!("Status {}", token_response.status());
-    //     // println!("Response {}", token_response.text().await.unwrap());
-    //     // return "Authentication failed.";
-    // }
-
-    // let token: GoogleAuthTokenResponse = token_response.json().await.unwrap();
 
     let token = auth
         .client
@@ -211,15 +182,16 @@ async fn authorize_handler(auth: Extension<AuthState>, query: Query<CallbackQuer
 
     println!("Auth success, access token: {:?}, refresh token: {:#?}", token.access_token().secret().to_string(), token.refresh_token().unwrap().secret().to_string());
 
+    let client_id = get_client_id();
+    let client_secret = get_client_secret();
+
     // the oauth2 lib doesn't include the id_token, make a separate request to get the id_token
     let id_token_request_data = [
-        ("client_id", CLIENT_ID),
-        ("client_secret", CLIENT_SECRET),
+        ("client_id", client_id.as_str()),
+        ("client_secret", client_secret.as_str()),
         ("refresh_token", token.refresh_token().unwrap().secret()),
         ("grant_type", "refresh_token")
     ];
-
-   
 
     let token_response = client.post(TOKEN_URL)
     .form(&id_token_request_data)
