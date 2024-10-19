@@ -9,5 +9,6 @@ initGlobalEventListener(store, trpcClient);
 
 createApp(App)
   .use(VueQueryPlugin)
+  // @ts-ignore not sure why passing "router" here causes type check to fail
   .use(router)
   .mount('#app')

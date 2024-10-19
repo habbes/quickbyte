@@ -113,7 +113,6 @@ async function login() {
 async function loginWithGoogle() {
   try {
     const googleResult = await getGoogleToken();
-    console.log('google token result', googleResult);
 
     const result = await trpcClient.loginWithGoogle.mutate({
       idToken: googleResult.idToken,
