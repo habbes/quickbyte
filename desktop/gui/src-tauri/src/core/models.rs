@@ -68,6 +68,14 @@ impl From<&str> for JobStatus {
   }
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AppConfig {
+  pub name: String,
+  pub version: String,
+  pub server_base_url: String,
+}
+
 pub struct DownloadJob {
   pub id: i32,
   pub share_id: String,

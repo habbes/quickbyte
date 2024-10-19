@@ -9,6 +9,8 @@ pub mod schema;
 pub mod auth;
 mod app_context;
 
+use core::models::AppConfig;
+
 use tauri::Manager;
 use commands::*;
 use event_bridge::bridge_events;
@@ -25,17 +27,22 @@ async fn main() {
     .plugin(tauri_plugin_context_menu::init())
     .setup(|app| {
       let app_handle = app.handle();
-      // tokio::block_on()
-      // let app_context = AppContext::init(get_db_path().to_string(), move |event| {
-      //   bridge_events(&app_handle, event)
-      // });
+
+      let config = app_handle.config();
+      println!("Binary name {:?}", config.package.binary_name());
+      let package = &config.package;
+      let app_config = AppConfig {
+        name: package.product_name.clone().expect("Failed to get app product name"),
+        version: package.version.clone().expect("Failed to get app version"),
+        server_base_url: std::env::var("SERVER_BASE_URL").expect("Failed to get SERVER_BASE_URL")
+      };
 
       // TODO: since this runs async, the UI might start before the app context
       // has been initialized, which means commands won't work. Be sure to synchronize things
       // to make sure that doesn't happen.
       tokio::spawn(async move {
         let cloned_handle = app_handle.clone();
-        let app_context = AppContext::init(get_db_path().to_string(), move |event| {
+        let app_context = AppContext::init(get_db_path().to_string(), app_config, move |event| {
           bridge_events(&cloned_handle, event)
         }).await;
 
