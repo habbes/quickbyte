@@ -98,8 +98,8 @@ pub async fn sign_in_with_google(handle: tauri::AppHandle) -> Result<SignInWithG
 }
 
 #[command]
-pub fn try_get_user_token() -> Result<Option<String>, ()> {
-    if let Some(token) = auth_store::try_get_user_token() {
+pub fn try_get_user_token(context: State<'_, AppContext>) -> Result<Option<String>, ()> {
+    if let Some(token) = context.auth_store.try_get_user_token() {
         Ok(Some(token.token))
     } else {
         Ok(None)
@@ -107,14 +107,14 @@ pub fn try_get_user_token() -> Result<Option<String>, ()> {
 }
 
 #[command]
-pub fn set_user_token(token: String) -> Result<(), ()> {
-    auth_store::set_user_token(&token);
+pub fn set_user_token(context: State<'_, AppContext>, token: String) -> Result<(), ()> {
+    context.auth_store.set_user_token(&token);
     Ok(())
 }
 
 #[command]
-pub fn delete_user_token() -> Result<(), ()> {
-    auth_store::delete_user_token();
+pub fn delete_user_token(context: State<'_, AppContext>) -> Result<(), ()> {
+    context.auth_store.delete_user_token();
     Ok(())
 }
 

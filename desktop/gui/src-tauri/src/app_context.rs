@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use tokio;
 
+use crate::auth::auth_store::AuthStore;
 use crate::core::models::AppInfo;
 use crate::core::request::Request;
 use crate::core::{event::Event, transfer_manager::TransferManager};
@@ -9,7 +10,8 @@ use crate::persistence::database::Database;
 
 pub struct AppContext {
   pub requests: MessageChannel<Request>,
-  pub config: AppInfo
+  pub config: AppInfo,
+  pub auth_store: AuthStore,
 }
 
 impl AppContext {
@@ -65,7 +67,8 @@ impl AppContext {
     
     Self {
       requests,
-      config
+      auth_store: AuthStore::init(&config.name),
+      config,
     }
   }
 }

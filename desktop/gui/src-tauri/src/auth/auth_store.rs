@@ -3,29 +3,45 @@
 const KEYRING_SERVICE: &str = "Quickbyte Transfer Authentication";
 const KEYRING_USER: &str = "Quickbyte Transfer Signed User";
 
-pub struct AuthTokenResult {
-    pub token: String,
+
+pub struct AuthStore {
+    keyring_service: String,
+    keyring_user: String,
 }
 
-pub fn try_get_user_token() -> Option<AuthTokenResult> {
-    let entry = get_keyring_entry();
-    if let Ok(password) = entry.get_password() {
-        return Some(AuthTokenResult { token: password });
+impl AuthStore {
+    pub fn init(app_name: &str) -> Self {
+
+        AuthStore {
+            keyring_service: String::from(app_name),
+            keyring_user: format!("{app_name} User")
+        }
     }
 
-    None
+    pub fn try_get_user_token(&self) -> Option<AuthTokenResult> {
+        let entry = self.get_keyring_entry();
+        if let Ok(password) = entry.get_password() {
+            return Some(AuthTokenResult { token: password });
+        }
+    
+        None
+    }
+
+    pub fn set_user_token(&self, token: &str) {
+        let entry = self.get_keyring_entry();
+        entry.set_password(token).expect("Failed to set password");
+    }
+
+    pub fn delete_user_token(&self) {
+        let entry = &self.get_keyring_entry();
+        entry.delete_credential().expect("Failed to delete token");
+    }
+
+    fn get_keyring_entry(&self) -> keyring::Entry {
+        keyring::Entry::new(&self.keyring_service, &self.keyring_user).expect("Failed to create keyring entry")
+    }
 }
 
-pub fn set_user_token(token: &str) {
-    let entry = get_keyring_entry();
-    entry.set_password(token).expect("Failed to set password");
-}
-
-pub fn delete_user_token() {
-    let entry = get_keyring_entry();
-    entry.delete_credential().expect("Failed to delete token");
-}
-
-fn get_keyring_entry() -> keyring::Entry {
-    keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER).expect("Failed to create keyring entry")
+pub struct AuthTokenResult {
+    pub token: String,
 }
