@@ -1,6 +1,9 @@
 {
   "build": {
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": {
+      "script": "npm run build --workspace common && npm run build --workspace server && npm run build --workspace desktop",
+      "cwd": "../../.."
+    },
     "beforeDevCommand": "npm run dev",
     "devPath": "http://localhost:8080",
     "distDir": "../dist"

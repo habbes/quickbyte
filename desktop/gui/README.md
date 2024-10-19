@@ -65,3 +65,5 @@ db_bath
 
 key_ring
 
+pre-build command to install server and common deps
+
