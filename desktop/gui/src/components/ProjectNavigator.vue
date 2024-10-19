@@ -29,7 +29,6 @@
             class="flex-1 text-sm text-gray-200 border border-black active:bg-[#1f141b] hover:bg-[#31202b] rounded-md inline-flex justify-center items-center px-2 py-1"
           >Upload</button> -->
         <UiButton @click="uploadToProject()" class="flex-1" sm>Upload</UiButton>
-        <UiButton class="flex-1" sm>Download</UiButton>
       </div>
     </div>
 
