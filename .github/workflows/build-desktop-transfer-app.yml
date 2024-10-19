@@ -1,0 +1,21 @@
+name: 'Build Quickbyte Transfer desktop app'
+
+on:
+  push:
+
+defaults:
+  run:
+    shell: bash
+    working-directory: desktop/gui
+jobs:
+  build_app:
+    uses: ./.github/workflows/build-release-transfer-app-common.yml
+    with:
+        app_name: 'Quickbyte Transfer Staging'
+        bundle_identifier: 'io.quickbyte.desktoptransfer.staging'
+        server_base_url: 'https://quickbyte-staging.up.railway.app'
+        should_release: false
+        create_artifacts: true
+    secrets:
+        google_client_id: ${{ secrets.STAGING_GOOGLE_CLIENT_ID }}
+        google_client_secret: ${{ secrets.STAGING_GOOGLE_CLIENT_SECRET }}
