@@ -134,6 +134,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.DESKTOP_TRANSFER_APP_RELEASE_GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
         #   GOOGLE_CLIENT_ID: ${{ vars.STAGING_GOOGLE_CLIENT_ID }}
         #   GOOGLE_CLIENT_SECRET: ${{ vars.STAGING_GOOGLE_CLIENT_SECRET }}
         #   SERVER_BASE_URL: 'https://quickbyte-staging.up.railway.app'
