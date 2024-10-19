@@ -9,6 +9,8 @@ defaults:
     working-directory: desktop/gui
 jobs:
   build_app:
+    permissions:
+      contents: write
     uses: ./.github/workflows/build-release-transfer-app-common.yml
     with:
         app_name: 'Quickbyte Transfer Staging'
