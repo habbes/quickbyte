@@ -28,6 +28,12 @@ on:
             required: true
         google_client_secret:
             required: true
+        release_github_token:
+            required: true
+        tauri_private_key:
+            required: false
+        tauri_private_key_password:
+            required: false
 
 defaults:
   run:
@@ -133,8 +139,9 @@ jobs:
         if: ${{ inputs.should_release }}
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.DESKTOP_TRANSFER_APP_RELEASE_GITHUB_TOKEN }}
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.release_github_token }}
+          TAURI_PRIVATE_KEY: ${{ secrets.tauri_private_key }}
+          TAURI_PRIVATE_KEY_PASSWORD: ${{ secrets.tauri_private_key_password }}
         #   GOOGLE_CLIENT_ID: ${{ vars.STAGING_GOOGLE_CLIENT_ID }}
         #   GOOGLE_CLIENT_SECRET: ${{ vars.STAGING_GOOGLE_CLIENT_SECRET }}
         #   SERVER_BASE_URL: 'https://quickbyte-staging.up.railway.app'

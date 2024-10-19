@@ -32,3 +32,6 @@ jobs:
     secrets:
         google_client_id: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_ID }}
         google_client_secret: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_SECRET }}
+        release_github_token: ${{ secrets.DESKTOP_TRANSFER_APP_RELEASE_GITHUB_TOKEN }}
+        tauri_private_key: ${{ secrets.TAURI_PRIVATE_KEY }}
+        tauri_private_key_password: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
