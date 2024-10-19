@@ -43,7 +43,7 @@
         "icons/icon.ico"
       ],
       "identifier": "io.quickbyte.desktoptransfer.dev",
-      "longDescription": "",
+      "longDescription": "Quickbyte Transfer app",
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",

@@ -17,13 +17,16 @@ jobs:
         include:
           - platform: 'macos-latest' # for Arm based macs (M1 and above).
             args: '--target aarch64-apple-darwin'
+            name: 'macos-arm'
           - platform: 'macos-latest' # for Intel based macs.
             args: '--target x86_64-apple-darwin'
+            name: 'macos-intel'
           # we don't yet support Linux
           # - platform: 'ubuntu-22.04' # for Tauri v1 you could replace this with ubuntu-20.04.
             # args: ''
           - platform: 'windows-latest'
             args: ''
+            name: 'windows'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -59,9 +62,20 @@ jobs:
         run: cd ../.. && npm install --workspaces
         
       - name: generate config override
-        run: echo "{\"package\":{\"productName\":\"Quickbyte Transfer Staging\"}}" > config_override.json && cat config_override.json
-
-      - name: test env vars
+        run: |
+          echo "{
+            \"package\": {
+              \"productName\":\"Quickbyte Transfer Staging\"
+            },
+            \"bundle\": {
+              \"identifier\":\"io.quickbyte.desktoptransfer.staging\"
+            }
+          }" > config_override.json && cat config_override.json
+      
+      # generate ad-hoc .env file because the tauri action
+      # does not appear to use the custom env vars passed to
+      # it directly
+      - name: generate .env config
         run: |
           echo "
           GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
@@ -89,5 +103,5 @@ jobs:
       - name: upload bundle artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: app-bundle-${{matrix.platform}} ${{matrix.args}}
+          name: app-bundle-${{matrix.name}}
           path: desktop/gui/src-tauri/target
