@@ -6,7 +6,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "Quickbyte Transfer",
+    "productName": "Quickbyte Transfer Dev",
     "version": "0.1.0"
   },
   "tauri": {
