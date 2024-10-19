@@ -1,7 +1,7 @@
 import { Collection, Filter } from "mongodb";
 import { createAppError, createAuthError, createDbError, createInvalidAppStateError, createResourceConflictError, createResourceNotFoundError, createValidationError, isMongoDuplicateKeyError, rethrowIfAppError } from "../error.js";
 import { createPersistedModel, FullUser, User, UserWithAccount, GuestUser } from "../models.js";
-import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs, LoginWithGoogleRequestArgs, AuthProvider, Principal } from "@quickbyte/common";
+import { AcceptInviteArgs, Resource, CheckUserAuthMethodArgs, UserAuthMethodResult, CreateUserArgs, UserVerification, UserInDb, FullUserInDb, VerifyUserEmailArgs, RequestUserVerificationEmailArgs, LoginRequestArgs, UserAndToken, AuthToken, PasswordResetArgs, LoginWithGoogleRequestArgs, AuthProvider, Principal, ClientAppType } from "@quickbyte/common";
 import { IAccountService } from "./account-service.js";
 import { EmailHandler, IAlertService, createEmailVerificationEmail, createInviteAcceptedEmail, createUserSignupAdminNotificationEmail, createWelcomeEmail } from "./index.js";
 import { IInviteService } from "./invite-service.js";
@@ -264,7 +264,7 @@ export class AuthService {
 
     async loginWithGoogle(args: LoginWithGoogleRequestArgs): Promise<UserAndToken> {
         try {
-            const payload = await this.extractGoogleIdToken(args.idToken);
+            const payload = await this.extractGoogleIdToken(args.idToken, args.appType);
 
             const googleId = payload.sub;
 
@@ -567,16 +567,38 @@ export class AuthService {
         }
     }
 
-    private async extractGoogleIdToken(idToken: string) {
+    private async extractGoogleIdToken(idToken: string, appType: ClientAppType) {
         try {
+            const clientId = appType === 'webApp' ? this.args.googleClientId :
+                appType === 'desktopTransferApp' ? this.args.desktopTransferAppGoogleClientId :
+                this.args.googleClientId;
+            
+            console.log('appType', appType, 'clientId', clientId, 'id token', idToken);
+    
             const result = await this.googleAuthClient.verifyIdToken({
                 idToken,
-                audience: this.args.googleClientId
+                audience: clientId
             });
 
+            console.log('token, result', result);
+
             const payload = result.getPayload();
+
+            console.log('token, result', payload);
             if (!payload) {
                 throw createAuthError("Unable to get user info from Google token");
+            }
+
+            if (!payload.email) {
+                throw createAuthError("Unable to get user email from Google token");
+            }
+
+            if (!payload.name) {
+                throw createAuthError("Unable to get user name from Google token");
+            }
+
+            if (!('email_verified' in payload)) {
+                throw createAuthError("Unable to get user email verification status from Google token");
             }
 
             return payload;
@@ -707,5 +729,12 @@ export interface AuthServiceArgs {
     webappBaseUrl: string;
     access: IAccessHandler;
     googleClientId: string;
+    /**
+     * Client ID used by the Desktop Transfer App
+     */
+    desktopTransferAppGoogleClientId: string;
+    /**
+     * @deprecated
+     */
     googleClientSecret: string;
 }

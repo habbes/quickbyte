@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DownloadTransferFileResult, FolderPathEntry, ProjectShareItem, FrameAnnotationCollection } from "./models.js";
+import { DownloadTransferFileResult, FolderPathEntry, ProjectShareItem, FrameAnnotationCollection, ClientAppType } from "./models.js";
 
 export const DeclineInviteArgs = z.object({
     code: z.string(),
@@ -139,7 +139,8 @@ export const LoginWithGoogleRequestArgs = z.object({
     idToken: z.string().min(1),
     ip: z.string().optional(),
     countryCode: z.string().optional(),
-    userAgent: z.string().optional()
+    userAgent: z.string().optional(),
+    appType: ClientAppType.optional().default("webApp")
 });
 
 export type LoginWithGoogleRequestArgs = z.infer<typeof LoginWithGoogleRequestArgs>;
