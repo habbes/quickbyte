@@ -3,10 +3,10 @@ name: 'Build Quickbyte Transfer desktop app'
 on:
   push:
 
-# defaults:
-#   run:
-#     shell: bash
-#     working-directory: desktop/gui
+defaults:
+  run:
+    shell: bash
+    working-directory: desktop/gui
 jobs:
   build-app:
     permissions:
@@ -56,10 +56,10 @@ jobs:
 
       - name: install frontend dependencies
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
-        run: npm install --workspaces
+        run: cd ../.. npm install --workspaces
         
       - name: generate config override
-        run: echo "{\"package\":{\"productName\":\"Quickbyte Transfer Staging\"}}" > deskop/gui/config_override.json
+        run: echo "{\"package\":{\"productName\":\"Quickbyte Transfer Staging\"}}" > config_override.json
 
       # see: https://github.com/tauri-apps/tauri-action
       - uses: tauri-apps/tauri-action@v0
