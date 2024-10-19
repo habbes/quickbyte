@@ -51,7 +51,6 @@ diesel migration run --database-url testdb
 
 ## Running the app
 
-
 ```
 cargo tauri dev
 ```
