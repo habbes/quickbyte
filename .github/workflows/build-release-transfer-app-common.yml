@@ -139,7 +139,8 @@ jobs:
         if: ${{ inputs.should_release }}
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.release_github_token }}
+          # GITHUB_TOKEN: ${{ secrets.release_github_token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.tauri_private_key }}
           TAURI_PRIVATE_KEY_PASSWORD: ${{ secrets.tauri_private_key_password }}
         #   GOOGLE_CLIENT_ID: ${{ vars.STAGING_GOOGLE_CLIENT_ID }}
@@ -148,7 +149,7 @@ jobs:
         with:
           projectPath: desktop/gui
           args: '${{ matrix.args }} --config config_override.json'
-          repo: 'habbes/quickbyte-releases'
+          # repo: 'habbes/quickbyte-releases'
           releaseCommitish: 'main'
           tagName: desktop-transfer-${{ inputs.release_prefix }}-app-v__VERSION__
           releaseName: '${{ inputs.app_name}} v__VERSION__'
