@@ -1,0 +1,32 @@
+# Creates a test release of the Quickbyte Transfer app when a commit
+# is pushed to the desktop-transfer-test-release branch
+# This is meant for on-demand testing of the release during development. You can force
+# a push to the transfer-app-test-release branch whenever you want to test.
+# The releases created from this pipeline include the current date and can be deleted
+# to avoid noise in the release page.
+
+name: 'Test release of Quickbyte Transfer desktop app'
+
+on:
+  push:
+    branches:
+        - desktop-transfer-test-release
+
+defaults:
+  run:
+    shell: bash
+    working-directory: desktop/gui
+jobs:
+  build_app:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build-release-transfer-app-common.yml
+    with:
+        app_name: 'Quickbyte Transfer Dev'
+        bundle_identifier: 'io.quickbyte.desktoptransfer.dev'
+        server_base_url: 'https://quickbyte-staging.up.railway.app'
+        should_release: true
+        prelease: true
+    secrets:
+        google_client_id: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_ID }}
+        google_client_secret: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_SECRET }}

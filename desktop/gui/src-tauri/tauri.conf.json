@@ -9,7 +9,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "Quickbyte Transfer Dev",
+    "productName": "Quickbyte Transfer Local",
     "version": "0.1.0"
   },
   "tauri": {
@@ -42,7 +42,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "io.quickbyte.desktoptransfer.dev",
+      "identifier": "io.quickbyte.desktoptransfer.local",
       "longDescription": "Quickbyte Transfer app",
       "macOS": {
         "entitlements": null,
