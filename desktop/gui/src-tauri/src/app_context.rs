@@ -64,7 +64,7 @@ impl AppContext {
       async move {
         tokio::spawn(async move {
           transfers.execute_request(request).await;
-        }).await;
+        }).await.expect("Failed to spawn task for request");
       }
     });
     

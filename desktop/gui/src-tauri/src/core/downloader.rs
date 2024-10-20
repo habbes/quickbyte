@@ -240,7 +240,7 @@ impl FileDownloadBlocksDispatcher {
             let end = std::cmp::min(offset + chunk_size, file_job.size);
             let real_size = end - offset;
 
-            println!("Queueing download block {} range {offset} {end}, for file {}", block.index, self.file_job.name);
+            println!("Queueing download block {} range {offset}-{end}, for file {}", block.index, self.file_job.name);
 
             transfer_queue.send(BlockTransferRequest::Download(
                 Box::new(BlockDownloadRequest {

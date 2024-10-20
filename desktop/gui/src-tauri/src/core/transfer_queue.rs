@@ -135,11 +135,6 @@ async fn transfer_block(request: BlockTransferRequest) {
 }
 
 async fn upload_block(request: Box<BlockUploadRequest>) {
-    println!(
-        "Uploading block {} size {}",
-        request.block.index, request.size
-    );
-
     // Considered using Bytes instead of Arc<Vec<u8>> but I got an error when
     // calling put_block with the BytesMut, will investigate later.
     let mut buffer = vec![0u8; request.size as usize];
@@ -239,11 +234,6 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
         })
         .await
         .ok();
-
-    println!(
-        "Completed uploading block {} size {}",
-        request.block.index, request.size
-    );
 }
 
 async fn download_block(request: Box<BlockDownloadRequest>) {

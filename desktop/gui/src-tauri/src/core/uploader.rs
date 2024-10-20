@@ -233,6 +233,8 @@ impl FileUploadBlockDispatcher {
                 let end = std::cmp::min(offset + chunk_size, file_job.size);
                 let real_size = end - offset;
 
+                println!("Queueing upload block {} range {offset}-{end}, for file {}", block.index, self.file_job.name);
+
                 // Since the transfer queue is bounded, the task might block at this point until
                 // some items in the queue have completed their transfer
                 self.transfer_queue
@@ -302,7 +304,7 @@ impl FileUploadCompletionWatcher {
                     block_index,
                 } => {
                     num_completed += 1;
-                    println!("Completed {num_completed} blocks for file {:?}", self.file_job.name);
+                    println!("Completed uploading block {block_index} (total completed: {num_completed} blocks) for file {:?}", self.file_job.name);
                     self.events
                         .send(TransferUpdate::ChunkCompleted {
                             chunk_index: block_index,
