@@ -117,7 +117,6 @@ impl BlockTransferQueue {
     }
 
     pub async fn send(&self, chunk: BlockTransferRequest) -> Result<(), AppError> {
-        println!("Send block transfer request to queue");
         let tx = self.tx.clone();
         tx.send(chunk).await?;
         Ok(())
@@ -248,11 +247,6 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
 }
 
 async fn download_block(request: Box<BlockDownloadRequest>) {
-    println!(
-        "Downloading block {} size {}",
-        request.block.index, request.size
-    );
-
     // let block_index = request.block.index;
     // let block_id = block._id.clone();
 

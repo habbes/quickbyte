@@ -76,8 +76,10 @@ impl TransferDownloader<'_> {
         for task in tasks {
             task.await.unwrap();
         }
-    
+        
+        println!("Send transfer completed message for {}", self.request.name);
         events.send(TransferUpdate::TransferCompleted { transfer_id: self.request._id.clone() }).await;
+        println!("Sent transfer completed message for {}", self.request.name);
     }
 }
 
@@ -143,6 +145,7 @@ impl FileDownloadBlocksDispatcher {
     pub async fn queue_file(self) {
         // create file
         let started_at = Instant::now();
+        println!("Queueing file {} of size {}", self.file_job.name, self.file_job.size);
 
         if self.cancellation_tracker.is_cancelled() {
             self.file_started_tx.send(FileTransferStartMessage::Failed {
@@ -237,6 +240,8 @@ impl FileDownloadBlocksDispatcher {
             let end = std::cmp::min(offset + chunk_size, file_job.size);
             let real_size = end - offset;
 
+            println!("Queueing download block {} range {offset} {end}, for file {}", block.index, self.file_job.name);
+
             transfer_queue.send(BlockTransferRequest::Download(
                 Box::new(BlockDownloadRequest {
                     block: block.clone(),
@@ -306,7 +311,7 @@ impl FileDownloadCompletionWatcher {
                     block_index,
                 } => {
                     num_completed += 1;
-                    println!("Completed {num_completed} blocks for file {:?}", self.file_job.name);
+                    println!("Completed downloading block {block_index} (total completed: {num_completed} blocks) for file {:?}", self.file_job.name);
                     self.events.send(
                         TransferUpdate::ChunkCompleted {
                             chunk_index: block_index,
@@ -379,5 +384,7 @@ impl FileDownloadCompletionWatcher {
             file_id: self.file_job._id.clone(),
             transfer_id: self.transfer_id.clone()
         }).await;
+
+        println!("Sent download completion message for file {}", self.file_job.name);
     }
 }

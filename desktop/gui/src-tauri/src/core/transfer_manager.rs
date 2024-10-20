@@ -658,10 +658,12 @@ fn handle_file_completed(
     file_id: &str,
     db_sync_channel: DbChannel
 ) {
+    println!("Handling file completed {file_id}");
     let file_id = String::from(file_id);
     let transfer_id = String::from(transfer_id);
 
     let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+    println!("Found transfer {} status {:?} is_terminal {}", transfer.name, transfer.status, transfer.status.is_terminal());
     if transfer.status.is_terminal() {
         return;
     }
@@ -672,6 +674,7 @@ fn handle_file_completed(
         .find(|f| f._id == file_id)
         .unwrap();
 
+    println!("Found file {} status {:?} is_terminal {}", file.name, file.status, file.status.is_terminal());
     if file.status.is_terminal() {
         return;
     }
@@ -679,6 +682,8 @@ fn handle_file_completed(
     file.completed_size = file.size;
     file.status = JobStatus::Completed;
     transfer.status = JobStatus::Progress;
+
+    println!("Send file completion update to db");
 
     db_sync_channel.send(Event::TransferFileStatusUpdate {
         file_id: file_id.clone(),
@@ -738,6 +743,7 @@ fn handle_transfer_completed(
     }
 
     transfer.status = JobStatus::Completed;
+    println!("Completed transfer {}", transfer.name);
 
     db_sync_channel.send(Event::TransferStatusUpdate {
         transfer_id: transfer_id.clone(),
