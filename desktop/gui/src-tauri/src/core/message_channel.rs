@@ -1,4 +1,7 @@
+use std::future::Future;
+
 use tokio::sync::mpsc::{Sender, channel};
+
 
 #[derive(Debug, Clone)]
 pub struct MessageChannel<T>
@@ -8,12 +11,12 @@ pub struct MessageChannel<T>
 }
 
 impl<T: std::fmt::Debug + Send + 'static> MessageChannel<T> {
-    pub fn new<F: Fn(T) + Send + 'static>(handler: F) -> Self {
+    pub fn new<F: Fn(T) -> Fut + Send + 'static, Fut: Future<Output = ()> + Send>(handler: F)  -> Self {
         let (tx, mut rx) = channel(32);
     
         tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
-                handler(message);
+                handler(message).await;
             }
         });
 
@@ -26,7 +29,6 @@ impl<T: std::fmt::Debug + Send + 'static> MessageChannel<T> {
         self.request_tx.send(request).await.unwrap(); // TODO: error handling
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct SyncMessageChannel<T>

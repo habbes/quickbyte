@@ -51,14 +51,21 @@ impl AppContext {
       };
     }));
 
-    let events = MessageChannel::new(event_handler);
+    let events = MessageChannel::new(move |event| {
+      event_handler(event);
+      std::future::ready(())
+    });
+
     let transfers = Arc::new(TransferManager::new( events.clone(), db_sync_channel.clone()));
 
     let requests = MessageChannel::new(move|request| {
       let transfers = transfers.clone();
-      tokio::spawn(async move {
-        transfers.execute_request(request).await;
-      });
+      // spawn a task for each request to handle requests concurrently
+      async move {
+        tokio::spawn(async move {
+          transfers.execute_request(request).await;
+        }).await;
+      }
     });
     
     for job in saved_jobs {

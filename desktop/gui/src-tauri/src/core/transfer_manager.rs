@@ -197,21 +197,22 @@ impl TransferManager {
         let transfers = Arc::clone(&(self.transfers));
         let events = Arc::clone(&self.events);
         let db_sync_channel = Arc::clone(&self.db_sync_channel);
-        let job_updates: MessageChannel<TransferUpdate> =
+        let job_updates =
             MessageChannel::new(move |update: TransferUpdate| {
                 // handle_transfer_update(Arc::clone(&transfers), update);
                 let transfers = Arc::clone(&transfers);
                 let events = Arc::clone(&events);
                 let db_sync_channel = Arc::clone(&db_sync_channel);
-                tokio::spawn(async move {
+                
+                // use async block because async closures are unstable
+                async move {
                     handle_transfer_update(
                         Arc::clone(&transfers),
                         &update,
                         Arc::clone(&events),
                         Arc::clone(&db_sync_channel),
-                    )
-                    .await;
-                });
+                    ).await;
+                }
             });
         let job_updates = Arc::new(job_updates);
         downloader
@@ -236,7 +237,7 @@ impl TransferManager {
                 let transfers = Arc::clone(&transfers);
                 let events = Arc::clone(&events);
                 let db_sync_channel = Arc::clone(&db_sync_channel);
-                tokio::spawn(async move {
+                async move {
                     handle_transfer_update(
                         Arc::clone(&transfers),
                         &update,
@@ -244,7 +245,7 @@ impl TransferManager {
                         Arc::clone(&db_sync_channel),
                     )
                     .await;
-                });
+                }
             });
         let job_updates = Arc::new(job_updates);
         downloader
@@ -291,7 +292,7 @@ impl TransferManager {
                 let transfers = Arc::clone(&transfers);
                 let events = Arc::clone(&events);
                 let db_sync_channel = Arc::clone(&db_sync_channel);
-                tokio::spawn(async move {
+                async move {
                     handle_transfer_update(
                         Arc::clone(&transfers),
                         &update,
@@ -299,7 +300,7 @@ impl TransferManager {
                         Arc::clone(&db_sync_channel),
                     )
                     .await;
-                });
+                }
             });
         let job_updates = Arc::new(job_updates);
         uploader.start_upload(job_updates).await;
@@ -326,7 +327,7 @@ impl TransferManager {
                 let transfers = Arc::clone(&transfers);
                 let events = Arc::clone(&events);
                 let db_sync_channel = Arc::clone(&db_sync_channel);
-                tokio::spawn(async move {
+                async move {
                     handle_transfer_update(
                         Arc::clone(&transfers),
                         &update,
@@ -334,7 +335,7 @@ impl TransferManager {
                         Arc::clone(&db_sync_channel),
                     )
                     .await;
-                });
+                }
             });
         let job_updates = Arc::new(job_updates);
         uploader.start_upload(job_updates).await;
