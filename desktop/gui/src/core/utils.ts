@@ -2,8 +2,6 @@ import { AppInfo, OsInfo, OsType, TransferJob } from "./types";
 
 export function getTransferCompletedSize(transfer: TransferJob) {
     return transfer.files.reduce((sizeSoFar, file) => sizeSoFar + file.completedSize, 0);
-
-    return 0;
 }
 
 /**

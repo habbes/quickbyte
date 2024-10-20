@@ -40,6 +40,8 @@ impl<'a> TransferUploader<'a> {
                     .get_file_cancellation_tracker(&file._id)
                     .expect("Failed to get cancellation tracker for file");
 
+                println!("Start file upload {} with completed size {} out of {}", file.name, file.completed_size, file.size);
+
                 match init_file_upload(
                     self.request._id.clone(),
                     file.clone(),
@@ -294,7 +296,6 @@ impl FileUploadCompletionWatcher {
                     block_index,
                     size,
                 } => {
-                    println!("Block {block_index} progressed by {size} bytes");
                     self.events
                         .send(TransferUpdate::ChunkProgress {
                             chunk_index: block_index,

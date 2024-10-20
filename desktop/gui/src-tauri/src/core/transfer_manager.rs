@@ -686,7 +686,6 @@ fn handle_file_started(
         return;
     }
 
-    file.completed_size = file.size;
     file.status = JobStatus::Progress;
     transfer.status = JobStatus::Progress;
 
