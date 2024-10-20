@@ -41,6 +41,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { computed } from "vue";
 import { showMenu } from "tauri-plugin-context-menu";
 import { useRouter } from "vue-router";
 import { store, getAppInfo } from "@/app-utils";
@@ -51,7 +52,7 @@ import TransferStatus from "@/components/TransferStatus.vue";
 type ContextMenuOptions = Parameters<typeof showMenu>[0];
 
 const router = useRouter();
-const transfers = store.transfers;
+const transfers = computed(() => [...store.transfers.value].sort((a, b) => a.name.localeCompare(b.name)));
 
 function goToTransfer(id: string) {
   router.push({ name: 'transfer', params: { id } });
