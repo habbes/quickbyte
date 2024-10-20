@@ -74,8 +74,8 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { unwrapSingletonOrUndefined, pluralize, humanizeSize, formatPercentage, ensure } from "@quickbyte/common";
-import { store } from "@/app-utils";
-import { type TransferFileJob, showPathInFileManager, cancelTranferFile } from "@/core";
+import { store, getAppInfo } from "@/app-utils";
+import { type TransferFileJob, showPathInFileManager, cancelTranferFile, getSystemFileExplorerName } from "@/core";
 import { Icon } from '@iconify/vue';
 import { showMenu } from "tauri-plugin-context-menu";
 import EmptyDataPageContainer from "@/components/EmptyDataPageContainer.vue";
@@ -93,9 +93,11 @@ const transfer = computed(() => store.transfers.value.find(t => t._id === unwrap
 
 function showFileContextMenu(event: MouseEvent, fileJob: TransferFileJob) {
   event.preventDefault();
+
+  const appInfo = getAppInfo();
   
   const items: ContextMenuOptions["items"] = [{
-    label: "Reveal in Finder",
+    label: `Reveal in ${getSystemFileExplorerName(appInfo.os.type)}`,
     event: () => {
       return showPathInFileManager(fileJob.localPath)
     }

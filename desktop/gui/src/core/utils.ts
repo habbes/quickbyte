@@ -1,4 +1,4 @@
-import { AppInfo, OsInfo, TransferJob } from "./types";
+import { AppInfo, OsInfo, OsType, TransferJob } from "./types";
 
 export function getTransferCompletedSize(transfer: TransferJob) {
     return transfer.files.reduce((sizeSoFar, file) => sizeSoFar + file.completedSize, 0);
@@ -69,4 +69,15 @@ export function disableDefaultContextMenuInReleaseMode() {
         e.preventDefault();
         return false;
     }, { capture: true })
+}
+
+export function getSystemFileExplorerName(osType: OsType) {
+    switch (osType) {
+        case 'Darwin':
+            return 'Finder';
+        case 'Windows_NT':
+            return 'File Explorer';
+        case 'Linux':
+            return 'Files'
+    }
 }

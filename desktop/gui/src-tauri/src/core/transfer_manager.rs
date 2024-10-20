@@ -491,6 +491,9 @@ async fn handle_transfer_update(
     events: Arc<MessageChannel<Event>>,
     db_sync_channel: Arc<SyncMessageChannel<Event>>,
 ) {
+    // The implementation of the handlers assume that events are handled sequentially in order.
+    // i.e. a "FileComplete" event will not be handled after a TransferComplete event of the same transfer
+
     let mut transfers = transfers.lock().await;
     match update {
         TransferUpdate::ChunkProgress {

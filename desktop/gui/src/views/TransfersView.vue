@@ -43,8 +43,8 @@
 <script lang="ts" setup>
 import { showMenu } from "tauri-plugin-context-menu";
 import { useRouter } from "vue-router";
-import { store } from "@/app-utils";
-import { type TransferJob, showPathInFileManager, deleteTransfer, cancelTransfer } from "@/core";
+import { store, getAppInfo } from "@/app-utils";
+import { type TransferJob, showPathInFileManager, deleteTransfer, cancelTransfer, getSystemFileExplorerName } from "@/core";
 import { humanizeSize } from "@quickbyte/common";
 import TransferStatus from "@/components/TransferStatus.vue";
 
@@ -59,17 +59,21 @@ function goToTransfer(id: string) {
 
 function showContextMenu(event: MouseEvent, transfer: TransferJob) {
   event.preventDefault();
+  const appInfo = getAppInfo();
 
   const items: ContextMenuOptions['items'] = [{
-    label: 'Reveal in Finder', // TODO use 'Explorer' on Windows
+    label: `Reveal in ${getSystemFileExplorerName(appInfo.os.type)}`,
     event: async function() {
       showPathInFileManager(transfer.localPath);
     }
+  }, {
+    label: 'Show transfer files',
+    event: async () => router.push({ name: 'transfer', params: { id: transfer._id } })
   }];
 
   if (transfer.status === 'pending' || transfer.status === 'progress') {
     items.push({
-      label: 'Cancel transfer',
+      label: 'Cancel all files in transfer',
       event: async () => cancelTransfer({ transferId: transfer._id })
     })
   }

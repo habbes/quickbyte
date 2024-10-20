@@ -117,6 +117,9 @@ async function downloadFiles() {
 
 
     targetPath.value = unwrapSingleton(saveDialogResult);
+    // Create a parent folder for the files
+    // sanitize link name to be a clean folder name (remove slashes and dots)
+    targetPath.value += "/" + downloadMetadata.value.name.replace(/\\|\//g, '-').replace(/\.|\:/g, '_');
 
     if (downloadMetadata.value.type === "projectShare") {
       await downloadSharedLink({

@@ -1,4 +1,5 @@
 import type { DownloadTransferFileResult } from "@quickbyte/common";
+import { OsType } from "@tauri-apps/api/os";
 export type JobStatus = 'pending' | 'completed' | 'cancelled' | 'error' | 'progress';
 
 export interface TransferJob {
@@ -97,7 +98,9 @@ export interface AppInfo {
 
 export interface OsInfo {
     platform: string;
-    type: string;
+    type: OsType;
     arch: string;
     version: string;
 }
+
+export type { OsType };
