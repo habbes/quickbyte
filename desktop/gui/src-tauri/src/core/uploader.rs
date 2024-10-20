@@ -257,7 +257,13 @@ impl FileUploadBlockDispatcher {
 impl FileUploadCompletionWatcher {
     pub async fn wait_upload_complete(mut self) {
         let started_at = match self.file_started_rx.await.expect("Failed to receive file upload started event.") {
-            FileUploadStartMessage::Success { started_at } => started_at,
+            FileUploadStartMessage::Success { started_at } => {
+                self.events.send(TransferUpdate::FileStarted {
+                    file_id: self.file_job._id.clone(),
+                    transfer_id: self.transfer_id.clone(),
+                }).await;
+                started_at
+            },
             FileUploadStartMessage::Failed { error } => {
                 self.events.send(TransferUpdate::FileFailed {
                     file_id: self.file_job._id.clone(),

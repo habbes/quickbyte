@@ -263,7 +263,14 @@ impl FileDownloadCompletionWatcher {
 
         let file_started_event = self.file_started_rx.await.expect("Failed to receive file started event");
         let (file, started_at) = match file_started_event {
-            FileTransferStartMessage::Success { file, started_at } => (file, started_at),
+            FileTransferStartMessage::Success { file, started_at } => {
+                self.events.send(TransferUpdate::FileStarted {
+                    file_id: self.file_job._id.clone(),
+                    transfer_id: self.transfer_id.clone(),
+                }).await;
+
+                (file, started_at)
+            },
             FileTransferStartMessage::Failed { error } => {
                 self.events.send(
                     TransferUpdate::FileFailed {

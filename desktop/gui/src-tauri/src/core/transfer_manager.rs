@@ -521,6 +521,10 @@ async fn handle_transfer_update(
                 chunk_id.as_str(),
                 db_sync_channel);
         }
+        TransferUpdate::FileStarted {
+            file_id,
+            transfer_id
+        } => handle_file_started(&mut transfers, transfer_id, file_id),
         TransferUpdate::FileCompleted {
             file_id,
             transfer_id,
@@ -659,18 +663,46 @@ fn handle_chunk_completed(
     });
 }
 
+fn handle_file_started(
+    transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>,
+    transfer_id: &str,
+    file_id: &str,
+) {
+    let file_id = String::from(file_id);
+    let transfer_id = String::from(transfer_id);
+
+    let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
+    if transfer.status.is_terminal() {
+        return;
+    }
+
+    let file = transfer
+        .files
+        .iter_mut()
+        .find(|f| f._id == file_id)
+        .unwrap();
+
+    if file.status.is_terminal() {
+        return;
+    }
+
+    file.completed_size = file.size;
+    file.status = JobStatus::Progress;
+    transfer.status = JobStatus::Progress;
+
+    println!("Send file completion update to db");
+}
+
 fn handle_file_completed(
     transfers: &mut tokio::sync::MutexGuard<Vec<TransferJob>>,
     transfer_id: &str,
     file_id: &str,
     db_sync_channel: DbChannel
 ) {
-    println!("Handling file completed {file_id}");
     let file_id = String::from(file_id);
     let transfer_id = String::from(transfer_id);
 
     let transfer = transfers.iter_mut().find(|t| t._id == transfer_id).unwrap();
-    println!("Found transfer {} status {:?} is_terminal {}", transfer.name, transfer.status, transfer.status.is_terminal());
     if transfer.status.is_terminal() {
         return;
     }

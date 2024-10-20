@@ -206,6 +206,10 @@ pub enum TransferUpdate {
       file_id: String,
       transfer_id: String
     },
+    FileStarted {
+      file_id: String,
+      transfer_id: String
+    },
     FileCompleted {
         file_id: String,
         transfer_id: String
