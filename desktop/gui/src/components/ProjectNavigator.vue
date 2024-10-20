@@ -28,7 +28,10 @@
           <button type="button"
             class="flex-1 text-sm text-gray-200 border border-black active:bg-[#1f141b] hover:bg-[#31202b] rounded-md inline-flex justify-center items-center px-2 py-1"
           >Upload</button> -->
-        <UiButton @click="uploadToProject()" class="flex-1" sm>Upload</UiButton>
+        <UiButton @click="uploadToProject()" class="flex-1 text-xs" sm>
+          <Icon icon="lucide:arrow-up"/>
+          <span>Upload files here</span>
+        </UiButton>
       </div>
     </div>
 

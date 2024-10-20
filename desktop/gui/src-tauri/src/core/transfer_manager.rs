@@ -30,7 +30,7 @@ impl TransferManager {
     ) -> Self {
         Self {
             events: Arc::new(events),
-            chunk_size: 0x1000 * 0x1000, // 16MB
+            chunk_size: 8 * 1024 * 1024, // 8MB
             transfers: Arc::new(Mutex::new(vec![])),
             db_sync_channel,
             transfer_queue: Arc::new(BlockTransferQueue::init(CONCURRENCY as usize)),
@@ -345,7 +345,7 @@ impl TransferManager {
         &self,
         request: &SharedLinkDownloadRequest,
     ) -> TransferJob {
-        let files: Vec<TransferJobFile> = request
+        let mut files: Vec<TransferJobFile> = request
             .files
             .iter()
             .map(|f| TransferJobFile {
@@ -362,7 +362,9 @@ impl TransferManager {
                 blocks: init_file_blocks(f.size, self.chunk_size),
             })
             .collect();
-
+        
+        files.sort_by(|a, b| a.size.partial_cmp(&b.size).unwrap());
+        
         let job = TransferJob {
             _id: uuid::Uuid::new_v4().to_string(),
             name: request.name.clone(),
@@ -430,7 +432,7 @@ impl TransferManager {
     }
 
     fn init_upload_job(&self, request: &UploadFilesRequest) -> TransferJob {
-        let files: Vec<TransferJobFile> = request
+        let mut files: Vec<TransferJobFile> = request
             .files
             .iter()
             .map(|f| TransferJobFile {
@@ -447,6 +449,7 @@ impl TransferManager {
                 blocks: init_file_blocks(f.transfer_file.size, self.chunk_size),
             })
             .collect();
+        files.sort_by(|a, b| a.size.partial_cmp(&b.size).unwrap());
 
         let job = TransferJob {
             _id: uuid::Uuid::new_v4().to_string(),
