@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use tokio;
+use tokio::{self, task};
 
 use crate::auth::auth_store::AuthStore;
 use crate::core::models::AppInfo;
@@ -51,9 +51,9 @@ impl AppContext {
       };
     }));
 
-    let events = MessageChannel::new(move |event| {
-      event_handler(event);
-      std::future::ready(())
+    let events = MessageChannel::new(move |event: Event| {
+        event_handler(event);
+        std::future::ready(())
     });
 
     let transfers = Arc::new(TransferManager::new( events.clone(), db_sync_channel.clone()));
@@ -61,11 +61,10 @@ impl AppContext {
     let requests = MessageChannel::new(move|request| {
       let transfers = transfers.clone();
       // spawn a task for each request to handle requests concurrently
-      async move {
-        tokio::spawn(async move {
-          transfers.execute_request(request).await;
-        }).await.expect("Failed to spawn task for request");
-      }
+      tokio::spawn(async move {
+        transfers.execute_request(request).await;
+      });
+      std::future::ready(())
     });
     
     for job in saved_jobs {
