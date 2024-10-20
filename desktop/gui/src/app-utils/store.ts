@@ -25,7 +25,7 @@ const preferredProvider = ref<{
     provider: string;
     bestRegions: string[]
 }>({
-    provider: 'name',
+    provider: 'az',
     bestRegions: ['eastus']
 });
 
