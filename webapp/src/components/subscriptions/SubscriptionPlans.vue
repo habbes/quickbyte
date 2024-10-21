@@ -7,7 +7,7 @@
         <span>Annually <span class="text-xs">(save 16%)</span></span>
       </div>
     </div>
-    <div class="flex items-stretch gap-2">
+    <div class="flex flex-col sm:flex sm:flex-row sm:items-stretch gap-2 overflow-y-auto">
       <PlanCard
         v-for="plan in plans"
         :key="plan.displayName"

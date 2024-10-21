@@ -14,7 +14,7 @@
         <span>{{ plan.currency }}</span>
         <span class="font-bold text-xl">{{ annual ? plan.annualPrice / 12 : plan.monthlyPrice }}</span>
         <span> / month</span>
-        <span v-if="annual" class="text-xs">(paid annually)</span>
+        <span v-if="annual && plan.annualPrice > 0" class="text-xs">(paid annually)</span>
       </div>
       <SubscribeButton :planName="planName" @transaction="$emit('transaction', $event)">
         Choose plan
