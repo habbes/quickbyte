@@ -10,8 +10,7 @@
   </NavBarBase>
   <div class="flex flex-col mx-auto w-[700px] gap-5">
     <UiLayout class=" text-5xl font-bold text-gray-200 text-center mt-10" alignCenter>
-      Faster and more reliable transfers of large files directly
-      from your computer.
+      Faster reliable file transfers for large files
     </UiLayout>
     <UiLayout class="text-sm">
       <p>
