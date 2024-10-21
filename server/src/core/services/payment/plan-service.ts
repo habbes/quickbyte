@@ -14,6 +14,7 @@ export class PlanService {
     private plans: Plan[];
     constructor(private config: PlanSeriviceConfig) {
         this.plans = [
+            // LEGACY PLANS, do not delete
             {
                 name: 'starterMonthly',
                 displayName: 'Quickbyte Starter - Monthly',
@@ -25,7 +26,9 @@ export class PlanService {
                 maxTransferValidity: 30,
                 providerIds: {
                     paystack: config.paystackPlanCodes.starterMonthly
-                }
+                },
+                allowPurchase: false,
+                allowRenew: false,
             },
             {
                 name: 'starterAnnual',
@@ -38,7 +41,9 @@ export class PlanService {
                 maxTransferValidity: 30,
                 providerIds: {
                     paystack: config.paystackPlanCodes.starterAnnual
-                }
+                },
+                allowPurchase: false,
+                allowRenew: false
             },
             {
                 name: 'freeTrial',
@@ -50,7 +55,48 @@ export class PlanService {
                 renewalRate: 'monthly',
                 maxTransferValidity: 15,
                 providerIds: {
-                }
+                },
+                allowPurchase: false,
+                allowRenew: false
+            },
+            // NEW PLANS
+            {
+                name: 'freeTier',
+                displayName: 'Free',
+                price: 0,
+                currency: 'USD',
+                maxStorageSize: 3 * GB,
+                maxTransferSize: 3 * GB,
+                renewalRate: 'monthly',
+                providerIds: {},
+                allowPurchase: true,
+                allowRenew: true
+            },
+            // EARLY BIRD
+            // We plan to retire this once new plans are rolled out
+            {
+                name: 'earlyBirdMonthly',
+                displayName: 'Early Birrd Monthly',
+                price: 900,
+                currency: 'KES',
+                maxTransferSize: 200 * GB,
+                maxStorageSize: 500 * GB,
+                renewalRate: 'monthly',
+                providerIds: {},
+                allowPurchase: true,
+                allowRenew: true
+            },
+            {
+                name: 'earlyBirdAnnual',
+                displayName: 'Early Bird Annual',
+                price: 9000,
+                currency: 'KES',
+                maxTransferSize: 200 * GB,
+                maxStorageSize: 500 * GB,
+                renewalRate: 'annual',
+                providerIds: {},
+                allowPurchase: true,
+                allowRenew: true
             }
         ];
     }
