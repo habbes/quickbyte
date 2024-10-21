@@ -272,7 +272,7 @@ export class TransactionService {
             });
 
             if (!sub) {
-                sub = await this.createFreeTrialSubscription(accountId);
+                return undefined;
             }
 
             return {
