@@ -53,7 +53,7 @@ export class TransactionService {
                 accountId: this.authContext.user.account._id,
                 planName: plan.name,
                 status: 'pending',
-                willRenew: true,
+                willRenew: plan.allowRenew,
                 provider: handler.name(),
                 lastTransactionId: '',
                 metadata: {},
