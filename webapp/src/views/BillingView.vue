@@ -10,6 +10,9 @@
           <div class="text-lg font-semibold mb-2">
             {{ subscription.plan.displayName }}
           </div>
+          <div class="mb-2">
+            {{ subscription.plan.currency }} {{ subscription.plan.price }}
+          </div>
           <div>
             <ul class="list-disc list-inside text-sm">
               <li>Max transfer size: {{ humanizeSize(subscription.plan.maxTransferSize) }}</li>
@@ -20,7 +23,7 @@
             </ul>
           </div>
         </div>
-        <div v-if="subscription.renewsAt" class="text-gray-500 text-sm">
+        <div v-if="subscription.renewsAt && subscription.willRenew" class="text-gray-500 text-sm">
           Your subscription will automatically renew on:
           <span class="font-semibold">
             {{ new Date(subscription.renewsAt).toLocaleDateString() }}
