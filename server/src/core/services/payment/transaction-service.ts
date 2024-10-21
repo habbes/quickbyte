@@ -1,7 +1,7 @@
 import { Db, Collection } from 'mongodb';
 import { DateTime, DateTime as LuxonDateTime } from 'luxon';
 import { AuthContext, Subscription, Plan, Transaction, createPersistedModel, SubscriptionAndPlan } from '../../models.js';
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createResourceConflictError } from '../../error.js';
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createResourceConflictError, createOperationNotSupportedError } from '../../error.js';
 import { IPlanService } from './plan-service.js';
 import { IPaymentHandlerProvider } from './payment-handler-provider.js';
 import { PaymentHandler, SubscriptionManagementResult } from './types.js';
@@ -43,6 +43,10 @@ export class TransactionService {
 
             const handler = this.config.paymentHandlers.getDefault();
             const plan =  await this.config.plans.getByName(args.plan);
+
+            if (!plan.allowPurchase) {
+                throw createOperationNotSupportedError("Cannot create a subscription of this plan. Please choose one of the supported subscription plans");
+            }
 
             const subscription: Subscription = {
                 ...createPersistedModel({ type: 'user', _id: this.authContext.user._id }),
