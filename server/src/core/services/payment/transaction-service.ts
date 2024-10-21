@@ -246,9 +246,8 @@ export class TransactionService {
                 expiresAt: { $gt: now }
             });
 
-            // TODO: stop creating free trial subscription by default
             if (!sub) {
-                sub = await this.createFreeTrialSubscription(accountId);
+                return undefined;
             }
 
             return {
