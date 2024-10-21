@@ -27,13 +27,14 @@ export class TransactionService {
 
     async initiateSubscription(args: InitiateSubscrptionArgs): Promise<InitiateSubscriptionResult> {
         try {
-            // check if the customer has a valid subscription already.
+            // check if the customer has a valid non-free subscription already.
             // this helps prevent the customer from making another
             // transaction before a pending subscription has been confirmed.
             // In the future there could be scenarios where we want to allow
             // creating a transaction when one exists (e.g. plan upgrade),
             // we'll cross that bridge when we get there.
-            if (await this.tryGetActiveOrPendingSubscription(this.authContext.user.account._id)) {
+            const existingSubscription = await this.tryGetActiveOrPendingSubscription(this.authContext.user.account._id);
+            if (existingSubscription && existingSubscription.plan.price !== 0) {
                 throw createResourceConflictError(
                     'Unable to create the subscription because this account already ' +
                     'has an active or pending subscription. Please contact support if this is a mistake: support@quickbyte.io'
@@ -241,6 +242,7 @@ export class TransactionService {
                 expiresAt: { $gt: now }
             });
 
+            // TODO: stop creating free trial subscription by default
             if (!sub) {
                 sub = await this.createFreeTrialSubscription(accountId);
             }

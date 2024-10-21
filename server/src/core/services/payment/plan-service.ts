@@ -82,7 +82,9 @@ export class PlanService {
                 maxTransferSize: 200 * GB,
                 maxStorageSize: 500 * GB,
                 renewalRate: 'monthly',
-                providerIds: {},
+                providerIds: {
+                    paystack: config.paystackPlanCodes.starterMonthly
+                },
                 allowPurchase: true,
                 allowRenew: true
             },
@@ -94,7 +96,9 @@ export class PlanService {
                 maxTransferSize: 200 * GB,
                 maxStorageSize: 500 * GB,
                 renewalRate: 'annual',
-                providerIds: {},
+                providerIds: {
+                    paystack: config.paystackPlanCodes.starterAnnual
+                },
                 allowPurchase: true,
                 allowRenew: true
             }
