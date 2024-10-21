@@ -539,3 +539,14 @@ export const UpdateMediaVersionsArgs = z.object({
 });
 
 export type UpdateMediaVersionsArgs = z.infer<typeof UpdateMediaVersionsArgs>;
+
+
+export const LegacyDownloadRequestArgs = z.object({
+    transferId: z.string().min(1),
+    ip: z.string().optional(),
+    countryCode: z.string().optional(),
+    userAgent: z.string().optional(),
+});
+
+export type LegacyDownloadRequestArgs = z.infer<typeof LegacyDownloadRequestArgs>;
+

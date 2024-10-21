@@ -1,0 +1,26 @@
+# Builds the desktop transfer app on each pull request
+
+name: 'Build Quickbyte Transfer desktop app'
+
+on:
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+    working-directory: desktop/gui
+jobs:
+  build_app:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build-release-transfer-app-common.yml
+    with:
+        app_name: 'Quickbyte Transfer Dev'
+        bundle_identifier: 'io.quickbyte.desktoptransfer.dev'
+        server_base_url: 'https://quickbyte-staging.up.railway.app'
+        should_release: false
+        create_artifacts: true
+    secrets:
+        google_client_id: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_ID }}
+        google_client_secret: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_SECRET }}
+        release_github_token: ${{ secrets.GITHUB_TOKEN }}

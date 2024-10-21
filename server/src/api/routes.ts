@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { wrapResponse, requireAuth, requireAccountOwner } from './middleware.js';
+import { LegacyDownloadRequestArgs } from "@quickbyte/common";
 
 export const routes = Router();
 
@@ -101,7 +102,10 @@ routes.get('/me', requireAuth(), wrapResponse(req =>
     Promise.resolve(req.authContext.user)));
 
 routes.post('/downloads/:transferId', wrapResponse(req =>
-    req.services.downloads.requestDownload(req.params.transferId, req.body)));
+    req.services.downloads.requestDownload(LegacyDownloadRequestArgs.parse({
+        transferId: req.params.transferId,
+        ...req.body
+    }))));
 
 routes.patch('/downloads/:transferId/requests/:requestId', wrapResponse(req =>
     req.services.downloads.updateDownloadRequest(req.params.transferId, req.params.requestId, req.body)));

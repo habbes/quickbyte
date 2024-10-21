@@ -1,0 +1,31 @@
+# Creates an Official release of the Quickbyte Transfer app when a commit
+# is pushed to the desktop-transfer-official-release branch
+# We should not push to this branch directly, we should create a PR from main branch to this branch.
+# The release should not be deleted (unless we want to remove releases with vulnerability)
+
+name: 'Preview release of Quickbyte Transfer desktop app'
+
+on:
+  push:
+    branches:
+        - desktop-transfer-preview-release
+
+defaults:
+  run:
+    shell: bash
+    working-directory: desktop/gui
+jobs:
+  build_app:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build-release-transfer-app-common.yml
+    with:
+        app_name: 'Quickbyte Transfer'
+        bundle_identifier: 'io.quickbyte.desktoptransfer'
+        server_base_url: 'https://api.quickbyte.io'
+        should_release: true
+        prerelease: false
+        create_artifacts: false
+    secrets:
+        google_client_id: ${{ secrets.DESKTOP_TRANSFER_OFFICIAL_GOOGLE_CLIENT_ID }}
+        google_client_secret: ${{ secrets.DESKTOP_TRANSFER_OFFICIAL_GOOGLE_CLIENT_SECRET }}

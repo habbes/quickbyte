@@ -1,0 +1,106 @@
+import type { DownloadTransferFileResult } from "@quickbyte/common";
+import { OsType } from "@tauri-apps/api/os";
+export type JobStatus = 'pending' | 'completed' | 'cancelled' | 'error' | 'progress';
+
+export interface TransferJob {
+    _id: string;
+    name: string;
+    totalSize: number;
+    completedSize: number;
+    numFiles: number;
+    localPath: string;
+    status: JobStatus;
+    error?: string;
+    files: TransferFileJob[],
+    type: TransferType;
+    uploadTransferId?: string;
+    // add other fields, e.g. date fields
+}
+
+export type TransferType = 'upload'|'download';
+
+export interface TransferFileJob {
+    _id: string;
+    name: string;
+    size: number;
+    completedSize: number;
+    remoteUrl: string;
+    localPath: string;
+    status: JobStatus;
+    error?: string;
+}
+
+export interface SharedLinkDownloadRequest {
+    shareId: string;
+    shareCode: string;
+    name: string;
+    targetPath: string;
+    files: DownloadTransferFileResult[];
+}
+
+export interface LegacyTransferLinkDownloadRequest {
+    transferId: string;
+    name: string;
+    targetPath: string;
+    downloadRequestId: string;
+    files: DownloadTransferFileResult[];
+}
+
+export interface UploadFilesRequest {
+    transferId: string;
+    name: string;
+    projectId?: string;
+    folderId?: string;
+    localPath: string;
+    files: UploadFilesRequestFile[];
+}
+
+export interface UploadFilesRequestFile {
+    localPath: string;
+    transferFile: UploadFilesRequestTransferFile;
+}
+
+export interface UploadFilesRequestTransferFile {
+    _id: string;
+    name: string;
+    size: number;
+    uploadUrl: string;
+}
+
+export interface FileSizesRequest {
+    files: string[];
+}
+
+export interface CancelTransferRequest {
+    transferId: string;
+}
+
+export interface CancelTransferFileRequest {
+    transferId: string;
+    fileId: string;
+}
+
+export interface FileSizeResponseItem {
+    path: string;
+    name: string;
+    size: number;
+}
+
+export interface GoogleTokenResult {
+    idToken: string;
+}
+
+export interface AppInfo {
+    name: string;
+    version: string;
+    serverBaseUrl: string;
+}
+
+export interface OsInfo {
+    platform: string;
+    type: OsType;
+    arch: string;
+    version: string;
+}
+
+export type { OsType };

@@ -1,0 +1,32 @@
+# Creates a preview release of the Quickbyte Transfer app when a commit
+# is pushed to the desktop-transfer-staging-release branch
+# This is meant to create a prerelease version before the official release.
+# We should not push to this branch directly, we should create a PR from main branch to this branch.
+# The release can be deleted after a newer staging or official version has been released.
+
+name: 'Preview release of Quickbyte Transfer desktop app'
+
+on:
+  push:
+    branches:
+        - desktop-transfer-preview-release
+
+defaults:
+  run:
+    shell: bash
+    working-directory: desktop/gui
+jobs:
+  build_app:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build-release-transfer-app-common.yml
+    with:
+        app_name: 'Quickbyte Transfer Preview'
+        bundle_identifier: 'io.quickbyte.desktoptransfer.preview'
+        server_base_url: 'https://quickbyte-staging.up.railway.app'
+        should_release: true
+        prerelease: true
+        create_artifacts: false
+    secrets:
+        google_client_id: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_ID }}
+        google_client_secret: ${{ secrets.DESKTOP_TRANSFER_DEV_GOOGLE_CLIENT_SECRET }}
