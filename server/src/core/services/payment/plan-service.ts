@@ -7,6 +7,8 @@ export interface PlanSeriviceConfig {
     paystackPlanCodes: {
         starterMonthly: string;
         starterAnnual: string;
+        earlyBirdMonthly: string;
+        earlyBirdAnnual: string;
     }
 }
 
@@ -83,7 +85,7 @@ export class PlanService {
                 maxStorageSize: 500 * GB,
                 renewalRate: 'monthly',
                 providerIds: {
-                    paystack: config.paystackPlanCodes.starterMonthly
+                    paystack: config.paystackPlanCodes.earlyBirdMonthly
                 },
                 allowPurchase: true,
                 allowRenew: true
@@ -97,7 +99,7 @@ export class PlanService {
                 maxStorageSize: 500 * GB,
                 renewalRate: 'annual',
                 providerIds: {
-                    paystack: config.paystackPlanCodes.starterAnnual
+                    paystack: config.paystackPlanCodes.earlyBirdAnnual
                 },
                 allowPurchase: true,
                 allowRenew: true

@@ -133,7 +133,9 @@ export async function bootstrapApp(config: AppConfig): Promise<AppServices> {
     const plans = new PlanService({
         paystackPlanCodes: {
             starterMonthly: config.paystackStarterMonthlyPlan,
-            starterAnnual: config.paystackStarterAnnualPlan
+            starterAnnual: config.paystackStarterAnnualPlan,
+            earlyBirdAnnual: config.paystackEarlyBirdAnnualPlan,
+            earlyBirdMonthly: config.paystackEarlyBirdMonthlyPlan
         }
     });
 
