@@ -706,11 +706,11 @@ function generateVerificationCode(): string {
 }
 
 function generateAuthTokenCode(): string {
-    // TODO: reduced the token size from 2048
-    // to 1024 because Quickbyte Transfer fails
+    // TODO: temporarily reduced the token size from 2048
+    // to 512 because Quickbyte Transfer fails
     // to store the encoded token on Windows credential manager
     // due to size limits.
-    return randomBytes(1024).toString('base64');
+    return randomBytes(512).toString('base64');
 }
 
 export interface AuthServiceArgs {
