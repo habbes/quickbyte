@@ -1,14 +1,14 @@
 <template>
-  <Button primary @click="pay()" :loading="loading">
+  <UiButton primary @click="pay()" :loading="loading">
     <slot></slot>
-  </Button>
+  </UiButton>
 </template>
 <script lang="ts" setup>
 import { ref } from 'vue';
 import PaystackPop from '@paystack/inline-js';
 import { apiClient, store, showToast, logger } from '@/app-utils';
 import { ensure, type VerifyTransansactionResult } from '@/core';
-import Button from './Button.vue';
+import { UiButton } from '@/components/ui';
 
 // TODO: we hardcode this for now because
 // we only have a few plans at the moment.

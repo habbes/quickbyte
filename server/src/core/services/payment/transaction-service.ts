@@ -1,7 +1,7 @@
 import { Db, Collection } from 'mongodb';
 import { DateTime, DateTime as LuxonDateTime } from 'luxon';
 import { AuthContext, Subscription, Plan, Transaction, createPersistedModel, SubscriptionAndPlan } from '../../models.js';
-import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createResourceConflictError } from '../../error.js';
+import { rethrowIfAppError, createAppError, createResourceNotFoundError, createInvalidAppStateError, createResourceConflictError, createOperationNotSupportedError } from '../../error.js';
 import { IPlanService } from './plan-service.js';
 import { IPaymentHandlerProvider } from './payment-handler-provider.js';
 import { PaymentHandler, SubscriptionManagementResult } from './types.js';
@@ -27,13 +27,14 @@ export class TransactionService {
 
     async initiateSubscription(args: InitiateSubscrptionArgs): Promise<InitiateSubscriptionResult> {
         try {
-            // check if the customer has a valid subscription already.
+            // check if the customer has a valid non-free subscription already.
             // this helps prevent the customer from making another
             // transaction before a pending subscription has been confirmed.
             // In the future there could be scenarios where we want to allow
             // creating a transaction when one exists (e.g. plan upgrade),
             // we'll cross that bridge when we get there.
-            if (await this.tryGetActiveOrPendingSubscription(this.authContext.user.account._id)) {
+            const existingSubscription = await this.tryGetActiveOrPendingSubscription(this.authContext.user.account._id);
+            if (existingSubscription && existingSubscription.plan.price !== 0) {
                 throw createResourceConflictError(
                     'Unable to create the subscription because this account already ' +
                     'has an active or pending subscription. Please contact support if this is a mistake: support@quickbyte.io'
@@ -43,12 +44,16 @@ export class TransactionService {
             const handler = this.config.paymentHandlers.getDefault();
             const plan =  await this.config.plans.getByName(args.plan);
 
+            if (!plan.allowPurchase) {
+                throw createOperationNotSupportedError("Cannot create a subscription of this plan. Please choose one of the supported subscription plans");
+            }
+
             const subscription: Subscription = {
                 ...createPersistedModel({ type: 'user', _id: this.authContext.user._id }),
                 accountId: this.authContext.user.account._id,
                 planName: plan.name,
                 status: 'pending',
-                willRenew: true,
+                willRenew: plan.allowRenew,
                 provider: handler.name(),
                 lastTransactionId: '',
                 metadata: {},
@@ -242,7 +247,7 @@ export class TransactionService {
             });
 
             if (!sub) {
-                sub = await this.createFreeTrialSubscription(accountId);
+                return undefined;
             }
 
             return {
@@ -266,7 +271,7 @@ export class TransactionService {
             });
 
             if (!sub) {
-                sub = await this.createFreeTrialSubscription(accountId);
+                return undefined;
             }
 
             return {

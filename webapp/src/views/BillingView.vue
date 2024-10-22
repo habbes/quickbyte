@@ -10,6 +10,9 @@
           <div class="text-lg font-semibold mb-2">
             {{ subscription.plan.displayName }}
           </div>
+          <div class="mb-2">
+            {{ subscription.plan.currency }} {{ subscription.plan.price }}
+          </div>
           <div>
             <ul class="list-disc list-inside text-sm">
               <li>Max transfer size: {{ humanizeSize(subscription.plan.maxTransferSize) }}</li>
@@ -20,7 +23,7 @@
             </ul>
           </div>
         </div>
-        <div v-if="subscription.renewsAt" class="text-gray-500 text-sm">
+        <div v-if="subscription.renewsAt && subscription.willRenew" class="text-gray-500 text-sm">
           Your subscription will automatically renew on:
           <span class="font-semibold">
             {{ new Date(subscription.renewsAt).toLocaleDateString() }}
@@ -65,19 +68,26 @@
           you cannot transfer files. To purchase a subscription, click the button below.
         </div>
         <div>
-          <router-link :to="{ name: 'pay' }" class="btn btn-primary">Get a Subscription</router-link>
+          <!-- <router-link :to="{ name: 'pay' }" class="btn btn-primary">Get a Subscription</router-link> -->
+           <UiButton primary @click="planDialog?.open()">
+              Get a Subscription
+           </UiButton>
         </div>
       </div>
     </template>
+    <SubscriptionPlansDialog ref="planDialog" />
   </div>
 </template>
 <script lang="ts" setup>
 import {} from 'vue-router';
+import { ref } from 'vue';
 import { apiClient, logger, showToast, store } from '@/app-utils';
 import { ensure, humanizeSize } from '@/core';
 import Button from '@/components/Button.vue';
-import { ref } from 'vue';
+import { SubscriptionPlansDialog } from '@/components/subscriptions';
+import { UiButton } from "@/components/ui";
 
+const planDialog = ref<typeof SubscriptionPlansDialog>();
 const account = ensure(store.currentAccount.value);
 const subscription = account.subscription;
 const loading = ref(false);

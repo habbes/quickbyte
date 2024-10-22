@@ -113,6 +113,8 @@ export interface AppConfig {
     paystackSecretKey: string;
     paystackStarterMonthlyPlan: string;
     paystackStarterAnnualPlan: string;
+    paystackEarlyBirdMonthlyPlan: string;
+    paystackEarlyBirdAnnualPlan: string;
     // web app base url
     webappBaseUrl: string;
     // used to authorize API for sending email announcement to users
@@ -166,6 +168,8 @@ export function getAppConfigFromEnv(env: NodeJS.ProcessEnv): AppConfig {
         paystackSecretKey: getRequiredEnv(env, 'PAYSTACK_SECRET_KEY'),
         paystackStarterMonthlyPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_MONTHLY_PLAN'),
         paystackStarterAnnualPlan: getRequiredEnv(env, 'PAYSTACK_STARTER_ANNUAL_PLAN'),
+        paystackEarlyBirdAnnualPlan: getRequiredEnv(env, 'PAYSTACK_EARLY_BIRD_ANNUAL_PLAN'),
+        paystackEarlyBirdMonthlyPlan: getRequiredEnv(env, 'PAYSTACK_EARLY_BIRD_MONTHLY_PLAN'),
         webappBaseUrl: getRequiredEnv(env, 'WEBAPP_BASE_URL'),
         googleClientId: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
         googleClientIdForDesktopTransferApp: getRequiredEnv(env, 'GOOGLE_CLIENT_ID_DESKTOP_TRANSFER_APP'),
