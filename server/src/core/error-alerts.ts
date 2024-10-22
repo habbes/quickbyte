@@ -16,6 +16,8 @@ export function initBackgroundErrorNotificationService(alertService: IAlertServi
         }
 
         const alertMessage = createServerErrorEmail(queuedErrors);
+        // reset errors
+        queuedErrors = [];
         alertService.sendNotification('Server errors occurred in the last 5 minutes.', alertMessage)
         .catch(e => { console.error('Failed to send server errors alert', e)});
     }, interval);
