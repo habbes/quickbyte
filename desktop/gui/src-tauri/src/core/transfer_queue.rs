@@ -194,7 +194,7 @@ async fn upload_block(request: Box<BlockUploadRequest>) {
                             block_index: request.block.index,
                             error: msg
                         })
-                        .await.ok(); // igonore send error because the receiver may have been closed intentionally (e.g. due to failed block)
+                        .await.ok(); // ignore send error because the receiver may have been closed intentionally (e.g. due to failed block)
                         
                         return;
                     }
@@ -243,6 +243,8 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
     let mut retry = true; // retry on network error
     let start_range = request.offset;
     let end_range = request.offset + request.size;
+    let total_timer = std::time::Instant::now();
+    let mut result_buffer = None;
     
     while retry {
         if request.cancellation.is_cancelled() {
@@ -252,55 +254,49 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
         // for simplicity, we retry the entire block on error even if
         // some parts of the block were already successfully downloaded
         // and streamed in the file.
+        let block_timer = std::time::Instant::now();
         let mut stream = request.client
             .get()
             .range(start_range..end_range)
             .chunk_size(request.size)
             .into_stream();
+        println!("Obtained stream for block {} after {}", request.block.index, block_timer.elapsed().as_secs_f64());
 
         // println!("Writing chunk {} of file {}", i, file_name);
         let mut chunk_progress = 0 as u64;
+        let buffer_timer = std::time::Instant::now();
+        let mut buffer = Vec::with_capacity(request.size as usize);
+        println!("Allocated buffer for block {} size {} in {}s", request.block.index, request.size, buffer_timer.elapsed().as_secs_f64());
+        
+        let stream_timer = std::time::Instant::now();
         'read_stream_loop: while let Some(value) = stream.next().await {
+            println!("Fetched stream item for block {} after {}", request.block.index, stream_timer.elapsed().as_secs_f64());
             match value {
                 Ok(response) => {
                     let mut body = response.data;
                     // For each response, we stream the body instead of collecting it all
+                    let page_timer = std::time::Instant::now();
+                    
                     while let Some(value) = body.next().await {
+                        let response_timer = std::time::Instant::now();
                         match value {
                             Ok(value) => {
-                                // TODO: I had used the file.write_exact_at API which does not require seeking
-                                // or locking, but it doesn't compile on Windows :(
-                                // TODO: consider whether using async file APIs from tokio is better for perf
-                                let file_write_result = {
-                                    let mut file = request.file.lock()
-                                        .expect("Failed to acquire file lock");
-                                    if let Err(e) = file.seek(SeekFrom::Start(start_range + chunk_progress)) {
-                                        Err(e)
-                                    } else {
-                                        file.write_all(&value)
-                                    }
-                                };
+                                let buffer_write_timer = std::time::Instant::now();
+                                buffer.extend_from_slice(&value);
+                                // println!("Copied block slice {} size{} to buffer in {}s", request.block.index, value.len(), buffer_write_timer.elapsed().as_secs_f64());
 
-                                if let Err(err) = file_write_result {
-                                    let msg = AppError::from(err).to_string();
-                                    request.update_channel.send(BlockTransferUpdate::Failed {
-                                        block_id: request.block._id.clone(),
-                                        block_index: request.block.index,
-                                        error: msg
-                                    }).await.ok();
-                                    return;
-                                }
-                                
                                 let fetched_len = value.len() as u64;
                                 chunk_progress += value.len() as u64;
 
                                 // TODO Is this blocking? should this be sent in a separate task?
                                 // Investigate impact of sending through a one shot channel
+                                let started = std::time::Instant::now();
                                 request.update_channel.send(BlockTransferUpdate::Progress {
                                     block_id: request.block._id.clone(),
                                     block_index: request.block.index,
                                     size: fetched_len
                                 }).await.ok(); // ignore error because we can close receiver intentionally
+                                // println!("Send progress block {} size {} in {}", request.block.index, fetched_len, started.elapsed().as_secs_f64());
                             }
                             Err(err) => {
                                 if *err.kind() == azure_storage::ErrorKind::Io {
@@ -320,11 +316,15 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
                             }
                         }
 
+                        // println!("Downloaded block slice for {}, after {}", request.block.index, response_timer.elapsed().as_secs_f64());
+
                         if request.cancellation.is_cancelled() {
                             println!("Detected file cancelled during block chunk download. Skipping block {} {}.", request.block._id, request.block.index);
                             break;
                         }
                     }
+
+                    println!("Downloaded page for block {} after {}", request.block.index, page_timer.elapsed().as_secs_f64());
                 }
                 Err(err) => {
                     if *err.kind() == azure_storage::ErrorKind::Io {
@@ -345,7 +345,12 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
             }
 
             retry = false;
+            
+            println!("Finished download block {} after {}", request.block.index, block_timer.elapsed().as_secs_f64());
+            // Some(buffer)
         }
+
+        result_buffer = Some(buffer);
     }
 
     if request.cancellation.is_cancelled() {
@@ -353,10 +358,47 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
             block_id: request.block._id.clone(),
             block_index: request.block.index
         }).await.expect("Failed to send chunk download cancellation update.");
-    } else {
+    } else if let Some(buffer) = result_buffer {
+        // TODO: I had used the file.write_exact_at API which does not require seeking
+        // or locking, but it doesn't compile on Windows :(
+        // TODO: consider whether using async file APIs from tokio is better for perf
+        let file_write_result = {
+            let timer = std::time::Instant::now();
+            let mut file = request.file.lock()
+                .expect("Failed to acquire file lock");
+            println!("Obtained file lock for block {} after {}", request.block.index, timer.elapsed().as_secs_f64());
+            if let Err(e) = file.seek(SeekFrom::Start(request.offset)) {
+                Err(e)
+            } else {
+                println!("Seeked file for block {} after {}", request.block.index, timer.elapsed().as_secs_f64());
+                let result = file.write_all(&buffer);
+                println!("Finished writing file for block slice {} size {} after {}", request.block.index, buffer.len(), timer.elapsed().as_secs_f64());
+                result
+            }
+
+        };
+
+        if let Err(err) = file_write_result {
+            let msg = AppError::from(err).to_string();
+            request.update_channel.send(BlockTransferUpdate::Failed {
+                block_id: request.block._id.clone(),
+                block_index: request.block.index,
+                error: msg
+            }).await.ok();
+            return;
+        }
+
+        // request.update_channel.send(BlockTransferUpdate::Progress {
+        //     block_id: request.block._id.clone(),
+        //     block_index: request.block.index,
+        //     size: request.size
+        // }).await.ok(); // ignore error because we can close receiver intentionally
+
         request.update_channel.send(BlockTransferUpdate::Completed {
             block_id: request.block._id,
             block_index: request.block.index,
         }).await.expect("Failed to send chunk download completion update.");
     }
+
+    println!("Finished sending block update for {} after {}", request.block.index, total_timer.elapsed().as_secs_f64());
 }
