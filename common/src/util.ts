@@ -80,3 +80,68 @@ const EMAIL_REGEX = /^[^@,;\s]+@[^@,;\s]+\.[^@,;\s]+$/;
 export function isEmail(value: string) {
     return EMAIL_REGEX.test(value);
 }
+
+export function unwrapSingleton<T>(value: T | T[]): T {
+    const singleton = unwrapSingletonOrUndefined(value);
+    return ensure(singleton);
+}
+
+export function unwrapSingletonOrUndefined<T>(value: T | T[] | undefined): T|undefined {
+    return Array.isArray(value) ? value[0] : value;
+}
+
+export function ensure<T>(obj?: T|undefined|null, message?: string): T {
+    if (!obj) throw new Error(message || 'Expected object to be defined.');
+    return obj;
+}
+
+export function humanizeSize(bytes: number): string {
+    const BYTES_PER_KB = 1024;
+    const BYTES_PER_MB = 1024 * 1024;
+    const BYTES_PER_GB = 1024 * 1024 * 1024;
+    const BYTES_PER_TB = 1024 * BYTES_PER_GB;
+
+    if (bytes < BYTES_PER_KB) {
+        return `${bytes} Bytes`;
+    }
+
+    if (bytes < BYTES_PER_MB) {
+        const kbs = Math.ceil(bytes / BYTES_PER_KB);
+        return `${kbs} KB`;
+    }
+
+    if (bytes < BYTES_PER_GB) {
+        const mbs = Math.ceil(bytes / BYTES_PER_MB);
+        return `${mbs} MB`;
+    }
+
+    if (bytes < BYTES_PER_TB) {
+        const gbs = (bytes / BYTES_PER_GB).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        return `${gbs} GB`;
+    }
+
+    const tbs = (bytes / BYTES_PER_TB).toLocaleString(undefined, { maximumFractionDigits: 2 });;
+    return `${tbs} TB`;
+}
+
+export function formatPercentage(value: number, total: number, decimals: number = 2) {
+    if (total == 0) return `${(0).toFixed(decimals)}%`;
+    const percent = 100 * value / total;
+    const formatted = `${percent.toFixed(decimals)}%`;
+    return formatted;
+}
+
+export function pluralize(word: string, count: number, plural: string = '') {
+    plural = plural || `${word}s`;
+    // TODO handle special cases (e.g. directory -> directories)
+    return count == 1 ? word : plural;
+}
+
+/**
+ * Returns true if the value is neither undefined nor null.
+ * Notes: This also returns true when the value is 0 or an empty string.
+ * @param value 
+ */
+export function isDefined(value?: any): boolean {
+    return value !== undefined && value !== null;
+}

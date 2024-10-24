@@ -1,0 +1,86 @@
+{
+  "build": {
+    "beforeBuildCommand": {
+      "script": "npm run build --workspace common && npm run build --workspace server && npm run build --workspace desktop",
+      "cwd": "../../.."
+    },
+    "beforeDevCommand": "npm run dev",
+    "devPath": "http://localhost:8080",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "Quickbyte Transfer Local",
+    "version": "0.1.5"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "os": {
+        "all": true
+      },
+      "dialog": {
+        "open": true,
+        "save": true,
+        "message": true
+      },
+      "path": {
+        "all": true
+      },
+      "shell": {
+        "open": ".+"
+      }
+    },
+    "bundle": {
+      "active": true,
+      "category": "DeveloperTool",
+      "copyright": "",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": [],
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "identifier": "io.quickbyte.desktoptransfer.local",
+      "longDescription": "Quickbyte Transfer app",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null
+      },
+      "resources": [],
+      "shortDescription": "",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": null
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://raw.githubusercontent.com/habbes/quickbyte-releases/refs/heads/main/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVBMDE2NjQ0RjM0QzNDRTkKUldUcFBFenpSR1lCV29scjloM0plUTd6ZnpXcVdwbDZzZlZXWUFuaVpiaGhVT1NCYWRtUnUyR3QK"
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 600,
+        "resizable": true,
+        "title": "Quickbyte Transfer",
+        "width": 800
+      }
+    ]
+  }
+}

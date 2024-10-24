@@ -25,6 +25,7 @@ import ProjectShareView from '@/views/ProjectShareView.vue';
 import ProjectShareListView from "@/views/ProjectShareListView.vue";
 import ProjectSharePlayerView from '@/views/ProjectSharePlayerView.vue';
 import ProjectShareCompareVersionsView from "@/views/ProjectShareCompareVersionsView.vue";
+import DesktopTransferView from "@/views/DesktopTransfer.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -167,6 +168,11 @@ const router = createRouter({
           component: ProjectShareCompareVersionsView
         }
       ]
+    },
+    {
+      path: '/desktop-transfer',
+      name: 'desktop-transfer',
+      component: DesktopTransferView
     }
   ]
 })

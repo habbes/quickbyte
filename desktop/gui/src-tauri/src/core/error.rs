@@ -1,0 +1,60 @@
+use tokio::sync::mpsc::error::{SendError};
+use tokio::sync::oneshot::error::RecvError;
+// see: https://docs.rs/thiserror/latest/thiserror/
+use thiserror::Error;
+use azure_core::{StatusCode, Result as AzureResult};
+use azure_storage::{Error as AzureError, ErrorKind as AzureErrorKind};
+
+#[derive(Error, Debug)]
+pub enum AppError {
+    #[error("internal error occurred: {0}")]
+    Internal(String),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error("{0}")]
+    General(String),
+    #[error("transfer error: {0}")]
+    Transfer(String),
+    #[error("transfer link expired or removed: {0}")]
+    FileTransferLinkAuth(String),
+    #[error("network error: {0}")]
+    Network(String),
+    #[error("authentication error: {0}")]
+    AuthError(String)
+}
+
+impl<T> From<SendError<T>> for AppError {
+    fn from(value: SendError<T>) -> Self {
+        AppError::Internal(format!("failed to send message over channel: {value}"))
+    }
+}
+
+impl From<RecvError> for AppError {
+    fn from(value: RecvError) -> Self {
+        AppError::Internal(format!("failed to recieve message over channel: {value}"))
+    }
+}
+
+impl From<AzureError> for AppError {
+    fn from(value: AzureError) -> Self {
+        match value.kind() {
+            AzureErrorKind::HttpResponse { status, error_code } => match status {
+                StatusCode::Forbidden => AppError::FileTransferLinkAuth(format!("{error_code:?}")),
+                StatusCode::NotFound => AppError::FileTransferLinkAuth(format!("{error_code:?}")),
+                _ => AppError::Transfer(format!("{error_code:?}"))
+            },
+            AzureErrorKind::Credential => AppError::FileTransferLinkAuth(value.to_string()),
+            AzureErrorKind::Io => AppError::Network(value.to_string()),
+            _ => AppError::Transfer(value.to_string())
+        }
+    }
+}
+
+impl serde::Serialize for AppError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_ref())
+    }
+}

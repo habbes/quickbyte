@@ -5,6 +5,7 @@
   "workspaces": [
     "common",
     "server",
-    "webapp"
+    "webapp",
+    "desktop/gui"
   ]
 }
