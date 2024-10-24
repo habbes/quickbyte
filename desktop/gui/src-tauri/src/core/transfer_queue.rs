@@ -288,14 +288,17 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
                                 let fetched_len = value.len() as u64;
                                 chunk_progress += value.len() as u64;
 
+                                // TODO: Enabling this for more granular and smoother progress updates but it sometimes led to frequent SendErrors and panicks, should be investigated
+                                // during perf testing, found that enabling frequent progress updates
+                                // may lead to noticeably longer time to complete transfer (e.g. at some point it led additional 16% delay on a 150mb download)
                                 // TODO Is this blocking? should this be sent in a separate task?
                                 // Investigate impact of sending through a one shot channel
-                                let started = std::time::Instant::now();
-                                request.update_channel.send(BlockTransferUpdate::Progress {
-                                    block_id: request.block._id.clone(),
-                                    block_index: request.block.index,
-                                    size: fetched_len
-                                }).await.ok(); // ignore error because we can close receiver intentionally
+                                // let started = std::time::Instant::now();
+                                // request.update_channel.send(BlockTransferUpdate::Progress {
+                                //     block_id: request.block._id.clone(),
+                                //     block_index: request.block.index,
+                                //     size: fetched_len
+                                // }).await.ok(); // ignore error because we can close receiver intentionally
                                 // println!("Send progress block {} size {} in {}", request.block.index, fetched_len, started.elapsed().as_secs_f64());
                             }
                             Err(err) => {
@@ -388,11 +391,12 @@ async fn download_block(request: Box<BlockDownloadRequest>) {
             return;
         }
 
-        // request.update_channel.send(BlockTransferUpdate::Progress {
-        //     block_id: request.block._id.clone(),
-        //     block_index: request.block.index,
-        //     size: request.size
-        // }).await.ok(); // ignore error because we can close receiver intentionally
+        // transfer manager expects progress updates before completion update to detect downloaded size
+        request.update_channel.send(BlockTransferUpdate::Progress {
+            block_id: request.block._id.clone(),
+            block_index: request.block.index,
+            size: request.size
+        }).await.ok(); // ignore error because we can close receiver intentionally
 
         request.update_channel.send(BlockTransferUpdate::Completed {
             block_id: request.block._id,
